@@ -26,6 +26,15 @@ export interface LocalPrivateKey {
   encrypted: boolean | null;
   /** Línea pública (del .pub o sacada de la privada). */
   publicLine: string | null;
+  /** `Host` de ~/.ssh/config que la usan (`IdentityFile`). */
+  configHosts: ConfigHost[];
+}
+
+/** `Host` de ~/.ssh/config que usa una llave. */
+export interface ConfigHost {
+  alias: string;
+  /** HostName (o el alias si no lo tiene). */
+  hostname: string;
 }
 
 export interface LocalKeys {

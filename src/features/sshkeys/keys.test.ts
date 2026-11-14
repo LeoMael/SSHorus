@@ -16,6 +16,7 @@ const key = (name: string, path: string, extra: Partial<LocalPrivateKey> = {}): 
   comment: "",
   encrypted: false,
   publicLine: null,
+  configHosts: [],
   ...extra,
 });
 

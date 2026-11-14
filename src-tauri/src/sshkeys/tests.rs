@@ -3,8 +3,10 @@ use std::path::{Path, PathBuf};
 
 use super::comment::default_comment;
 use super::detect::kind_from_type;
+use super::hosts::{attach_config_hosts, ConfigHost};
 use super::list_private_keys;
 use crate::localkeys::generate_ed25519;
+use crate::storage::ssh_config::key_hosts::KeyHost;
 
 fn tmpdir(tag: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("sshorus-sshkeys-{tag}-{}", std::process::id()));
@@ -76,4 +78,24 @@ fn missing_dir_and_default_comment() {
     assert!(list_private_keys(Path::new("/no/existe/sshorus")).is_empty());
     let c = default_comment();
     assert!(c.contains('@') && !c.contains(char::is_whitespace), "{c}");
+}
+
+#[test]
+fn keys_get_their_config_hosts() {
+    let d = tmpdir("hosts");
+    generate_ed25519(&d, "gh", "", "").unwrap();
+    generate_ed25519(&d, "tesis", "", "").unwrap();
+    let mut keys = list_private_keys(&d);
+    let kh = |alias: &str, hostname: &str, identity: PathBuf| KeyHost { alias: alias.into(), hostname: hostname.into(), identity };
+    // La ruta con «./» es la misma llave.
+    let hosts = [
+        kh("github.com", "github.com", d.join("gh")),
+        kh("tesis", "10.0.0.5", d.join(".").join("tesis")),
+        kh("otro", "x.lan", d.join("no-existe")),
+    ];
+    attach_config_hosts(&mut keys, &hosts);
+    let ch = |a: &str, h: &str| ConfigHost { alias: a.into(), hostname: h.into() };
+    assert_eq!(keys[0].config_hosts, [ch("github.com", "github.com")]);
+    assert_eq!(keys[1].config_hosts, [ch("tesis", "10.0.0.5")]);
+    let _ = fs::remove_dir_all(&d);
 }

@@ -106,6 +106,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - **Llaves SSH.** El formulario del servidor es más ancho y, al elegir «Llave SSH», muestra las llaves de
   `~/.ssh` para elegirlas. Nuevo asistente **«Crear llave SSH»** (explica qué es, la crea y te ayuda a ponerla
   en un servidor o en GitHub) y sección **Ajustes → Llaves SSH** para ver, copiar y usar tus llaves.
+  Cada llave indica si es para **GitHub** o en qué servidores se usa (según `~/.ssh/config`, tus servidores y
+  tu cuenta de GitHub), y el selector las agrupa. En el formulario, Host es más ancho y Usuario más estrecho.
 - **Usuarios → «Añadir a SSHorus…»**: eliges con casillas qué usuarios del servidor guardar como servidores
   (ves si tienen llaves, contraseña o sudo, y si ya estaban). Con llave SSH (SSHorus puede instalar tu llave en
   su cuenta) o con contraseña, y prueba la conexión.

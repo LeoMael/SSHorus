@@ -7,6 +7,7 @@ import { openLink } from "../../components/GitHub/parts";
 import { useGitHub } from "../github/store";
 import { GITHUB_NEW_KEY_URL, githubTestCommand } from "./keys";
 import { copyText } from "./copy";
+import { loadGitHubKeyIds } from "./useKeyUsage";
 
 export function PutOnGitHub({
   publicLine,
@@ -68,6 +69,7 @@ function UploadWithAccount({ publicLine, comment }: { publicLine: string; commen
     try {
       await github.addKey(title, publicLine);
       setDone(true);
+      void loadGitHubKeyIds(true);
     } catch (e) {
       setError(errorMessage(e));
     } finally {

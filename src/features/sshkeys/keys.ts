@@ -37,7 +37,7 @@ export function samePath(a: string, b: string): boolean {
 }
 
 /** Llave de la lista que corresponde a `path`. */
-export function findKey(keys: readonly LocalPrivateKey[], path: string): LocalPrivateKey | null {
+export function findKey<T extends LocalPrivateKey>(keys: readonly T[], path: string): T | null {
   return keys.find((k) => samePath(k.path, path)) ?? null;
 }
 

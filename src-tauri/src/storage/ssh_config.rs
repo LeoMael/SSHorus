@@ -22,6 +22,8 @@ use super::{fsutil, ProfileStore, SettingsStore};
 use crate::error::{AppError, AppResult};
 use crate::types::{AuthMethod, ServerProfile, SshConfigExport};
 
+pub mod key_hosts;
+
 pub const BEGIN_MARKER: &str = "# >>> SSHorus (no editar a mano) >>>";
 pub const END_MARKER: &str = "# <<< SSHorus <<<";
 

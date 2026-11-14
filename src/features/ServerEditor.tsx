@@ -413,7 +413,7 @@ function ServerEditor({
           </label>
         </div>
 
-        <div className="cd-cols">
+        <div className="cd-cols cd-cols-host">
           <div className="field-row">
             <div className="field cd-grow">
               <span id="cd-host-label">Host</span>

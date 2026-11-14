@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use russh::keys::PrivateKey;
 use serde::Serialize;
 
+use super::hosts::ConfigHost;
+
 /// Máximo de llaves listadas.
 const MAX_KEYS: usize = 64;
 /// Una RSA de 16384 bits ocupa ~12 KiB: lo que pase de esto no es una llave.
@@ -64,6 +66,8 @@ pub struct LocalPrivateKey {
     pub encrypted: Option<bool>,
     /// Línea pública (del `.pub` o sacada de la privada OpenSSH).
     pub public_line: Option<String>,
+    /// `Host` de ~/.ssh/config que la usan (se rellena aparte).
+    pub config_hosts: Vec<ConfigHost>,
 }
 
 /// Lo que dice el contenido de la privada.
@@ -154,6 +158,7 @@ fn private_key_info(path: &Path, name: String) -> Option<LocalPrivateKey> {
         comment: info.comment,
         encrypted: info.encrypted,
         public_line: pub_line.or(info.public_line),
+        config_hosts: Vec::new(),
     })
 }
 

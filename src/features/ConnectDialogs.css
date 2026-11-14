@@ -114,8 +114,13 @@
   align-self: end;
   margin: 0 0 18px;
 }
+/* Host + puerto | usuario: el host suele ser largo y el usuario, corto. */
+.cd-cols-host {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
 @media (max-width: 640px) {
-  .cd-cols {
+  .cd-cols,
+  .cd-cols-host {
     grid-template-columns: minmax(0, 1fr);
   }
   .cd-cols > .cd-check {

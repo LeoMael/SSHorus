@@ -7,11 +7,35 @@ import { FolderOpen } from "lucide-react";
 import { toast } from "../../stores/toasts";
 import { SSH_KEY_EXAMPLE } from "../../lib/platform";
 import { useLocalKeysOnMount } from "./store";
-import { findKey, keyDetails, keyLabel } from "./keys";
+import { findKey, keyDetails } from "./keys";
+import { groupByUsage, keyOptionLabel, usageText } from "./usage";
+import { useKeyUsages, type WithUsage } from "./useKeyUsage";
+import type { LocalPrivateKey } from "../../api/localkeys";
 import { CreateKeyWizard } from "./CreateKeyWizard";
 import "./SshKeys.css";
 
 const OTHER = "__other__";
+const NO_KEYS: LocalPrivateKey[] = [];
+
+function KeyOptions({ items }: { items: WithUsage<LocalPrivateKey>[] }) {
+  const option = (k: WithUsage<LocalPrivateKey>) => (
+    <option key={k.path} value={k.path}>
+      {keyOptionLabel(k, k.usage)}
+    </option>
+  );
+  const groups = groupByUsage(items);
+  // Con un solo grupo, el título no aporta nada.
+  if (groups.length < 2) return <>{items.map(option)}</>;
+  return (
+    <>
+      {groups.map((g) => (
+        <optgroup key={g.group} label={g.title}>
+          {g.items.map(option)}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 /** Abre el selector de archivos en ~/.ssh. null = cancelado. */
 async function browsePrivateKey(): Promise<string | null> {
@@ -38,7 +62,7 @@ export function KeyPicker({
   serverId?: string;
 }) {
   const { data } = useLocalKeysOnMount();
-  const keys = data?.keys ?? [];
+  const keys = useKeyUsages(data?.keys ?? NO_KEYS);
   const match = findKey(keys, value);
   const [typing, setTyping] = useState(false);
   const [wizard, setWizard] = useState(false);
@@ -90,11 +114,7 @@ export function KeyPicker({
                 }
               }}
             >
-              {keys.map((k) => (
-                <option key={k.path} value={k.path}>
-                  {keyLabel(k)}
-                </option>
-              ))}
+              <KeyOptions items={keys} />
               <option value={OTHER}>Otra llave (escribir la ruta)…</option>
             </select>
           )}
@@ -116,6 +136,7 @@ export function KeyPicker({
         <div className="sk-picker-foot">
           {data && keys.length === 0 && <span>No hay llaves en {data.dir}.</span>}
           {match && !manual && <span className="mono">{keyDetails(match)}</span>}
+          {match && !manual && usageText(match.usage) && <span className="sk-usage">{usageText(match.usage)}</span>}
           <button type="button" className="sk-link" onClick={() => setWizard(true)}>
             ¿No tienes? Crear una
           </button>

@@ -1,6 +1,6 @@
 // Ajustes → Llaves SSH: las llaves de este equipo (~/.ssh), copiar su parte pública, usarlas en un
 // servidor o en GitHub y crear una nueva.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, KeyRound, RefreshCw, Send } from "lucide-react";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 import type { LocalPrivateKey } from "../../api/localkeys";
@@ -8,18 +8,50 @@ import { useLocalKeysOnMount } from "../../features/sshkeys/store";
 import { keyDetails } from "../../features/sshkeys/keys";
 import { copyText } from "../../features/sshkeys/copy";
 import { CreateKeyWizard } from "../../features/sshkeys/CreateKeyWizard";
+import { groupByUsage, usageTags, usageText } from "../../features/sshkeys/usage";
+import { loadGitHubKeyIds, useKeyUsages, type WithUsage } from "../../features/sshkeys/useKeyUsage";
+import { useGitHub } from "../../features/github/store";
 import { UseKeyDialog, type KeyToUse } from "../../features/sshkeys/KeyUse";
 import "../../features/sshkeys/SshKeys.css";
+
+const NO_KEYS: LocalPrivateKey[] = [];
 
 /** Datos para «Usar…» (solo si se conoce la parte pública). */
 function toUse(k: LocalPrivateKey): KeyToUse | null {
   return k.publicLine ? { name: k.name, privatePath: k.path, publicLine: k.publicLine, comment: k.comment } : null;
 }
 
-function KeyRow({ k, onUse }: { k: LocalPrivateKey; onUse: (k: KeyToUse) => void }) {
-  const use = toUse(k);
+function KeyName({ k }: { k: WithUsage<LocalPrivateKey> }) {
+  const tags = usageTags(k.usage);
   return (
-    <Row label={<span className="sk-list-name">{k.name}</span>} hint={keyDetails(k)}>
+    <>
+      <span className="sk-list-name">{k.name}</span>
+      {tags.length > 0 && (
+        <span className="sk-tags">
+          {tags.map((t) => (
+            <span key={t} className="sk-tag">
+              {t}
+            </span>
+          ))}
+        </span>
+      )}
+    </>
+  );
+}
+
+function KeyRow({ k, onUse }: { k: WithUsage<LocalPrivateKey>; onUse: (k: KeyToUse) => void }) {
+  const use = toUse(k);
+  const usage = usageText(k.usage);
+  return (
+    <Row
+      label={<KeyName k={k} />}
+      hint={
+        <>
+          {keyDetails(k)}
+          {usage && <span className="sk-usage">{usage}</span>}
+        </>
+      }
+    >
       <div className="sk-row-actions">
         <button
           className="btn btn-sm"
@@ -41,7 +73,15 @@ export function SshKeysSection() {
   const { data, error, loading, reload } = useLocalKeysOnMount();
   const [wizard, setWizard] = useState(false);
   const [using, setUsing] = useState<KeyToUse | null>(null);
-  const keys = data?.keys ?? [];
+  const keys = useKeyUsages(data?.keys ?? NO_KEYS);
+  // Para reconocer las llaves que ya están en la cuenta de GitHub conectada.
+  useEffect(() => {
+    if (useGitHub.getState().connected === null) void useGitHub.getState().refresh();
+  }, []);
+  const refresh = () => {
+    void reload();
+    if (useGitHub.getState().connected) void loadGitHubKeyIds(true);
+  };
 
   return (
     <>
@@ -54,9 +94,7 @@ export function SshKeysSection() {
       </SettingGroup>
 
       <SettingGroup title="En este equipo" hint={data ? <span className="mono">{data.dir}</span> : undefined}>
-        {keys.map((k) => (
-          <KeyRow key={k.path} k={k} onUse={setUsing} />
-        ))}
+        {groupByUsage(keys).flatMap((g) => g.items.map((k) => <KeyRow key={k.path} k={k} onUse={setUsing} />))}
         {data && keys.length === 0 && (
           <Row label="Aún no tienes llaves" hint="Crea una con el botón de arriba.">
             <span />
@@ -68,7 +106,7 @@ export function SshKeysSection() {
           </Row>
         )}
         <Row label="Volver a buscar" hint="Si creaste o copiaste llaves fuera de SSHorus.">
-          <button className="btn btn-sm" onClick={() => void reload()} disabled={loading}>
+          <button className="btn btn-sm" onClick={refresh} disabled={loading}>
             <RefreshCw size={13} /> Actualizar
           </button>
         </Row>
