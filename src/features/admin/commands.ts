@@ -121,6 +121,37 @@ export function writeKeysSteps(user: string, content: string): string[] {
   ];
 }
 
+/**
+ * Añade una llave a ~usuario/.ssh/authorized_keys si no está ya («tipo base64», con cualquier comentario u
+ * opciones). Carpeta 700 y archivo 600 del usuario; se escribe en un temporal y se renombra (atómico).
+ * `keyId` es «tipo base64» (sin comentario) y `line` la línea completa a añadir.
+ */
+export function appendKeySteps(user: string, keyId: string, line: string): string[] {
+  return [
+    `# ${user}: añadir la llave a ~/.ssh/authorized_keys (sin duplicar)`,
+    ...homeSteps(user),
+    NO_SYMLINK,
+    `mkdir -p "$d"`,
+    NO_SYMLINK,
+    `chown ${q(user)}:"$g" "$d"`,
+    `chmod g-s,u=rwx,go= "$d"`,
+    `f="$d/authorized_keys"`,
+    `if [ -f "$f" ] && grep -qF -- ${q(keyId)} "$f"; then`,
+    `  chown ${q(user)}:"$g" "$f"`,
+    `  chmod 600 "$f"`,
+    `  echo ${q(`${user}: la llave ya estaba`)}`,
+    `else`,
+    `  t=$(mktemp "$d/.authorized_keys.XXXXXX")`,
+    `  if [ -s "$f" ]; then cat "$f" > "$t"; if [ -n "$(tail -c 1 "$f")" ]; then echo >> "$t"; fi; fi`,
+    `  printf '%s\\n' ${q(line)} >> "$t"`,
+    `  chown ${q(user)}:"$g" "$t"`,
+    `  chmod 600 "$t"`,
+    `  mv -f "$t" "$f"`,
+    `  echo ${q(`${user}: llave añadida`)}`,
+    `fi`,
+  ];
+}
+
 /** Lectura de authorized_keys (sección @@keys). Sale bien aunque no exista. */
 export function readKeysScript(user: string): string {
   return [

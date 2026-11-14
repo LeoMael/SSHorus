@@ -1,6 +1,6 @@
 // Sub-pestaña «Usuarios»: tabla, filtros y acciones (crear, editar, llaves, bloquear, eliminar).
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
-import { KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import { Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
 import { daysToDate, deleteUserPlan, lockUserPlan, type UserRow } from "../../features/admin";
 import { protectedReason, useAdmin } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
@@ -9,10 +9,12 @@ import { PlanModal } from "./PlanReview";
 import { UserDialog } from "./UserDialog";
 import { KeysDialog } from "./KeysDialog";
 import { KeyUserWizard } from "./KeyUserWizard";
+import { ImportUsersDialog } from "./ImportUsersDialog";
 
 type Dialog =
   | { kind: "create" }
   | { kind: "create-key" }
+  | { kind: "import" }
   | { kind: "edit"; user: UserRow }
   | { kind: "keys"; user: UserRow }
   | { kind: "lock"; user: UserRow; lock: boolean }
@@ -180,6 +182,14 @@ export function UsersTab() {
         </div>
         <button
           className="btn btn-sm"
+          disabled={readOnly}
+          title={readOnly ? "Necesitas root o sudo" : "Guardar usuarios de este servidor como servidores en SSHorus"}
+          onClick={() => setDialog({ kind: "import" })}
+        >
+          <Import size={13} /> Añadir a SSHorus…
+        </button>
+        <button
+          className="btn btn-sm"
           disabled={readOnly || !env}
           title="Usuario sin contraseña que solo entra con su llave SSH"
           onClick={() => setDialog({ kind: "create-key" })}
@@ -222,6 +232,7 @@ export function UsersTab() {
       {menu && <ContextMenu x={menu.x} y={menu.y} items={actions(menu.user)} onClose={() => setMenu(null)} />}
 
       {dialog?.kind === "create" && <UserDialog mode="create" onClose={() => setDialog(null)} onCreated={(n) => setSelected(n)} />}
+      {dialog?.kind === "import" && <ImportUsersDialog onClose={() => setDialog(null)} />}
       {dialog?.kind === "create-key" && <KeyUserWizard onClose={() => setDialog(null)} onCreated={(n) => setSelected(n)} />}
       {dialog?.kind === "edit" && <UserDialog mode="edit" user={dialog.user} onClose={() => setDialog(null)} />}
       {dialog?.kind === "keys" && <KeysDialog user={dialog.user} onClose={() => setDialog(null)} />}

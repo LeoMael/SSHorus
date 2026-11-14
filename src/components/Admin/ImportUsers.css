@@ -1,0 +1,120 @@
+/* «Añadir a SSHorus»: lista de usuarios con casillas, opciones de acceso y resultado. */
+.iu-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.iu-list {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.iu-row {
+  display: grid;
+  grid-template-columns: 24px minmax(140px, 1.4fr) 64px 104px 44px minmax(120px, 1.3fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.iu-row > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.iu-row:hover {
+  background: var(--surface-2);
+}
+.iu-row-off {
+  cursor: default;
+  color: var(--text-muted);
+}
+.iu-row-off .adm-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.iu-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  cursor: default;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.iu-head:hover {
+  background: var(--surface);
+}
+.iu-user {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.iu-full {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.iu-note {
+  font-size: var(--fs-sm);
+}
+.iu-section {
+  padding: 8px 8px 2px;
+}
+.iu-empty {
+  padding: 10px 8px;
+}
+.iu-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.iu-auth {
+  margin-top: 12px;
+}
+.iu-auth .adm-check {
+  margin-bottom: 4px;
+}
+.iu-hint {
+  margin: 0 0 6px 24px;
+  font-size: var(--fs-sm);
+}
+.iu-done {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.iu-done-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(100px, 0.8fr) minmax(180px, 1.6fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.iu-done-row:last-child {
+  border-bottom: 0;
+}
+.iu-done-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.iu-test-ok,
+.iu-test-bad {
+  font-size: var(--fs-sm);
+  white-space: normal;
+}
+.iu-test-bad {
+  color: var(--red);
+}

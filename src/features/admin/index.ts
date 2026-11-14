@@ -3,6 +3,7 @@ export * from "./shell";
 export * from "./parse";
 export * from "./commands";
 export * from "./keyUser";
+export * from "./importUsers";
 export * from "./run";
 export * from "./history";
 export * from "./ports";
