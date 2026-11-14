@@ -178,7 +178,7 @@ impl Default for Settings {
             editor_font_size: 14,
             editor_font_family: "'JetBrains Mono', 'Fira Code', 'Noto Sans Mono', monospace".into(),
             ssh_config_sync: false,
-            transfer_conflict: "overwrite".into(),
+            transfer_conflict: "ask".into(),
             terminal_tmux: TmuxMode::Auto,
             lock_minutes: 15,
             vault_prompt_dismissed: false,

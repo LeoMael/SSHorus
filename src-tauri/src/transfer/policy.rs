@@ -114,6 +114,12 @@ mod tests {
     }
 
     #[test]
+    fn default_setting_is_ask() {
+        // Sin ajustes guardados, se pregunta antes de reemplazar un archivo.
+        assert_eq!(Conflict::parse(&crate::types::Settings::default().transfer_conflict), Conflict::Ask);
+    }
+
+    #[test]
     fn parse_answers() {
         assert_eq!(Conflict::parse_answer("overwrite"), Some(Conflict::Overwrite));
         assert_eq!(Conflict::parse_answer("skip"), Some(Conflict::Skip));

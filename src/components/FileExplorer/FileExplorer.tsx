@@ -66,6 +66,7 @@ import {
   startDragOut,
 } from "./dragOut";
 import { PermissionsDialog } from "./PermissionsDialog";
+import { addToProjectItem } from "./projectMenu";
 import { revealWhenDone, systemDownloadDir } from "./revealDownload";
 import { matchesShortcut } from "../../features/shortcuts/shortcuts";
 import "./FileExplorer.css";
@@ -168,6 +169,7 @@ export const FileExplorer = memo(function FileExplorer({
   const closedReason = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.closedReason ?? null);
   const reconnectCount = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.reconnectCount ?? 0);
   const offline = tabStatus !== "connected";
+  const serverId = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.profileId ?? null);
 
   const showHidden = useSettings((s) => s.settings.showHiddenFiles);
   const confirmDelete = useSettings((s) => s.settings.confirmDelete);
@@ -1048,6 +1050,7 @@ export const FileExplorer = memo(function FileExplorer({
       { label: "Renombrar", icon: <Pencil size={15} />, hint: "F2", disabled: !single, onSelect: () => single && rename(single) },
       { label: "Permisos…", icon: <KeyRound size={15} />, onSelect: () => setPermsFor(list) },
       { label: list.length > 1 ? "Copiar rutas" : "Copiar ruta", icon: <ClipboardCopy size={15} />, onSelect: () => copyPaths(list.map((e) => e.path)) },
+      ...(single && singleDir ? [addToProjectItem(serverId, single.path)] : []),
       { sep: true },
       { label: "Eliminar", icon: <Trash2 size={15} />, hint: "Supr", danger: true, onSelect: () => remove(list) },
     ];

@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorFontSize: 14,
   editorFontFamily: DEFAULT_MONO_FONT,
   sshConfigSync: false,
-  transferConflict: "overwrite",
+  transferConflict: "ask",
   terminalTmux: "auto",
   lockMinutes: 15,
   vaultPromptDismissed: false,
