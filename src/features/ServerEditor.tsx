@@ -19,6 +19,7 @@ import { initialProjectFor, projectChanges } from "./projectServers";
 import { findMatches, hostSuggestions, serverAddress, type ServerMatches } from "./serverMatches";
 import { describeTestOk, testServerConnection, type TestOutcome } from "./serverTest";
 import { KeyPicker } from "./sshkeys/KeyPicker";
+import { shownSudoMode, sudoFormHint, sudoModesFor, sudoModeToSave, type SudoFormState } from "./privileges/sudoFormHint";
 
 /** Dónde van las contraseñas guardadas. */
 const SAVE_TIP = "Se guarda cifrada con tu PIN o contraseña de SSHorus o, si no tienes bloqueo, en el llavero del sistema.";
@@ -46,11 +47,7 @@ const AUTH_OPTIONS: { value: AuthMethod; label: string }[] = [
   { value: "agent", label: "Agente SSH" },
 ];
 
-const SUDO_OPTIONS: { value: SudoMode; label: string; hint: string }[] = [
-  { value: "ask", label: "Pedir cada vez", hint: "Se pide al administrar y se olvida al cerrar la conexión." },
-  { value: "login", label: "La de la conexión", hint: "Usa la contraseña de arriba (tiene que estar guardada)." },
-  { value: "saved", label: "Guardar", hint: "Útil si entras con llave SSH: sudo sigue pidiendo tu contraseña." },
-];
+const SUDO_LABELS: Record<SudoMode, string> = { ask: "Pedir cada vez", login: "La de la conexión", saved: "Guardar" };
 
 function ServerEditor({
   initial,
@@ -94,9 +91,19 @@ function ServerEditor({
   const [saving, setSaving] = useState(false);
   /** null = desconocido (nuevo o llavero no disponible). */
   const [hasSecret, setHasSecret] = useState<boolean | null>(null);
-  const [sudoMode, setSudoMode] = useState<SudoMode>(initial?.sudoMode ?? "ask");
+  const [sudoMode, setSudoMode] = useState<SudoMode>(() =>
+    shownSudoMode(initial?.sudoMode ?? "ask", initial?.auth ?? "password"),
+  );
   const [sudoSecret, setSudoSecret] = useState("");
   const [hasSudoSecret, setHasSudoSecret] = useState<boolean | null>(null);
+  const sudoForm: SudoFormState = {
+    mode: sudoMode,
+    auth,
+    typed: sudoSecret !== "",
+    stored: isNew ? false : hasSudoSecret,
+    rememberLogin: remember,
+  };
+  const sudoHint = sudoFormHint(sudoForm);
   const firstRef = useRef<HTMLInputElement>(null);
   const alias = useSshAlias(initial?.id ?? "", name, host);
   const servers = useProfiles((s) => s.servers);
@@ -170,7 +177,7 @@ function ServerEditor({
     defaultPath: defaultPath.trim() || null,
     color,
     tmux,
-    sudoMode: sudoMode === "login" && auth !== "password" ? "ask" : sudoMode,
+    sudoMode: sudoModeToSave(sudoForm),
   });
 
   /** Cancela la prueba en curso. Devuelve si había una. */
@@ -552,16 +559,16 @@ function ServerEditor({
         <div className="field">
           <span>Contraseña de sudo</span>
           <div className="cd-segmented" role="radiogroup" aria-label="Contraseña de sudo">
-            {SUDO_OPTIONS.filter((o) => o.value !== "login" || auth === "password").map((o) => (
+            {sudoModesFor(auth).map((m) => (
               <button
-                key={o.value}
+                key={m}
                 type="button"
                 role="radio"
-                aria-checked={sudoMode === o.value}
-                className={sudoMode === o.value ? "active" : ""}
-                onClick={() => setSudoMode(o.value)}
+                aria-checked={sudoMode === m}
+                className={sudoMode === m ? "active" : ""}
+                onClick={() => setSudoMode(m)}
               >
-                {o.label}
+                {SUDO_LABELS[m]}
               </button>
             ))}
           </div>
@@ -576,11 +583,16 @@ function ServerEditor({
               placeholder={hasSudoSecret ? "•••••• (guardada; escribe para cambiarla)" : "Tu contraseña en el servidor"}
             />
           )}
-          <small className="cd-field-hint">
-            {sudoMode === "login" && !remember
-              ? "Marca «Guardar contraseña» para usarla con sudo."
-              : SUDO_OPTIONS.find((o) => o.value === sudoMode)?.hint}
-          </small>
+          {sudoHint.warn ? (
+            <div className="ssha-inline warn" role="status">
+              <div className="ssha-inline-row">
+                <AlertTriangle size={13} />
+                <span>{sudoHint.text}</span>
+              </div>
+            </div>
+          ) : (
+            <small className="cd-field-hint">{sudoHint.text}</small>
+          )}
         </div>
 
         <div className="cd-cols">
