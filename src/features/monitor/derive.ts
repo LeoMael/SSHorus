@@ -1,5 +1,6 @@
 // Cálculos entre dos muestras (funciones puras): CPU %, memoria, red por segundo, procesos.
 import type { CpuTicks, DiskUsage, MemInfo, ProcStat, RawSample } from "./sample";
+import { summarizeUsers, type UserUsage } from "./users";
 
 export interface MemMetrics {
   totalKb: number;
@@ -58,11 +59,14 @@ export interface Metrics {
   nproc: number | null;
   net: NetMetrics;
   disks: DiskUsage[];
-  /** Unión de los que más CPU y más memoria usan (la tabla ordena y recorta). */
+  /** Todos los procesos que se ven (la tabla filtra, ordena y recorta). */
   procs: ProcRow[];
   procCount: number;
+  /** Cuánto usa cada usuario. */
+  users: UserUsage[];
 }
 
+/** Filas de la tabla de procesos. */
 export const TOP_PROCS = 15;
 
 /** Interfaces que no son tráfico «real» del servidor (lo duplican o son internas). */
@@ -139,7 +143,7 @@ export interface ProcContext {
 export function procRows(prev: RawSample | null, cur: RawSample, ctx: ProcContext): ProcRow[] {
   const dt = prev ? elapsedSecs(prev, cur) : 0;
   const before = new Map(prev?.procs.map((p) => [p.pid, p]) ?? []);
-  const rows: ProcRow[] = cur.procs.map((p) => {
+  return cur.procs.map((p) => {
     const b = before.get(p.pid);
     // Mismo pid pero otro arranque = pid reutilizado.
     const same = b && b.start === p.start && p.ticks >= b.ticks;
@@ -159,12 +163,6 @@ export function procRows(prev: RawSample | null, cur: RawSample, ctx: ProcContex
       elapsed: cur.uptime !== null && Number.isFinite(p.start) ? Math.max(0, cur.uptime - p.start / ctx.hz) : null,
     };
   });
-  const byCpu = [...rows].sort((a, b) => (b.cpuPct ?? -1) - (a.cpuPct ?? -1) || (b.rssKb ?? 0) - (a.rssKb ?? 0));
-  const byMem = [...rows].sort((a, b) => (b.rssKb ?? -1) - (a.rssKb ?? -1));
-  const pick = new Map<number, ProcRow>();
-  for (const r of byCpu.slice(0, TOP_PROCS)) pick.set(r.pid, r);
-  for (const r of byMem.slice(0, TOP_PROCS)) pick.set(r.pid, r);
-  return [...pick.values()];
 }
 
 export interface DeriveContext extends Omit<ProcContext, "memTotalKb"> {
@@ -174,6 +172,7 @@ export interface DeriveContext extends Omit<ProcContext, "memTotalKb"> {
 export function deriveMetrics(prev: RawSample | null, cur: RawSample, ctx: DeriveContext): Metrics {
   const cpu = cpuPercent(prev?.cpu, cur.cpu);
   const mem = memMetrics(cur.mem);
+  const procs = procRows(prev, cur, { ...ctx, memTotalKb: mem?.totalKb ?? null });
   return {
     at: cur.at,
     uptime: cur.uptime,
@@ -186,8 +185,9 @@ export function deriveMetrics(prev: RawSample | null, cur: RawSample, ctx: Deriv
     nproc: ctx.nproc,
     net: netMetrics(prev, cur),
     disks: cur.disks,
-    procs: procRows(prev, cur, { ...ctx, memTotalKb: mem?.totalKb ?? null }),
+    procs,
     procCount: cur.procs.length,
+    users: summarizeUsers(procs, ctx.nproc, mem?.totalKb ?? null),
   };
 }
 

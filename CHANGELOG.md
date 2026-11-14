@@ -129,6 +129,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   servidor (PostgreSQL, MySQL, Redis, MongoDB, paneles web, contenedores…), sobre todo lo que solo escucha por
   dentro. «Traer a mi PC» crea el túnel en un puerto libre con un clic, con la cadena de conexión para copiar y
   «Abrir en el navegador» para las webs.
+  Se agrupan **por tipo** (base de datos, web, caché, colas, búsqueda, monitoreo, escritorio remoto) con color,
+  icono y para qué sirve; los puertos desconocidos que responden como web se marcan como «Web».
+- **Monitor por usuario**: explica qué muestra y resume CPU, memoria, procesos y contenedores de cada usuario,
+  con filtro en la tabla; si el servidor oculta los procesos de otros (hidepid), con sudo se ven todos.
 
 ### Cambiado
 - **Mapa de infraestructura: zoom solo del mapa.** La rueda, el pellizco y Ctrl + / − / 0 hacen zoom del mapa

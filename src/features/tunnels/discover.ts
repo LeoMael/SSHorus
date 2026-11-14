@@ -5,6 +5,7 @@ import { readElevated, runScript } from "../admin/run";
 import { refreshPrivilege, type Elevation } from "../privileges";
 import { tunnels, type TunnelDef } from "../../api/tunnels";
 import { CONTAINER_PORTS_SCRIPT, findServices, parseContainerPublish, wantedLocalPort, type FoundService } from "./detect";
+import { applyHttpProbe, httpProbeScript, parseHttpProbe } from "./probe";
 
 export interface Discovery {
   services: FoundService[];
@@ -21,7 +22,16 @@ export async function discoverServices(sessionId: string, elevation: Elevation |
   ]);
   if (ports.elevationError?.failure === "need-password") refreshPrivilege(sessionId);
   const published = ctr ? parseContainerPublish(ctr.stdout) : [];
-  return { services: findServices(parsePorts(ports.result.stdout).ports, published, sshPort), elevated: ports.elevated };
+  const services = findServices(parsePorts(ports.result.stdout).ports, published, sshPort);
+  return { services: await guessWeb(sessionId, services), elevated: ports.elevated };
+}
+
+/** Los no reconocidos que responden por HTTP pasan a «Web / panel». Es un extra: si falla, quedan igual. */
+async function guessWeb(sessionId: string, services: FoundService[]): Promise<FoundService[]> {
+  const script = httpProbeScript(services);
+  if (!script) return services;
+  const r = await runScript(sessionId, script, { kind: "none" }, "", 10).catch(() => null);
+  return r ? applyHttpProbe(services, parseHttpProbe(r.stdout)) : services;
 }
 
 /**

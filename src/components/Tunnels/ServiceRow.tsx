@@ -1,39 +1,14 @@
 // Una fila de «Servicios que puedes traer»: qué es, dónde está en el servidor, cómo se verá en tu PC y el
 // botón «Traer a mi PC» (o, ya traído, abrirlo o copiar cómo conectarse).
 import { openUrl } from "@tauri-apps/plugin-opener";
-import {
-  Box,
-  ChartLine,
-  Copy,
-  Database,
-  ExternalLink,
-  Globe,
-  Layers,
-  Monitor,
-  Plug,
-  Search,
-  Square,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { Copy, ExternalLink, Square } from "lucide-react";
 import type { TunnelDef, TunnelStatus } from "../../api/tunnels";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import type { ServiceIcon } from "../../features/tunnels/catalog";
+import { categoryOf } from "../../features/tunnels/categories";
 import { browserUrl, connectionString, serviceTitle, type FoundService } from "../../features/tunnels/detect";
 import { isTunnelOn } from "../../features/tunnels/useTunnels";
-
-const ICONS: Record<ServiceIcon, LucideIcon> = {
-  database: Database,
-  cache: Zap,
-  search: Search,
-  queue: Layers,
-  chart: ChartLine,
-  web: Globe,
-  screen: Monitor,
-  box: Box,
-  plug: Plug,
-};
+import { CATEGORY_ICONS } from "./categoryIcons";
 
 const SCOPE_TAG: Record<FoundService["scope"], { text: string; cls: string; help: string } | null> = {
   local: {
@@ -71,7 +46,8 @@ export interface ServiceRowProps {
 
 export function ServiceRow({ item, def, status, proposed, busy, disabled, onBring, onStop }: ServiceRowProps) {
   const svc = item.service;
-  const Icon = ICONS[svc?.icon ?? "plug"];
+  const category = categoryOf(item);
+  const Icon = CATEGORY_ICONS[category];
   const on = isTunnelOn(status);
   const localPort = on ? (status?.boundPort ?? def?.bindPort ?? 0) : (def?.bindPort ?? proposed ?? 0);
   const localAddr = localPort ? `localhost:${localPort}` : "un puerto libre";
@@ -83,7 +59,7 @@ export function ServiceRow({ item, def, status, proposed, busy, disabled, onBrin
 
   return (
     <li className={on ? "tn-svc on" : "tn-svc"}>
-      <Icon size={16} className="tn-svc-icon" />
+      <Icon size={16} className={`tn-svc-icon tn-cat-${category}`} />
       <div className="tn-svc-main">
         <div className="tn-line">
           <span className="tn-name" title={title}>
@@ -104,12 +80,13 @@ export function ServiceRow({ item, def, status, proposed, busy, disabled, onBrin
           <span className={on ? "mono tn-svc-live" : "mono"}>{localAddr}</span>
           {on && <span className="status-dot tn-dot tn-dot-active" title="Traído: ya lo puedes usar" />}
         </div>
-        {conn && svc?.kind !== "web" && (
+        {conn && (
           <button className="tn-svc-conn mono" title="Copiar cadena de conexión" onClick={() => copy(conn, "Cadena de conexión copiada")}>
             <span>{conn}</span> <Copy size={12} />
           </button>
         )}
         {svc?.apps && <div className="tn-svc-apps faint">Ábrelo con {svc.apps}.</div>}
+        {item.guessed && <div className="tn-svc-apps faint">No se sabe qué programa es, pero responde como una página web.</div>}
       </div>
       <div className="tn-svc-actions">
         {on && def ? (

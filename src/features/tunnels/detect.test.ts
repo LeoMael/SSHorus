@@ -8,9 +8,12 @@ import {
   findServices,
   identifyService,
   parseContainerPublish,
+  serviceTitle,
   wantedLocalPort,
 } from "./detect";
 import type { TunnelDef } from "../../api/tunnels";
+import { groupByCategory } from "./categories";
+import { applyHttpProbe, httpProbeScript, parseHttpProbe } from "./probe";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
@@ -38,6 +41,10 @@ eq(id([], [15432, 5432]), "postgres", "contenedor 15432→5432: por el puerto de
 eq(id(["sshd"], [8080]), "ssh", "túnel remoto de SSH (sshd): del sistema");
 eq(id(["php-fpm8.2"], [9000]), "php-fpm", "PHP-FPM no es una web");
 eq(id(["Xvnc"], [5901]), "vnc", "VNC");
+eq(id([], [9100]), "node-exporter", "9100 sin programa: Node exporter");
+eq(id(["kafka"], [9092]), "kafka", "Kafka");
+eq(identifyService(["grafana"], [3000])?.category, "monitor", "Grafana es monitoreo");
+eq(identifyService(["redis-server"], [6379])?.category, "cache", "Redis es caché");
 
 // ── Juntar `ss`, contenedores y quitar lo del sistema ──
 const ss = [
@@ -88,6 +95,44 @@ eq(
 eq(found[0].procs, ["postgres"], "IPv4 e IPv6 del mismo puerto se juntan");
 eq(found[2].procs, [], "docker-proxy no cuenta como programa");
 eq(found[2].container, "adminer", "el contenedor sale del puerto publicado");
+
+// ── Categorías y adivinar «web» ──
+eq(
+  groupByCategory(found).map((g) => `${g.category.id}:${g.items.length}`),
+  ["db:1", "web:2", "cache:1", "other:2"],
+  "agrupados por categoría, en orden",
+);
+const script = httpProbeScript(found) ?? "";
+eq(script.includes("http://127.0.0.1:7777/") && script.includes("https://127.0.0.1:8001/"), true, "prueba solo los no reconocidos");
+eq(script.includes(":5432/"), false, "no prueba los reconocidos");
+eq(httpProbeScript(found.filter((s) => s.service)), null, "nada que probar");
+eq(
+  httpProbeScript([{ ...found[4], service: null, destHost: "::1", key: "::1:7777" }])?.includes("http://[::1]:7777/"),
+  true,
+  "IPv6 entre corchetes",
+);
+eq(httpProbeScript([{ ...found[4], destHost: "a;rm -rf /", key: "x" }]), null, "solo direcciones IP en el comando");
+const web = parseHttpProbe(
+  [
+    "@@http",
+    "127.0.0.1:7777 200 000",
+    "127.0.0.1:8001 400 302",
+    "127.0.0.1:9999 000 000",
+    "127.0.0.1:9998 404 000",
+    "@@end",
+  ].join("\n"),
+);
+eq(
+  [...web],
+  [["127.0.0.1:7777", "http"], ["127.0.0.1:8001", "https"], ["127.0.0.1:9998", "http"]],
+  "http, https (si responde) y sin respuesta",
+);
+const guessed = applyHttpProbe(found, web);
+eq(guessed[4].service?.category, "web", "el 7777 responde: Web");
+eq(serviceTitle(guessed[4]), "Web en el puerto 7777", "título del adivinado");
+eq(browserUrl(guessed[5].service, 8001, 8001), "https://localhost:8001/", "abre con https");
+eq(guessed[0], found[0], "los reconocidos no cambian");
+eq(groupByCategory(guessed).map((g) => g.category.id), ["db", "web", "cache"], "sin «Otro» si todos responden");
 
 // ── Cómo se usa en tu PC ──
 const pg = identifyService(["postgres"], [5432]);

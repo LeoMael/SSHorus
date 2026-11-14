@@ -55,7 +55,7 @@
 .tn-svc-icon {
   flex: none;
   margin-top: 2px;
-  color: var(--accent);
+  color: var(--tn-cat, var(--accent));
 }
 .tn-svc-main {
   flex: 1;
@@ -138,16 +138,103 @@
   flex: none;
 }
 
-.tn-svcs-other {
+/* Grupos por categoría */
+.tn-cat {
   margin-top: 6px;
 }
-.tn-svcs-other > summary {
-  padding: 4px 10px;
+.tn-cat-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 4px 10px 2px;
   font-size: var(--fs-sm);
-  color: var(--text-muted);
+}
+.tn-cat-fold > summary {
+  list-style: none;
   cursor: pointer;
   user-select: none;
 }
-.tn-svcs-other > summary:hover {
+.tn-cat-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.tn-cat-chevron {
+  flex: none;
+  margin-right: -4px;
+  color: var(--text-faint);
+  transition: transform 0.12s;
+}
+.tn-cat-fold[open] .tn-cat-chevron {
+  transform: rotate(90deg);
+}
+.tn-cat-fold > summary:hover .tn-cat-hint {
+  color: var(--text-muted);
+}
+.tn-cat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: var(--tn-cat-bg);
   color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.tn-cat-tag svg {
+  color: var(--tn-cat);
+}
+.tn-cat-count {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.tn-cat-hint {
+  min-width: 0;
+  line-height: 1.4;
+}
+/* Color de cada categoría (icono y fondo de la etiqueta). */
+.tn-cat-db {
+  --tn-cat: var(--accent);
+  --tn-cat-bg: var(--mix-accent-16);
+}
+.tn-cat-web {
+  --tn-cat: var(--green);
+  --tn-cat-bg: var(--mix-green-15);
+}
+.tn-cat-cache {
+  --tn-cat: var(--orange);
+  --tn-cat-bg: var(--mix-orange-15);
+}
+.tn-cat-queue {
+  --tn-cat: var(--purple);
+  --tn-cat-bg: rgb(167 139 250 / 0.16);
+}
+.tn-cat-search {
+  --tn-cat: var(--yellow);
+  --tn-cat-bg: var(--mix-yellow-25);
+}
+.tn-cat-monitor {
+  --tn-cat: #2dd4bf;
+  --tn-cat-bg: rgb(45 212 191 / 0.15);
+}
+.tn-cat-screen {
+  --tn-cat: #f472b6;
+  --tn-cat-bg: rgb(244 114 182 / 0.15);
+}
+.tn-cat-other {
+  --tn-cat: var(--text-faint);
+  --tn-cat-bg: var(--surface-3);
+}
+:root[data-theme="light"] .tn-cat-queue {
+  --tn-cat-bg: rgb(124 58 237 / 0.12);
+}
+:root[data-theme="light"] .tn-cat-monitor {
+  --tn-cat: #0d9488;
+  --tn-cat-bg: rgb(13 148 136 / 0.13);
+}
+:root[data-theme="light"] .tn-cat-screen {
+  --tn-cat: #db2777;
+  --tn-cat-bg: rgb(219 39 119 / 0.12);
 }

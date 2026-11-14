@@ -67,6 +67,8 @@ export interface SampleInfo {
   hz: number | null;
   docker: boolean;
   podman: boolean;
+  /** /proc montado con hidepid: sin root, cada usuario solo ve sus propios procesos. */
+  hidepid: boolean;
 }
 
 export interface RawSample {
@@ -104,7 +106,12 @@ export interface SampleCommandOptions {
   full: boolean;
   /** pids cuyo dueño (uid) hay que averiguar. */
   uidPids?: number[];
+  /** El dueño de todos los procesos (la primera vez, o si hay muchos nuevos). */
+  uidAll?: boolean;
 }
+
+/** Más pids nuevos que esto: se pregunta el dueño de todos (la lista no cabe en el comando). */
+const MAX_UID_PIDS = 64;
 
 /** Comando exacto que se envía por el canal exec. */
 export function buildSampleCommand(opts: SampleCommandOptions): string {
@@ -129,6 +136,7 @@ export function buildSampleCommand(opts: SampleCommandOptions): string {
       'echo "hz=$(getconf CLK_TCK 2>/dev/null)"',
       'if command -v docker >/dev/null 2>&1; then echo docker=1; fi',
       'if command -v podman >/dev/null 2>&1; then echo podman=1; fi',
+      'echo "hidepid=$(grep " /proc proc " /proc/mounts 2>/dev/null | head -n 1 | grep -o "hidepid=[a-z0-9]*" | cut -d= -f2)"',
       "echo @@passwd; cut -d: -f1,3 /etc/passwd 2>/dev/null",
     );
   }
@@ -138,9 +146,9 @@ export function buildSampleCommand(opts: SampleCommandOptions): string {
     // Los que tienen espacios en el nombre (p. ej. "tmux: server") descuadran cut: van completos.
     'echo @@psx; grep -h "(.* .*)" /proc/[0-9]*/stat 2>/dev/null',
   );
-  const pids = (opts.uidPids ?? []).filter((p) => Number.isInteger(p) && p > 0).slice(0, 64);
-  if (pids.length) {
-    const paths = pids.map((p) => `/proc/${p}`).join(" ");
+  const pids = (opts.uidPids ?? []).filter((p) => Number.isInteger(p) && p > 0);
+  if (opts.uidAll || pids.length) {
+    const paths = opts.uidAll || pids.length > MAX_UID_PIDS ? "/proc/[0-9]*" : pids.map((p) => `/proc/${p}`).join(" ");
     parts.push(
       `echo @@uid; if command -v stat >/dev/null 2>&1; then stat -c "%u %n" ${paths} 2>/dev/null; else ls -lnd ${paths} 2>/dev/null; fi`,
     );
@@ -334,6 +342,7 @@ function parseInfo(lines: string[]): SampleInfo {
     hz: pos("hz"),
     docker: kv.get("docker") === "1",
     podman: kv.get("podman") === "1",
+    hidepid: /^(1|2|invisible|noaccess)$/.test(kv.get("hidepid") ?? ""),
   };
 }
 
@@ -362,6 +371,17 @@ function parsePasswd(lines: string[]): Map<number, string> {
   return out;
 }
 
+/** Lo que lanza el propio muestreo (con sudo, el `sudo` y el `sh` que lo envuelven): no son del servidor. */
+const WRAPPER = /^(sh|dash|sudo|doas|cat)$/;
+
+function dropOwnProcesses(procs: Map<number, ProcStat>, self: number): void {
+  const own = new Set([self]);
+  for (let p = procs.get(self); p && procs.get(p.ppid) && WRAPPER.test(procs.get(p.ppid)!.comm); p = procs.get(p.ppid)) {
+    own.add(p.ppid);
+  }
+  for (const p of [...procs.values()]) if (own.has(p.pid) || own.has(p.ppid)) procs.delete(p.pid);
+}
+
 export function parseSample(stdout: string, at = Date.now()): RawSample {
   const s = splitSections(stdout);
   const get = (k: string) => s.get(k) ?? [];
@@ -376,9 +396,7 @@ export function parseSample(stdout: string, at = Date.now()): RawSample {
   }
   const selfPid = Number(sectionValues(stdout).get("self"));
   const self = Number.isInteger(selfPid) && selfPid > 0 ? selfPid : null;
-  if (self !== null) {
-    for (const p of [...procs.values()]) if (p.pid === self || p.ppid === self) procs.delete(p.pid);
-  }
+  if (self !== null) dropOwnProcesses(procs, self);
   const la = parseLoadavg(get("load"));
   return {
     at,
@@ -396,118 +414,5 @@ export function parseSample(stdout: string, at = Date.now()): RawSample {
     complete: s.has("end"),
     noProc: s.has("noproc"),
     selfPid: self,
-  };
-}
-
-// ───────── Contenedores ─────────
-
-export interface ContainerStat {
-  engine: "docker" | "podman";
-  id: string;
-  name: string;
-  cpuPct: number | null;
-  memUsage: string;
-  memPct: number | null;
-  netIO: string;
-  blockIO: string;
-}
-
-export interface ContainersResult {
-  engines: ("docker" | "podman")[];
-  containers: ContainerStat[];
-  /** Mensajes de error por motor (permiso denegado, demonio parado…). */
-  errors: { engine: string; message: string }[];
-}
-
-export const CONTAINERS_TIMEOUT_SECS = 20;
-
-const STATS_FORMAT = "{{.ID}}|{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}";
-
-export function buildContainersCommand(): string {
-  const script = [
-    "for c in docker podman; do if command -v $c >/dev/null 2>&1; then echo @@engine=$c",
-    `$c stats --no-stream --format "${STATS_FORMAT}" 2>&1 | head -n 80; fi; done`,
-    "echo @@end",
-  ].join("; ");
-  return `sh -c '${script}'`;
-}
-
-const pctOf = (s: string | undefined): number | null => {
-  const v = parseFloat((s ?? "").replace(",", ".").replace("%", ""));
-  return Number.isFinite(v) ? v : null;
-};
-
-export function parseContainers(stdout: string): ContainersResult {
-  const res: ContainersResult = { engines: [], containers: [], errors: [] };
-  let engine: "docker" | "podman" | null = null;
-  const errLines = new Map<string, string[]>();
-  for (const raw of stdout.split("\n")) {
-    const line = raw.replace(/\r$/, "").trim();
-    const m = /^@@engine=(docker|podman)$/.exec(line);
-    if (m) {
-      engine = m[1] as "docker" | "podman";
-      res.engines.push(engine);
-      continue;
-    }
-    if (!engine || !line || line.startsWith("@@")) continue;
-    const f = line.split("|");
-    if (f.length >= 7) {
-      res.containers.push({
-        engine,
-        id: f[0].slice(0, 12),
-        name: f[1],
-        cpuPct: pctOf(f[2]),
-        memUsage: f[3],
-        memPct: pctOf(f[4]),
-        netIO: f[5],
-        blockIO: f[6],
-      });
-    } else {
-      const arr = errLines.get(engine) ?? [];
-      arr.push(line);
-      errLines.set(engine, arr);
-    }
-  }
-  // `docker` puede ser el envoltorio de podman: mismos contenedores dos veces.
-  const seen = new Set<string>();
-  res.containers = res.containers.filter((c) => {
-    const k = `${c.id}|${c.name}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  // Errores solo si no se pudo leer nada (p. ej. sin permiso en docker pero podman va bien: no molestar).
-  if (!res.containers.length) {
-    for (const [eng, lines] of errLines) res.errors.push({ engine: eng, message: lines.slice(0, 3).join(" ") });
-  }
-  return res;
-}
-
-// ───────── Terminar procesos ─────────
-
-/** `kill` (o `kill -9`) y, un segundo después, si sigue vivo. Salida: rc=…, alive=0|1. */
-export function buildKillCommand(pid: number, force: boolean): string {
-  if (!Number.isInteger(pid) || pid <= 1) throw new Error("pid no válido");
-  const sig = force ? "-9 " : "";
-  // Un zombi (Z) ya terminó: solo espera a que su padre lo recoja.
-  return `sh -c 'kill ${sig}${pid}; echo rc=$?; sleep 1; if [ -d /proc/${pid} ] || kill -0 ${pid} 2>/dev/null; then if grep -q ") Z " /proc/${pid}/stat 2>/dev/null; then echo alive=0; else echo alive=1; fi; else echo alive=0; fi'`;
-}
-
-export interface KillResult {
-  ok: boolean;
-  alive: boolean;
-  permission: boolean;
-  message: string;
-}
-
-export function parseKillOutput(stdout: string, stderr: string): KillResult {
-  const rc = /rc=(\d+)/.exec(stdout);
-  const alive = /alive=1/.test(stdout);
-  const permission = /not permitted|permission|denied|no permitid|EPERM/i.test(stderr);
-  return {
-    ok: rc?.[1] === "0",
-    alive,
-    permission,
-    message: stderr.trim().split("\n")[0] ?? "",
   };
 }

@@ -10,8 +10,10 @@ import { toast } from "../../stores/toasts";
 import { usePrivilege, useElevation, useStoredSudo } from "../../features/privileges";
 import { discoverServices, proposeLocalPorts, type Discovery } from "../../features/tunnels/discover";
 import { findLocalTunnel, serviceTitle, type FoundService } from "../../features/tunnels/detect";
+import { groupByCategory } from "../../features/tunnels/categories";
 import { openLocalTunnel } from "../../features/tunnels/openLocal";
 import { useTunnels } from "../../features/tunnels/useTunnels";
+import { ServiceGroup } from "./ServiceGroup";
 import { ServiceRow } from "./ServiceRow";
 import "./Services.css";
 
@@ -97,10 +99,7 @@ export function ServicesSection({ sessionId, profileId, active, disabled }: Serv
     }
   };
 
-  const [known, other] = useMemo(() => {
-    const list = found?.services ?? [];
-    return [list.filter((s) => s.service), list.filter((s) => !s.service)];
-  }, [found]);
+  const groups = useMemo(() => groupByCategory(found?.services ?? []), [found]);
   const guessing = !!found && !found.elevated && found.services.some((s) => s.procs.length === 0 && !s.container);
 
   const row = (s: FoundService) => {
@@ -151,13 +150,9 @@ export function ServicesSection({ sessionId, profileId, active, disabled }: Serv
               )}
             </div>
           )}
-          {known.length > 0 && <ul className="tn-svc-list">{known.map(row)}</ul>}
-          {other.length > 0 && (
-            <details className="tn-svcs-other" open={known.length === 0}>
-              <summary>Otros puertos ({other.length})</summary>
-              <ul className="tn-svc-list">{other.map(row)}</ul>
-            </details>
-          )}
+          {groups.map((g) => (
+            <ServiceGroup key={g.category.id} group={g} alone={groups.length === 1} row={row} />
+          ))}
         </>
       )}
 

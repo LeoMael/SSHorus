@@ -28,6 +28,8 @@ export interface FoundService {
   procs: string[];
   container: string | null;
   service: ServiceDef | null;
+  /** No se reconoció, pero respondió como una web (ver probe.ts). */
+  guessed?: boolean;
 }
 
 /** Lista «nombre|puertos» de los contenedores en marcha (Podman y Docker, del usuario de la conexión). */
@@ -146,6 +148,7 @@ export function findServices(ports: ListenPort[], published: ContainerPublish[],
 
 /** Nombre para mostrar. */
 export function serviceTitle(s: FoundService): string {
+  if (s.guessed) return `Web en el puerto ${s.port}`;
   return s.service?.name ?? `Puerto ${s.port}`;
 }
 

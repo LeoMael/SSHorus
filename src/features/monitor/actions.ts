@@ -1,7 +1,7 @@
 // Acciones sobre el servidor desde el Monitor.
 import { snippets } from "../../api/snippets";
 import { execWithSudo, sudoFailureText } from "../sudoRun";
-import { buildKillCommand, parseKillOutput, type KillResult } from "./sample";
+import { buildKillCommand, parseKillOutput, type KillResult } from "./kill";
 
 /**
  * Envía TERM (o KILL con `force`) al proceso y comprueba un segundo después si sigue vivo. Con `sudo`, como

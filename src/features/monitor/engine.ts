@@ -5,19 +5,11 @@ import { create } from "zustand";
 import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
+import { ElevationError, runScript } from "../admin/run";
+import type { Elevation } from "../privileges";
 import { useTabs } from "../../stores/tabs";
-import {
-  buildContainersCommand,
-  buildSampleCommand,
-  CONTAINERS_TIMEOUT_SECS,
-  parseContainers,
-  parseSample,
-  SAMPLE_TIMEOUT_SECS,
-  type ContainersResult,
-  type CpuTicks,
-  type RawSample,
-  type SampleInfo,
-} from "./sample";
+import { buildSampleCommand, parseSample, SAMPLE_TIMEOUT_SECS, type CpuTicks, type RawSample, type SampleInfo } from "./sample";
+import { buildContainersCommand, CONTAINERS_TIMEOUT_SECS, parseContainers, type ContainersResult } from "./containers";
 import { deriveMetrics, sustainedCpu, toPoint, type HistoryPoint, type Metrics } from "./derive";
 import { evaluateAlerts, loadAlerts, onAlertsChanged, type ActiveAlert, type AlertConfig } from "./alerts";
 import { CONTAINERS_INTERVAL, HISTORY_MS } from "./prefs";
@@ -39,6 +31,8 @@ export interface SessionMonitor {
   /** El servidor no expone /proc (no es Linux). */
   noProc: boolean;
   info: SampleInfo | null;
+  /** La última muestra se leyó con sudo (se ven los procesos de todos aunque /proc tenga hidepid). */
+  elevated: boolean;
   alerts: ActiveAlert[];
   containers: ContainersState;
 }
@@ -52,6 +46,7 @@ export const emptyMonitor = (): SessionMonitor => ({
   loading: false,
   noProc: false,
   info: null,
+  elevated: false,
   alerts: [],
   containers: EMPTY_CONTAINERS,
 });
@@ -84,6 +79,8 @@ export function useSessionMonitor(sessionId: string): SessionMonitor | null {
 const FULL_EVERY_MS = 5 * 60 * 1000;
 /** Tras un error, no reintentar más rápido que esto. */
 const ERROR_BACKOFF_MS = 5000;
+/** Con sudo, como mucho una muestra cada tanto: cada `sudo` queda en el registro del servidor. */
+export const ELEVATED_MIN_INTERVAL = 5000;
 
 class Sampler {
   private demands = new Map<string, number>();
@@ -99,6 +96,8 @@ class Sampler {
   private count = 0;
 
   private prev: RawSample | null = null;
+  /** La última muestra se leyó con sudo. */
+  private elevated = false;
   private info: SampleInfo | null = null;
   private lastFullAt = 0;
   private users = new Map<number, string>();
@@ -108,6 +107,9 @@ class Sampler {
   private cpuHist: { uptime: number; cpu: CpuTicks }[] = [];
   private activeAlerts = new Set<string>();
   private alertCfg: AlertConfig;
+  private elevation: Elevation | null = null;
+  /** sudo falló con la elevación actual: no se reintenta hasta que cambie. */
+  private elevationFailed = false;
 
   constructor(
     readonly sessionId: string,
@@ -134,6 +136,21 @@ class Sampler {
     this.schedule();
   }
 
+  /** Con qué se puede elevar (null = sin sudo). Solo se usa si /proc oculta los procesos de otros. */
+  setElevation(el: Elevation | null) {
+    if (el === this.elevation) return;
+    this.elevation = el;
+    this.elevationFailed = false;
+    this.schedule();
+  }
+
+  /** Elevación para la próxima muestra (null = sin elevar). */
+  private sampleElevation(): Elevation | null {
+    const el = this.elevation;
+    if (!el || el.kind === "none" || el.kind === "root" || this.elevationFailed || !this.info?.hidepid) return null;
+    return el;
+  }
+
   setContainersDemand(owner: string, on: boolean) {
     if (on) this.containerDemands.add(owner);
     else this.containerDemands.delete(owner);
@@ -142,7 +159,8 @@ class Sampler {
 
   private interval(): number | null {
     if (!this.demands.size) return null;
-    return Math.min(...this.demands.values());
+    const iv = Math.min(...this.demands.values());
+    return this.sampleElevation() ? Math.max(iv, ELEVATED_MIN_INTERVAL) : iv;
   }
 
   private schedule() {
@@ -166,10 +184,14 @@ class Sampler {
     const store = useMonitorStore.getState();
     store.patch(this.sessionId, { loading: true });
     const full = !this.info || Date.now() - this.lastFullAt > FULL_EVERY_MS;
+    const el = this.sampleElevation();
     try {
-      const cmd = buildSampleCommand({ full, uidPids: this.wantUids });
-      const r = await snippets.exec(this.sessionId, cmd, SAMPLE_TIMEOUT_SECS);
+      const cmd = buildSampleCommand({ full, uidPids: this.wantUids, uidAll: this.count === 0 || this.elevated !== !!el });
+      const r = el
+        ? await runScript(this.sessionId, cmd, el, "", SAMPLE_TIMEOUT_SECS)
+        : await snippets.exec(this.sessionId, cmd, SAMPLE_TIMEOUT_SECS);
       if (this.disposed) return;
+      this.elevated = !!el;
       const raw = parseSample(r.stdout);
       if (raw.noProc) {
         this.failed = true;
@@ -186,6 +208,12 @@ class Sampler {
       this.absorb(raw, full);
     } catch (e) {
       if (this.disposed) return;
+      if (e instanceof ElevationError) {
+        // Contraseña rechazada o sudo denegado: se sigue sin sudo (lo que se pueda ver).
+        this.elevationFailed = true;
+        store.patch(this.sessionId, { loading: false });
+        return;
+      }
       this.failed = true;
       useMonitorStore.getState().patch(this.sessionId, { loading: false, error: errorMessage(e) });
     } finally {
@@ -196,7 +224,9 @@ class Sampler {
 
   private absorb(raw: RawSample, full: boolean) {
     if (full && raw.info) {
-      this.info = raw.info;
+      // Con sudo, `id` dice root: el usuario de la conexión es el de antes.
+      const me = this.elevated && this.info ? { user: this.info.user, uid: this.info.uid } : {};
+      this.info = { ...raw.info, ...me };
       this.lastFullAt = Date.now();
       if (raw.users.size) this.users = raw.users;
     }
@@ -251,6 +281,7 @@ class Sampler {
       loading: false,
       noProc: false,
       info: this.info,
+      elevated: this.elevated,
       alerts,
     });
   }
@@ -350,6 +381,12 @@ function sampler(sessionId: string, profileId: string): Sampler {
 export function setSampleDemand(sessionId: string, profileId: string, owner: string, intervalMs: number | null): void {
   if (intervalMs === null && !samplers.has(sessionId)) return;
   sampler(sessionId, profileId).setDemand(owner, intervalMs);
+}
+
+/** Elevación disponible para el muestreo de una sesión (ver Sampler.setElevation). */
+export function setSampleElevation(sessionId: string, profileId: string, el: Elevation | null): void {
+  if (!el && !samplers.has(sessionId)) return;
+  sampler(sessionId, profileId).setElevation(el);
 }
 
 export function setContainersDemand(sessionId: string, profileId: string, owner: string, on: boolean): void {

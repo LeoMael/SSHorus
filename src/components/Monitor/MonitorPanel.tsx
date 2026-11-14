@@ -5,7 +5,6 @@ import { Bell, BellOff } from "lucide-react";
 import "./Monitor.css";
 import { useTabs } from "../../stores/tabs";
 import { formatBytes } from "../../lib/format";
-import { usePrivilege, type PrivilegeLevel } from "../../features/privileges";
 import {
   BACKGROUND_INTERVAL,
   HISTORY_MS,
@@ -24,7 +23,7 @@ import {
 } from "../../features/monitor";
 import { AreaChart, type ChartSeries } from "./AreaChart";
 import { DiskBars } from "./DiskBars";
-import { ProcessTable } from "./ProcessTable";
+import { ProcessesSection } from "./ProcessesSection";
 import { Containers } from "./Containers";
 import { AlertsDialog } from "./AlertsDialog";
 import { Summary } from "./Summary";
@@ -76,7 +75,6 @@ export function MonitorPanel({ sessionId, profileId, active, disabled }: Monitor
   const [prefs, setPrefsState] = useState<MonitorPrefs>(loadPrefs);
   const alertCfg = useAlertConfig(profileId);
   const mon = useSessionMonitor(sessionId);
-  const privilege = usePrivilege(sessionId);
   const title = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.title ?? "este servidor");
   const [alertsOpen, setAlertsOpen] = useState(false);
 
@@ -190,13 +188,14 @@ export function MonitorPanel({ sessionId, profileId, active, disabled }: Monitor
         ) : (
           <ServerView
             sessionId={sessionId}
+            profileId={profileId}
             mon={mon}
             prefs={prefs}
             setPrefs={setPrefs}
+            live={live}
             disabled={disabled}
             hasEngine={hasEngine}
             diskLimit={alertCfg.disk.pct}
-            privilege={privilege?.level ?? null}
           />
         )}
       </div>
@@ -214,16 +213,17 @@ export function MonitorPanel({ sessionId, profileId, active, disabled }: Monitor
 
 interface ServerViewProps {
   sessionId: string;
+  profileId: string;
   mon: SessionMonitor | null;
   prefs: MonitorPrefs;
   setPrefs: (p: Partial<MonitorPrefs>) => void;
+  live: boolean;
   disabled: boolean;
   hasEngine: boolean;
   diskLimit: number;
-  privilege: PrivilegeLevel | null;
 }
 
-function ServerView({ sessionId, mon, prefs, setPrefs, disabled, hasEngine, diskLimit, privilege }: ServerViewProps) {
+function ServerView({ sessionId, profileId, mon, prefs, setPrefs, live, disabled, hasEngine, diskLimit }: ServerViewProps) {
   const m = mon?.metrics ?? null;
   if (mon?.noProc) {
     return (
@@ -249,6 +249,9 @@ function ServerView({ sessionId, mon, prefs, setPrefs, disabled, hasEngine, disk
   const history = mon?.history ?? [];
   return (
     <>
+      <p className="mon-intro faint">
+        Qué está usando el servidor ahora: CPU, memoria, red, disco y procesos (y quién los usa).
+      </p>
       {mon?.error && <div className="mon-error mon-banner">No se pudo actualizar: {mon.error}</div>}
       <div className="mon-cards">
         <CpuCard m={m} history={history} />
@@ -264,22 +267,18 @@ function ServerView({ sessionId, mon, prefs, setPrefs, disabled, hasEngine, disk
         <DiskBars disks={m.disks} limit={diskLimit} />
       </section>
 
-      <section className="mon-section" aria-labelledby="mon-procs-h">
-        <h3 id="mon-procs-h" className="section-label">
-          Procesos
-        </h3>
-        <ProcessTable
+      {mon && (
+        <ProcessesSection
           sessionId={sessionId}
-          procs={m.procs}
-          procCount={m.procCount}
+          profileId={profileId}
+          m={m}
+          mon={mon}
           sort={prefs.procSort}
           onSort={(procSort) => setPrefs({ procSort })}
-          myUid={mon?.info?.uid ?? null}
-          myUser={mon?.info?.user ?? null}
-          privilege={privilege}
+          live={live}
           disabled={disabled}
         />
-      </section>
+      )}
 
       {hasEngine && (
         <section className="mon-section" aria-labelledby="mon-ct-h">
