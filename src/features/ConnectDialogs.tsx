@@ -178,6 +178,7 @@ function SecretDialog({
       title={isPw ? "Contraseña" : "Frase de la llave"}
       onClose={() => onDone(null)}
       width={420}
+      className="cd-prompt"
       footer={
         <>
           <button className="btn" onClick={() => onDone(null)}>
@@ -258,6 +259,7 @@ function OtpDialog({
       title="Código de verificación"
       onClose={() => onDone(null)}
       width={420}
+      className="cd-prompt"
       footer={
         <>
           <button className="btn" onClick={() => onDone(null)}>
@@ -331,6 +333,7 @@ function HostKeyDialog({
         title="Servidor desconocido"
         onClose={() => onDone(false)}
         width={500}
+        className="cd-prompt"
         footer={
           <>
             <button className="btn" onClick={() => onDone(false)}>
@@ -361,6 +364,7 @@ function HostKeyDialog({
       title="¡La huella del servidor cambió!"
       onClose={() => onDone(false)}
       width={520}
+      className="cd-prompt"
       footer={
         <>
           <button className="btn btn-danger cd-secondary-danger" onClick={() => onDone(true)}>

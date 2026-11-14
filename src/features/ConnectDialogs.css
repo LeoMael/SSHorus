@@ -93,9 +93,34 @@
   margin-right: auto;
 }
 
+/* Avisos de conexión (contraseña, código, huella): encima de cualquier ventana abierta antes
+   (p. ej. Ajustes o el asistente de llaves, que conectan con un servidor). */
+.modal-backdrop:has(> .cd-prompt) {
+  z-index: 1010;
+}
+
 /* Formularios */
 .cd-form .field {
   margin-bottom: 10px;
+}
+/* Editor de servidor: dos columnas (una sola en ventanas estrechas). */
+.cd-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  align-items: start;
+}
+.cd-cols > .cd-check {
+  align-self: end;
+  margin: 0 0 18px;
+}
+@media (max-width: 640px) {
+  .cd-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cd-cols > .cd-check {
+    margin: -2px 0 12px;
+  }
 }
 .cd-grow {
   flex: 1;

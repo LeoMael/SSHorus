@@ -11,6 +11,7 @@ export type SectionId =
   | "shortcuts"
   | "editor"
   | "servers"
+  | "sshKeys"
   | "security"
   | "assistants"
   | "localAi"

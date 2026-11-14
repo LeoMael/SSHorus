@@ -14,6 +14,7 @@ import {
   FolderTree,
   Info,
   Keyboard,
+  KeyRound,
   SlidersHorizontal,
   Monitor,
   PanelTop,
@@ -47,6 +48,7 @@ import { AboutHeader, ChangelogView, UpdatesBox } from "../About/About";
 import { getAutoCheck, setAutoCheck } from "../../features/updater/updater";
 import { checkSshAliasesBeforeExport } from "../../features/sshAliases";
 import { SecuritySection } from "./SecuritySection";
+import { SshKeysSection } from "./SshKeysSection";
 import { McpSection } from "./McpSection";
 import { AiSection } from "./AiSection";
 import { LocalAiSection } from "./LocalAiSection";
@@ -85,6 +87,7 @@ const NAV: { group: string; items: SectionInfo[] }[] = [
       { id: "connection", label: "Conexión", icon: <Plug size={15} />, desc: "Detección de cortes y reconexión automática.", keys: "keepalive señal de vida reconectar intentos desconexión" },
       { id: "transfers", label: "Transferencias", icon: <ArrowLeftRight size={15} />, desc: "Subidas y descargas de archivos.", keys: "simultáneas sobrescribir omitir existe conflicto" },
       { id: "servers", label: "Servidores", icon: <Server size={15} />, desc: "Integración con la configuración de ssh del equipo.", keys: "ssh config exportar sincronizar alias" },
+      { id: "sshKeys", label: "Llaves SSH", icon: <KeyRound size={15} />, desc: "Las llaves de este equipo: créalas y ponlas en un servidor o en GitHub.", keys: "llave clave ssh privada pública ed25519 rsa github authorized_keys crear generar" },
       { id: "security", label: "Seguridad", icon: <ShieldCheck size={15} />, desc: "PIN de la bóveda de contraseñas y bloqueo.", keys: "pin bloqueo bóveda contraseña inactividad" },
     ],
   },
@@ -256,6 +259,7 @@ function SettingsBody() {
           {section === "shortcuts" && <ShortcutsSection />}
           {section === "editor" && <EditorSection />}
           {section === "servers" && <ServersSection />}
+          {section === "sshKeys" && <SshKeysSection />}
           {section === "security" && <SecuritySection />}
           {section === "assistants" && <McpSection />}
           {section === "localAi" && <LocalAiSection />}

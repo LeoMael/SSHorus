@@ -15,6 +15,7 @@ mod platform;
 mod sftp;
 mod snippets;
 mod ssh;
+mod sshkeys;
 mod storage;
 mod terminal;
 mod transfer;
@@ -155,6 +156,7 @@ pub fn run() {
             // llaves SSH locales (asistente «Nuevo usuario con clave»)
             localkeys::local_ssh_public_keys,
             localkeys::local_ssh_generate_key,
+            sshkeys::local_ssh_private_keys,
             // biblioteca de comandos
             snippets::snippets_load,
             snippets::snippets_save,

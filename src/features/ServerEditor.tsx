@@ -1,8 +1,6 @@
 // Diálogo «Nuevo servidor / Editar servidor», ligado a useUi().serverEditor.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
-import { homeDir, join } from "@tauri-apps/api/path";
-import { AlertTriangle, Check, ChevronDown, CircleCheck, CircleX, FolderOpen, Info, PlugZap } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, CircleCheck, CircleX, Info, PlugZap } from "lucide-react";
 import { Modal } from "../components/ui/Modal";
 import { profiles as profilesApi, sshAliases, type SshAliasInfo } from "../api/profiles";
 import { errorMessage } from "../api/core";
@@ -12,7 +10,7 @@ import { useProfiles } from "../stores/profiles";
 import { useUi, type ServerEditorOptions } from "../stores/ui";
 import { toast } from "../stores/toasts";
 import { ColorPicker } from "./ColorPicker";
-import { SSH_CONFIG_LABEL, SSH_KEY_EXAMPLE } from "../lib/platform";
+import { SSH_CONFIG_LABEL } from "../lib/platform";
 import { SshAliasMatches, describeMatch } from "./sshAliases";
 import { TMUX_MODE_HINTS, TMUX_MODE_LABELS } from "./tmux/logic";
 import { useSettings } from "../stores/settings";
@@ -20,6 +18,7 @@ import { SecretInput } from "./SecretInput";
 import { initialProjectFor, projectChanges } from "./projectServers";
 import { findMatches, hostSuggestions, serverAddress, type ServerMatches } from "./serverMatches";
 import { describeTestOk, testServerConnection, type TestOutcome } from "./serverTest";
+import { KeyPicker } from "./sshkeys/KeyPicker";
 
 /** Dónde van las contraseñas guardadas. */
 const SAVE_TIP = "Se guarda cifrada con tu PIN o, si no tienes PIN, en el llavero del sistema.";
@@ -157,24 +156,6 @@ function ServerEditor({
     if (auth === "key" && !keyPath.trim()) e.keyPath = "Elige la llave privada";
     if (alias.error) e.alias = alias.error;
     return e;
-  };
-
-  const browseKey = async () => {
-    try {
-      let defaultPath: string | undefined;
-      try {
-        defaultPath = await join(await homeDir(), ".ssh");
-      } catch {
-        defaultPath = undefined;
-      }
-      const picked = await openFileDialog({ title: "Elegir llave privada", defaultPath, multiple: false, directory: false });
-      if (typeof picked === "string") {
-        setKeyPath(picked);
-        clearErr("keyPath");
-      }
-    } catch (e) {
-      toast.error("No se pudo abrir el selector de archivos", e);
-    }
   };
 
   /** Servidor con los datos del formulario (para guardar o probar). */
@@ -351,7 +332,8 @@ function ServerEditor({
       open
       title={isNew ? "Nuevo servidor" : "Editar servidor"}
       onClose={close}
-      width={520}
+      // Ancho para dos columnas; en ventanas pequeñas, como mucho el 94 % (y una sola columna).
+      width="min(720px, 94vw)"
       footer={
         <>
           {testing ? (
@@ -395,83 +377,87 @@ function ServerEditor({
           </label>
         )}
 
-        <label className="field">
-          <span>Nombre</span>
-          <input
-            ref={firstRef}
-            className="input"
-            value={name}
-            placeholder={host.trim() || "p. ej. web-prod"}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span>Alias para ssh (opcional)</span>
-          <input
-            className="input mono"
-            value={alias.value}
-            spellCheck={false}
-            autoCapitalize="off"
-            placeholder={alias.info && !alias.value.trim() ? `${alias.info.alias} (automático)` : "Se genera a partir del nombre"}
-            onChange={(e) => {
-              alias.setValue(e.target.value);
-              clearErr("alias");
-            }}
-          />
-          <AliasNote state={alias} />
-        </label>
-
-        <div className="field-row">
-          <div className="field cd-grow">
-            <span id="cd-host-label">Host</span>
-            <HostCombo
-              value={host}
-              servers={servers}
-              selfId={selfId}
-              onChange={(v) => {
-                setHost(v);
-                clearErr("host");
-              }}
-              onPick={(s) => {
-                setHost(s.host.trim());
-                setPort(String(s.port || 22));
-                clearErr("host");
-                clearErr("port");
-              }}
+        <div className="cd-cols">
+          <label className="field">
+            <span>Nombre</span>
+            <input
+              ref={firstRef}
+              className="input"
+              value={name}
+              placeholder={host.trim() || "p. ej. web-prod"}
+              onChange={(e) => setName(e.target.value)}
             />
-            {errors.host && <div className="cd-err">{errors.host}</div>}
-          </div>
-          <label className="field cd-port">
-            <span>Puerto</span>
+          </label>
+
+          <label className="field">
+            <span>Alias para ssh (opcional)</span>
             <input
               className="input mono"
-              inputMode="numeric"
-              value={port}
+              value={alias.value}
+              spellCheck={false}
+              autoCapitalize="off"
+              placeholder={alias.info && !alias.value.trim() ? `${alias.info.alias} (automático)` : "Se genera a partir del nombre"}
               onChange={(e) => {
-                setPort(e.target.value.replace(/[^\d]/g, ""));
-                clearErr("port");
+                alias.setValue(e.target.value);
+                clearErr("alias");
               }}
             />
-            {errors.port && <div className="cd-err">{errors.port}</div>}
+            <AliasNote state={alias} />
           </label>
         </div>
 
-        <label className="field">
-          <span>Usuario</span>
-          <input
-            className="input mono"
-            value={username}
-            spellCheck={false}
-            autoCapitalize="off"
-            placeholder="root"
-            onChange={(e) => {
-              setUsername(e.target.value);
-              clearErr("username");
-            }}
-          />
-          {errors.username && <div className="cd-err">{errors.username}</div>}
-        </label>
+        <div className="cd-cols">
+          <div className="field-row">
+            <div className="field cd-grow">
+              <span id="cd-host-label">Host</span>
+              <HostCombo
+                value={host}
+                servers={servers}
+                selfId={selfId}
+                onChange={(v) => {
+                  setHost(v);
+                  clearErr("host");
+                }}
+                onPick={(s) => {
+                  setHost(s.host.trim());
+                  setPort(String(s.port || 22));
+                  clearErr("host");
+                  clearErr("port");
+                }}
+              />
+              {errors.host && <div className="cd-err">{errors.host}</div>}
+            </div>
+            <label className="field cd-port">
+              <span>Puerto</span>
+              <input
+                className="input mono"
+                inputMode="numeric"
+                value={port}
+                onChange={(e) => {
+                  setPort(e.target.value.replace(/[^\d]/g, ""));
+                  clearErr("port");
+                }}
+              />
+              {errors.port && <div className="cd-err">{errors.port}</div>}
+            </label>
+          </div>
+
+          <label className="field">
+            <span>Usuario</span>
+            <input
+              className="input mono"
+              value={username}
+              spellCheck={false}
+              autoCapitalize="off"
+              placeholder="root"
+              onChange={(e) => {
+                setUsername(e.target.value);
+                clearErr("username");
+              }}
+            />
+            {errors.username && <div className="cd-err">{errors.username}</div>}
+          </label>
+        </div>
 
         <MatchNote
           matches={matches}
@@ -503,7 +489,7 @@ function ServerEditor({
         </div>
 
         {auth === "password" && (
-          <>
+          <div className="cd-cols">
             <div className="field">
               <span>Contraseña</span>
               <SecretInput
@@ -520,46 +506,38 @@ function ServerEditor({
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               Guardar contraseña
             </label>
-          </>
+          </div>
         )}
 
         {auth === "key" && (
           <>
-            <label className="field">
-              <span>Llave privada</span>
-              <div className="cd-inline-row">
-                <input
-                  className="input mono cd-grow"
-                  value={keyPath}
-                  spellCheck={false}
-                  placeholder={SSH_KEY_EXAMPLE}
-                  onChange={(e) => {
-                    setKeyPath(e.target.value);
-                    clearErr("keyPath");
-                  }}
+            <KeyPicker
+              value={keyPath}
+              onChange={(p) => {
+                setKeyPath(p);
+                clearErr("keyPath");
+              }}
+              error={errors.keyPath}
+              serverId={isNew ? undefined : initial?.id}
+            />
+            <div className="cd-cols">
+              <div className="field">
+                <span>Frase de la llave (opcional)</span>
+                <SecretInput
+                  profileId={initial?.id ?? ""}
+                  kind="login"
+                  stored={!!hasSecret}
+                  value={secret}
+                  onChange={setSecret}
+                  label="Frase de la llave"
+                  placeholder={secretPlaceholder || "Si la llave está protegida"}
                 />
-                <button type="button" className="btn" onClick={() => void browseKey()}>
-                  <FolderOpen size={14} /> Examinar…
-                </button>
               </div>
-              {errors.keyPath && <div className="cd-err">{errors.keyPath}</div>}
-            </label>
-            <div className="field">
-              <span>Frase de la llave (opcional)</span>
-              <SecretInput
-                profileId={initial?.id ?? ""}
-                kind="login"
-                stored={!!hasSecret}
-                value={secret}
-                onChange={setSecret}
-                label="Frase de la llave"
-                placeholder={secretPlaceholder || "Si la llave está protegida"}
-              />
+              <label className="checkbox cd-check" title={SAVE_TIP}>
+                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                Guardar la frase
+              </label>
             </div>
-            <label className="checkbox cd-check" title={SAVE_TIP}>
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-              Guardar la frase
-            </label>
           </>
         )}
 
@@ -605,33 +583,35 @@ function ServerEditor({
           </small>
         </div>
 
-        <label className="field">
-          <span>Carpeta inicial (opcional)</span>
-          <input
-            className="input mono"
-            value={defaultPath}
-            spellCheck={false}
-            placeholder="Carpeta personal del usuario"
-            onChange={(e) => setDefaultPath(e.target.value)}
-          />
-        </label>
+        <div className="cd-cols">
+          <label className="field">
+            <span>Carpeta inicial (opcional)</span>
+            <input
+              className="input mono"
+              value={defaultPath}
+              spellCheck={false}
+              placeholder="Carpeta personal del usuario"
+              onChange={(e) => setDefaultPath(e.target.value)}
+            />
+          </label>
 
-        <label className="field">
-          <span>Terminales persistentes (tmux)</span>
-          <select
-            className="select"
-            value={tmux ?? ""}
-            onChange={(e) => setTmux(e.target.value === "" ? null : (e.target.value as TmuxMode))}
-          >
-            <option value="">Como en Ajustes ({TMUX_MODE_LABELS[globalTmux]})</option>
-            <option value="auto">{TMUX_MODE_LABELS.auto}: si el servidor tiene tmux</option>
-            <option value="always">{TMUX_MODE_LABELS.always}: avisar si falta tmux</option>
-            <option value="never">{TMUX_MODE_LABELS.never}</option>
-          </select>
-          <small className="cd-field-hint">{TMUX_MODE_HINTS[tmux ?? globalTmux]}</small>
-        </label>
+          <label className="field">
+            <span>Terminales persistentes (tmux)</span>
+            <select
+              className="select"
+              value={tmux ?? ""}
+              onChange={(e) => setTmux(e.target.value === "" ? null : (e.target.value as TmuxMode))}
+            >
+              <option value="">Como en Ajustes ({TMUX_MODE_LABELS[globalTmux]})</option>
+              <option value="auto">{TMUX_MODE_LABELS.auto}: si el servidor tiene tmux</option>
+              <option value="always">{TMUX_MODE_LABELS.always}: avisar si falta tmux</option>
+              <option value="never">{TMUX_MODE_LABELS.never}</option>
+            </select>
+            <small className="cd-field-hint">{TMUX_MODE_HINTS[tmux ?? globalTmux]}</small>
+          </label>
+        </div>
 
-        <div className="field-row">
+        <div className="cd-cols">
           <div className="field">
             <span>Color</span>
             <ColorPicker value={color} onChange={setColor} />
