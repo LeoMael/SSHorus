@@ -76,6 +76,11 @@ export function tunnelAddress(def: TunnelDef, st?: TunnelStatus): string {
   return `${local ? "localhost" : def.bindHost}:${port}`;
 }
 
+/** ¿Está en marcha (o arrancando / esperando)? */
+export function isTunnelOn(st: TunnelStatus | undefined): boolean {
+  return !!st && (st.state === "active" || st.state === "starting" || st.state === "waiting");
+}
+
 /** ¿Escucha para toda la red y no solo este equipo? */
 export function isOpenBind(host: string): boolean {
   return host === "0.0.0.0" || host === "::" || host === "*" || host === "";

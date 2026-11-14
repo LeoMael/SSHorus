@@ -6,6 +6,7 @@
 //! - Los canales `forwarded-tcpip` del servidor llegan por `ssh::handler` → `remote`.
 
 mod io;
+mod local_ports;
 mod manager;
 mod remote;
 mod socks;
@@ -89,4 +90,11 @@ pub async fn tunnels_status(
     session_id: String,
 ) -> AppResult<Vec<TunnelStatus>> {
     Ok(manager.statuses(&session_id))
+}
+
+/// Puertos que proponer en tu PC al traer servicios del servidor: el mismo si está libre o el siguiente
+/// libre (0 = que elija el sistema). `avoid`: puertos de otros túneles guardados.
+#[tauri::command]
+pub async fn tunnels_suggest_local_ports(wanted: Vec<u16>, avoid: Vec<u16>) -> AppResult<Vec<u16>> {
+    Ok(local_ports::suggest(&wanted, &avoid, local_ports::is_free))
 }

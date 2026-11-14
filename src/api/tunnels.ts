@@ -58,4 +58,7 @@ export const tunnels = {
   stop: (sessionId: string, tunnelId: string) => call<void>("tunnel_stop", { sessionId, tunnelId }),
   /** Estado de los túneles en marcha (o con error) de una sesión. */
   status: (sessionId: string) => call<TunnelStatus[]>("tunnels_status", { sessionId }),
+  /** Puerto libre en tu PC para cada deseado: el mismo o el siguiente libre (0 = que elija el sistema). */
+  suggestLocalPorts: (wanted: number[], avoid: number[]) =>
+    call<number[]>("tunnels_suggest_local_ports", { wanted, avoid }),
 };

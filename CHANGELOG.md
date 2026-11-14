@@ -120,6 +120,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - **Comandos con sudo sin escribir la contraseña en la terminal**: los de la biblioteca, «Terminar» procesos de
   otros usuarios e instalar Podman, Docker o tmux usan tu contraseña de sudo de SSHorus (mostrando antes el
   comando). Si SSHorus no sabe si tienes sudo, un botón comprueba si funciona sin contraseña.
+- **Túneles: «Servicios que puedes traer».** Explicación sencilla y lista automática de lo que hay en el
+  servidor (PostgreSQL, MySQL, Redis, MongoDB, paneles web, contenedores…), sobre todo lo que solo escucha por
+  dentro. «Traer a mi PC» crea el túnel en un puerto libre con un clic, con la cadena de conexión para copiar y
+  «Abrir en el navegador» para las webs.
 
 ### Cambiado
 - **Mapa de infraestructura: zoom solo del mapa.** La rueda, el pellizco y Ctrl + / − / 0 hacen zoom del mapa

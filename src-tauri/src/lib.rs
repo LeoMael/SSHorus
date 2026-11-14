@@ -199,6 +199,7 @@ pub fn run() {
             tunnels::tunnel_start,
             tunnels::tunnel_stop,
             tunnels::tunnels_status,
+            tunnels::tunnels_suggest_local_ports,
             // diagnóstico (Ajustes → Avanzado)
             diagnostics::app_diagnostics,
             // asistentes de IA (MCP)
