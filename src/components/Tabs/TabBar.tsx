@@ -1,4 +1,5 @@
-// Barra de pestañas: las de conexión (una por sesión SSH) y, detrás, las de terminal local («Este equipo»).
+// Barra de pestañas: las de conexión (una por sesión SSH) y, detrás, las de terminal local («Este equipo»)
+// y las del Panel de VPS.
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import {
   Bot,
@@ -31,6 +32,9 @@ import { closeLocalTab, moveLocalTab, openLocalTab, useLocalTabs, type LocalTab 
 import { LocalMenu } from "../../features/localterm/LocalMenu";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
 import { ASSISTANTS } from "../../features/localterm/logic";
+import { closeFleetTab, fleetTabIds, moveFleetTab, useFleetTabs } from "../../features/fleet/tabs";
+import { slotInGroup } from "../../features/tabbar/order";
+import { FleetTabs } from "../Fleet/FleetTabs";
 import "./TabBar.css";
 import { useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 
@@ -55,6 +59,15 @@ type Menu =
   | { kind: "new"; x: number; y: number }
   | { kind: "localMenu"; x: number; y: number };
 
+/** Grupos de la barra, en orden: cada uno se reordena solo dentro de sí. */
+function barGroups(): { ids: string[]; move: (id: string, toIndex: number) => void }[] {
+  return [
+    { ids: useTabs.getState().tabs.map((t) => t.id), move: moveTab },
+    { ids: useLocalTabs.getState().tabs.map((t) => t.id), move: moveLocalTab },
+    { ids: fleetTabIds(), move: moveFleetTab },
+  ];
+}
+
 function localTooltip(t: LocalTab): string {
   const what = t.kind === "shell" ? "Terminal de este equipo" : `${t.title} (en este equipo)`;
   return `${what}${t.cwd ? ` — ${t.cwd}` : ""}${t.status === "exited" ? " — terminado" : ""}`;
@@ -66,6 +79,8 @@ export function TabBar() {
   const settingsKeys = useShortcutText("app.settings");
   const tabs = useTabs((s) => s.tabs);
   const localTabs = useLocalTabs((s) => s.tabs);
+  const fleetCount = useFleetTabs((s) => s.tabs.length);
+  const totalTabs = tabs.length + localTabs.length + fleetCount;
   const activeId = useTabs((s) => s.activeTabId);
   const setActive = useTabs((s) => s.setActive);
   const dirty = useEditorDirty((s) => s.dirty);
@@ -107,11 +122,9 @@ export function TabBar() {
       return e.clientX >= r.left && e.clientX < r.right;
     });
     if (target < 0 || els[target].dataset.tabId === d.id) return;
-    // Las de servidor y las locales se reordenan cada una en su grupo.
-    const sshCount = useTabs.getState().tabs.length;
-    const isLocal = useLocalTabs.getState().tabs.some((t) => t.id === d.id);
-    if (isLocal && target >= sshCount) moveLocalTab(d.id, target - sshCount);
-    else if (!isLocal && target < sshCount) moveTab(d.id, target);
+    const groups = barGroups();
+    const slot = slotInGroup(groups.map((g) => g.ids), d.id, target);
+    if (slot) groups[slot.group].move(d.id, slot.index);
   };
   const endDrag = () => {
     drag.current = null;
@@ -130,6 +143,7 @@ export function TabBar() {
       if (!ok) return;
     }
     for (const t of useLocalTabs.getState().tabs) if (t.id !== keepId) closeLocalTab(t.id);
+    for (const id of fleetTabIds()) if (id !== keepId) closeFleetTab(id);
     useTabs.getState().setActive(keepId);
   };
 
@@ -263,6 +277,17 @@ export function TabBar() {
             </div>
           );
         })}
+        <FleetTabs
+          bar={{
+            activeId,
+            dragId,
+            onPointerDown,
+            onPointerMove,
+            endDrag,
+            closeOthers: (id) => void closeOthers(id),
+            canCloseOthers: totalTabs > 1,
+          }}
+        />
         <button
           className="icon-btn tabs-new"
           title="Nueva conexión"
@@ -377,7 +402,7 @@ export function TabBar() {
           </button>
           <button
             role="menuitem"
-            disabled={tabs.length + localTabs.length < 2}
+            disabled={totalTabs < 2}
             onClick={() => {
               closeMenu();
               void closeOthers(localMenuTab.id);
@@ -435,7 +460,7 @@ export function TabBar() {
           </button>
           <button
             role="menuitem"
-            disabled={tabs.length + localTabs.length < 2}
+            disabled={totalTabs < 2}
             onClick={() => {
               closeMenu();
               void closeOthers(menuTab.id);

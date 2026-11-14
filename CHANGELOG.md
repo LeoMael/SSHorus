@@ -133,6 +133,11 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   icono y para qué sirve; los puertos desconocidos que responden como web se marcan como «Web».
 - **Monitor por usuario**: explica qué muestra y resume CPU, memoria, procesos y contenedores de cada usuario,
   con filtro en la tabla; si el servidor oculta los procesos de otros (hidepid), con sudo se ven todos.
+- **Panel de VPS**: el estado de todos tus servidores en tarjetas (en línea, CPU, memoria, disco, carga, servicios
+  caídos, contenedores, actualizaciones y usuarios con sudo), agrupadas por proyecto o por IP, con avisos de color.
+  Se abre en una **pestaña normal** (una para todos y una por proyecto) desde «Panel de VPS» en la barra lateral
+  o con clic derecho en un proyecto. Lee por SSH sin instalar
+  nada y solo mientras está abierto; si un servidor pide contraseña o código, espera a que pulses «Conectar».
 
 ### Cambiado
 - **Mapa de infraestructura: zoom solo del mapa.** La rueda, el pellizco y Ctrl + / − / 0 hacen zoom del mapa

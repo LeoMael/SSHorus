@@ -5,6 +5,7 @@ import { create } from "zustand";
 import type { AiLaunch } from "../../api/localterm";
 import type { TermController, TermStatus } from "../../components/Terminal/termController";
 import { useTabs } from "../../stores/tabs";
+import { moveById } from "../tabbar/order";
 import { pickNeighbor, titleFor, type LocalKind } from "./logic";
 
 export interface LocalTab {
@@ -76,14 +77,14 @@ export function isLocalTabId(id: string | null | undefined): boolean {
   return !!id && useLocalTabs.getState().tabs.some((t) => t.id === id);
 }
 
-/** Todas las pestañas en el orden de la barra: primero las de servidor, luego las locales. */
-export function allTabIds(): string[] {
+/** Las de servidor y luego las locales, en el orden de la barra (detrás van las del Panel de VPS: tabbar/all). */
+export function sshAndLocalTabIds(): string[] {
   return [...useTabs.getState().tabs.map((t) => t.id), ...useLocalTabs.getState().tabs.map((t) => t.id)];
 }
 
 /** Cierra la pestaña: al desmontarse su vista se termina el programa y todo lo que lanzó. */
 export function closeLocalTab(id: string) {
-  const ids = allTabIds();
+  const ids = sshAndLocalTabIds();
   const next = pickNeighbor(ids, id);
   useLocalTabs.setState((s) => ({ tabs: s.tabs.filter((t) => t.id !== id) }));
   controllers.delete(id);
@@ -91,14 +92,7 @@ export function closeLocalTab(id: string) {
 }
 
 export function moveLocalTab(id: string, toIndex: number) {
-  useLocalTabs.setState((s) => {
-    const from = s.tabs.findIndex((t) => t.id === id);
-    if (from < 0) return s;
-    const tabs = [...s.tabs];
-    const [t] = tabs.splice(from, 1);
-    tabs.splice(Math.max(0, Math.min(toIndex, tabs.length)), 0, t);
-    return { tabs };
-  });
+  useLocalTabs.setState((s) => ({ tabs: moveById(s.tabs, id, toIndex) }));
 }
 
 // ───────── Controladores (para pegar texto desde fuera) ─────────
@@ -133,11 +127,6 @@ export function initLocalTabs() {
   useTabs.subscribe((s, prev) => {
     if (s.activeTabId !== prev.activeTabId && s.tabs.some((t) => t.id === s.activeTabId)) {
       lastSshTab = s.activeTabId;
-    }
-    // Al cerrar la última pestaña de servidor activa, mostrar una local si la hay.
-    if (s.activeTabId === null && prev.activeTabId !== null) {
-      const local = useLocalTabs.getState().tabs;
-      if (local.length > 0) useTabs.setState({ activeTabId: local[local.length - 1].id });
     }
   });
 }

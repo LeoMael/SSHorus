@@ -52,6 +52,20 @@ Ctrl+Shift+W el servidor, Alt+AvPág/RePág entre secciones). Versión ya puesta
 Ojo: el instalador `.msi` de Windows no admite «-beta», así que `bundle.windows.wix.version` es `0.6.0.1`;
 **quitarlo al pasar a 1.0.0**. Después: probar todo en la app y publicar (etiqueta `v1.0.0-beta.1`).
 
+**Idea del usuario (14/11/2026), evaluada: «Panel de VPS» (monitor de todos los servidores).** Una vista
+general con una tarjeta por **VPS** (los servidores guardados con el mismo host y puerto son el mismo VPS: p. ej.
+«TESIS» y «Leo» en `2.25.131.217`), agrupables por proyecto o por IP. Cada tarjeta: en línea o caído, CPU,
+memoria, disco, carga, tiempo encendido, actualizaciones/reinicio pendiente, contenedores y servicios caídos, y
+qué usuarios suyos tienes guardados (y cuáles tienen sudo). Clic → abre ese servidor. Cómo:
+- Conecta en segundo plano **solo mientras el panel está abierto**, con un único perfil por VPS (el que tenga sudo
+  o, si no, el primero), un comando ligero cada 10–15 s (reutilizar la lectura del Monitor) y pocas conexiones a la
+  vez. Reutiliza la conexión si ya hay una pestaña abierta.
+- Avisos simples: disco > 90 %, memoria llena, servicio caído, sin conexión.
+- Coste/riesgo: medio. Lo delicado es no abrir demasiadas conexiones ni pedir contraseñas en bucle (si un VPS
+  pide contraseña o PIN, mostrar «Conectar» en su tarjeta en vez de preguntar solo).
+- Recomendación: sí, encaja con el Mapa y la Auditoría (luego: «Auditar todos»). El usuario
+  aprobó hacerlo en la 1.0.0-beta.1: **hecho** (14/11/2026). Sin instalar nada en el VPS: solo SSH y comandos estándar.
+
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
 Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
 

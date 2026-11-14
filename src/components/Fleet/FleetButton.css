@@ -1,0 +1,29 @@
+.fl-sb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  margin-left: auto;
+  margin-right: 2px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fl-sb-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.fl-sb-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.fl-sb-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

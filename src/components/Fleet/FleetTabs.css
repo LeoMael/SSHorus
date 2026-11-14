@@ -1,0 +1,5 @@
+/* Pestaña del Panel de VPS en la barra de pestañas */
+.tabs-tab.fleet .tabs-fleet-icon {
+  flex: none;
+  color: var(--accent);
+}

@@ -10,6 +10,7 @@ import { ConnectDialogHost, ProjectEditorHost, ServerEditorHost } from "./featur
 import { PaletteHost, PaletteView } from "./components/Commands/PaletteHost";
 import { MultiRunHost } from "./components/MultiRun/MultiRunHost";
 import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";
+import { FleetHost } from "./components/Fleet/FleetHost";
 import { GitHubHost } from "./components/GitHub";
 import { initThemeSync } from "./components/Settings/theme";
 import { requestCloseTab } from "./components/Session/sessionState";
@@ -26,7 +27,9 @@ import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { SudoAskHost } from "./features/mcp/SudoAskHost";
 import { McpActivity } from "./components/McpActivity/McpActivity";
 import { useUi } from "./stores/ui";
-import { allTabIds, closeLocalTab, initLocalTabs, isLocalTabId, useLocalTabs } from "./features/localterm/store";
+import { closeLocalTab, initLocalTabs, isLocalTabId, useLocalTabs } from "./features/localterm/store";
+import { closeFleetTab, fleetTabTitle, isFleetTabId, useFleetTabs } from "./features/fleet/tabs";
+import { barTabIds, initTabFallback } from "./features/tabbar/all";
 import { ChoiceDialogHost } from "./features/localterm/ChoiceDialog";
 import { idleQueue, preloadable } from "./lib/lazy";
 import { matchesShortcut } from "./features/shortcuts/shortcuts";
@@ -71,6 +74,7 @@ function initApp() {
   initPrivileges(); // root / sudo / usuario normal de cada conexión (en segundo plano)
   initMcp(); // asistentes de IA: permisos, actividad y peticiones del motor
   initLocalTabs(); // pestañas de terminal local («Este equipo»)
+  initTabFallback(); // al cerrar la última pestaña de un tipo, mostrar otra
 
   // Recordar servidores usados (para la pantalla de bienvenida).
   useTabs.subscribe((s, prev) => {
@@ -112,8 +116,8 @@ function useGlobalShortcuts() {
         case "tabs.prev":
         case "tabs.nextConn":
         case "tabs.prevConn": {
-          // Pestañas de servidor y locales, en el orden de la barra.
-          const ids = allTabIds();
+          // Todas las pestañas (servidor, este equipo, paneles), en el orden de la barra.
+          const ids = barTabIds();
           if (ids.length < 2) return;
           const back = id === "tabs.prev" || id === "tabs.prevConn";
           const i = Math.max(0, ids.indexOf(activeTabId ?? ""));
@@ -125,6 +129,7 @@ function useGlobalShortcuts() {
           return;
         case "tabs.close": // la conexión entera (Ctrl+Shift+W); Ctrl+W cierra el archivo abierto (useSessionKeys)
           if (activeTabId && isLocalTabId(activeTabId)) closeLocalTab(activeTabId);
+          else if (activeTabId && isFleetTabId(activeTabId)) closeFleetTab(activeTabId);
           else if (activeTabId) void requestCloseTab(activeTabId);
           return;
         case "app.sidebar":
@@ -144,7 +149,9 @@ function useWindowTitle() {
   const activeId = useTabs((s) => s.activeTabId);
   const sshTitle = useTabs((s) => s.tabs.find((t) => t.id === s.activeTabId)?.title ?? null);
   const localTitle = useLocalTabs((s) => s.tabs.find((t) => t.id === activeId)?.title ?? null);
-  const title = sshTitle ?? (localTitle ? `${localTitle} (este equipo)` : null);
+  const fleetTab = useFleetTabs((s) => s.tabs.find((t) => t.id === activeId) ?? null);
+  const projects = useProfiles((s) => s.projects);
+  const title = sshTitle ?? (localTitle ? `${localTitle} (este equipo)` : fleetTab ? fleetTabTitle(fleetTab, projects) : null);
   useEffect(() => {
     const t = title ? `SSHorus — ${title}` : "SSHorus";
     document.title = t;
@@ -166,6 +173,7 @@ function mainLayout(saved: number[] | undefined): Layout {
 function Shell() {
   const tabs = useTabs((s) => s.tabs);
   const localTabs = useLocalTabs((s) => s.tabs);
+  const fleetCount = useFleetTabs((s) => s.tabs.length);
   const activeId = useTabs((s) => s.activeTabId);
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const setLayout = useSettings((s) => s.setLayout);
@@ -247,7 +255,8 @@ function Shell() {
                 ))}
               </Suspense>
             )}
-            {tabs.length === 0 && localTabs.length === 0 && <Welcome />}
+            <FleetHost activeId={activeId} />
+            {tabs.length === 0 && localTabs.length === 0 && fleetCount === 0 && <Welcome />}
           </div>
           <TransferPanel />
         </Panel>

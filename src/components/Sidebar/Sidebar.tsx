@@ -27,6 +27,7 @@ import {
   MinusCircle,
   Bot,
   Laptop,
+  LayoutDashboard,
 } from "lucide-react";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
 import { ASSISTANTS } from "../../features/localterm/logic";
@@ -42,6 +43,8 @@ import { connectToMany, connectToServer, openOrFocusServer } from "../../feature
 import { SbContextMenu, type MenuItem } from "./SbContextMenu";
 import { openMultiRun } from "../../features/multirun/store";
 import { openProjectMap } from "../../features/infra/store";
+import { openFleet } from "../../features/fleet/tabs";
+import { FleetButton } from "../Fleet/FleetButton";
 import { openGitHub } from "../GitHub";
 import { parseQuickConnect } from "./quickConnect";
 import { preloadable } from "../../lib/lazy";
@@ -380,6 +383,12 @@ export function Sidebar() {
         icon: <Waypoints size={14} />,
         disabled: projServers.length === 0,
         onClick: () => openProjectMap(p.id),
+      },
+      {
+        label: "Panel del proyecto",
+        icon: <LayoutDashboard size={14} />,
+        disabled: projServers.length === 0,
+        onClick: () => openFleet(p.id),
       },
       "separator",
       { label: "Eliminar", icon: <Trash2 size={14} />, danger: true, onClick: () => void deleteProject(p) },
@@ -772,6 +781,7 @@ export function Sidebar() {
             <section className="sb-section">
               <div className="sb-section-head">
                 <span className="section-label">Servidores</span>
+                <FleetButton disabled={servers.length === 0} />
                 <button
                   className="icon-btn sb-section-btn"
                   title="Nuevo servidor"
