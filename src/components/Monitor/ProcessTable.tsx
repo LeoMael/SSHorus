@@ -33,16 +33,22 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
 
   const canSudo = privilege === "sudo" || privilege === "sudo-nopasswd" || privilege === "maybe-sudo";
   const needsRoot = (p: ProcRow) => myUid !== null && myUid !== 0 && p.uid !== null && p.uid !== myUid;
-  const rootHint = (p: ProcRow) =>
-    `Proceso de «${p.user ?? p.uid}». Para terminarlo hace falta root${canSudo ? ` (desde la terminal: sudo kill ${p.pid})` : " o sudo"}.`;
+  const rootHint = (p: ProcRow) => `Proceso de «${p.user ?? p.uid}». Para terminarlo hace falta root o sudo.`;
 
-  const terminate = async (p: ProcRow) => {
+  // `sudo`: proceso de otro usuario, con la contraseña de sudo de SSHorus (no se escribe en la terminal).
+  const terminate = async (p: ProcRow, sudo: boolean) => {
     const ok = await confirmDialog({
       title: `¿Terminar «${p.comm}»?`,
       message: (
         <>
           Se enviará la señal TERM al proceso <strong>{p.pid}</strong>
           {p.user ? <> de {p.user}</> : null}. El programa puede cerrarse de forma ordenada.
+          {sudo && (
+            <>
+              {" "}
+              Se ejecutará con sudo: <code>sudo kill {p.pid}</code>
+            </>
+          )}
         </>
       ),
       confirmText: "Terminar",
@@ -51,7 +57,7 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
     if (!ok) return;
     setBusy(p.pid);
     try {
-      let r = await killProcess(sessionId, p.pid, false);
+      let r = await killProcess(sessionId, p.pid, false, sudo);
       if (r.permission) {
         toast.error(`No se pudo terminar «${p.comm}»`, "Permiso denegado: hace falta root o sudo");
         return;
@@ -68,7 +74,7 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
           danger: true,
         });
         if (!force) return;
-        r = await killProcess(sessionId, p.pid, true);
+        r = await killProcess(sessionId, p.pid, true, sudo);
         if (!r.ok || r.alive) {
           toast.error(`No se pudo terminar «${p.comm}»`, r.permission ? "Permiso denegado" : r.message || "Sigue en marcha");
           return;
@@ -125,7 +131,7 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
                 <td className="mon-num mono">{p.rssKb === null ? "—" : formatBytes(p.rssKb * 1024)}</td>
                 <td className="mon-num mono">{p.elapsed === null ? "—" : fmtUptime(p.elapsed, true)}</td>
                 <td className="mon-actions">
-                  {locked ? (
+                  {locked && !canSudo ? (
                     <span className="mon-lock" title={rootHint(p)} aria-label={rootHint(p)} tabIndex={0}>
                       <Lock size={12} />
                     </span>
@@ -133,11 +139,15 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
                     <button
                       className="btn btn-sm mon-kill"
                       disabled={disabled || busy !== null || p.pid <= 1}
-                      onClick={() => void terminate(p)}
-                      title={`Terminar ${p.comm} (PID ${p.pid})`}
-                      aria-label={`Terminar ${p.comm}, PID ${p.pid}`}
+                      onClick={() => void terminate(p, locked)}
+                      title={
+                        locked
+                          ? `Proceso de «${p.user ?? p.uid}»: terminar con sudo (PID ${p.pid})`
+                          : `Terminar ${p.comm} (PID ${p.pid})`
+                      }
+                      aria-label={`Terminar ${p.comm}, PID ${p.pid}${locked ? ", con sudo" : ""}`}
                     >
-                      {busy === p.pid ? <span className="spinner" /> : <X size={12} />}
+                      {busy === p.pid ? <span className="spinner" /> : locked ? <Lock size={12} /> : <X size={12} />}
                       Terminar
                     </button>
                   )}

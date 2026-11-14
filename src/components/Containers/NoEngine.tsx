@@ -1,7 +1,11 @@
-// Estado vacío: el servidor no tiene Podman ni Docker. Instrucciones según la distro.
-import { Boxes, Copy, RefreshCw, TerminalSquare } from "lucide-react";
+// Estado vacío: el servidor no tiene Podman ni Docker. Instrucciones según la distro. «Instalar con sudo»
+// usa la contraseña de sudo de SSHorus; en la terminal, sudo la pide el servidor (SSHorus no la escribe).
+import { useState } from "react";
+import { Boxes, Copy, Download, RefreshCw, TerminalSquare } from "lucide-react";
 import { installHints } from "../../features/containers";
 import type { PrivilegeInfo } from "../../features/privileges";
+import { installWithSudo } from "../../features/sudoRun";
+import { confirmDialog } from "../ui/dialogs";
 import { clipboard } from "../../lib/clipboard";
 import { sendToTerminal, hasTerminal } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
@@ -18,6 +22,28 @@ export function NoEngine({ info, dockerIsShim, busy, sessionId, onRetry }: Props
   const { distro, hints } = installHints(info?.distroId ?? null, info?.distroLike ?? []);
   const asRoot = info?.level === "root";
   const fix = (cmd: string) => (asRoot ? cmd.replace(/\bsudo /g, "").replace(/\bdoas /g, "") : cmd);
+  // doas solo acepta la contraseña desde una terminal: ahí no se ofrece.
+  const canInstall = (cmd: string) => !!info && (asRoot || (info.hasSudo && !/\bdoas\b/.test(cmd)));
+  const [installing, setInstalling] = useState<string | null>(null);
+
+  const install = async (title: string, cmd: string) => {
+    const what = title.replace(/\s*\(.*\)$/, ""); // «Podman (recomendado)» → «Podman»
+    const ok = await confirmDialog({
+      title: `¿Instalar ${what}?`,
+      message: (
+        <>
+          <p style={{ margin: "0 0 8px" }}>Se ejecutará{asRoot ? "" : " con tu contraseña de sudo"}:</p>
+          <pre className="ct-cmd">{cmd}</pre>
+        </>
+      ),
+      confirmText: "Instalar",
+    });
+    if (!ok) return;
+    setInstalling(title);
+    const done = await installWithSudo(sessionId, cmd, what);
+    setInstalling(null);
+    if (done) onRetry();
+  };
 
   return (
     <div className="ct-noengine">
@@ -50,7 +76,7 @@ export function NoEngine({ info, dockerIsShim, busy, sessionId, onRetry }: Props
                 </button>
                 <button
                   className="btn btn-sm"
-                  title="Lo escribe en la terminal sin ejecutarlo: revísalo y pulsa Enter"
+                  title="Lo escribe en la terminal sin ejecutarlo: revísalo y pulsa Enter (sudo te pedirá la contraseña del servidor)"
                   onClick={() => {
                     if (!hasTerminal(sessionId)) toast.error("No hay ninguna terminal abierta", "Abre una terminal en esta conexión");
                     else if (sendToTerminal(sessionId, cmd, false)) toast.info("Escrito en la terminal", "Revisa el comando y pulsa Enter");
@@ -58,6 +84,17 @@ export function NoEngine({ info, dockerIsShim, busy, sessionId, onRetry }: Props
                 >
                   <TerminalSquare size={13} /> Escribir en la terminal
                 </button>
+                {canInstall(cmd) && (
+                  <button
+                    className="btn btn-sm"
+                    disabled={installing !== null || busy}
+                    title="Lo ejecuta SSHorus con tu contraseña de sudo (la guardada, o te la pide) y muestra si terminó bien"
+                    onClick={() => void install(h.title, cmd)}
+                  >
+                    {installing === h.title ? <span className="spinner ct-spinner-sm" /> : <Download size={13} />}{" "}
+                    {asRoot ? "Instalar" : "Instalar con sudo"}
+                  </button>
+                )}
               </div>
             </div>
           );

@@ -23,7 +23,12 @@ function SudoNote({ sessionId }: { sessionId: string }) {
   if (level === "sudo-nopasswd" && info?.tool === "sudo") return <div className="cmd-note cmd-note-info">Tienes sudo sin contraseña.</div>;
   if (level === "user" || (info?.tool === "doas" && !info.hasSudo))
     return <div className="cmd-note">Este comando necesita sudo y tu usuario no parece tenerlo.</div>;
-  return <div className="cmd-note">Usa sudo: la contraseña se escribe en la terminal y nunca se guarda.</div>;
+  return (
+    <div className="cmd-note">
+      En la terminal, sudo te pide la contraseña del servidor (SSHorus no la escribe ahí). «Ejecutar y ver resultado» usa
+      la contraseña de sudo de SSHorus.
+    </div>
+  );
 }
 
 interface Props {
@@ -143,7 +148,10 @@ export function CommandDetail({ item, sessionId, profileId, disabled, onEdit, on
             title={
               blocked
                 ? blocked.charAt(0).toLowerCase() + blocked.slice(1)
-                : (missingMsg ?? "Lo corre aparte y muestra la salida aquí (Ctrl+Enter)")
+                : (missingMsg ??
+                  (item.sudo
+                    ? "Lo corre aparte con la contraseña de sudo de SSHorus y muestra la salida aquí (Ctrl+Enter)"
+                    : "Lo corre aparte y muestra la salida aquí (Ctrl+Enter)"))
             }
           >
             <button className="btn" disabled={off || !!blocked || !!state?.running} onClick={() => submit("capture")}>

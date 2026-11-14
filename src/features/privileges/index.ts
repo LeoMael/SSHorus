@@ -4,6 +4,7 @@ export {
   DETECT_COMMAND,
   DETECT_TIMEOUT_SECS,
   canElevate,
+  parseNoPasswdCheck,
   parsePrivilegeOutput,
   privilegeDescription,
   type ElevationTool,
@@ -11,6 +12,7 @@ export {
   type PrivilegeLevel,
 } from "./detect";
 export {
+  checkSudoNoPassword,
   detectPrivilege,
   getPrivilege,
   initPrivileges,
@@ -24,6 +26,7 @@ export {
   forgetAllSudo,
   forgetSudo,
   forgetSudoByUser,
+  resetStoredSudo,
   setStoredSudo,
   sudoRejected,
   sudoRejectedNotified,
@@ -49,9 +52,11 @@ export { loadStoredSudo, obtainSudoPassword, sudoModeOf, useStoredSudo, type Sud
 export {
   defaultSaveChecked,
   otherSessionPasswords,
+  resetStoredState,
   storedFailed,
   storedStateAfterConfirm,
   sudoLookupPlan,
   sudoPasswordNeeded,
+  sudoSourceChanged,
   type SudoSource,
 } from "./lookup";

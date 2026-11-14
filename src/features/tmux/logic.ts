@@ -98,7 +98,7 @@ export function tmuxInstallCommand(
     };
   }
   if (has("alpine")) return { distro: "Alpine", command: `${p}apk add tmux` };
-  if (has("arch", "manjaro", "endeavouros")) return { distro: "Arch Linux", command: `${p}pacman -S --needed tmux` };
+  if (has("arch", "manjaro", "endeavouros")) return { distro: "Arch Linux", command: `${p}pacman -S --needed --noconfirm tmux` };
   if (has("opensuse", "opensuse-leap", "opensuse-tumbleweed", "suse", "sles")) {
     return { distro: "openSUSE", command: `${p}zypper install -y tmux` };
   }

@@ -5,17 +5,8 @@ import { ssh } from "../../api/ssh";
 import { newExecId, snippets } from "../../api/snippets";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";
-import {
-  detectPrivilege,
-  forgetSudo,
-  getPrivilege,
-  getSudoPassword,
-  obtainSudoPassword,
-  sudoPasswordNeeded,
-  sudoRejectedNotified,
-  type PrivilegeInfo,
-} from "../privileges";
-import { askSudoInDialog } from "../mcp/sudoAsk";
+import { detectPrivilege, forgetSudo, getPrivilege, sudoRejectedNotified, type PrivilegeInfo } from "../privileges";
+import { sudoPasswordForCommand } from "../mcp/sudoAsk";
 import { connectInBackground } from "./connect";
 import { RunEngine, type EngineDeps } from "./engine";
 import type { RunSpec, TargetInput, TargetState } from "./types";
@@ -142,25 +133,17 @@ const realDeps: EngineDeps = {
   sudoPassword: async (sessionId, profileId, serverName, signal) => {
     const reused = useTabs.getState().tabs.some((t) => t.sessionId === sessionId);
     const info = await privilegeOf(sessionId, reused);
-    if (!sudoPasswordNeeded(info)) return { need: false };
-    const found = await obtainSudoPassword(sessionId, profileId);
-    if (signal.aborted) return null;
-    if (!found.ok) {
-      const given = await askSudoInDialog(
-        {
-          sessionId,
-          profileId,
-          user: info.user,
-          serverName,
-          reason: `«Ejecutar en varios servidores» necesita la contraseña de sudo en «${serverName}». Si la saltas, este servidor no ejecuta el comando.`,
-          cancelLabel: "Saltar este servidor",
-        },
-        signal,
-      );
-      if (!given) return null;
-    }
-    const password = getSudoPassword(sessionId);
-    return password === undefined ? null : { password };
+    return sudoPasswordForCommand(
+      {
+        sessionId,
+        profileId,
+        info,
+        serverName,
+        reason: `«Ejecutar en varios servidores» necesita la contraseña de sudo en «${serverName}». Si la saltas, este servidor no ejecuta el comando.`,
+        cancelLabel: "Saltar este servidor",
+      },
+      signal,
+    );
   },
   execSudo: (sessionId, command, password, timeoutSecs, execId) =>
     snippets.execSudo(sessionId, command, password, timeoutSecs, execId),

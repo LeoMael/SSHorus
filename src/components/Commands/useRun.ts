@@ -2,9 +2,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../api/core";
 import { newExecId, snippets } from "../../api/snippets";
-import { captureExec, confirmDangerous } from "./actions";
+import { CAPTURE_TIMEOUT_SECS, captureExec, confirmDangerous } from "./actions";
+import { execWithSudo, sudoFailureText } from "../../features/sudoRun";
+import type { ExecResult } from "../../api/types";
 import type { RunState } from "./parts";
 import type { CommandItem } from "./state";
+
+/** Con la contraseña de sudo de SSHorus (no la de la terminal). Un texto si sudo no llegó a ejecutarlo. */
+async function runSudo(sessionId: string, item: CommandItem, command: string, execId: string): Promise<ExecResult | string> {
+  const r = await execWithSudo(sessionId, command, {
+    timeoutSecs: CAPTURE_TIMEOUT_SECS,
+    execId,
+    action: `ejecutar «${item.name}»`,
+  });
+  if (!r) return "Cancelado: sin contraseña de sudo.";
+  return r.sudoFailure ? sudoFailureText(r.sudoFailure) : r;
+}
 
 export function useRun(sessionId: string | null) {
   const [state, setState] = useState<RunState | null>(null);
@@ -28,9 +41,10 @@ export function useRun(sessionId: string | null) {
       execId.current = id;
       setState({ running: true, command, result: null, error: null, startedAt: Date.now() });
       try {
-        const result = await captureExec(sessionId, command, id);
+        const result = item.sudo ? await runSudo(sessionId, item, command, id) : await captureExec(sessionId, command, id);
         if (!mounted.current || my !== token.current) return;
-        setState({ running: false, command, result, error: null, startedAt: 0 });
+        if (typeof result === "string") setState({ running: false, command, result: null, error: result, startedAt: 0 });
+        else setState({ running: false, command, result, error: null, startedAt: 0 });
       } catch (e) {
         if (!mounted.current || my !== token.current) return;
         setState({ running: false, command, result: null, error: errorMessage(e), startedAt: 0 });

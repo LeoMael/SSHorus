@@ -1,13 +1,16 @@
 // Pruebas de funciones puras de privilegios: de dónde sale la contraseña de sudo y el envoltorio de sudo -S.
 // Ejecutar: npx rolldown src/features/privileges/privileges.test.ts -p node -f esm -o /tmp/pt.mjs && node /tmp/pt.mjs
+import { NOPASSWD_CHECK_COMMAND, parseNoPasswdCheck, parsePrivilegeOutput, withSudoNoPassword } from "./detect";
 import { buildExec, elevationFailure, EXIT_SUDO_BAD_PASSWORD } from "./elevate";
 import {
   defaultSaveChecked,
   otherSessionPasswords,
+  resetStoredState,
   storedFailed,
   storedStateAfterConfirm,
   sudoLookupPlan,
   sudoPasswordNeeded,
+  sudoSourceChanged,
   type SudoLookupInput,
 } from "./lookup";
 
@@ -38,13 +41,46 @@ eq(sudoLookupPlan({ ...base, stored: "off", otherSessions: 2 }), ["ask"], "«Olv
 eq(sudoLookupPlan({ ...base, otherSessions: 1 }), ["stored", "other-session", "ask"], "guardada, luego otra pestaña");
 eq(sudoLookupPlan({ ...base, mode: "ask", otherSessions: 1 }), ["other-session", "ask"], "«Pedir cada vez» con otra pestaña");
 eq(sudoLookupPlan({ ...base, stored: "failed", otherSessions: 1 }), ["other-session", "ask"], "guardada mala: otra pestaña");
+eq(sudoLookupPlan({ ...base, stored: "retry" }), ["stored", "ask"], "error pasajero: se vuelve a mirar");
+
+// ── Desde el diálogo (justo antes de preguntar) ──
+const dlg: SudoLookupInput = { ...base, fromDialog: true };
+eq(sudoLookupPlan({ ...dlg, stored: "none" }), ["stored", "ask"], "diálogo: relee aunque antes no hubiera guardada");
+eq(sudoLookupPlan({ ...dlg, stored: "retry" }), ["stored", "ask"], "diálogo: reintenta tras un error pasajero");
+eq(sudoLookupPlan({ ...dlg, stored: undefined }), ["stored", "ask"], "diálogo: sin mirar aún");
+eq(sudoLookupPlan({ ...dlg, stored: "failed" }), ["ask"], "diálogo: sudo la rechazó, no se reintenta (bloqueo de cuenta)");
+eq(sudoLookupPlan({ ...dlg, stored: "rejected" }), ["ask"], "diálogo: rechazada y avisada, no se reintenta");
+eq(sudoLookupPlan({ ...dlg, stored: "off", otherSessions: 1 }), ["ask"], "diálogo: «Olvidar» se respeta");
+eq(sudoLookupPlan({ ...dlg, stored: "none", mode: "ask" }), ["ask"], "diálogo con «Pedir cada vez»: no hay guardada que leer");
+eq(sudoLookupPlan({ ...dlg, stored: "none", otherSessions: 1 }), ["stored", "other-session", "ask"], "diálogo: guardada y otra pestaña");
 
 // ── Estado tras comprobar la guardada ──
 eq(storedStateAfterConfirm({ ok: true }), "ok", "correcta");
 eq(storedStateAfterConfirm({ ok: false, badPassword: true }), "failed", "incorrecta");
-eq(storedStateAfterConfirm({ ok: false }), "none", "otro fallo (tty, sin permiso, tiempo): no se marca como incorrecta");
+eq(storedStateAfterConfirm({ ok: false }), "none", "otro fallo (tty, sin permiso): no se marca como incorrecta");
+eq(storedStateAfterConfirm({ ok: false, transient: true }), "retry", "sudo tardó o se cortó: se reintenta luego");
+eq(storedStateAfterConfirm({ ok: false, badPassword: true, transient: true }), "failed", "incorrecta manda sobre pasajero");
 ok(storedFailed("failed") && storedFailed("rejected"), "failed y rejected cuentan como fallida");
-ok(!storedFailed("ok") && !storedFailed("none") && !storedFailed(undefined) && !storedFailed("off"), "el resto no");
+ok(!storedFailed("ok") && !storedFailed("none") && !storedFailed("retry") && !storedFailed(undefined) && !storedFailed("off"), "el resto no");
+
+// ── Volver a mirar al guardar el servidor o desbloquear ──
+ok(resetStoredState("none", false) && resetStoredState("retry", false), "sin guardada o error pasajero: siempre");
+ok(!resetStoredState("failed", false) && !resetStoredState("rejected", false), "rechazada y nada cambió: no (sería otro intento fallido)");
+ok(resetStoredState("failed", true) && resetStoredState("rejected", true), "rechazada pero cambió la contraseña o el modo: sí");
+ok(!resetStoredState("off", true), "«Olvidar» se respeta hasta reconectar");
+ok(!resetStoredState("loading", true) && !resetStoredState("ok", true) && !resetStoredState(undefined, true), "leyéndose, en memoria o sin mirar: nada");
+
+const srv = { auth: "password" as const, sudoMode: "saved" as const };
+ok(sudoSourceChanged(undefined, srv, {}), "servidor nuevo");
+ok(sudoSourceChanged(srv, srv, { sudoSecret: "x" }), "contraseña de sudo nueva");
+ok(sudoSourceChanged(srv, srv, { sudoSecret: "" }), "contraseña de sudo borrada");
+ok(sudoSourceChanged(srv, { ...srv, sudoMode: "ask" }, {}), "cambió el modo");
+ok(!sudoSourceChanged(srv, srv, { secret: "x" }), "«Guardar»: la de la conexión no influye");
+ok(!sudoSourceChanged(srv, srv, {}), "otros cambios (nombre, color…): no");
+ok(!sudoSourceChanged({ auth: "password" }, { auth: "password", sudoMode: "ask" }, {}), "sin modo = «Pedir cada vez»");
+const login = { auth: "password" as const, sudoMode: "login" as const };
+ok(sudoSourceChanged(login, login, { secret: "x" }), "«La de la conexión»: cambió la contraseña de la conexión");
+ok(sudoSourceChanged({ ...login, auth: "key" }, login, {}), "«La de la conexión»: cambió el método de la conexión");
 
 // ── «Guardar para este servidor» marcado de entrada ──
 eq(defaultSaveChecked({ change: false, failed: false, mode: "ask" }), false, "pedir cada vez, sin fallo");
@@ -84,5 +120,16 @@ eq(sudoPasswordNeeded({ level: "maybe-sudo", hasSudo: true }), true, "puede que 
 eq(sudoPasswordNeeded({ level: "user", hasSudo: true }), true, "fuera de wheel pero con sudo instalado: se intenta");
 eq(sudoPasswordNeeded({ level: "user", hasSudo: false }), false, "sin sudo en el servidor: no");
 eq(sudoPasswordNeeded({ level: "unknown", hasSudo: false }), true, "sin comprobar: se intenta");
+
+// ── «Comprobar sudo sin contraseña» (bajo demanda) ──
+ok(!/'/.test(NOPASSWD_CHECK_COMMAND.slice(7, -1)) && !NOPASSWD_CHECK_COMMAND.includes("!"), "sin comillas simples internas ni «!»");
+ok(NOPASSWD_CHECK_COMMAND.includes("sudo -n true </dev/null"), "sudo -n: nunca pregunta");
+eq(parseNoPasswdCheck("sudo_nopasswd=1\n"), true, "sin contraseña");
+eq(parseNoPasswdCheck("sudo_nopasswd=0\n"), false, "pide contraseña");
+eq(parseNoPasswdCheck(""), false, "sin salida: no");
+const maybe = parsePrivilegeOutput("tv_begin=1\nuid=1000\nuser=ana\ngroups=ana\nsudo=1\ndoas=0\ntv_end=1\n", 1);
+eq(maybe.level, "maybe-sudo", "fuera de wheel/sudo/admin: puede que tenga sudo (sin probar sudo -n)");
+const up = withSudoNoPassword(maybe);
+eq([up.level, up.tool, up.user], ["sudo-nopasswd", "sudo", "ana"], "tras comprobarlo: sudo sin contraseña");
 
 console.log(`privileges: ${passed} comprobaciones correctas`);

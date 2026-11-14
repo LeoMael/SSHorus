@@ -8,16 +8,17 @@
 //  3. La de otra pestaña abierta al mismo servidor (mismo perfil: mismo usuario y host).
 //  4. Preguntar al usuario.
 // Si el usuario pulsó «Olvidar», no se vuelve a mirar la guardada ni las de otras pestañas hasta reconectar.
-import type { SudoMode } from "../../api/types";
+// Si sudo la rechazó («failed»/«rejected»), tampoco: cada intento fallido cuenta y puede bloquear la cuenta.
+import type { ServerProfile, SudoMode } from "../../api/types";
 import type { PrivilegeInfo } from "./detect";
 
 /**
  * Contraseña guardada de la sesión: "loading" leyendo/comprobando, "ok" en memoria, "none" no hay o
- * el servidor dice «Pedir cada vez», "failed" sudo la rechazó (aún sin avisar), "rejected" sudo la
- * rechazó y el usuario ya vio el aviso (no se vuelve a abrir el diálogo solo), "off" el usuario la
- * olvidó a mano.
+ * el servidor dice «Pedir cada vez», "retry" no se pudo usar por un error pasajero (llavero o bóveda no
+ * disponible, sudo tardó, red), "failed" sudo la rechazó (aún sin avisar), "rejected" sudo la rechazó y
+ * el usuario ya vio el aviso (no se vuelve a abrir el diálogo solo), "off" el usuario la olvidó a mano.
  */
-export type StoredSudoState = "loading" | "ok" | "none" | "failed" | "rejected" | "off";
+export type StoredSudoState = "loading" | "ok" | "none" | "retry" | "failed" | "rejected" | "off";
 
 export type SudoSource = "memory" | "stored" | "other-session" | "ask";
 
@@ -29,6 +30,24 @@ export interface SudoLookupInput {
   mode: SudoMode;
   /** Otras pestañas abiertas al mismo servidor con la contraseña en memoria. */
   otherSessions: number;
+  /** Lo pide el diálogo, justo antes de preguntar: vuelve a mirar aunque antes no hubiera guardada. */
+  fromDialog?: boolean;
+}
+
+/** ¿Se lee (otra vez) la guardada? Nunca si sudo ya la rechazó o el usuario la olvidó. */
+function readStored(st: StoredSudoState | undefined, fromDialog: boolean): boolean {
+  switch (st) {
+    case undefined:
+    case "loading":
+    case "ok":
+    case "retry":
+      return true;
+    case "none":
+      // Los paneles no la releen cada vez que se abren; el diálogo sí (quizá se acaba de guardar).
+      return fromDialog;
+    default:
+      return false;
+  }
 }
 
 /** Pasos a probar, en orden. Siempre termina en "ask" salvo si ya está en memoria. */
@@ -36,16 +55,41 @@ export function sudoLookupPlan(i: SudoLookupInput): SudoSource[] {
   if (i.hasMemory) return ["memory"];
   if (i.stored === "off") return ["ask"];
   const plan: SudoSource[] = [];
-  // "none" (no hay), "failed"/"rejected" (no sirvió): no se vuelve a leer hasta que cambie el ajuste.
-  if (i.mode !== "ask" && (i.stored === undefined || i.stored === "loading" || i.stored === "ok")) plan.push("stored");
+  if (i.mode !== "ask" && readStored(i.stored, !!i.fromDialog)) plan.push("stored");
   if (i.otherSessions > 0) plan.push("other-session");
   plan.push("ask");
   return plan;
 }
 
-/** Estado de la guardada tras comprobarla con sudo. */
-export function storedStateAfterConfirm(r: { ok: boolean; badPassword?: boolean }): StoredSudoState {
-  return r.ok ? "ok" : r.badPassword ? "failed" : "none";
+/** Estado de la guardada tras comprobarla con sudo. Un fallo pasajero (tiempo, red) se reintenta. */
+export function storedStateAfterConfirm(r: { ok: boolean; badPassword?: boolean; transient?: boolean }): StoredSudoState {
+  return r.ok ? "ok" : r.badPassword ? "failed" : r.transient ? "retry" : "none";
+}
+
+/**
+ * Al guardar el servidor o al desbloquear SSHorus, ¿se vuelve a mirar la guardada? Sí si no había o falló
+ * por algo pasajero. Si sudo la rechazó, solo si cambió la contraseña de sudo o su modo (si no, sería otro
+ * intento fallido con la misma). Nunca si se está leyendo, ya está en memoria o el usuario pulsó
+ * «Olvidar» en esa pestaña.
+ */
+export function resetStoredState(st: StoredSudoState | undefined, sudoChanged: boolean): boolean {
+  return st === "none" || st === "retry" || (sudoChanged && (st === "failed" || st === "rejected"));
+}
+
+
+
+/**
+ * ¿Cambió de dónde sale la contraseña de sudo al guardar el servidor? Modo, contraseña de sudo nueva o,
+ * con «La de la conexión», la contraseña o el método de la conexión. `prev` undefined = servidor nuevo.
+ */
+export function sudoSourceChanged(
+  prev: Pick<ServerProfile, "auth" | "sudoMode"> | undefined,
+  next: Pick<ServerProfile, "auth" | "sudoMode">,
+  edits: { secret?: string; sudoSecret?: string },
+): boolean {
+  if (!prev || edits.sudoSecret !== undefined) return true;
+  if ((prev.sudoMode ?? "ask") !== (next.sudoMode ?? "ask")) return true;
+  return next.sudoMode === "login" && (edits.secret !== undefined || prev.auth !== next.auth);
 }
 
 /** La guardada (o la de la conexión) no sirvió para sudo. */

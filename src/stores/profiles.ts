@@ -2,6 +2,8 @@
 import { create } from "zustand";
 import { profiles } from "../api/profiles";
 import type { Bookmark, Project, ServerProfile } from "../api/types";
+import { sudoSourceChanged } from "../features/privileges/lookup";
+import { resetStoredSudoForProfile } from "../features/privileges/resetForProfile";
 import { toast } from "./toasts";
 
 interface ProfilesState {
@@ -63,6 +65,7 @@ export const useProfiles = create<ProfilesState>((set, get) => ({
   },
 
   saveServer: async (server, secret, sudoSecret) => {
+    const prev = get().getServer(server.id);
     let saved: ServerProfile;
     try {
       saved = await profiles.saveServer(server);
@@ -85,6 +88,8 @@ export const useProfiles = create<ProfilesState>((set, get) => ({
         toast.error("Servidor guardado, pero no la contraseña de sudo", e);
       }
     }
+    // Las pestañas abiertas a este servidor vuelven a mirar la contraseña de sudo guardada.
+    resetStoredSudoForProfile(saved.id, sudoSourceChanged(prev, saved, { secret, sudoSecret }));
     return saved;
   },
 

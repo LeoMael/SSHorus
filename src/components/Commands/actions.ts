@@ -19,9 +19,9 @@ export function openPalette() {
 
 export type RunMode = "insert" | "run" | "capture";
 
-/** Motivo por el que no se puede "Ejecutar y ver resultado" (o null). */
+/** Motivo por el que no se puede "Ejecutar y ver resultado" (o null). Con sudo sí se puede: usa la
+ * contraseña de sudo de SSHorus (ver useRun). */
 export function captureBlockedReason(item: CommandItem): string | null {
-  if (item.sudo) return "Requiere contraseña: usa la terminal";
   if (item.interactive) return "Es interactivo o no termina: usa la terminal";
   return null;
 }

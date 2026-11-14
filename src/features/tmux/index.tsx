@@ -7,6 +7,7 @@ import { sendToTerminal } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../../components/ui/dialogs";
 import { getPrivilege } from "../privileges";
+import { installWithSudo } from "../sudoRun";
 import { resolveTmuxMode, tmuxInstallCommand } from "./logic";
 
 export * from "./logic";
@@ -91,11 +92,16 @@ export function installCommandFor(sessionId: string) {
   return tmuxInstallCommand(p?.distroId ?? null, p?.distroLike ?? [], elevate);
 }
 
-/** Avisa una vez por servidor (en esta ejecución de la app) y ofrece escribir el comando de instalación. */
+/**
+ * Avisa una vez por servidor (en esta ejecución de la app) y ofrece instalarlo con la contraseña de sudo de
+ * SSHorus. Si no se puede (doas, sin comprobar), ofrece escribir el comando en la terminal.
+ */
 export async function warnTmuxMissing(sessionId: string, profileId: string, serverName: string): Promise<void> {
   if (warned.has(profileId)) return;
   warned.add(profileId);
   const { distro, command } = installCommandFor(sessionId);
+  const p = getPrivilege(sessionId);
+  const direct = !!p && (p.level === "root" || (p.hasSudo && p.tool !== "doas"));
   const ok = await confirmDialog({
     title: "tmux no está instalado",
     message: (
@@ -108,13 +114,24 @@ export async function warnTmuxMissing(sessionId: string, profileId: string, serv
         <pre className="mono" style={{ whiteSpace: "pre-wrap", userSelect: "text" }}>
           {command}
         </pre>
-        <p>Las terminales que abras después de instalarlo ya serán persistentes.</p>
+        <p>
+          {direct
+            ? p.level === "root"
+              ? "SSHorus puede ejecutarlo ahora. "
+              : "SSHorus puede ejecutarlo ahora con tu contraseña de sudo (la guardada, o te la pide). Si lo escribes tú en la terminal, sudo te pedirá la contraseña del servidor. "
+            : "En la terminal, sudo te pedirá la contraseña del servidor. "}
+          Las terminales que abras después de instalarlo ya serán persistentes.
+        </p>
       </>
     ),
-    confirmText: "Escribir el comando en la terminal",
+    confirmText: direct ? "Instalar ahora" : "Escribir el comando en la terminal",
     cancelText: "Ahora no",
   });
   if (!ok) return;
+  if (direct) {
+    await installWithSudo(sessionId, command, "tmux");
+    return;
+  }
   // Se escribe sin Enter: la persona lo revisa y lo ejecuta.
   if (!sendToTerminal(sessionId, command, false)) toast.info("No hay una terminal abierta", command);
 }

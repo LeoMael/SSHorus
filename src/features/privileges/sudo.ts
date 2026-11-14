@@ -13,7 +13,7 @@ import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import type { PrivilegeInfo } from "./detect";
 import { buildExec, elevationFailure, elevationFailureMessage, type Elevation } from "./elevate";
-import type { StoredSudoState } from "./lookup";
+import { resetStoredState, type StoredSudoState } from "./lookup";
 
 export type { StoredSudoState } from "./lookup";
 
@@ -78,6 +78,18 @@ export function sudoRejectedNotified(sessionId: string): void {
   if (useSudo.getState().stored[sessionId] === "failed") setStoredSudo(sessionId, "rejected");
 }
 
+/**
+ * Vuelve a mirar la guardada en esas sesiones (al guardar su servidor o al desbloquear), según
+ * `resetStoredState`. Lo que esté en memoria se queda.
+ */
+export function resetStoredSudo(sessionIds: readonly string[], sudoChanged: boolean): void {
+  useSudo.setState((s) => {
+    let stored = s.stored;
+    for (const id of sessionIds) if (resetStoredState(stored[id], sudoChanged)) stored = without(stored, id);
+    return stored === s.stored ? s : { stored };
+  });
+}
+
 export function useStoredSudoState(sessionId: string): StoredSudoState | undefined {
   return useSudo((s) => s.stored[sessionId]);
 }
@@ -92,6 +104,8 @@ export interface SudoConfirmResult {
   message: string;
   /** sudo dijo que la contraseña no es correcta. */
   badPassword?: boolean;
+  /** Fallo pasajero (sudo tardó, conexión): no dice nada de la contraseña. */
+  transient?: boolean;
 }
 
 /**
@@ -104,7 +118,7 @@ export async function confirmSudo(sessionId: string, password: string): Promise<
   const req = buildExec("true", { kind: "password", password });
   try {
     const r = await snippets.execStdin(sessionId, req.command, req.stdin, 20);
-    if (r.timedOut) return { ok: false, message: "sudo tardó demasiado en responder" };
+    if (r.timedOut) return { ok: false, message: "sudo tardó demasiado en responder", transient: true };
     if (r.exitCode === 0) {
       useSudo.getState().set(sessionId, password);
       return { ok: true, message: "Contraseña de sudo confirmada" };
@@ -114,7 +128,7 @@ export async function confirmSudo(sessionId: string, password: string): Promise<
     if (/command not found|not found/i.test(r.stderr)) return { ok: false, message: "sudo no está instalado en el servidor" };
     return { ok: false, message: r.stderr.trim() || `sudo terminó con código ${r.exitCode ?? "desconocido"}` };
   } catch (e) {
-    return { ok: false, message: errorMessage(e) };
+    return { ok: false, message: errorMessage(e), transient: true };
   }
 }
 

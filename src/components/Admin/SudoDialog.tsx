@@ -1,20 +1,25 @@
 // Pide y valida la contraseña de sudo. Queda en memoria mientras dure la conexión y, si se marca
 // «Guardar para este servidor», también en la bóveda (o el llavero) como contraseña de sudo guardada.
 // Antes de preguntar busca la que ya hay (`obtainSudoPassword`: en memoria, guardada u otra pestaña del
-// mismo servidor): si sirve, se cierra solo. Lo usan Administración, Contenedores, el escáner, los comandos
-// con sudo del asistente de IA y «Ejecutar en varios servidores» (cola de features/mcp/SudoAskHost.tsx).
+// mismo servidor): si sirve, se cierra solo. Con «puede que tengas sudo» ofrece comprobar si sudo pide
+// contraseña (solo si se pulsa: `sudo -n` queda en el registro de sudo del servidor). Lo usan
+// Administración, Contenedores, el escáner, los comandos con sudo (asistente de IA, biblioteca de comandos,
+// Monitor, instalaciones) y «Ejecutar en varios servidores» (cola de features/mcp/SudoAskHost.tsx).
 import { useEffect, useState } from "react";
-import { KeyRound } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import {
+  checkSudoNoPassword,
   confirmSudo,
   defaultSaveChecked,
   obtainSudoPassword,
   storedFailed,
   sudoModeOf,
   setStoredSudo,
+  usePrivilege,
   useStoredSudoState,
 } from "../../features/privileges";
 import { profiles as profilesApi } from "../../api/profiles";
+import { resetStoredSudoForProfile } from "../../features/privileges/resetForProfile";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { AdmModal } from "./AdmModal";
@@ -30,8 +35,11 @@ async function saveForServer(profileId: string, password: string): Promise<boole
     return false;
   }
   if (srv.sudoMode !== "saved") {
+    // saveServer pone a cero el estado de sudo de las pestañas de este servidor.
     const saved = await useProfiles.getState().saveServer({ ...srv, sudoMode: "saved" });
     if (!saved) return false;
+  } else {
+    resetStoredSudoForProfile(profileId, true); // las otras pestañas prueban la nueva
   }
   return true;
 }
@@ -58,6 +66,8 @@ export function SudoDialog({
 }) {
   const stored = useStoredSudoState(sessionId);
   const failed = storedFailed(stored);
+  const info = usePrivilege(sessionId);
+  const maybeNoPassword = info?.level === "maybe-sudo" && info.tool === "sudo";
   const mode = sudoModeOf(profileId);
   const [password, setPassword] = useState("");
   const [save, setSave] = useState(() => defaultSaveChecked({ change, failed, mode }));
@@ -69,7 +79,7 @@ export function SudoDialog({
   useEffect(() => {
     if (change) return;
     let alive = true;
-    void obtainSudoPassword(sessionId, profileId).then((r) => {
+    void obtainSudoPassword(sessionId, profileId, { fromDialog: true }).then((r) => {
       if (!alive) return;
       if (r.ok) {
         if (r.source !== "memory") {
@@ -117,11 +127,27 @@ export function SudoDialog({
     onClose();
   };
 
+  const checkNoPassword = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const ok = await checkSudoNoPassword(sessionId);
+    setBusy(false);
+    if (!ok) {
+      setError("sudo pide contraseña en este servidor (o tu usuario no puede usarlo).");
+      return;
+    }
+    toast.success("Tienes sudo sin contraseña", "No hace falta escribirla.");
+    onClose();
+  };
+
   const note = failed
     ? mode === "login"
       ? "La contraseña de la conexión no sirve para sudo."
       : "La contraseña guardada no funcionó."
-    : null;
+    : stored === "retry"
+      ? "No se pudo usar la contraseña guardada ahora (llavero o bóveda no disponible, o el servidor tardó)."
+      : null;
 
   return (
     <AdmModal title={change ? "Cambiar contraseña de sudo" : "Contraseña de sudo"} onClose={onClose} width={400}>
@@ -168,6 +194,18 @@ export function SudoDialog({
                 <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} />
                 Guardar para este servidor
               </label>
+              {maybeNoPassword && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ marginTop: 8 }}
+                  disabled={busy}
+                  onClick={() => void checkNoPassword()}
+                  title="Prueba «sudo -n true» una vez. Si tu usuario no tiene sudo, el servidor lo apunta en su registro."
+                >
+                  <ShieldCheck size={13} /> Comprobar sudo sin contraseña
+                </button>
+              )}
               {error && (
                 <div className="field-error" role="alert">
                   {error}

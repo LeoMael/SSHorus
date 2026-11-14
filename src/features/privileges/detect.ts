@@ -57,6 +57,22 @@ const SCRIPT = [
 /** Comando exacto que se envía por el canal exec (el shell de login puede no ser POSIX). */
 export const DETECT_COMMAND = `sh -c '${SCRIPT}'`;
 
+/**
+ * «Comprobar sudo sin contraseña» (solo cuando lo pide el usuario, desde el diálogo): para quien no está en
+ * wheel/sudo/admin la detección no prueba `sudo -n` (si no tiene sudo, queda en el registro de sudo).
+ */
+export const NOPASSWD_CHECK_COMMAND = `sh -c 'if sudo -n true </dev/null >/dev/null 2>&1; then echo sudo_nopasswd=1; else echo sudo_nopasswd=0; fi'`;
+
+/** Lee la salida de `NOPASSWD_CHECK_COMMAND`. */
+export function parseNoPasswdCheck(stdout: string): boolean {
+  return parseKeyValues(stdout).sudo_nopasswd === "1";
+}
+
+/** La sesión resultó tener sudo sin contraseña. */
+export function withSudoNoPassword(info: PrivilegeInfo): PrivilegeInfo {
+  return { ...info, level: "sudo-nopasswd", tool: "sudo", hasSudo: true, error: null };
+}
+
 /** Tiempo límite de la comprobación (segundos). */
 export const DETECT_TIMEOUT_SECS = 5;
 

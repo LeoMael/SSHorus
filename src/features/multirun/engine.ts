@@ -3,6 +3,7 @@
 // así se puede probar con un motor simulado.
 import type { ExecResult } from "../../api/types";
 import type { SudoExecResult, SudoWrapFailure } from "../../api/snippets";
+import { sudoFailureText } from "../sudoRun/failure";
 import { isFinal, type AttentionKind, type PrivilegeHint, type RunSpec, type TargetInput, type TargetState } from "./types";
 
 export interface EngineDeps {
@@ -36,22 +37,6 @@ export interface EngineDeps {
   execSudo?(sessionId: string, command: string, password: string, timeoutSecs: number, execId: string): Promise<SudoExecResult>;
   /** sudo rechazó la contraseña: se olvida y, si era la guardada, queda marcada como rechazada. */
   sudoRejected?(sessionId: string): void;
-}
-
-/** Mensaje de un fallo de sudo antes de ejecutar el comando. */
-export function sudoFailureText(f: SudoWrapFailure): string {
-  switch (f) {
-    case "bad-password":
-      return "Contraseña de sudo incorrecta: sudo la rechazó y no se ejecutó el comando. Vuelve a intentarlo para escribir otra.";
-    case "denied":
-      return "Tu usuario no tiene permiso para usar sudo en este servidor: no se ejecutó el comando.";
-    case "tty-required":
-      return "sudo exige una terminal en este servidor (opción «requiretty»): no se puede usar desde aquí.";
-    case "no-temp":
-      return "No se pudo preparar sudo: no hay ninguna carpeta temporal donde se puedan ejecutar archivos.";
-    case "no-sudo":
-      return "sudo no está instalado en este servidor.";
-  }
 }
 
 /** Ejecución en curso de un servidor (para poder detenerla al cancelar). */

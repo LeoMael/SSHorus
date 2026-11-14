@@ -211,8 +211,8 @@ export function installHints(distroId: string | null, distroLike: string[] = [])
     return {
       distro: "Arch Linux",
       hints: [
-        { title: "Podman (recomendado)", command: "sudo pacman -S --needed podman podman-compose" },
-        { title: "Docker", command: "sudo pacman -S --needed docker docker-compose && sudo systemctl enable --now docker" },
+        { title: "Podman (recomendado)", command: "sudo pacman -S --needed --noconfirm podman podman-compose" },
+        { title: "Docker", command: "sudo pacman -S --needed --noconfirm docker docker-compose && sudo systemctl enable --now docker" },
       ],
     };
   }

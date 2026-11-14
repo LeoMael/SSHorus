@@ -1,5 +1,6 @@
 // Contraseña de sudo para los comandos del asistente (petición `sudo` del motor, ver uiBridge.ts) y cola
-// de diálogos de sudo que no son de un panel (también «Ejecutar en varios servidores»: `askSudoInDialog`).
+// de diálogos de sudo que no son de un panel (también «Ejecutar en varios servidores» y los comandos con
+// sudo de features/sudoRun: `sudoPasswordForCommand`).
 // Los diálogos se muestran de uno en uno (SudoAskHost enseña el primero de la cola).
 //
 // Con «Aceptar automáticamente: todo» no se muestra nada si la contraseña ya está en memoria o guardada: el
@@ -16,6 +17,7 @@ import {
   getSudoPassword,
   obtainSudoPassword,
   sudoPasswordNeeded,
+  type PrivilegeInfo,
 } from "../privileges";
 import { useLock } from "../lock/lockStore";
 import { useTabs } from "../../stores/tabs";
@@ -62,8 +64,6 @@ export function askSudoInDialog(a: Omit<SudoAsk, "id">, signal?: AbortSignal): P
   });
 }
 
-const askInDialog = askSudoInDialog;
-
 /** El diálogo se cerró (confirmada, cancelada, tiempo agotado o bloqueo). */
 export function finishSudoAsk(id: string): void {
   const ask = useSudoAsks.getState().asks.find((a) => a.id === id);
@@ -79,6 +79,27 @@ export function cancelAllSudoAsks(): void {
   for (const a of useSudoAsks.getState().asks) finishSudoAsk(a.id);
 }
 
+/**
+ * Contraseña de sudo para ejecutar un comando fuera de los paneles (asistente, «Ejecutar en varios
+ * servidores», comandos con sudo): la que ya hay o, si no, el diálogo en cola. `need: false` si no hace
+ * falta (root, sudo sin contraseña; también si el diálogo lo comprobó). null = cancelado.
+ */
+export async function sudoPasswordForCommand(
+  a: Omit<SudoAsk, "id" | "user"> & { info: PrivilegeInfo },
+  signal?: AbortSignal,
+): Promise<{ password: string } | { need: false } | null> {
+  const { info, ...ask } = a;
+  if (!sudoPasswordNeeded(info)) return { need: false };
+  const found = await obtainSudoPassword(a.sessionId, a.profileId);
+  if (signal?.aborted) return null;
+  if (!found.ok && !(await askSudoInDialog({ ...ask, user: info.user }, signal))) {
+    const now = getPrivilege(a.sessionId);
+    return now && !sudoPasswordNeeded(now) ? { need: false } : null;
+  }
+  const password = getSudoPassword(a.sessionId);
+  return password === undefined ? null : { password };
+}
+
 function str(v: unknown): string | null {
   return typeof v === "string" && v ? v : null;
 }
@@ -92,22 +113,16 @@ export async function sudoForAssistant(payload: Record<string, unknown>): Promis
   if (useLock.getState().status?.locked) throw new Error("SSHorus está bloqueado");
   const profileId = str(payload.profileId) ?? tab.profileId;
   const info = getPrivilege(sessionId) ?? (await detectPrivilege(sessionId));
-  if (!sudoPasswordNeeded(info)) return { elevate: false };
-
-  const found = await obtainSudoPassword(sessionId, profileId);
-  if (!found.ok) {
-    const secs = typeof payload.timeoutSecs === "number" && payload.timeoutSecs > 0 ? payload.timeoutSecs : 120;
-    const given = await askInDialog({
-      sessionId,
-      profileId,
-      user: info.user,
-      serverName: str(payload.serverName) ?? tab.title,
-      auto: payload.auto === true,
-      expiresAt: Date.now() + secs * 1000,
-    });
-    if (!given) return { canceled: true };
-  }
+  const secs = typeof payload.timeoutSecs === "number" && payload.timeoutSecs > 0 ? payload.timeoutSecs : 120;
+  const got = await sudoPasswordForCommand({
+    sessionId,
+    profileId,
+    info,
+    serverName: str(payload.serverName) ?? tab.title,
+    auto: payload.auto === true,
+    expiresAt: Date.now() + secs * 1000,
+  });
   if (useLock.getState().status?.locked) throw new Error("SSHorus está bloqueado");
-  const password = getSudoPassword(sessionId);
-  return password === undefined ? { canceled: true } : { elevate: true, password };
+  if (!got) return { canceled: true };
+  return "need" in got ? { elevate: false } : { elevate: true, password: got.password };
 }
