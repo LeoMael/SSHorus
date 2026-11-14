@@ -1,10 +1,13 @@
-// Ajustes → Seguridad: PIN de 6 números (bóveda de contraseñas), bloqueo por inactividad y «Bloquear ahora».
+// Ajustes → Seguridad: PIN de 6 números o contraseña (bóveda de contraseñas), cambiar de uno a otro,
+// bloqueo por inactividad y «Bloquear ahora».
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import { useSettings } from "../../stores/settings";
 import { lockNow, useLock } from "../../features/lock/lockStore";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
-import { ChangePinForm, DisablePinForm, SetupPinForm, WhatItProtects } from "../../features/lock/PinForms";
+import { WhatItProtects } from "../../features/lock/LockInfo";
+import { ChangePinForm, DisablePinForm, SetupPinForm } from "../../features/lock/PinForms";
+import { secretWords } from "../../features/lock/secretKind";
 import "../../features/lock/Lock.css";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 
@@ -26,16 +29,21 @@ export function SecuritySection() {
   const update = useSettings((s) => s.update);
   const [form, setForm] = useState<Form>(null);
   const enabled = !!status?.enabled;
+  const words = secretWords(status?.pinKind);
+  const other = status?.pinKind === "password" ? "un PIN" : "una contraseña";
   const close = () => setForm(null);
 
   return (
     <>
       <SettingGroup>
-        <Row label="Proteger con PIN" hint={enabled ? undefined : "Cifra las contraseñas guardadas y bloquea SSHorus."}>
+        <Row
+          label="Proteger con PIN o contraseña"
+          hint={enabled ? `Ahora con ${words.noun}.` : "Cifra las contraseñas guardadas y bloquea SSHorus."}
+        >
           <button
             role="switch"
             aria-checked={enabled}
-            aria-label="Proteger con PIN"
+            aria-label="Proteger con PIN o contraseña"
             className={enabled ? "st-switch on" : "st-switch"}
             onClick={() => setForm(enabled ? "disable" : "enable")}
             disabled={!status || form !== null}
@@ -57,9 +65,9 @@ export function SecuritySection() {
 
         {enabled && (
           <>
-            <Row label="Cambiar PIN">
+            <Row label={`Cambiar ${words.noun}`} hint={`También puedes pasar a ${other}.`}>
               <button className="btn" onClick={() => setForm("change")} disabled={form !== null}>
-                Cambiar PIN
+                Cambiar
               </button>
             </Row>
             {form === "change" && (

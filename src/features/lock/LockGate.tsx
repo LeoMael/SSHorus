@@ -1,4 +1,5 @@
-// Pantalla de bloqueo (con «Olvidé mi PIN») y pantalla de primera vez para crear el PIN.
+// Pantalla de bloqueo (con «Olvidé mi PIN/contraseña») y pantalla de primera vez para crear el PIN
+// o la contraseña.
 // LockGate envuelve la interfaz de cada ventana: al abrir con SSHorus bloqueado no la monta hasta
 // desbloquear; si se bloquea después, la deja montada (las conexiones siguen) pero la tapa entera y
 // la vuelve inerte.
@@ -10,8 +11,10 @@ import { Logo } from "../../components/ui/Logo";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { applyVaultStatus, dismissVaultPrompt, LOCK_SCREEN_CLASS, useLock } from "./lockStore";
-import { SetupPinForm, WhatItProtects } from "./PinForms";
-import { PinField } from "./PinCode";
+import { WhatItProtects } from "./LockInfo";
+import { SetupPinForm } from "./PinForms";
+import { PinField } from "./PinField";
+import { secretWords } from "./secretKind";
 import "./Lock.css";
 
 export function LockGate({ main, children }: { main: boolean; children: ReactNode }) {
@@ -62,6 +65,7 @@ function formatWait(s: number): string {
 
 function LockScreen({ status, main }: { status: VaultStatus; main: boolean }) {
   const [mode, setMode] = useState<"pin" | "forgot">("pin");
+  const words = secretWords(status.pinKind);
   return (
     <div
       className={LOCK_SCREEN_CLASS}
@@ -76,7 +80,7 @@ function LockScreen({ status, main }: { status: VaultStatus; main: boolean }) {
         {mode === "pin" ? (
           <UnlockForm status={status} main={main} onForgot={() => setMode("forgot")} />
         ) : (
-          <ForgotPin onBack={() => setMode("pin")} />
+          <ForgotPin title={words.forgot} onBack={() => setMode("pin")} />
         )}
       </div>
     </div>
@@ -89,6 +93,7 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
   const [error, setError] = useState<string | null>(null);
   const wait = useRetryCountdown(status);
   const pin6 = status.pinKind === "pin6";
+  const words = secretWords(status.pinKind);
 
   const unlock = async (value: string) => {
     if (!value || busy || wait > 0) return;
@@ -97,7 +102,7 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
     try {
       applyVaultStatus(await vault.unlock(value));
     } catch (err) {
-      setError(isApiError(err, "AuthFailed") ? "PIN incorrecto." : errorMessage(err));
+      setError(isApiError(err, "AuthFailed") ? words.wrong : errorMessage(err));
       setPin("");
       // La espera tras fallos la lleva el motor: se pide para mostrar la cuenta atrás.
       vault.status().then(applyVaultStatus).catch(() => {});
@@ -115,7 +120,7 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
       }}
     >
       <h2 className="lock-title lock-title-center">
-        <Lock size={18} /> Escribe tu PIN
+        <Lock size={18} /> Escribe {words.your}
       </h2>
       <PinField
         kind={status.pinKind}
@@ -125,7 +130,7 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
           setError(null);
         }}
         onSubmit={(v) => void unlock(v)}
-        label="PIN"
+        label={words.Noun}
         autoFocus
         disabled={busy || wait > 0}
         invalid={!!error}
@@ -144,10 +149,10 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
       )}
       {main ? (
         <button type="button" className="lock-link" onClick={onForgot}>
-          Olvidé mi PIN
+          {words.forgot}
         </button>
       ) : (
-        <p className="lock-hint lock-center">¿Olvidaste el PIN? Ve a la ventana principal.</p>
+        <p className="lock-hint lock-center">¿Olvidaste {words.your}? Ve a la ventana principal.</p>
       )}
     </form>
   );
@@ -155,7 +160,7 @@ function UnlockForm({ status, main, onForgot }: { status: VaultStatus; main: boo
 
 const CONFIRM_WORD = "BORRAR";
 
-function ForgotPin({ onBack }: { onBack: () => void }) {
+function ForgotPin({ title, onBack }: { title: string; onBack: () => void }) {
   const [word, setWord] = useState("");
   const [busy, setBusy] = useState(false);
   const ok = word.trim().toUpperCase() === CONFIRM_WORD;
@@ -176,7 +181,7 @@ function ForgotPin({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="lock-form">
-      <h2 className="lock-title">Olvidé mi PIN</h2>
+      <h2 className="lock-title">{title}</h2>
       <p className="lock-text">
         Se borran las contraseñas guardadas y los tokens (GitHub, asistentes de IA e IA de informes). Lo demás se
         conserva.
@@ -215,7 +220,7 @@ function ForgotPin({ onBack }: { onBack: () => void }) {
   );
 }
 
-/** Ofrecer crear el PIN: solo en la principal, sin bóveda, y si no se dijo «Ahora no» (o tras
+/** Ofrecer crear el PIN o la contraseña: solo en la principal, sin bóveda, y si no se dijo «Ahora no» (o tras
  * «Olvidé mi PIN»). Los ajustes deben estar cargados para saberlo. */
 export function useShowSetup(main: boolean, status: VaultStatus | null): boolean {
   const loaded = useSettings((s) => s.loaded);
@@ -224,7 +229,7 @@ export function useShowSetup(main: boolean, status: VaultStatus | null): boolean
   return main && !!status && !status.enabled && loaded && (!dismissed || offer);
 }
 
-/** Primera vez (o tras «Olvidé mi PIN»): crear el PIN. «Ahora no» no vuelve a preguntar. */
+/** Primera vez (o tras «Olvidé mi PIN»): crear el PIN o la contraseña. «Ahora no» no vuelve a preguntar. */
 function SetupPrompt() {
   const offer = useLock((s) => s.offerSetup);
   return (
@@ -232,14 +237,14 @@ function SetupPrompt() {
       className={`${LOCK_SCREEN_CLASS} lock-setup`}
       role="dialog"
       aria-modal="true"
-      aria-label="Proteger con un PIN"
+      aria-label="Proteger con PIN o contraseña"
       onKeyDown={(e) => e.stopPropagation()}
     >
       <div className="lock-card lock-card-wide">
         <h2 className="lock-title">
-          <ShieldCheck size={20} /> {offer ? "Crea un PIN nuevo" : "Protege tus contraseñas con un PIN"}
+          <ShieldCheck size={20} /> {offer ? "Vuelve a proteger SSHorus" : "Protege tus contraseñas guardadas"}
         </h2>
-        <p className="lock-text">SSHorus se bloqueará al abrirlo y tras un rato sin uso.</p>
+        <p className="lock-text">Elige un PIN o una contraseña. SSHorus se bloqueará al abrirlo y tras un rato sin uso.</p>
         <WhatItProtects />
         <SetupPinForm
           autoFocus

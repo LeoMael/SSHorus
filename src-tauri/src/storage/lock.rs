@@ -15,7 +15,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use zeroize::Zeroizing;
 
 use super::secrets::{self, MoveReport, SystemKeyring};
-use super::vault::{self, Vault, VaultStatus};
+use super::vault::{self, PinKind, Vault, VaultStatus};
 use super::{ProfileStore, SettingsStore};
 use crate::error::{AppError, AppResult};
 use crate::types::EV_VAULT_STATE;
@@ -136,16 +136,19 @@ pub async fn vault_lock(app: AppHandle) -> AppResult<()> {
     Ok(())
 }
 
-/// Crea la bóveda con ese PIN (6 números) y mueve a ella los secretos del llavero: contraseñas de
-/// conexión y de sudo de cada servidor, y el token de GitHub.
+/// Crea la bóveda con ese PIN (6 números) o contraseña (8 caracteres o más), según `kind` (por
+/// defecto PIN), y mueve a ella los secretos del llavero: contraseñas de conexión y de sudo de
+/// cada servidor, y el token de GitHub.
 #[tauri::command]
 pub async fn vault_enable(
     app: AppHandle,
     profiles: State<'_, ProfileStore>,
     pin: String,
+    kind: Option<PinKind>,
 ) -> AppResult<MoveReport> {
     let pin = Zeroizing::new(pin);
-    vault::check_new_pin(&pin)?;
+    let kind = kind.unwrap_or_default();
+    vault::check_new_secret(&pin, kind)?;
     let ids: Vec<String> = profiles.data().servers.into_iter().map(|s| s.id).collect();
     let report = blocking(move || {
         let params = vault::calibrate();
@@ -154,7 +157,7 @@ pub async fn vault_enable(
             params.m_kib / 1024,
             params.t
         );
-        secrets::enable_vault(vault(), &SystemKeyring(secrets::SERVICE), &ids, &pin, params)
+        secrets::enable_vault(vault(), &SystemKeyring(secrets::SERVICE), &ids, &pin, kind, params)
     })
     .await?;
     touch(&app);
@@ -162,7 +165,7 @@ pub async fn vault_enable(
     Ok(report)
 }
 
-/// Quita la bóveda: pide el PIN y devuelve los secretos al llavero del sistema.
+/// Quita la bóveda: pide el PIN (o la contraseña) y devuelve los secretos al llavero del sistema.
 #[tauri::command]
 pub async fn vault_disable(app: AppHandle, pin: String) -> AppResult<MoveReport> {
     let pin = Zeroizing::new(pin);
@@ -173,13 +176,22 @@ pub async fn vault_disable(app: AppHandle, pin: String) -> AppResult<MoveReport>
     Ok(report)
 }
 
-/// Cambia el PIN (vuelve a cifrar la bóveda con sal y llave nuevas). El nuevo, siempre de 6 números.
+/// Cambia el PIN o la contraseña, o pasa de uno a otro (`new_kind`, por defecto PIN): vuelve a
+/// cifrar la bóveda con sal y llave nuevas. Avisa a las ventanas (cambia qué se pide al bloquear).
 #[tauri::command]
-pub async fn vault_change_pin(old_pin: String, new_pin: String) -> AppResult<()> {
+pub async fn vault_change_pin(
+    app: AppHandle,
+    old_pin: String,
+    new_pin: String,
+    new_kind: Option<PinKind>,
+) -> AppResult<()> {
     let old_pin = Zeroizing::new(old_pin);
     let new_pin = Zeroizing::new(new_pin);
-    vault::check_new_pin(&new_pin)?;
-    blocking(move || vault().change_pin(&old_pin, &new_pin, vault::calibrate())).await
+    let kind = new_kind.unwrap_or_default();
+    vault::check_new_secret(&new_pin, kind)?;
+    blocking(move || vault().change_pin(&old_pin, &new_pin, kind, vault::calibrate())).await?;
+    notify(&app);
+    Ok(())
 }
 
 /// «Olvidé mi PIN»: borra la bóveda (se pierden las contraseñas guardadas y los tokens de GitHub,

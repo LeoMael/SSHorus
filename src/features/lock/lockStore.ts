@@ -1,4 +1,4 @@
-// Estado del bloqueo con PIN en ESTA ventana. El estado de verdad vive en el motor (Rust): aquí solo
+// Estado del bloqueo (PIN o contraseña) en ESTA ventana. El estado de verdad vive en el motor (Rust): aquí solo
 // se refleja (evento `vault://state`) para tapar la interfaz. Aunque alguien quitara la pantalla de
 // bloqueo, el motor no da contraseñas guardadas mientras esté bloqueado.
 //
@@ -16,9 +16,9 @@ interface LockState {
   status: VaultStatus | null;
   /** La interfaz ya se pudo mostrar alguna vez (no estaba bloqueado o se desbloqueó). */
   everOpen: boolean;
-  /** Tras «Olvidé mi PIN»: ofrecer crear uno nuevo aunque antes se dijera «Ahora no». */
+  /** Tras «Olvidé mi PIN/contraseña»: ofrecer protegerlo otra vez aunque antes se dijera «Ahora no». */
   offerSetup: boolean;
-  /** Diálogo del PIN abierto desde el candado de la barra de pestañas. */
+  /** Diálogo del PIN o la contraseña abierto desde el candado de la barra de pestañas. */
   pinDialog: PinDialog | null;
 }
 
@@ -36,7 +36,7 @@ export const LOCK_SCREEN_CLASS = "lock-screen";
 /** Cada cuánto, como mucho, se avisa al motor de que el usuario hace algo. */
 const ACTIVITY_EVERY_MS = 15_000;
 
-/** Ctrl/⌘ + tecla permitidos al escribir el PIN (seleccionar, copiar, pegar, deshacer). */
+/** Ctrl/⌘ + tecla permitidos al escribir el PIN o la contraseña (seleccionar, copiar, pegar, deshacer). */
 const EDIT_KEYS = new Set(["a", "c", "v", "x", "z", "y"]);
 
 function isLockShortcut(e: KeyboardEvent): boolean {
@@ -55,11 +55,11 @@ export function applyVaultStatus(s: VaultStatus) {
   }
 }
 
-/** Bloquear ahora (si hay PIN). */
+/** Bloquear ahora (si hay PIN o contraseña). */
 export async function lockNow() {
   const s = useLock.getState().status;
   if (!s?.enabled) {
-    toast.info("No hay PIN", "Créalo con el candado de la barra de pestañas.");
+    toast.info("SSHorus no tiene bloqueo", "Pon un PIN o una contraseña con el candado de la barra de pestañas.");
     return;
   }
   try {
@@ -110,7 +110,9 @@ export function initLock(opts: { onLocked?: () => void } = {}) {
         const inLock = !!(e.target as Element | null)?.closest?.(`.${LOCK_SCREEN_CLASS}`);
         const mod = e.ctrlKey || e.metaKey || e.altKey;
         const editKey = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && EDIT_KEYS.has(e.key.toLowerCase());
-        if (inLock && (!mod || editKey)) return; // escribir el PIN
+        // AltGr (p. ej. «@» o «#» en teclados españoles) escribe letras de la contraseña.
+        const altGr = e.getModifierState?.("AltGraph") || (e.ctrlKey && e.altKey && e.key.length === 1);
+        if (inLock && (!mod || editKey || altGr)) return; // escribir el PIN o la contraseña
         e.preventDefault();
         e.stopImmediatePropagation();
         return;

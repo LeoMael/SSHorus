@@ -21,7 +21,7 @@ import { describeTestOk, testServerConnection, type TestOutcome } from "./server
 import { KeyPicker } from "./sshkeys/KeyPicker";
 
 /** Dónde van las contraseñas guardadas. */
-const SAVE_TIP = "Se guarda cifrada con tu PIN o, si no tienes PIN, en el llavero del sistema.";
+const SAVE_TIP = "Se guarda cifrada con tu PIN o contraseña de SSHorus o, si no tienes bloqueo, en el llavero del sistema.";
 
 export function ServerEditorHost() {
   const editor = useUi((s) => s.serverEditor);

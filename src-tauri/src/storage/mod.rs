@@ -428,7 +428,7 @@ pub async fn profiles_set_secret(id: String, secret: Option<String>, kind: Optio
     .await
 }
 
-/// Muestra un secreto guardado de un servidor (botón del ojo). Con bóveda pide el PIN, que cuenta
+/// Muestra un secreto guardado de un servidor (botón del ojo). Con bóveda pide el PIN o la contraseña, que cuenta
 /// como intento (misma espera tras fallos que al desbloquear); sin bóveda lee del llavero.
 #[tauri::command]
 pub async fn profiles_reveal_secret(id: String, kind: SecretKind, pin: Option<String>) -> AppResult<Option<String>> {
@@ -437,7 +437,7 @@ pub async fn profiles_reveal_secret(id: String, kind: SecretKind, pin: Option<St
     blocking(move || {
         let v = vault::Vault::global();
         if v.is_enabled() {
-            let pin = pin.ok_or_else(|| AppError::Invalid("Escribe tu PIN".into()))?;
+            let pin = pin.ok_or_else(|| AppError::Invalid(format!("Escribe {}", v.pin_kind().noun())))?;
             v.check_pin(&pin)?;
         }
         secrets::get_secret(&id)

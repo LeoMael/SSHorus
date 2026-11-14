@@ -1,12 +1,14 @@
 // Campo de contraseña con botón de ojo. Si el campo está vacío y hay una guardada, el ojo la trae del
-// motor: con PIN hay que escribirlo antes (cuenta como intento); sin PIN se lee del llavero.
+// motor: con bóveda hay que escribir antes el PIN o la contraseña (cuenta como intento); sin ella se
+// lee del llavero.
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { errorMessage, isApiError } from "../api/core";
 import { profiles, type SecretKind } from "../api/profiles";
 import { vault } from "../api/vault";
 import { applyVaultStatus, useLock } from "./lock/lockStore";
-import { PinField } from "./lock/PinCode";
+import { PinField } from "./lock/PinField";
+import { secretWords } from "./lock/secretKind";
 
 export function SecretInput({
   profileId,
@@ -28,6 +30,7 @@ export function SecretInput({
   label: string;
 }) {
   const status = useLock((s) => s.status);
+  const words = secretWords(status?.pinKind);
   const [shown, setShown] = useState(false);
   const [asking, setAsking] = useState(false);
   const [pin, setPin] = useState("");
@@ -48,7 +51,7 @@ export function SecretInput({
         setAsking(false);
       }
     } catch (err) {
-      setError(isApiError(err, "AuthFailed") ? "PIN incorrecto." : errorMessage(err));
+      setError(isApiError(err, "AuthFailed") ? words.wrong : errorMessage(err));
       vault.status().then(applyVaultStatus).catch(() => {});
     } finally {
       setPin("");
@@ -94,7 +97,7 @@ export function SecretInput({
       </div>
       {asking && status && (
         <div className="cd-reveal">
-          <span>Tu PIN para verla</span>
+          <span>Escribe {words.your} de SSHorus para verla</span>
           <PinField
             kind={status.pinKind}
             value={pin}
@@ -103,7 +106,7 @@ export function SecretInput({
               setError(null);
             }}
             onSubmit={(v) => void reveal(v)}
-            label="PIN"
+            label={words.Noun}
             autoFocus
             disabled={busy}
             invalid={!!error}

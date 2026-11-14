@@ -1,41 +1,14 @@
-// Formularios del PIN (6 números): crear (primera vez y Ajustes), cambiar y quitar.
-import { useRef, useState, type FormEvent } from "react";
-import { TriangleAlert } from "lucide-react";
+// Formularios de la protección (PIN de 6 números o contraseña): crear (primera vez y Ajustes),
+// cambiar (también de PIN a contraseña y al revés) y quitar.
+import { useState, type FormEvent } from "react";
 import { errorMessage, isApiError } from "../../api/core";
-import { isValidPin, PIN_LENGTH, vault, type MoveReport } from "../../api/vault";
+import { vault, type MoveReport, type PinKind } from "../../api/vault";
 import { toast } from "../../stores/toasts";
+import { ForgetWarning } from "./LockInfo";
 import { applyVaultStatus, useLock } from "./lockStore";
-import { PinCode, PinField, type PinCodeHandle } from "./PinCode";
-
-/** Una línea sobre qué se pierde si se olvida el PIN. */
-export function ForgetWarning() {
-  return (
-    <div className="lock-warn" title="Servidores, proyectos y ajustes no se pierden.">
-      <TriangleAlert size={16} />
-      <span>Si lo olvidas, se pierden las contraseñas guardadas.</span>
-    </div>
-  );
-}
-
-/** «¿Qué protege?» plegable: todo lo que antes era texto fijo. */
-export function WhatItProtects() {
-  return (
-    <details className="lock-details">
-      <summary>¿Qué protege?</summary>
-      <ul>
-        <li>Cifra las contraseñas guardadas (de conexión y de sudo) y el token de GitHub con tu PIN y una llave de este equipo.</li>
-        <li>Quien copie el archivo a otro PC no puede abrirlo.</li>
-        <li>Tras 5 fallos hay que esperar, cada vez más (hasta 15 min). Nunca se borra nada por fallar.</li>
-        <li>Al bloquear se tapan las ventanas; las conexiones siguen abiertas.</li>
-        <li>No cifra servidores, ajustes ni tus llaves de ~/.ssh.</li>
-      </ul>
-    </details>
-  );
-}
-
-function pinError(err: unknown): string {
-  return isApiError(err, "AuthFailed") ? "PIN incorrecto." : errorMessage(err);
-}
+import { emptyNewSecret, NewSecretFields, type NewSecretValue } from "./NewSecretFields";
+import { PinField } from "./PinField";
+import { checkNewPair, defaultNewKind, secretWords } from "./secretKind";
 
 function movedText(r: MoveReport): string | undefined {
   if (r.moved === 0) return undefined;
@@ -43,65 +16,68 @@ function movedText(r: MoveReport): string | undefined {
   return r.leftInKeyring > 0 ? `${n} (${r.leftInKeyring} copia(s) siguen en el llavero).` : `${n}.`;
 }
 
-/** PIN nuevo + repetición, con salto automático a la segunda casilla. */
-function NewPinPair({
-  pin,
-  setPin,
-  again,
-  setAgain,
-  autoFocus,
-  onReady,
-  disabled,
+/** Tipo actual de la bóveda (para pedir el PIN o la contraseña actuales). */
+function useCurrentKind(): PinKind {
+  return useLock((s) => s.status?.pinKind ?? "pin6");
+}
+
+/** Estado común: ocupado, error y una acción que los maneja. */
+function useAction() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const run = async (action: () => Promise<void>, onFail: (err: unknown) => string) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(onFail(err));
+      // La espera tras fallos la lleva el motor: se pide para mostrarla.
+      vault.status().then(applyVaultStatus).catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, setError, run };
+}
+
+function Actions({
+  busy,
+  canSubmit,
+  label,
+  busyLabel,
+  danger,
+  cancelLabel = "Cancelar",
+  onCancel,
 }: {
-  pin: string;
-  setPin: (v: string) => void;
-  again: string;
-  setAgain: (v: string) => void;
-  autoFocus?: boolean;
-  onReady: (pin: string, again: string) => void;
-  disabled?: boolean;
+  busy: boolean;
+  canSubmit: boolean;
+  label: string;
+  busyLabel?: string;
+  danger?: boolean;
+  cancelLabel?: string;
+  onCancel?: () => void;
 }) {
-  const second = useRef<PinCodeHandle>(null);
   return (
-    <>
-      <div className="field">
-        <span>PIN nuevo ({PIN_LENGTH} números)</span>
-        <PinCode
-          value={pin}
-          onChange={setPin}
-          onComplete={() => second.current?.focus()}
-          label="PIN nuevo"
-          autoFocus={autoFocus}
-          disabled={disabled}
-        />
-      </div>
-      <div className="field">
-        <span>Repítelo</span>
-        <PinCode
-          ref={second}
-          value={again}
-          onChange={setAgain}
-          onComplete={(v) => onReady(pin, v)}
-          onEnter={() => onReady(pin, again)}
-          label="Repite el PIN"
-          disabled={disabled}
-        />
-      </div>
-    </>
+    <div className="lock-actions">
+      {onCancel && (
+        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+          {cancelLabel}
+        </button>
+      )}
+      <button type="submit" className={danger ? "btn btn-danger" : "btn btn-primary"} disabled={busy || !canSubmit}>
+        {busy ? <span className="spinner" /> : null} {busy && busyLabel ? busyLabel : label}
+      </button>
+    </div>
   );
 }
 
-function checkPair(pin: string, again: string): string | null {
-  if (!isValidPin(pin)) return `El PIN debe tener ${PIN_LENGTH} números.`;
-  if (pin !== again) return "Los dos PIN no coinciden.";
-  return null;
-}
-
-/** Crear el PIN (y mover las contraseñas del llavero a la bóveda). */
+/** Crear la protección (y mover las contraseñas del llavero a la bóveda). */
 export function SetupPinForm({
   onDone,
   onCancel,
-  cancelLabel = "Cancelar",
+  cancelLabel,
   autoFocus,
 }: {
   onDone?: () => void;
@@ -109,31 +85,23 @@ export function SetupPinForm({
   cancelLabel?: string;
   autoFocus?: boolean;
 }) {
-  const [pin, setPin] = useState("");
-  const [again, setAgain] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [next, setNext] = useState<NewSecretValue>(emptyNewSecret());
+  const { busy, error, setError, run } = useAction();
+  const words = secretWords(next.kind);
 
-  const create = async (p: string, a: string) => {
-    if (busy) return;
-    const problem = checkPair(p, a);
+  const create = (s: NewSecretValue) => {
+    const problem = checkNewPair(s.kind, s.value, s.again);
     if (problem) {
       setError(problem);
-      setAgain("");
+      setNext({ ...s, again: "" });
       return;
     }
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await vault.enable(p);
+    void run(async () => {
+      const r = await vault.enable(s.value, s.kind);
       applyVaultStatus(await vault.status());
-      toast.success("PIN creado", movedText(r));
+      toast.success(words.created, movedText(r));
       onDone?.();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+    }, errorMessage);
   };
 
   return (
@@ -141,67 +109,56 @@ export function SetupPinForm({
       className="lock-form"
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        void create(pin, again);
+        create(next);
       }}
     >
-      <NewPinPair
-        pin={pin}
-        setPin={(v) => {
-          setPin(v);
+      <NewSecretFields
+        state={next}
+        onChange={(s) => {
+          setNext(s);
           setError(null);
         }}
-        again={again}
-        setAgain={(v) => {
-          setAgain(v);
-          setError(null);
-        }}
+        onReady={create}
         autoFocus={autoFocus}
-        onReady={(p, a) => void create(p, a)}
         disabled={busy}
       />
       <ForgetWarning />
       {error && <div className="lock-error">{error}</div>}
-      <div className="lock-actions">
-        {onCancel && (
-          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            {cancelLabel}
-          </button>
-        )}
-        <button type="submit" className="btn btn-primary" disabled={busy || !pin || !again}>
-          {busy ? <span className="spinner" /> : null} {busy ? "Creando…" : "Crear PIN"}
-        </button>
-      </div>
+      <Actions
+        busy={busy}
+        canSubmit={!!next.value && !!next.again}
+        label={`Crear ${words.noun}`}
+        busyLabel="Creando…"
+        cancelLabel={cancelLabel}
+        onCancel={onCancel}
+      />
     </form>
   );
 }
 
-/** Cambiar el PIN (vuelve a cifrar la bóveda). El actual puede ser de texto (bóvedas antiguas). */
+/** Cambiar el PIN o la contraseña, o pasar de uno a otro (vuelve a cifrar la bóveda). */
 export function ChangePinForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
-  const kind = useLock((s) => s.status?.pinKind ?? "pin6");
+  const kind = useCurrentKind();
+  const current = secretWords(kind);
   const [old, setOld] = useState("");
-  const [pin, setPin] = useState("");
-  const [again, setAgain] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [next, setNext] = useState<NewSecretValue>(() => emptyNewSecret(defaultNewKind(kind)));
+  const { busy, error, setError, run } = useAction();
 
-  const change = async (p: string, a: string) => {
-    if (busy) return;
-    const problem = !old ? "Escribe el PIN actual." : checkPair(p, a);
+  const change = (s: NewSecretValue) => {
+    const problem = !old ? `Escribe ${current.your} actual.` : checkNewPair(s.kind, s.value, s.again);
     if (problem) return setError(problem);
-    setBusy(true);
-    setError(null);
-    try {
-      await vault.changePin(old, p);
-      applyVaultStatus(await vault.status());
-      toast.success("PIN cambiado");
-      onDone();
-    } catch (err) {
-      setError(pinError(err));
-      setOld("");
-      vault.status().then(applyVaultStatus).catch(() => {});
-    } finally {
-      setBusy(false);
-    }
+    void run(
+      async () => {
+        await vault.changePin(old, s.value, s.kind);
+        applyVaultStatus(await vault.status());
+        toast.success(s.kind === kind ? current.changed : `Ahora se usa ${secretWords(s.kind).noun}`);
+        onDone();
+      },
+      (err) => {
+        setOld("");
+        return isApiError(err, "AuthFailed") ? current.wrong : errorMessage(err);
+      },
+    );
   };
 
   return (
@@ -209,57 +166,41 @@ export function ChangePinForm({ onDone, onCancel }: { onDone: () => void; onCanc
       className="lock-form"
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        void change(pin, again);
+        change(next);
       }}
     >
       <div className="field">
-        <span>PIN actual</span>
-        <PinField kind={kind} value={old} onChange={setOld} label="PIN actual" autoFocus disabled={busy} />
+        <span>{current.current}</span>
+        <PinField kind={kind} value={old} onChange={setOld} label={current.current} autoFocus disabled={busy} />
       </div>
-      <NewPinPair
-        pin={pin}
-        setPin={setPin}
-        again={again}
-        setAgain={setAgain}
-        onReady={(p, a) => void change(p, a)}
-        disabled={busy}
-      />
+      <NewSecretFields state={next} onChange={setNext} onReady={change} disabled={busy} />
       {error && <div className="lock-error">{error}</div>}
-      <div className="lock-actions">
-        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-          Cancelar
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={busy || !old || !pin || !again}>
-          {busy ? <span className="spinner" /> : null} Cambiar PIN
-        </button>
-      </div>
+      <Actions busy={busy} canSubmit={!!old && !!next.value && !!next.again} label="Cambiar" onCancel={onCancel} />
     </form>
   );
 }
 
-/** Quitar el PIN: las contraseñas vuelven al llavero del sistema. */
+/** Quitar la protección: las contraseñas vuelven al llavero del sistema. */
 export function DisablePinForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
-  const kind = useLock((s) => s.status?.pinKind ?? "pin6");
+  const kind = useCurrentKind();
+  const words = secretWords(kind);
   const [pin, setPin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, error, run } = useAction();
 
-  const disable = async (p: string) => {
-    if (busy || !p) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await vault.disable(p);
-      applyVaultStatus(await vault.status());
-      toast.success("PIN quitado", "Las contraseñas volvieron al llavero del sistema.");
-      onDone();
-    } catch (err) {
-      setError(pinError(err));
-      setPin("");
-      vault.status().then(applyVaultStatus).catch(() => {});
-    } finally {
-      setBusy(false);
-    }
+  const disable = (p: string) => {
+    if (!p) return;
+    void run(
+      async () => {
+        await vault.disable(p);
+        applyVaultStatus(await vault.status());
+        toast.success(words.removed, "Las contraseñas volvieron al llavero del sistema.");
+        onDone();
+      },
+      (err) => {
+        setPin("");
+        return isApiError(err, "AuthFailed") ? words.wrong : errorMessage(err);
+      },
+    );
   };
 
   return (
@@ -267,23 +208,16 @@ export function DisablePinForm({ onDone, onCancel }: { onDone: () => void; onCan
       className="lock-form"
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        void disable(pin);
+        disable(pin);
       }}
     >
       <p className="lock-text">Las contraseñas vuelven al llavero del sistema.</p>
       <div className="field">
-        <span>PIN actual</span>
-        <PinField kind={kind} value={pin} onChange={setPin} label="PIN actual" autoFocus disabled={busy} />
+        <span>{words.current}</span>
+        <PinField kind={kind} value={pin} onChange={setPin} label={words.current} autoFocus disabled={busy} />
       </div>
       {error && <div className="lock-error">{error}</div>}
-      <div className="lock-actions">
-        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-          Cancelar
-        </button>
-        <button type="submit" className="btn btn-danger" disabled={busy || !pin}>
-          {busy ? <span className="spinner" /> : null} Quitar PIN
-        </button>
-      </div>
+      <Actions busy={busy} canSubmit={!!pin} label={`Quitar ${words.noun}`} danger onCancel={onCancel} />
     </form>
   );
 }

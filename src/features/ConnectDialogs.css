@@ -283,7 +283,7 @@
   margin-top: -2px;
 }
 
-/* Ver una contraseña guardada: pide el PIN debajo del campo. */
+/* Ver una contraseña guardada: pide el PIN o la contraseña de SSHorus debajo del campo. */
 .cd-reveal {
   display: flex;
   flex-direction: column;
@@ -296,9 +296,6 @@
   background: var(--bg);
   color: var(--text-muted);
   font-size: var(--fs-sm);
-}
-.cd-reveal .lock-pin {
-  width: 100%;
 }
 
 /* Editor de servidor: host con sugerencias de los servidores guardados */

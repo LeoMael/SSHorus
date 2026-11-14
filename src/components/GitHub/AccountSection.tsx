@@ -82,7 +82,7 @@ function ConnectForm() {
         </form>
         <ErrorBox error={error} />
         <p className="gh-hint">
-          El token se guarda cifrado en la bóveda si tienes PIN, o en el llavero del sistema si no. Se borra con «Desconectar».
+          El token se guarda cifrado en la bóveda si tienes PIN o contraseña, o en el llavero del sistema si no. Se borra con «Desconectar».
         </p>
       </Card>
       {deviceFlow && <DeviceFlow />}

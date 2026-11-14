@@ -1,14 +1,17 @@
-// Candado de la barra de pestañas: bloquear, cambiar el PIN o ir a Ajustes → Seguridad.
-// Sin PIN: «Proteger con PIN».
+// Candado de la barra de pestañas: bloquear, cambiar el PIN o la contraseña, o ir a Ajustes → Seguridad.
+// Sin protección: «Proteger con PIN o contraseña».
 import { useCallback, useState } from "react";
 import { KeyRound, Lock, LockOpen, Settings, ShieldCheck } from "lucide-react";
 import { lockNow, openPinDialog, useLock } from "../../features/lock/lockStore";
+import { secretWords } from "../../features/lock/secretKind";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 import { openSettingsAt } from "../Settings/settingsNav";
 import { PopupMenu } from "./PopupMenu";
 
 export function LockButton() {
   const enabled = useLock((s) => !!s.status?.enabled);
+  const words = secretWords(useLock((s) => s.status?.pinKind));
+  const title = enabled ? "Bloqueo" : "Proteger con PIN o contraseña";
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const lockKeys = useShortcutText("app.lock");
   const close = useCallback(() => setMenu(null), []);
@@ -21,8 +24,8 @@ export function LockButton() {
     <>
       <button
         className={`icon-btn tabs-side-btn lock-btn${enabled ? " on" : ""}`}
-        title={enabled ? "PIN y bloqueo" : "Proteger con PIN"}
-        aria-label={enabled ? "PIN y bloqueo" : "Proteger con PIN"}
+        title={title}
+        aria-label={title}
         aria-haspopup="menu"
         aria-expanded={!!menu}
         onClick={(e) => {
@@ -41,12 +44,12 @@ export function LockButton() {
                 <span className="tabs-menu-host">{lockKeys}</span>
               </button>
               <button role="menuitem" onClick={run(() => openPinDialog("change"))}>
-                <KeyRound size={14} /> Cambiar PIN
+                <KeyRound size={14} /> Cambiar {words.noun}
               </button>
             </>
           ) : (
             <button role="menuitem" onClick={run(() => openPinDialog("setup"))}>
-              <ShieldCheck size={14} /> Proteger con PIN
+              <ShieldCheck size={14} /> Proteger con PIN o contraseña
             </button>
           )}
           <hr />

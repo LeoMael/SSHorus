@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use super::*;
 use crate::storage::secrets::{self, Keyring, MoveReport, SystemKeyring};
@@ -91,7 +92,7 @@ fn roundtrip_and_reopen() {
     assert_eq!(v.status(), status(false, false));
     assert!(v.get("a").is_none(), "sin bóveda se usa el llavero");
 
-    v.create(PIN, map(&[("srv-1", "clave ñ 1"), ("github-token", "ghp_x")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("srv-1", "clave ñ 1"), ("github-token", "ghp_x")]), FAST).unwrap();
     assert!(v.status().enabled && !v.status().locked);
     assert_eq!(get(&v, "srv-1").unwrap().as_deref(), Some("clave ñ 1"));
     assert_eq!(get(&v, "nada").unwrap(), None);
@@ -118,7 +119,7 @@ fn roundtrip_and_reopen() {
 #[test]
 fn wrong_pin_fails() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let v = dir.vault();
     let err = v.unlock("654321").unwrap_err();
     assert!(matches!(err, AppError::AuthFailed(_)), "{err:?}");
@@ -132,7 +133,7 @@ fn wrong_pin_fails() {
 fn locked_vault_refuses_everything() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     assert!(v.lock());
     assert!(!v.lock(), "bloquear dos veces no cambia nada");
     assert!(matches!(get(&v, "a"), Err(AppError::Locked)));
@@ -148,13 +149,13 @@ fn locked_vault_refuses_everything() {
 fn change_pin_reencrypts() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let before = fs::read_to_string(dir.vault_path()).unwrap();
 
-    assert!(matches!(v.change_pin("000000", "654321", FAST), Err(AppError::AuthFailed(_))));
-    assert!(matches!(v.change_pin(PIN, "12345", FAST), Err(AppError::Invalid(_))));
-    assert!(matches!(v.change_pin(PIN, "una frase larga", FAST), Err(AppError::Invalid(_))));
-    v.change_pin(PIN, "654321", FAST).unwrap();
+    assert!(matches!(v.change_pin("000000", "654321", PinKind::Pin6, FAST), Err(AppError::AuthFailed(_))));
+    assert!(matches!(v.change_pin(PIN, "12345", PinKind::Pin6, FAST), Err(AppError::Invalid(_))));
+    assert!(matches!(v.change_pin(PIN, "una frase larga", PinKind::Pin6, FAST), Err(AppError::Invalid(_))));
+    v.change_pin(PIN, "654321", PinKind::Pin6, FAST).unwrap();
     assert!(!v.status().locked, "sigue desbloqueada");
     assert_eq!(get(&v, "a").unwrap().as_deref(), Some("1"));
 
@@ -179,20 +180,20 @@ fn pin_rules() {
         assert!(matches!(check_new_pin(bad), Err(AppError::Invalid(_))), "«{bad}»");
     }
     let dir = TempDir::new();
-    assert!(matches!(dir.vault().create("123", BTreeMap::new(), FAST), Err(AppError::Invalid(_))));
-    assert!(matches!(dir.vault().create("abcdef", BTreeMap::new(), FAST), Err(AppError::Invalid(_))));
+    assert!(matches!(dir.vault().create("123", PinKind::Pin6, BTreeMap::new(), FAST), Err(AppError::Invalid(_))));
+    assert!(matches!(dir.vault().create("abcdef", PinKind::Pin6, BTreeMap::new(), FAST), Err(AppError::Invalid(_))));
     assert!(!dir.vault_path().exists());
     assert!(dir.1.key().is_none(), "ni siquiera se crea la llave del equipo");
     // El enlace con el llavero también lo comprueba.
     let kr = FakeKeyring::default();
-    assert!(matches!(secrets::enable_vault(&dir.vault(), &kr, &[], "frase", FAST), Err(AppError::Invalid(_))));
+    assert!(matches!(secrets::enable_vault(&dir.vault(), &kr, &[], "frase", PinKind::Pin6, FAST), Err(AppError::Invalid(_))));
 }
 
 #[test]
 fn new_vault_is_pin6_in_authenticated_header() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     assert_eq!(v.status().pin_kind, PinKind::Pin6);
     let env: Envelope = serde_json::from_str(&fs::read_to_string(dir.vault_path()).unwrap()).unwrap();
     assert_eq!(env.kind.as_deref(), Some("pin6"));
@@ -208,7 +209,7 @@ fn new_vault_is_pin6_in_authenticated_header() {
         |j| j["kind"] = "pin6/x".into(),
     ] {
         let dir = TempDir::new();
-        dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+        dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
         tamper(&dir, edit);
         let v = dir.vault();
         let r = v.unlock(PIN);
@@ -255,8 +256,8 @@ fn legacy_text_vault_still_opens() {
     assert_eq!(get(&v2, "srv-2").unwrap().as_deref(), Some("p2"));
 
     // Al cambiar el PIN, el nuevo es de 6 números (texto no vale) y la bóveda pasa a "pin6".
-    assert!(matches!(v2.change_pin(old, "otra frase", FAST), Err(AppError::Invalid(_))));
-    v2.change_pin(old, "246810", FAST).unwrap();
+    assert!(matches!(v2.change_pin(old, "otra frase", PinKind::Pin6, FAST), Err(AppError::Invalid(_))));
+    v2.change_pin(old, "246810", PinKind::Pin6, FAST).unwrap();
     assert_eq!(v2.status().pin_kind, PinKind::Pin6);
     let v3 = dir.vault();
     assert_eq!(v3.status().pin_kind, PinKind::Pin6);
@@ -280,7 +281,7 @@ fn legacy_text_vault_can_be_disabled_with_its_text() {
 fn check_pin_counts_as_attempt() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     v.check_pin(PIN).unwrap();
     assert!(!v.status().locked, "comprobar no bloquea ni desbloquea");
     for _ in 0..5 {
@@ -298,10 +299,10 @@ fn check_pin_counts_as_attempt() {
 fn create_twice_fails() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, BTreeMap::new(), FAST).unwrap();
-    assert!(v.create(PIN, BTreeMap::new(), FAST).is_err());
+    v.create(PIN, PinKind::Pin6, BTreeMap::new(), FAST).unwrap();
+    assert!(v.create(PIN, PinKind::Pin6, BTreeMap::new(), FAST).is_err());
     // Un archivo que ya existe tampoco se pisa.
-    assert!(dir.vault().create(PIN, BTreeMap::new(), FAST).is_err());
+    assert!(dir.vault().create(PIN, PinKind::Pin6, BTreeMap::new(), FAST).is_err());
 }
 
 // ───────── Archivo dañado o manipulado ─────────
@@ -315,7 +316,7 @@ fn tamper(dir: &TempDir, f: impl FnOnce(&mut serde_json::Value)) {
 #[test]
 fn damaged_file_fails_cleanly() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
 
     fs::write(dir.vault_path(), b"{ esto no es json").unwrap();
     let v = dir.vault();
@@ -345,7 +346,7 @@ fn tampered_header_or_data_fails() {
     ];
     for (name, edit) in cases {
         let dir = TempDir::new();
-        dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+        dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
         tamper(&dir, *edit);
         let v = dir.vault();
         let r = v.unlock(PIN);
@@ -372,7 +373,7 @@ fn growing_delay_after_failures() {
     assert_eq!(delay_after(500), Duration::from_secs(900));
 
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let v = dir.vault();
     for _ in 0..5 {
         assert!(matches!(v.unlock("999999"), Err(AppError::AuthFailed(_))));
@@ -400,7 +401,7 @@ fn growing_delay_after_failures() {
 #[test]
 fn success_resets_failures() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let v = dir.vault();
     for _ in 0..4 {
         let _ = v.unlock("999999");
@@ -420,7 +421,7 @@ fn success_resets_failures() {
 #[test]
 fn device_key_is_created_and_required() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let key = dir.1.key().expect("se guarda una llave del equipo");
     assert_eq!(key.len(), 32);
 
@@ -445,10 +446,10 @@ fn device_key_is_created_and_required() {
 #[test]
 fn copied_file_is_useless_on_another_device() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     // «Otro PC»: mismo archivo, llavero distinto (con su propia bóveda creada antes).
     let other = TempDir::new();
-    other.vault().create("135790", BTreeMap::new(), FAST).unwrap();
+    other.vault().create("135790", PinKind::Pin6, BTreeMap::new(), FAST).unwrap();
     fs::copy(dir.vault_path(), other.vault_path()).unwrap();
     assert!(matches!(other.vault().unlock(PIN), Err(AppError::AuthFailed(_))));
 }
@@ -457,12 +458,12 @@ fn copied_file_is_useless_on_another_device() {
 fn reset_and_disable_delete_device_key() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, BTreeMap::new(), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, BTreeMap::new(), FAST).unwrap();
     assert!(dir.1.key().is_some());
     v.remove().unwrap();
     assert!(dir.1.key().is_none(), "«Olvidé mi PIN» la borra");
 
-    v.create(PIN, map(&[("s1", "p1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("s1", "p1")]), FAST).unwrap();
     let kr = FakeKeyring::default();
     secrets::disable_vault(&v, &kr, PIN).unwrap();
     assert!(dir.1.key().is_none(), "desactivar la borra");
@@ -472,8 +473,8 @@ fn reset_and_disable_delete_device_key() {
 fn change_pin_keeps_device_binding() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
-    v.change_pin(PIN, "654321", FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
+    v.change_pin(PIN, "654321", PinKind::Pin6, FAST).unwrap();
     dir.1.put(Some(vec![1u8; 32]));
     assert!(matches!(dir.vault().unlock("654321"), Err(AppError::AuthFailed(_))));
 }
@@ -483,7 +484,7 @@ fn change_pin_keeps_device_binding() {
 #[test]
 fn reset_removes_vault_and_falls_back_to_keyring() {
     let dir = TempDir::new();
-    dir.vault().create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    dir.vault().create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let v = dir.vault();
     assert!(v.status().locked);
     v.remove().unwrap();
@@ -492,7 +493,7 @@ fn reset_removes_vault_and_falls_back_to_keyring() {
     assert!(v.get("a").is_none(), "vuelve al llavero");
     assert!(v.set("a", "x").is_none());
     // Se puede crear otra con un PIN nuevo; la anterior se perdió.
-    v.create("135790", BTreeMap::new(), FAST).unwrap();
+    v.create("135790", PinKind::Pin6, BTreeMap::new(), FAST).unwrap();
     assert_eq!(get(&v, "a").unwrap(), None);
     // Borrar sin archivo no es error.
     v.remove().unwrap();
@@ -507,11 +508,11 @@ fn file_is_private() {
     use std::os::unix::fs::PermissionsExt;
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("a", "1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("a", "1")]), FAST).unwrap();
     let mode = fs::metadata(dir.vault_path()).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode, 0o600);
     v.set("b", "2").unwrap().unwrap();
-    v.change_pin(PIN, "999999", FAST).unwrap();
+    v.change_pin(PIN, "999999", PinKind::Pin6, FAST).unwrap();
     let mode = fs::metadata(dir.vault_path()).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode, 0o600);
 }
@@ -580,7 +581,7 @@ fn enable_moves_secrets_from_keyring() {
         ("ai-token", "sk-ia"),
         ("otra-app", "x"),
     ]));
-    let r = secrets::enable_vault(&v, &kr, &ids(&["s1", "s2", "s3"]), PIN, FAST).unwrap();
+    let r = secrets::enable_vault(&v, &kr, &ids(&["s1", "s2", "s3"]), PIN, PinKind::Pin6, FAST).unwrap();
     assert_eq!(r, MoveReport { moved: 7, left_in_keyring: 0 });
     // En el llavero solo queda lo que no es de un servidor conocido.
     assert_eq!(
@@ -605,7 +606,7 @@ fn enable_aborts_without_losing_anything_if_keyring_fails() {
     let v = dir.vault();
     let kr = FakeKeyring { fail_get: true, ..Default::default() };
     kr.data.borrow_mut().insert("s1".into(), "p1".into());
-    assert!(secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, FAST).is_err());
+    assert!(secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, PinKind::Pin6, FAST).is_err());
     assert!(!dir.vault_path().exists(), "no se crea la bóveda");
     assert!(!v.is_enabled());
     assert_eq!(kr.data.borrow().get("s1").map(String::as_str), Some("p1"));
@@ -617,7 +618,7 @@ fn enable_keeps_copies_if_keyring_cannot_delete() {
     let v = dir.vault();
     let kr = FakeKeyring { fail_delete: true, ..Default::default() };
     kr.data.borrow_mut().insert("s1".into(), "p1".into());
-    let r = secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, FAST).unwrap();
+    let r = secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, PinKind::Pin6, FAST).unwrap();
     assert_eq!(r, MoveReport { moved: 1, left_in_keyring: 1 });
     assert_eq!(get(&v, "s1").unwrap().as_deref(), Some("p1"));
 }
@@ -633,7 +634,7 @@ fn disable_returns_secrets_to_keyring() {
         ("mcp-token", "mcp"),
         ("ai-token", "sk-ia"),
     ]);
-    v.create(PIN, all.clone(), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, all.clone(), FAST).unwrap();
     v.lock();
     let kr = FakeKeyring::default();
 
@@ -653,7 +654,7 @@ fn disable_returns_secrets_to_keyring() {
 fn disable_keeps_vault_if_keyring_fails() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("s1", "p1")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("s1", "p1")]), FAST).unwrap();
     let kr = FakeKeyring { fail_set: true, ..Default::default() };
     assert!(matches!(secrets::disable_vault(&v, &kr, PIN), Err(AppError::Keyring(_))));
     assert!(dir.vault_path().exists());
@@ -667,7 +668,7 @@ fn forgot_pin_drops_sudo_secrets_too() {
     let v = dir.vault();
     let kr = FakeKeyring::default();
     kr.data.borrow_mut().extend(map(&[("s1", "p1"), ("s1:sudo", "ps1")]));
-    secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, FAST).unwrap();
+    secrets::enable_vault(&v, &kr, &ids(&["s1"]), PIN, PinKind::Pin6, FAST).unwrap();
     assert!(kr.data.borrow().is_empty());
     v.lock();
     v.remove().unwrap();
@@ -709,7 +710,7 @@ fn delete_and_copy_server_secrets_in_keyring() {
 fn delete_and_copy_server_secrets_in_vault() {
     let dir = TempDir::new();
     let v = dir.vault();
-    v.create(PIN, map(&[("s1", "p1"), ("s1:sudo", "ps1"), ("s2:sudo", "ps2")]), FAST).unwrap();
+    v.create(PIN, PinKind::Pin6, map(&[("s1", "p1"), ("s1:sudo", "ps1"), ("s2:sudo", "ps2")]), FAST).unwrap();
     let kr = FakeKeyring::default();
 
     // Solo sudo guardado (servidor con llave): se copia igual.
@@ -752,7 +753,7 @@ fn migration_with_real_keyring() {
     let dir = TempDir::new();
     // También la llave del equipo en el llavero real.
     let v = Vault::new(Some(dir.vault_path()), Box::new(secrets::KeyringDeviceKey("sshorus-test")));
-    let r = secrets::enable_vault(&v, &kr, &[a.clone(), b.clone()], PIN, FAST).unwrap();
+    let r = secrets::enable_vault(&v, &kr, &[a.clone(), b.clone()], PIN, PinKind::Pin6, FAST).unwrap();
     assert!(kr.get(DEVICE_KEY_USER).unwrap().is_some(), "llave del equipo en el llavero");
     v.lock();
     v.unlock(PIN).unwrap();
@@ -773,3 +774,6 @@ fn migration_with_real_keyring() {
         kr.delete(u).unwrap();
     }
 }
+
+#[path = "vault_password_tests.rs"]
+mod password;

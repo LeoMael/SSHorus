@@ -45,8 +45,8 @@ pub enum AppError {
     Invalid(String),
     #[error("Cancelado")]
     Canceled,
-    /// La bóveda de contraseñas está bloqueada: hay que escribir el PIN.
-    #[error("SSHorus está bloqueado: escribe tu PIN para usar las contraseñas guardadas")]
+    /// La bóveda de contraseñas está bloqueada: hay que escribir el PIN o la contraseña.
+    #[error("SSHorus está bloqueado: desbloquéalo para usar las contraseñas guardadas")]
     Locked,
 }
 

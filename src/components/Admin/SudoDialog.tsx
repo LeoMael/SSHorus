@@ -190,7 +190,7 @@ export function SudoDialog({
                   aria-invalid={!!error}
                 />
               </label>
-              <label className="checkbox" title="Se guarda cifrada con tu PIN (o en el llavero si no tienes PIN).">
+              <label className="checkbox" title="Se guarda cifrada con tu PIN o contraseña de SSHorus (o en el llavero si no tienes bloqueo).">
                 <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} />
                 Guardar para este servidor
               </label>

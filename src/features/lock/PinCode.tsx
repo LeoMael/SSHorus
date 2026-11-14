@@ -1,15 +1,15 @@
 // Entrada de PIN: 6 casillas con puntos. Por debajo es un solo campo numérico (inputMode="numeric"),
 // así avanzar, borrar y pegar el PIN entero funcionan solos. `PinField` elige entre esto y un campo
-// de texto normal para las bóvedas antiguas (PIN o contraseña libre).
+// de contraseña (`PasswordInput`).
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type RefObject } from "react";
-import { PIN_LENGTH, type PinKind } from "../../api/vault";
+import { PIN_LENGTH } from "../../api/vault";
 
 export interface PinCodeHandle {
   focus: () => void;
 }
 
-/** Con autoFocus, vuelve a poner el foco al reactivarse (tras comprobar un PIN incorrecto o esperar). */
-function useRefocus(ref: RefObject<HTMLInputElement | null>, autoFocus: boolean | undefined, disabled: boolean | undefined) {
+/** Con autoFocus, vuelve a poner el foco al reactivarse (tras comprobar un PIN o contraseña incorrectos, o esperar). */
+export function useRefocus(ref: RefObject<HTMLInputElement | null>, autoFocus: boolean | undefined, disabled: boolean | undefined) {
   const was = useRef(disabled);
   useEffect(() => {
     if (was.current && !disabled && autoFocus) ref.current?.focus();
@@ -98,64 +98,3 @@ export const PinCode = forwardRef<PinCodeHandle, PinCodeProps>(function PinCode(
     </div>
   );
 });
-
-/** PIN de 6 números o, en bóvedas antiguas ("text"), un campo de texto normal. */
-export function PinField({
-  kind,
-  value,
-  onChange,
-  onSubmit,
-  label,
-  autoFocus,
-  disabled,
-  invalid,
-}: {
-  kind: PinKind;
-  value: string;
-  onChange: (v: string) => void;
-  /** Al completar los 6 números, o Enter en el campo de texto. */
-  onSubmit?: (v: string) => void;
-  label: string;
-  autoFocus?: boolean;
-  disabled?: boolean;
-  invalid?: boolean;
-}) {
-  const text = useRef<HTMLInputElement>(null);
-  useRefocus(text, autoFocus && kind !== "pin6", disabled);
-  if (kind === "pin6") {
-    return (
-      <PinCode
-        value={value}
-        onChange={onChange}
-        onComplete={onSubmit}
-        onEnter={() => onSubmit?.(value)}
-        label={label}
-        autoFocus={autoFocus}
-        disabled={disabled}
-        invalid={invalid}
-      />
-    );
-  }
-  return (
-    <input
-      ref={text}
-      className="input lock-pin"
-      type="password"
-      autoComplete="off"
-      spellCheck={false}
-      aria-label={label}
-      placeholder="PIN o contraseña"
-      autoFocus={autoFocus}
-      disabled={disabled}
-      aria-invalid={invalid || undefined}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (value) onSubmit?.(value);
-      }}
-    />
-  );
-}

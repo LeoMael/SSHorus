@@ -2,7 +2,7 @@
 //! contraseña de sudo (usuario = "<id>:sudo") y el token de GitHub (usuario "github-token").
 //!
 //! Dónde se guardan:
-//! - Con la bóveda activa (`storage::vault`): en `vault.json`, cifrados con el PIN. Si está
+//! - Con la bóveda activa (`storage::vault`): en `vault.json`, cifrados con el PIN o la contraseña. Si está
 //!   bloqueada, todas las funciones devuelven `AppError::Locked`.
 //! - Sin bóveda: en el llavero del sistema (servicio "sshorus"), como siempre.
 //!
@@ -21,7 +21,7 @@ use base64ct::{Base64, Encoding};
 use zeroize::Zeroizing;
 
 use super::cipher::KdfParams;
-use super::vault::{DeviceKeyStore, Vault, DEVICE_KEY_USER};
+use super::vault::{DeviceKeyStore, PinKind, Vault, DEVICE_KEY_USER};
 use crate::error::{AppError, AppResult};
 
 /// Servicio usado en el llavero real.
@@ -244,9 +244,10 @@ pub(crate) fn enable_vault(
     kr: &dyn Keyring,
     ids: &[String],
     pin: &str,
+    kind: PinKind,
     params: KdfParams,
 ) -> AppResult<MoveReport> {
-    super::vault::check_new_pin(pin)?;
+    super::vault::check_new_secret(pin, kind)?;
     let users: BTreeSet<String> = ids
         .iter()
         .map(String::as_str)
@@ -271,7 +272,7 @@ pub(crate) fn enable_vault(
         }
     }
     let ids: Vec<String> = found.keys().cloned().collect();
-    vault.create(pin, found, params)?;
+    vault.create(pin, kind, found, params)?;
     let mut report = MoveReport {
         moved: ids.len() as u32,
         left_in_keyring: 0,
@@ -285,7 +286,7 @@ pub(crate) fn enable_vault(
     Ok(report)
 }
 
-/// Desactiva la bóveda: comprueba el PIN, devuelve los secretos al llavero, comprueba que están y
+/// Desactiva la bóveda: comprueba el PIN o la contraseña, devuelve los secretos al llavero, comprueba que están y
 /// solo entonces borra `vault.json`. Si algo falla, la bóveda sigue igual.
 pub(crate) fn disable_vault(vault: &Vault, kr: &dyn Keyring, pin: &str) -> AppResult<MoveReport> {
     let secrets = vault.export_with_pin(pin)?;
