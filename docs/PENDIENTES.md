@@ -48,8 +48,9 @@ versión se publicará cuando esto esté listo (propuesta: **1.0.0-beta.1** para
 
 **Estado (14/11/2026):** unido a `main` (sin publicar) todo lo de esta ronda: ajustes pequeños, «Añadir a
 SSHorus…», arreglo de sudo y avisos en el formulario, agy/OpenCode, llaves SSH, PIN o contraseña. También los **atajos** (Ctrl+W cierra lo interno,
-Ctrl+Shift+W el servidor, Alt+AvPág/RePág entre secciones). Después: probar todo en la
-app y publicar 1.0.0-beta.1.
+Ctrl+Shift+W el servidor, Alt+AvPág/RePág entre secciones). Versión ya puesta en **1.0.0-beta.1** (package.json, tauri.conf.json, Cargo.toml).
+Ojo: el instalador `.msi` de Windows no admite «-beta», así que `bundle.windows.wix.version` es `0.6.0.1`;
+**quitarlo al pasar a 1.0.0**. Después: probar todo en la app y publicar (etiqueta `v1.0.0-beta.1`).
 
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
 Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
