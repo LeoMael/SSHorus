@@ -1,11 +1,16 @@
-// «Añadir a SSHorus»: servidores creados y prueba de su conexión.
+// «Añadir a SSHorus»: servidores creados y prueba de su conexión (empieza sola), con el resultado por fila.
 import { useEffect } from "react";
 import { CheckCircle2, PlugZap, XCircle } from "lucide-react";
 import type { ServerProfile } from "../../api/types";
 import { useConnectionTests, type TestState } from "./useImportUsers";
 
+function authText(s: ServerProfile): string {
+  if (s.auth === "password") return "Contraseña";
+  return s.auth === "key" ? (s.keyPath ?? "") : "Agente SSH";
+}
+
 function TestCell({ t }: { t: TestState | undefined }) {
-  if (!t || t.status === "idle") return <span className="faint">Sin probar</span>;
+  if (!t || t.status === "idle") return <span className="faint">En espera…</span>;
   if (t.status === "running") return <span className="spinner adm-spinner-btn" aria-label="Probando" />;
   return (
     <span className={t.status === "ok" ? "iu-test-ok" : "iu-test-bad"} role="status">
@@ -17,18 +22,16 @@ function TestCell({ t }: { t: TestState | undefined }) {
 export function ImportUsersDone({
   saved,
   failed,
-  autoTest,
   onClose,
 }: {
   saved: ServerProfile[];
   failed: number;
-  autoTest: boolean;
   onClose: () => void;
 }) {
   const { tests, runAll, running } = useConnectionTests(saved);
 
   useEffect(() => {
-    if (autoTest && saved.length) void runAll();
+    if (saved.length) void runAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -50,8 +53,15 @@ export function ImportUsersDone({
           <ul className="iu-done" aria-label="Servidores añadidos">
             {saved.map((s) => (
               <li key={s.id} className="iu-done-row">
-                <span className="adm-name">{s.name}</span>
-                <span className="faint mono">{s.auth === "password" ? "contraseña" : s.auth === "key" ? s.keyPath : "agente SSH"}</span>
+                <span className="iu-done-name">
+                  <span className="adm-name">{s.name}</span>
+                  <span className="faint mono">
+                    {s.username}@{s.host}
+                  </span>
+                </span>
+                <span className="faint mono" title={authText(s)}>
+                  {authText(s)}
+                </span>
                 <TestCell t={tests[s.id]} />
               </li>
             ))}
@@ -60,7 +70,7 @@ export function ImportUsersDone({
       </div>
       <div className="modal-footer">
         <button className="btn adm-footer-left" onClick={() => void runAll()} disabled={running || !saved.length}>
-          <PlugZap size={13} /> Probar conexiones
+          <PlugZap size={13} /> Probar de nuevo
         </button>
         <button className="btn btn-primary" onClick={onClose} autoFocus>
           Cerrar

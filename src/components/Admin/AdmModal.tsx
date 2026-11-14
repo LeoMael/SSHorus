@@ -10,10 +10,13 @@ interface Props {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  width?: number;
+  /** Píxeles o un valor CSS («min(960px, 94vw)»). */
+  width?: number | string;
+  /** Clase extra del recuadro (p. ej. para fijar su alto). */
+  className?: string;
 }
 
-export function AdmModal({ title, onClose, children, width = 520 }: Props) {
+export function AdmModal({ title, onClose, children, width = 520, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -44,7 +47,7 @@ export function AdmModal({ title, onClose, children, width = 520 }: Props) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} className="modal adm-modal" style={{ width }} role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={ref} className={className ? `modal adm-modal ${className}` : "modal adm-modal"} style={{ width }} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-header">
           <h2>{title}</h2>
           <button className="icon-btn adm-modal-x" onClick={onClose} aria-label="Cerrar">

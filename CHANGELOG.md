@@ -111,7 +111,9 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - **Usuarios → «Añadir a SSHorus…»**: eliges con casillas qué usuarios del servidor guardar como servidores
   (ves si tienen llaves, contraseña o sudo, y si ya estaban). Con llave SSH (SSHorus puede instalar tu llave en
   su cuenta) o con contraseña, y prueba la conexión. Elige sola la llave que el usuario ya tiene autorizada
-  (nunca una de GitHub) y nombra cada servidor como el usuario (editable).
+  (nunca una de GitHub) y nombra cada servidor como el usuario (editable). Por cada usuario eliges cómo entra:
+  llave ya autorizada, **llave nueva creada e instalada** (por defecto si no tiene), una llave tuya o contraseña;
+  al terminar prueba la conexión de cada uno.
 - **Usuarios: «Solo llave»** cuando la contraseña está desactivada pero tiene llaves; «Bloqueada» solo si de
   verdad no puede entrar, con aviso si su sudo pide una contraseña que no tiene.
 - **Terminal local: Antigravity (agy) y OpenCode**, además de Claude Code y Codex. OpenCode recibe el contexto

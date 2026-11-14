@@ -1,6 +1,6 @@
 // Lista con casillas de los usuarios del servidor para «Añadir a SSHorus».
 // Usuarios normales arriba, root aparte (sin marcar) y las cuentas del sistema solo si se piden (sin casilla).
-// Debajo de cada usuario elegido van sus opciones (nombre y llave), que pinta `renderOptions`.
+// Debajo de cada usuario elegido van sus opciones (nombre y cómo entra), que pinta `renderOptions`.
 import type { ReactNode } from "react";
 import type { ImportCandidate } from "../../features/admin";
 import { AccountTag } from "./AccountTag";
@@ -21,7 +21,7 @@ function Row({ c, selected, onToggle, renderOptions }: RowProps & { c: ImportCan
   const disabled = c.blocked !== null;
   const checked = selected.has(c.name);
   return (
-    <>
+    <div className={`iu-item${checked && !disabled ? " iu-item-on" : ""}`}>
       <label className={`iu-row${disabled ? " iu-row-off" : ""}`} title={c.blocked ?? undefined}>
         <input type="checkbox" checked={checked} disabled={disabled} onChange={() => onToggle(c.name)} aria-label={`Añadir ${c.name}`} />
         <span className="iu-user">
@@ -36,7 +36,7 @@ function Row({ c, selected, onToggle, renderOptions }: RowProps & { c: ImportCan
         <span className="iu-note">{c.existing ? <span className="adm-tag adm-tag-yellow">Ya en SSHorus</span> : c.blocked && <span className="faint">{c.blocked}</span>}</span>
       </label>
       {checked && !disabled && renderOptions(c)}
-    </>
+    </div>
   );
 }
 
@@ -61,8 +61,8 @@ export function ImportUsersList({ candidates, showSystem, ...rest }: RowProps & 
       <div className="iu-row iu-head" aria-hidden>
         <span />
         <span>Usuario</span>
-        <span>Llaves</span>
-        <span>Estado</span>
+        <span>Llaves autorizadas</span>
+        <span>Cuenta</span>
         <span>Sudo</span>
         <span />
       </div>
