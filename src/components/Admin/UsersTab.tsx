@@ -1,7 +1,7 @@
 // Sub-pestaña «Usuarios»: tabla, filtros y acciones (crear, editar, llaves, bloquear, eliminar).
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
 import { Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
-import { daysToDate, deleteUserPlan, lockUserPlan, type UserRow } from "../../features/admin";
+import { accountState, deleteUserPlan, lockUserPlan, todayDays, type AccountState, type UserRow } from "../../features/admin";
 import { protectedReason, useAdmin } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
@@ -10,6 +10,7 @@ import { UserDialog } from "./UserDialog";
 import { KeysDialog } from "./KeysDialog";
 import { KeyUserWizard } from "./KeyUserWizard";
 import { ImportUsersDialog } from "./ImportUsersDialog";
+import { AccountTag, accountTitle } from "./AccountTag";
 
 type Dialog =
   | { kind: "create" }
@@ -19,15 +20,6 @@ type Dialog =
   | { kind: "keys"; user: UserRow }
   | { kind: "lock"; user: UserRow; lock: boolean }
   | { kind: "delete"; user: UserRow };
-
-function lockedCell(u: UserRow) {
-  if (u.locked === null) return <span className="faint">—</span>;
-  if (u.locked) return <span className="adm-tag adm-tag-red">Bloqueado</span>;
-  if (u.shadow?.status === "NP") return <span className="adm-tag adm-tag-yellow">Sin contraseña</span>;
-  if (u.shadow?.status === "NL") return <span className="faint">Sin acceso</span>;
-  if (u.shadow?.lastChange === 0) return <span className="adm-tag adm-tag-yellow">Cambiar clave</span>;
-  return <span className="adm-tag adm-tag-green">Activo</span>;
-}
 
 export function UsersTab() {
   const { users, readOnly, me, env } = useAdmin();
@@ -52,7 +44,12 @@ export function UsersTab() {
       .sort((a, b) => (a.uid === 0 ? -1 : b.uid === 0 ? 1 : a.uid - b.uid));
   }, [users, query, showSystem]);
 
+  const states = useMemo(() => {
+    const today = todayDays();
+    return new Map<string, AccountState>(users.map((u) => [u.name, accountState(u, today)]));
+  }, [users]);
   const sel = rows.find((u) => u.name === selected) ?? null;
+  const selWarning = sel ? states.get(sel.name)?.sudoWarning : null;
   const hiddenSystem = users.filter((u) => u.isSystem).length;
 
   const columns: Column<UserRow>[] = useMemo(
@@ -84,9 +81,14 @@ export function UsersTab() {
         key: "state",
         label: "Estado",
         width: "104px",
-        render: lockedCell,
-        title: (u) =>
-          u.shadow?.expireDays != null ? `La cuenta caduca el ${daysToDate(u.shadow.expireDays)}` : u.locked === null ? "Hace falta root o sudo para saberlo" : "",
+        render: (u) => {
+          const st = states.get(u.name);
+          return st ? <AccountTag state={st} /> : null;
+        },
+        title: (u) => {
+          const st = states.get(u.name);
+          return st ? accountTitle(st) : "";
+        },
       },
       {
         key: "sudo",
@@ -96,7 +98,7 @@ export function UsersTab() {
         title: (u) => (u.isAdmin ? (u.uid === 0 ? "root" : "Está en wheel/sudo/admin") : ""),
       },
     ],
-    [me],
+    [me, states],
   );
 
   const actions = useCallback(
@@ -201,6 +203,11 @@ export function UsersTab() {
         </button>
       </div>
 
+      {sel && selWarning && (
+        <div className="adm-note adm-note-warn">
+          «{sel.name}» entra solo con llave: {selWarning}.
+        </div>
+      )}
       <VirtualTable
         label="Usuarios"
         columns={columns}
@@ -216,7 +223,7 @@ export function UsersTab() {
             setDialog({ kind: "delete", user: u });
           }
         }}
-        rowClass={(u) => (u.locked ? "adm-row-muted" : "")}
+        rowClass={(u) => (states.get(u.name)?.kind === "locked" ? "adm-row-muted" : "")}
         placeholder={<span>{query ? "Ningún usuario coincide con la búsqueda" : "No hay usuarios que mostrar"}</span>}
       />
       <div className="adm-statusbar">

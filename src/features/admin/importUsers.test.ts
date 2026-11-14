@@ -2,18 +2,8 @@
 // Ejecutar: npx rolldown src/features/admin/importUsers.test.ts -p node -f esm -o /tmp/iu.mjs && node /tmp/iu.mjs
 import type { ServerProfile } from "../../api/types";
 import { buildUserRows, parseRead } from "./parse";
-import {
-  buildCandidates,
-  findExistingServer,
-  findLocalPublicKey,
-  importedProfile,
-  installKeyPlan,
-  isLoginShell,
-  namesToRead,
-  parseUserAccess,
-  passwordState,
-  userAccessScript,
-} from "./importUsers";
+import { isLoginShell } from "./accounts";
+import { buildCandidates, findExistingServer, importedProfile, installKeysPlan, namesToRead, parseUserAccess, userAccessScript } from "./importUsers";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
@@ -40,27 +30,39 @@ ok(!isLoginShell("/bin/false"), "false no");
 ok(!isLoginShell("/usr/bin/git-shell"), "git-shell no");
 ok(!isLoginShell(""), "vacío no");
 
-// ── Contraseña (estado de /etc/shadow, sin hashes) ──
-eq(["P", "L", "NP", "NL", null].map((s) => passwordState(s as never)), ["active", "locked", "empty", "none", "unknown"], "estados");
-
 // ── Script: nombres citados, nunca saca hashes ──
 const script = userAccessScript(["ana", "o'brien"]);
 ok(script.includes(`for u in 'ana' 'o'\\''brien'; do`), "nombres citados");
-ok(script.includes("@@shadow") && script.trimEnd().endsWith("echo @@end"), "incluye shadow y termina en @@end");
+ok(["@@akeys", "@@keys", "@@shadow"].every((x) => script.includes(x)) && script.trimEnd().endsWith("echo @@end"), "secciones y termina en @@end");
 ok(!/print \$2/.test(script), "no imprime el campo del hash");
 ok(userAccessScript([]).includes("for u in ; do"), "lista vacía válida");
 
 // ── Parseo ──
-const out = ["@@access", "ana:2:1", "beto:0:0", "caro:?:-", "roto", "@@shadow", "ana:P:19000::", "beto:L:19000::", "caro:NL:19000::", "@@end"].join("\n");
+const out = [
+  "@@akeys",
+  "ana ssh-ed25519 AAAAana",
+  "ana ssh-rsa AAAArsa",
+  "roto",
+  "@@keys",
+  "ana:2:1",
+  "beto:0:0",
+  "caro:?:-",
+  "@@shadow",
+  "ana:P:19000::",
+  "beto:L:19000::",
+  "caro:NL:19000::",
+  "@@end",
+].join("\n");
 const acc = parseUserAccess(out);
-eq(acc.access.get("ana"), { keys: 2, sudo: true }, "ana");
-eq(acc.access.get("beto"), { keys: 0, sudo: false }, "beto");
-eq(acc.access.get("caro"), { keys: null, sudo: null }, "caro sin saber");
-eq(acc.access.has("roto"), false, "línea rota ignorada");
+eq(acc.authorized.get("ana"), ["ssh-ed25519 AAAAana", "ssh-rsa AAAArsa"], "llaves autorizadas de ana");
+eq(acc.authorized.has("roto"), false, "línea rota ignorada");
+eq([acc.shadow.get("ana")?.keys, acc.shadow.get("ana")?.sudo], [2, "password"], "ana: llaves y sudo");
+eq([acc.shadow.get("beto")?.keys, acc.shadow.get("beto")?.sudo], [0, "none"], "beto");
+eq([acc.shadow.get("caro")?.keys, acc.shadow.get("caro")?.sudo], [null, null], "caro sin saber");
 eq(acc.shadow.get("beto")?.status, "L", "shadow");
 let threw = false;
 try {
-  parseUserAccess("@@access\nana:1:1");
+  parseUserAccess("@@akeys\nana ssh-ed25519 AAAA");
 } catch {
   threw = true;
 }
@@ -88,7 +90,7 @@ const read = parseRead(
 const users = buildUserRows(read, null);
 eq(namesToRead(users), ["root", "test", "ana", "beto", "caro"], "lee root y los que pueden entrar");
 const servers = [server("s1", "Web.example.com", "test"), server("s2", "web.example.com", "ana", 2222)];
-const c = buildCandidates({ users, read: acc, servers, host: "web.example.com ", port: 22 });
+const c = buildCandidates({ users, read: acc, servers, host: "web.example.com ", port: 22, today: 19500 });
 const by = (n: string) => c.find((x) => x.name === n)!;
 eq(c[0].name, "root", "root primero");
 eq(by("root").kind, "root", "root aparte");
@@ -99,12 +101,15 @@ ok(by("daemon").blocked !== null && !by("daemon").suggested, "sistema no se elig
 eq(by("nobody").kind, "system", "nobody del sistema");
 ok(by("test").existing?.id === "s1" && by("test").blocked?.includes("Ya está en SSHorus"), "test ya guardado (host sin mayúsculas)");
 eq(by("ana").existing, null, "ana en otro puerto: no cuenta");
-eq([by("ana").suggested, by("ana").keys, by("ana").password, by("ana").sudo], [true, 2, "active", true], "ana marcada");
+eq([by("ana").suggested, by("ana").keys, by("ana").account.kind, by("ana").sudo], [true, 2, "active", true], "ana marcada");
+eq(by("ana").authorized, ["ssh-ed25519 AAAAana", "ssh-rsa AAAArsa"], "ana: llaves para elegir la suya");
+eq(by("beto").authorized, [], "beto: leído, sin llaves");
+eq(by("caro").authorized, null, "caro: no se sabe");
 eq(by("ana").fullName, "Ana Pérez", "nombre completo");
-eq([by("beto").suggested, by("beto").password], [false, "locked"], "beto: bloqueado y sin llaves");
+eq([by("beto").suggested, by("beto").account.kind], [false, "locked"], "beto: bloqueado y sin llaves");
 eq([by("caro").suggested, by("caro").sudo], [true, true], "caro: no se sabe, se marca; sudo por grupo");
 ok(by("sftp").blocked?.startsWith("No puede abrir sesión") && !by("sftp").suggested, "nologin no se elige");
-const noRead = buildCandidates({ users, read: null, servers: [], host: "x", port: 22 });
+const noRead = buildCandidates({ users, read: null, servers: [], host: "x", port: 22, today: 19500 });
 eq(noRead.find((x) => x.name === "beto")!.suggested, true, "sin lectura: se marcan los normales");
 
 // ── Servidor ya guardado ──
@@ -113,29 +118,22 @@ eq(findExistingServer([server("a", "h", "u")], "h", 22, "U"), null, "usuario dis
 
 // ── Perfil nuevo ──
 const base = server("base", "web.example.com", "test", 2200);
-const pk = importedProfile(base, "ana", { kind: "key", keyPath: " ~/.ssh/id_ed25519 " });
+const pk = importedProfile(base, "ana", " Ana ", { kind: "key", keyPath: " ~/.ssh/id_ed25519 " });
 eq(
   [pk.id, pk.name, pk.host, pk.port, pk.username, pk.auth, pk.keyPath, pk.defaultPath, pk.sudoMode, pk.color, pk.tmux],
-  ["", "base (ana)", "web.example.com", 2200, "ana", "key", "~/.ssh/id_ed25519", null, "ask", "#f00", "auto"],
+  ["", "Ana", "web.example.com", 2200, "ana", "key", "~/.ssh/id_ed25519", null, "ask", "#f00", "auto"],
   "perfil con llave",
 );
-eq([importedProfile(base, "ana", { kind: "key", keyPath: "" }).auth, importedProfile(base, "ana", { kind: "key", keyPath: "" }).keyPath], ["agent", null], "llave vacía = agente");
-const pp = importedProfile({ ...base, auth: "key", keyPath: "/k" }, "beto", { kind: "password" });
+const pa = importedProfile(base, "ana", "", { kind: "key", keyPath: "" });
+eq([pa.auth, pa.keyPath, pa.name], ["agent", null, "ana"], "llave vacía = agente; nombre vacío = usuario");
+const pp = importedProfile({ ...base, auth: "key", keyPath: "/k" }, "beto", "Beto", { kind: "password" });
 eq([pp.auth, pp.keyPath], ["password", null], "perfil con contraseña");
 
-// ── Llave pública local ──
-const locals = [
-  { path: "/home/u/.ssh/id_rsa.pub", privatePath: "/home/u/.ssh/id_rsa", line: "ssh-rsa AAAA x" },
-  { path: "/home/u/.ssh/id_ed25519.pub", privatePath: "/home/u/.ssh/id_ed25519", line: ED },
-  { path: "/home/u/.ssh/suelta.pub", privatePath: null, line: "ssh-ed25519 AAAA y" },
-];
-eq(findLocalPublicKey(locals, "~/.ssh/id_ed25519")?.line, ED, "con ~");
-eq(findLocalPublicKey(locals, "/home/u/.ssh/id_rsa")?.path, "/home/u/.ssh/id_rsa.pub", "ruta absoluta");
-eq(findLocalPublicKey(locals, "~/.ssh/otra"), null, "no existe");
-eq(findLocalPublicKey(locals, ""), null, "vacía");
-
 // ── Plan para instalar la llave ──
-const plan = installKeyPlan(["ana", "o'b"], ED);
+const plan = installKeysPlan([
+  { user: "ana", publicLine: ED },
+  { user: "o'b", publicLine: ED },
+]);
 ok(typeof plan !== "string", "plan válido");
 if (typeof plan !== "string") {
   const s = plan.steps.join("\n");
@@ -145,6 +143,7 @@ if (typeof plan !== "string") {
   ok(s.includes(`chown 'o'\\''b':"$g" "$d"`), "dueño citado");
   ok(!plan.secret, "nada secreto");
 }
-ok(typeof installKeyPlan(["ana"], "-----BEGIN OPENSSH PRIVATE KEY-----") === "string", "privada rechazada");
+const bad = installKeysPlan([{ user: "ana", publicLine: "-----BEGIN OPENSSH PRIVATE KEY-----" }]);
+ok(typeof bad === "string" && bad.startsWith("ana: "), "privada rechazada, con el usuario");
 
 console.log(`importUsers: ${passed} comprobaciones correctas`);

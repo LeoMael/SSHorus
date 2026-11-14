@@ -1,20 +1,21 @@
 // «Añadir a SSHorus»: lectura de los usuarios como root, guardado de los perfiles y prueba de conexión.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorMessage } from "../../api/core";
-import { localkeys, type LocalPublicKey } from "../../api/localkeys";
 import { ssh } from "../../api/ssh";
-import type { ServerProfile } from "../../api/types";
+import type { ServerProfile, SessionInfo } from "../../api/types";
 import {
   ElevationError,
   importedProfile,
   namesToRead,
   parseUserAccess,
+  resolveImportBase,
   runScript,
   succeeded,
   failureText,
   userAccessScript,
   type AccessRead,
   type ImportAuth,
+  type ImportBase,
   type UserRow,
 } from "../../features/admin";
 import { refreshPrivilege, type Elevation } from "../../features/privileges";
@@ -63,37 +64,59 @@ export function useUserAccess(sessionId: string, elevation: Elevation | null, us
   return { ...state, reload: () => void load() };
 }
 
-/** Llaves públicas de ~/.ssh de este equipo (null mientras se leen). */
-export function useLocalKeys(): LocalPublicKey[] | null {
-  const [locals, setLocals] = useState<LocalPublicKey[] | null>(null);
+/**
+ * Servidor del que se copian host y puerto: el de la pestaña o, si no se encuentra, el de los datos de la
+ * conexión (ver `resolveImportBase`). Carga la lista de servidores si aún no lo estaba.
+ */
+export function useImportBase(sessionId: string, profileId: string): { found: ImportBase | null; searching: boolean } {
+  const loaded = useProfiles((s) => s.loaded);
+  const servers = useProfiles((s) => s.servers);
+  // undefined = aún no se preguntó al motor; null = no está esa conexión.
+  const [session, setSession] = useState<SessionInfo | null | undefined>(undefined);
+  const byId = servers.some((s) => s.id === profileId);
+
   useEffect(() => {
+    if (!loaded) void useProfiles.getState().load();
+  }, [loaded]);
+
+  // Solo hace falta la conexión cuando el servidor de la pestaña no aparece.
+  useEffect(() => {
+    if (byId) return;
     let alive = true;
-    localkeys.listPublic().then(
-      (l) => alive && setLocals(l),
-      () => alive && setLocals([]),
+    ssh.listSessions().then(
+      (list) => alive && setSession(list.find((s) => s.id === sessionId) ?? null),
+      () => alive && setSession(null),
     );
     return () => {
       alive = false;
     };
-  }, []);
-  return locals;
+  }, [byId, sessionId]);
+
+  const found = useMemo(() => resolveImportBase(servers, profileId, session ?? null), [servers, profileId, session]);
+  return { found, searching: !found && (!loaded || session === undefined) };
+}
+
+export interface ImportItem {
+  user: string;
+  name: string;
+  auth: ImportAuth;
 }
 
 /**
  * Guarda un servidor por usuario (sin secretos) y lo añade a los mismos proyectos que `base`.
  * Muestra un aviso con el resumen. Devuelve los guardados.
  */
-export async function saveImported(base: ServerProfile, names: readonly string[], auth: ImportAuth): Promise<ServerProfile[]> {
+export async function saveImported(base: ServerProfile, items: readonly ImportItem[]): Promise<ServerProfile[]> {
   const st = useProfiles.getState();
-  const projectIds = st.projects.filter((p) => p.serverIds.includes(base.id)).map((p) => p.id);
+  const projectIds = base.id ? st.projects.filter((p) => p.serverIds.includes(base.id)).map((p) => p.id) : [];
   const saved: ServerProfile[] = [];
-  for (const n of names) {
-    const s = await st.saveServer(importedProfile(base, n, auth));
+  for (const it of items) {
+    const s = await st.saveServer(importedProfile(base, it.user, it.name, it.auth));
     if (!s) continue;
     saved.push(s);
     for (const pid of projectIds) await useProfiles.getState().addServerToProject(pid, s.id);
   }
-  const failed = names.length - saved.length;
+  const failed = items.length - saved.length;
   if (saved.length) {
     const list = saved.map((s) => s.username).join(", ");
     toast.success(

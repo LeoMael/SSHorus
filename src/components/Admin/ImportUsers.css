@@ -6,7 +6,7 @@
   margin-bottom: 6px;
 }
 .iu-list {
-  max-height: 280px;
+  max-height: 320px;
   overflow: auto;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -117,4 +117,34 @@
 }
 .iu-test-bad {
   color: var(--red);
+}
+.iu-hint-flush {
+  margin-left: 0;
+}
+/* Opciones del usuario elegido: nombre del servidor y llave. */
+.iu-opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 6px 38px;
+  border-bottom: 1px solid var(--border);
+}
+.iu-opts .input {
+  height: 24px;
+  padding: 0 6px;
+  font-size: var(--fs-sm);
+}
+.iu-opt-name {
+  width: 170px;
+}
+.iu-opt-key {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 360px;
+}
+.iu-opt-warn {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+  color: var(--yellow);
 }

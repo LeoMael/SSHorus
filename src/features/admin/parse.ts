@@ -72,6 +72,9 @@ export interface GroupEntry {
 
 export type ShadowStatus = "P" | "L" | "NP" | "NL";
 
+/** sudo del usuario según `sudo -l -U`: no tiene, con contraseña o sin contraseña (NOPASSWD: ALL). */
+export type SudoAccess = "none" | "password" | "nopasswd";
+
 export interface ShadowEntry {
   name: string;
   status: ShadowStatus;
@@ -80,6 +83,9 @@ export interface ShadowEntry {
   maxDays: number | null;
   /** Días desde 1970 en que caduca la cuenta. null = nunca. */
   expireDays: number | null;
+  /** Llaves en ~/.ssh/authorized_keys (null = no se leyó). Ver `withLoginAccess`. */
+  keys: number | null;
+  sudo: SudoAccess | null;
 }
 
 export interface WhoEntry {
@@ -172,6 +178,8 @@ export function parseShadow(lines: string[]): Map<string, ShadowEntry> {
       lastChange: int(f[2]),
       maxDays: int(f[3]),
       expireDays: exp !== null && exp >= 0 ? exp : null,
+      keys: null,
+      sudo: null,
     });
   }
   return out;
@@ -267,12 +275,6 @@ export function parseRead(stdout: string): ReadResult {
     tools,
     lastLogin: parseLastlog(s.get("lastlog") ?? []),
   };
-}
-
-export function parseShadowOutput(stdout: string): Map<string, ShadowEntry> {
-  const s = splitSections(stdout);
-  if (!s.has("end")) throw new Error("No se pudo leer /etc/shadow");
-  return parseShadow(s.get("shadow") ?? []);
 }
 
 /** Días desde 1970 → «AAAA-MM-DD». */

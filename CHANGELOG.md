@@ -110,7 +110,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   tu cuenta de GitHub), y el selector las agrupa. En el formulario, Host es más ancho y Usuario más estrecho.
 - **Usuarios → «Añadir a SSHorus…»**: eliges con casillas qué usuarios del servidor guardar como servidores
   (ves si tienen llaves, contraseña o sudo, y si ya estaban). Con llave SSH (SSHorus puede instalar tu llave en
-  su cuenta) o con contraseña, y prueba la conexión.
+  su cuenta) o con contraseña, y prueba la conexión. Elige sola la llave que el usuario ya tiene autorizada
+  (nunca una de GitHub) y nombra cada servidor como el usuario (editable).
+- **Usuarios: «Solo llave»** cuando la contraseña está desactivada pero tiene llaves; «Bloqueada» solo si de
+  verdad no puede entrar, con aviso si su sudo pide una contraseña que no tiene.
 - **Terminal local: Antigravity (agy) y OpenCode**, además de Claude Code y Codex. OpenCode recibe el contexto
   de SSHorus y su MCP sin tocar tu configuración; agy recibe el contexto como primer mensaje (sin MCP).
 - **Bloqueo con PIN o contraseña.** Puedes proteger SSHorus con un PIN de 6 números o con una contraseña

@@ -11,7 +11,8 @@ import {
   type ElevationFailure,
 } from "../privileges";
 import { innerScript, readKeysScript, type Plan } from "./commands";
-import { parseRead, parseShadowOutput, splitSections, READ_SCRIPT, SHADOW_SCRIPT, type ReadResult, type ShadowEntry } from "./parse";
+import { parseRead, splitSections, READ_SCRIPT, type ReadResult, type ShadowEntry } from "./parse";
+import { ACCOUNTS_SCRIPT, parseAccountsOutput } from "./accounts";
 
 /** Error de elevación (contraseña de sudo incorrecta, sudo denegado…). */
 export class ElevationError extends Error {
@@ -73,11 +74,11 @@ export async function readServer(sessionId: string): Promise<ReadResult> {
   return parseRead(r.stdout);
 }
 
-/** Estado de contraseñas (bloqueos, caducidad) desde /etc/shadow, como root. */
+/** Estado de las cuentas como root: contraseñas (/etc/shadow), caducidad, llaves autorizadas y sudo. */
 export async function readShadow(sessionId: string, el: Elevation): Promise<Map<string, ShadowEntry>> {
-  const r = await runScript(sessionId, SHADOW_SCRIPT, el, "", 20);
+  const r = await runScript(sessionId, ACCOUNTS_SCRIPT, el, "", 30);
   if (!succeeded(r)) throw new Error(failureText(r));
-  return parseShadowOutput(r.stdout);
+  return parseAccountsOutput(r.stdout);
 }
 
 /** Líneas de ~usuario/.ssh/authorized_keys (sin vacías). */
