@@ -50,7 +50,7 @@ versión se publicará cuando esto esté listo (propuesta: **1.0.0-beta.1** para
 SSHorus…», arreglo de sudo y avisos en el formulario, agy/OpenCode, llaves SSH, PIN o contraseña. También los **atajos** (Ctrl+W cierra lo interno,
 Ctrl+Shift+W el servidor, Alt+AvPág/RePág entre secciones). Versión ya puesta en **1.0.0-beta.1** (package.json, tauri.conf.json, Cargo.toml).
 Ojo: el instalador `.msi` de Windows no admite «-beta», así que `bundle.windows.wix.version` es `0.6.0.1`;
-**quitarlo al pasar a 1.0.0**. Después: probar todo en la app y publicar (etiqueta `v1.0.0-beta.1`).
+**quitarlo al pasar a 1.0.0**. En las betas (versión con guion) Linux no genera `.rpm` (no admite el guion): solo `.deb` y AppImage. Después: probar todo en la app y publicar (etiqueta `v1.0.0-beta.1`).
 
 **Idea del usuario (14/11/2026), evaluada: «Panel de VPS» (monitor de todos los servidores).** Una vista
 general con una tarjeta por **VPS** (los servidores guardados con el mismo host y puerto son el mismo VPS: p. ej.

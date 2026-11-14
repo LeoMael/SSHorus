@@ -109,6 +109,20 @@ jobs:
       - name: Dependencias de npm
         run: npm ci
 
+      # El .rpm no admite el guion de las versiones beta (1.0.0-beta.1): en ellas, Linux solo genera .deb y AppImage.
+      - name: Paquetes de Linux
+        id: linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            echo "::notice title=Versión beta sin .rpm::$VERSION lleva guion y el .rpm no lo admite: se generan .deb y AppImage."
+            echo "args=--bundles deb,appimage" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=" >> "$GITHUB_OUTPUT"
+          fi
+
       # Sin la llave privada, `tauri build` fallaría al firmar los paquetes de actualización:
       # en ese caso se desactivan (createUpdaterArtifacts=false) y se avisa, pero los instaladores salen igual.
       - name: Firma de actualizaciones
@@ -198,7 +212,7 @@ jobs:
           # latest.json: en Windows actualiza con el -setup.exe (NSIS, por usuario, sin permisos de admin).
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
-          args: ${{ matrix.args }} ${{ steps.firma.outputs.args }}
+          args: ${{ matrix.args }} ${{ steps.firma.outputs.args }} ${{ steps.linux.outputs.args }}
 
       # Comprueba que el Release (borrador) tiene latest.json cuando se firmó. Sin él, las apps instaladas
       # no ven la versión nueva; antes pasaba sin que nadie se enterara.
