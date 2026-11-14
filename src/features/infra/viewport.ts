@@ -104,6 +104,15 @@ export function wheelZoomFactor(e: WheelLike, pageH: number): number {
   return Math.min(1.5, Math.max(1 / 1.5, f));
 }
 
+/**
+ * Factor de un paso del pellizco nativo: la escala llega acumulada desde el comienzo del gesto
+ * (`prev` → `scale`). Valores raros dan 1 (sin cambio); cada paso queda acotado como la rueda.
+ */
+export function pinchStep(prev: number, scale: number): number {
+  if (!(prev > 0) || !(scale > 0) || !Number.isFinite(prev) || !Number.isFinite(scale)) return 1;
+  return Math.min(1.5, Math.max(1 / 1.5, scale / prev));
+}
+
 /** Desplazamiento (en píxeles de pantalla) de un evento de rueda que no hace zoom. */
 export function wheelPan(e: WheelLike, pageH: number): { dx: number; dy: number } {
   const { dx, dy } = wheelPixels(e, pageH);

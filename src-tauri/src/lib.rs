@@ -11,6 +11,7 @@ mod localfs;
 mod localkeys;
 mod localterm;
 mod mcp;
+mod pinch;
 mod platform;
 mod sftp;
 mod snippets;
@@ -40,6 +41,8 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Linux: el pellizco del touchpad va al mapa y no agranda la app entera.
+        .plugin(pinch::init())
         .manage(ssh::SessionStore::default())
         .manage(terminal::TerminalStore::default())
         .manage(localterm::LocalTermStore::default())

@@ -7,6 +7,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   pan,
+  pinchStep,
   wheelIntent,
   wheelPan,
   wheelZoomFactor,
@@ -100,6 +101,14 @@ eq(wheelZoomFactor(w({ deltaY: -3, deltaMode: 1 }), 600), wheelZoomFactor(w({ de
 eq(wheelZoomFactor(w({ deltaY: -100000 }), 600), 1.5, "cada evento queda acotado");
 eq(wheelPan(w({ deltaX: 10, deltaY: 20 }), 600), { dx: -10, dy: -20 }, "desplazar con el touchpad");
 eq(wheelPan(w({ deltaY: 30, shiftKey: true }), 600), { dx: -30, dy: 0 }, "Mayús + rueda → horizontal");
+
+// ───────── Pellizco nativo (escala acumulada) ─────────
+near(pinchStep(1, 1.1), 1.1, "primer paso del pellizco");
+near(pinchStep(1.1, 1.21), 1.1, "cada paso es relativo al anterior");
+near(pinchStep(1, 1.1) * pinchStep(1.1, 1), 1, "abrir y cerrar se anulan");
+eq(pinchStep(1, 10), 1.5, "un salto grande queda acotado");
+eq(pinchStep(0, 1.2), 1, "escala anterior rara → sin cambio");
+eq(pinchStep(1, NaN), 1, "escala rara → sin cambio");
 
 // ───────── Teclado ─────────
 const k = (key: string, code: string, o: Partial<KeyLike> = {}): KeyLike => ({ key, code, ctrlKey: false, metaKey: false, altKey: false, ...o });

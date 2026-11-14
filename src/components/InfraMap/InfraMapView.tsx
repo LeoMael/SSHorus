@@ -1,6 +1,6 @@
 // Lienzo del mapa de infraestructura: SVG propio (sin dependencias) con disposición por capas, zoom,
 // desplazamiento, ajustar a la pantalla, minimapa, filtros, leyenda, panel de detalles y exportar.
-import { useMemo, useRef, useState, type ComponentType, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import {
   Box,
   ChevronDown,
@@ -11,11 +11,8 @@ import {
   ExternalLink,
   Globe,
   Map as MapIcon,
-  Maximize,
-  Minus,
   Network,
   Plug,
-  Plus,
   RefreshCw,
   Server,
   Settings2,
@@ -35,10 +32,11 @@ import {
   type ServerSnapshot,
 } from "../../features/infra/graph";
 import { layoutGraph } from "../../features/infra/layout";
-import { MAX_ZOOM, MIN_ZOOM, zoomPercent, type Viewport } from "../../features/infra/viewport";
+import { zoomPercent } from "../../features/infra/viewport";
 import { toMermaid } from "../../features/infra/text";
-import { isMac } from "../../lib/platform";
 import { exportMap, type ExportFormat } from "./exportMap";
+import { MiniMap, UpdatedAgo, ZoomControls } from "./MapOverlays";
+import { useMapCanvas } from "./useMapCanvas";
 import { useMapViewport } from "./useMapViewport";
 import "./InfraMap.css";
 
@@ -79,13 +77,20 @@ function clip(s: string, max: number): string {
 export function InfraMapView({
   snapshots,
   loading,
+  updatedAt,
+  cacheKey,
   onRefresh,
   onNav,
   name,
   extraTools,
 }: {
   snapshots: ServerSnapshot[] | null;
+  /** Leyendo (con datos guardados en pantalla, la lectura va en segundo plano). */
   loading: boolean;
+  /** Momento de la lectura mostrada (null si no hay o es una vista previa). */
+  updatedAt: number | null;
+  /** Clave del mapa en la caché: la vista, la selección y los filtros se recuerdan al salir. */
+  cacheKey: string;
   onRefresh: () => void;
   /** «Ir a…» desde el panel de detalles. */
   onNav?: (serverId: string, target: NavTarget) => void;
@@ -93,11 +98,7 @@ export function InfraMapView({
   name: string;
   extraTools?: ReactNode;
 }) {
-  const [hideLocal, setHideLocal] = useState(false);
-  const [hideSystem, setHideSystem] = useState(true);
-  const [owners, setOwners] = useState<Set<string> | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [miniOn, setMiniOn] = useState(true);
+  const { hideLocal, setHideLocal, hideSystem, setHideSystem, owners, setOwners, selected, setSelected, miniOn, setMiniOn, refitKey } = useMapCanvas(cacheKey);
   const [exportOpen, setExportOpen] = useState(false);
 
   const full = useMemo(() => (snapshots ? buildGraph(snapshots) : null), [snapshots]);
@@ -120,6 +121,8 @@ export function InfraMapView({
   const contentRef = useRef<SVGGElement>(null);
   const { wrapRef, view, size, zoomIn, zoomOut, fit, center, canvasProps } = useMapViewport({
     content: layout,
+    memoryKey: cacheKey,
+    refitKey,
     onClick: setSelected,
     onEscape: () => setSelected(null),
   });
@@ -185,6 +188,7 @@ export function InfraMapView({
               </div>
             )}
           </div>
+          <UpdatedAgo at={updatedAt} loading={loading} />
           <button className="btn btn-sm" onClick={onRefresh} disabled={loading}>
             <RefreshCw size={13} className={loading ? "adm-spin" : undefined} /> Actualizar
           </button>
@@ -343,28 +347,6 @@ export function InfraMapView({
   );
 }
 
-/** Botones de zoom en la esquina del lienzo, con el porcentaje (clic en él = ajustar). */
-function ZoomControls({ percent, onIn, onOut, onFit }: { percent: number; onIn: () => void; onOut: () => void; onFit: () => void }) {
-  const mod = isMac ? "⌘" : "Ctrl";
-  return (
-    <div className="im-zoombar" role="group" aria-label="Zoom del mapa" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-      <button className="icon-btn" onClick={onOut} disabled={percent <= MIN_ZOOM * 100} title={`Alejar (${mod} −)`} aria-label="Alejar">
-        <Minus size={14} />
-      </button>
-      <button className="im-zoom" onClick={onFit} title="Zoom actual — clic para ajustar a la pantalla" aria-label={`Zoom ${percent} %. Ajustar a la pantalla`}>
-        {percent}%
-      </button>
-      <button className="icon-btn" onClick={onIn} disabled={percent >= MAX_ZOOM * 100} title={`Acercar (${mod} +)`} aria-label="Acercar">
-        <Plus size={14} />
-      </button>
-      <span className="im-zoombar-sep" aria-hidden="true" />
-      <button className="icon-btn im-zoombar-fit" onClick={onFit} title={`Ajustar a la pantalla (${mod} 0)`} aria-label="Ajustar a la pantalla">
-        <Maximize size={14} /> <span>Ajustar</span>
-      </button>
-    </div>
-  );
-}
-
 function Legend() {
   const kinds: NodeKind[] = ["port", "proxy", "site", "container", "service", "db"];
   return (
@@ -390,47 +372,5 @@ function Legend() {
         <i className="im-line-x" /> entre servidores
       </span>
     </div>
-  );
-}
-
-function MiniMap({
-  layout,
-  view,
-  size,
-  onCenter,
-}: {
-  layout: ReturnType<typeof layoutGraph>;
-  view: Viewport;
-  size: { w: number; h: number };
-  onCenter: (x: number, y: number) => void;
-}) {
-  const W = 170;
-  const s = W / layout.width;
-  const H = Math.min(130, layout.height * s);
-  const sc = Math.min(s, H / layout.height);
-  const go = (e: RPointerEvent<SVGSVGElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    onCenter((e.clientX - r.left) / sc, (e.clientY - r.top) / sc);
-  };
-  return (
-    <svg
-      className="im-mini"
-      width={layout.width * sc}
-      height={layout.height * sc}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        go(e);
-      }}
-      onPointerUp={(e) => e.stopPropagation()}
-      aria-hidden="true"
-    >
-      {layout.servers.map((x) => (
-        <rect key={x.id} x={x.x * sc} y={x.y * sc} width={x.w * sc} height={x.h * sc} rx={2} className="im-mini-server" />
-      ))}
-      {[...layout.nodes.values()].map((p) => (
-        <rect key={p.node.id} x={p.x * sc} y={p.y * sc} width={p.w * sc} height={p.h * sc} className={`im-mini-node im-h-${p.node.health}`} />
-      ))}
-      <rect x={(-view.x / view.k) * sc} y={(-view.y / view.k) * sc} width={(size.w / view.k) * sc} height={(size.h / view.k) * sc} className="im-mini-view" />
-    </svg>
   );
 }

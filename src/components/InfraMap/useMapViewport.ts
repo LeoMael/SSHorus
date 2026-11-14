@@ -4,10 +4,12 @@
 //
 // Ctrl+rueda y Ctrl + «+»/«−»/«0» sobre el mapa no deben llegar al zoom de la ventana: la rueda se
 // escucha con `passive: false` y se cancela; las teclas, en `window` en fase de captura, antes que nadie.
+// En Linux el pellizco del touchpad no llega a la página: lo captura el motor (ver nativePinch.ts).
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { isMac } from "../../lib/platform";
 import { SHORTCUT_ACTIONS } from "../../features/shortcuts/keys";
 import { matchesShortcut } from "../../features/shortcuts/shortcuts";
+import { savedView, saveView } from "../../features/infra/cache";
 import {
   centerOn,
   fitView,
@@ -22,23 +24,29 @@ import {
   type Viewport,
   type ZoomKey,
 } from "../../features/infra/viewport";
+import { useNativePinch } from "./nativePinch";
 
 interface Options {
   /** Tamaño del contenido (null mientras no hay mapa). */
   content: { width: number; height: number } | null;
+  /** Clave del mapa: la vista se recuerda al salir y se recupera al volver. */
+  memoryKey: string;
+  /** Cambia cuando cambian los filtros: con la vista movida a mano, solo entonces se reajusta. */
+  refitKey: string;
   /** Clic sin arrastrar: id del nodo (atributo `data-node`) o null si fue en el fondo. */
   onClick: (node: string | null) => void;
   onEscape?: () => void;
 }
 
-export function useMapViewport({ content, onClick, onEscape }: Options) {
+export function useMapViewport({ content, memoryKey, refitKey, onClick, onEscape }: Options) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<Viewport>({ x: 0, y: 0, k: 1 });
+  const [saved] = useState(() => savedView(memoryKey));
+  const [view, setView] = useState<Viewport>(saved?.view ?? { x: 0, y: 0, k: 1 });
   const [size, setSize] = useState<Size>({ w: 800, h: 500 });
   const sizeRef = useRef(size);
   sizeRef.current = size;
-  /** El usuario movió la vista: no reajustar al cambiar el tamaño del panel. */
-  const touched = useRef(false);
+  /** El usuario movió la vista: no reajustar al cambiar el tamaño del panel ni los datos. */
+  const touched = useRef(saved?.touched ?? false);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -67,16 +75,30 @@ export function useMapViewport({ content, onClick, onEscape }: Options) {
   const center = useCallback((mx: number, my: number) => change((v) => centerOn(v, mx, my, sizeRef.current)), [change]);
   const act = useCallback((z: ZoomKey) => (z === "in" ? zoomIn() : z === "out" ? zoomOut() : fit()), [zoomIn, zoomOut, fit]);
 
-  // Ajustar al cambiar el contenido, y al cambiar el tamaño mientras el usuario no haya movido la vista.
+  // Sin tocar la vista: ajustar al cambiar el contenido o el tamaño. Movida a mano: solo al cambiar
+  // los filtros (una relectura en segundo plano o redimensionar el panel no la mueven).
   const fitKey = content ? `${content.width}x${content.height}` : "";
-  const lastFit = useRef("");
+  const lastFit = useRef({ refit: saved?.touched ? saved.refitKey : "", full: "" });
   useEffect(() => {
     if (!fitKey || size.w < 50) return;
-    const key = touched.current ? fitKey : `${fitKey}|${size.w}x${size.h}`;
-    if (lastFit.current === key) return;
-    lastFit.current = key;
-    fit();
-  }, [fitKey, fit, size.w, size.h]);
+    const full = `${refitKey}|${fitKey}|${size.w}x${size.h}`;
+    const changed = touched.current ? lastFit.current.refit !== refitKey : lastFit.current.full !== full;
+    lastFit.current = { refit: refitKey, full };
+    if (changed) fit();
+  }, [fitKey, refitKey, fit, size.w, size.h]);
+
+  // Al salir se guarda la vista para recuperarla al volver.
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const refitRef = useRef(refitKey);
+  refitRef.current = refitKey;
+  useEffect(
+    () => () => saveView(memoryKey, { view: viewRef.current, touched: touched.current, refitKey: refitRef.current }),
+    [memoryKey],
+  );
+
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  useNativePinch(wrapRef, pointer, (f, cx, cy) => change((v) => zoomAt(v, f, cx, cy)));
 
   // Rueda, pellizco (llega como rueda con Ctrl) y gestos de WebKit en macOS.
   useEffect(() => {
@@ -143,8 +165,6 @@ export function useMapViewport({ content, onClick, onEscape }: Options) {
 
   // Arrastrar para mover (botón izquierdo o central); un clic sin moverse selecciona.
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean; node: string | null; button: number } | null>(null);
-  const viewRef = useRef(view);
-  viewRef.current = view;
   const onPointerDown = (e: RPointerEvent) => {
     if (e.button !== 0 && e.button !== 1) return;
     if (e.button === 1) e.preventDefault(); // sin el desplazamiento automático del botón central
@@ -159,6 +179,7 @@ export function useMapViewport({ content, onClick, onEscape }: Options) {
   };
   const onPointerMove = (e: RPointerEvent) => {
     hoverAt.current = performance.now();
+    pointer.current = { x: e.clientX, y: e.clientY };
     const d = drag.current;
     if (!d) return;
     const dx = e.clientX - d.x;

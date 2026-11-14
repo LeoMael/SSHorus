@@ -1,41 +1,38 @@
-// Mapa de un servidor (Administración → Mapa). Se lee al abrirlo por primera vez y con «Actualizar».
-import { useCallback, useEffect, useRef, useState } from "react";
+// Mapa de un servidor (Administración → Mapa). Se lee la primera vez que se abre; al volver se ve lo
+// guardado (ver useCachedMap) y se relee con «Actualizar», al reconectar o si tiene más de ~10 min.
+import { useCallback } from "react";
 import { collectServer } from "../../features/infra/collect";
-import type { NavTarget, ServerSnapshot } from "../../features/infra/graph";
+import type { NavTarget } from "../../features/infra/graph";
 import { useInfraNav } from "../../features/infra/store";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";
 import { InfraMapView } from "./InfraMapView";
+import { useCachedMap } from "./useCachedMap";
 
 export function ServerMap({ sessionId, profileId, active, disabled }: { sessionId: string; profileId: string; active: boolean; disabled: boolean }) {
   const profile = useProfiles((s) => s.servers.find((x) => x.id === profileId));
   const title = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.title ?? "servidor");
-  const [snap, setSnap] = useState<ServerSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-  const gen = useRef(0);
-  const load = useCallback(async () => {
-    const g = ++gen.current;
-    setLoading(true);
-    const s = await collectServer({ profileId, name: profile?.name ?? title, host: profile?.host ?? "", sessionId });
-    if (g !== gen.current) return;
-    setSnap(s);
-    setLoading(false);
-  }, [profileId, profile?.name, profile?.host, title, sessionId]);
-  const started = useRef(false);
-  useEffect(() => {
-    if (active && !disabled && !started.current) {
-      started.current = true;
-      void load();
-    }
-  }, [active, disabled, load]);
+  const reconnects = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.reconnectCount ?? 0);
+  const name = profile?.name ?? title;
+  const host = profile?.host ?? "";
+  const key = `server:${sessionId}`;
+  const { snapshots, at, loading, refresh } = useCachedMap({
+    key,
+    token: `${sessionId}#${reconnects}`,
+    enabled: active && !disabled,
+    load: async () => [await collectServer({ profileId, name, host, sessionId })],
+  });
   const nav = useCallback((_server: string, t: NavTarget) => useInfraNav.getState().open(sessionId, t), [sessionId]);
   return (
     <InfraMapView
-      snapshots={snap ? [snap] : null}
+      key={key}
+      cacheKey={key}
+      snapshots={snapshots}
       loading={loading}
-      onRefresh={() => void load()}
+      updatedAt={at}
+      onRefresh={refresh}
       onNav={nav}
-      name={`mapa-${profile?.name ?? title}`}
+      name={`mapa-${name}`}
     />
   );
 }

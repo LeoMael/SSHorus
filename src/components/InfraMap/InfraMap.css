@@ -101,6 +101,10 @@
 .im-tools .icon-btn.active {
   color: var(--accent);
 }
+.im-updated {
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
 .im-export {
   position: relative;
 }
