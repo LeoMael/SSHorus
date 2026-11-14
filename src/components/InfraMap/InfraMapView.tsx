@@ -1,6 +1,6 @@
 // Lienzo del mapa de infraestructura: SVG propio (sin dependencias) con disposición por capas, zoom,
 // desplazamiento, ajustar a la pantalla, minimapa, filtros, leyenda, panel de detalles y exportar.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ComponentType, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import {
   Box,
   ChevronDown,
@@ -35,8 +35,11 @@ import {
   type ServerSnapshot,
 } from "../../features/infra/graph";
 import { layoutGraph } from "../../features/infra/layout";
+import { MAX_ZOOM, MIN_ZOOM, zoomPercent, type Viewport } from "../../features/infra/viewport";
 import { toMermaid } from "../../features/infra/text";
+import { isMac } from "../../lib/platform";
 import { exportMap, type ExportFormat } from "./exportMap";
+import { useMapViewport } from "./useMapViewport";
 import "./InfraMap.css";
 
 const ICON: Record<NodeKind, ComponentType<LucideProps>> = {
@@ -68,12 +71,6 @@ const KIND_LABEL: Record<NodeKind, string> = {
 };
 
 const HEALTH_LABEL: Record<Health, string> = { ok: "Bien", warn: "Aviso", bad: "Caído / error", off: "Parado" };
-
-interface View {
-  x: number;
-  y: number;
-  k: number;
-}
 
 function clip(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
@@ -119,85 +116,13 @@ export function InfraMapView({
   }, [sel, graph]);
 
   // ───────── Zoom y desplazamiento ─────────
-  const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const contentRef = useRef<SVGGElement>(null);
-  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
-  const [size, setSize] = useState({ w: 800, h: 500 });
-  useLayoutEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    setSize({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
-  }, []);
-  const fit = useCallback(() => {
-    if (!layout) return;
-    const k = Math.min(1.25, Math.max(0.2, Math.min(size.w / layout.width, size.h / layout.height)));
-    setView({ k, x: (size.w - layout.width * k) / 2, y: Math.max(0, (size.h - layout.height * k) / 2) });
-  }, [layout, size.w, size.h]);
-  // Ajustar al cambiar el contenido, y al cambiar el tamaño mientras el usuario no haya movido la vista.
-  const fitKey = layout ? `${layout.width}x${layout.height}` : "";
-  const lastFit = useRef("");
-  const touched = useRef(false);
-  useEffect(() => {
-    if (!fitKey || size.w < 50) return;
-    const key = touched.current ? fitKey : `${fitKey}|${size.w}x${size.h}`;
-    if (lastFit.current === key) return;
-    lastFit.current = key;
-    touched.current = false;
-    fit();
-  }, [fitKey, fit, size.w, size.h]);
-
-  const zoomAt = (factor: number, cx = size.w / 2, cy = size.h / 2) => {
-    touched.current = true;
-    setView((v) => {
-      const k = Math.min(3, Math.max(0.15, v.k * factor));
-      const f = k / v.k;
-      return { k, x: cx - (cx - v.x) * f, y: cy - (cy - v.y) * f };
-    });
-  };
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const r = el.getBoundingClientRect();
-      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX) * 2) zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
-      else {
-        touched.current = true;
-        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
-      }
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size.w, size.h]);
-  const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean; node: string | null } | null>(null);
-  const onDown = (e: RPointerEvent) => {
-    if (e.button !== 0) return;
-    const t = (e.target as Element).closest("[data-node]");
-    drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false, node: t ? t.getAttribute("data-node") : null };
-    try {
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    } catch {
-      /* eventos sintéticos (vista previa) */
-    }
-  };
-  const onMove = (e: RPointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = touched.current = true;
-    if (d.moved) setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
-  };
-  const onUp = () => {
-    const d = drag.current;
-    drag.current = null;
-    if (d && !d.moved) setSelected(d.node);
-  };
+  const { wrapRef, view, size, zoomIn, zoomOut, fit, center, canvasProps } = useMapViewport({
+    content: layout,
+    onClick: setSelected,
+    onEscape: () => setSelected(null),
+  });
 
   const doExport = (f: ExportFormat) => {
     setExportOpen(false);
@@ -244,16 +169,6 @@ export function InfraMapView({
         </div>
         <div className="im-tools">
           {extraTools}
-          <button className="icon-btn" onClick={() => zoomAt(1 / 1.2)} title="Alejar" aria-label="Alejar">
-            <Minus size={14} />
-          </button>
-          <span className="im-zoom">{Math.round(view.k * 100)}%</span>
-          <button className="icon-btn" onClick={() => zoomAt(1.2)} title="Acercar" aria-label="Acercar">
-            <Plus size={14} />
-          </button>
-          <button className="icon-btn" onClick={fit} title="Ajustar a la pantalla" aria-label="Ajustar a la pantalla">
-            <Maximize size={14} />
-          </button>
           <button className={`icon-btn${miniOn ? " active" : ""}`} onClick={() => setMiniOn((m) => !m)} title="Minimapa" aria-label="Minimapa" aria-pressed={miniOn}>
             <MapIcon size={14} />
           </button>
@@ -286,15 +201,7 @@ export function InfraMapView({
         <div
           ref={wrapRef}
           className="im-canvas"
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onKeyDown={(e) => {
-            if (e.key === "+" || e.key === "=") zoomAt(1.2);
-            else if (e.key === "-") zoomAt(1 / 1.2);
-            else if (e.key === "0") fit();
-            else if (e.key === "Escape") setSelected(null);
-          }}
+          {...canvasProps}
           tabIndex={0}
           aria-label="Mapa de infraestructura"
         >
@@ -392,7 +299,8 @@ export function InfraMapView({
               </g>
             </svg>
           )}
-          {layout && miniOn && <MiniMap layout={layout} view={view} size={size} onCenter={(x, y) => setView((v) => ({ ...v, x: size.w / 2 - x * v.k, y: size.h / 2 - y * v.k }))} />}
+          {layout && miniOn && <MiniMap layout={layout} view={view} size={size} onCenter={center} />}
+          {layout && <ZoomControls percent={zoomPercent(view.k)} onIn={zoomIn} onOut={zoomOut} onFit={fit} />}
           <Legend />
         </div>
         {sel && (
@@ -435,6 +343,28 @@ export function InfraMapView({
   );
 }
 
+/** Botones de zoom en la esquina del lienzo, con el porcentaje (clic en él = ajustar). */
+function ZoomControls({ percent, onIn, onOut, onFit }: { percent: number; onIn: () => void; onOut: () => void; onFit: () => void }) {
+  const mod = isMac ? "⌘" : "Ctrl";
+  return (
+    <div className="im-zoombar" role="group" aria-label="Zoom del mapa" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+      <button className="icon-btn" onClick={onOut} disabled={percent <= MIN_ZOOM * 100} title={`Alejar (${mod} −)`} aria-label="Alejar">
+        <Minus size={14} />
+      </button>
+      <button className="im-zoom" onClick={onFit} title="Zoom actual — clic para ajustar a la pantalla" aria-label={`Zoom ${percent} %. Ajustar a la pantalla`}>
+        {percent}%
+      </button>
+      <button className="icon-btn" onClick={onIn} disabled={percent >= MAX_ZOOM * 100} title={`Acercar (${mod} +)`} aria-label="Acercar">
+        <Plus size={14} />
+      </button>
+      <span className="im-zoombar-sep" aria-hidden="true" />
+      <button className="icon-btn im-zoombar-fit" onClick={onFit} title={`Ajustar a la pantalla (${mod} 0)`} aria-label="Ajustar a la pantalla">
+        <Maximize size={14} /> <span>Ajustar</span>
+      </button>
+    </div>
+  );
+}
+
 function Legend() {
   const kinds: NodeKind[] = ["port", "proxy", "site", "container", "service", "db"];
   return (
@@ -470,7 +400,7 @@ function MiniMap({
   onCenter,
 }: {
   layout: ReturnType<typeof layoutGraph>;
-  view: View;
+  view: Viewport;
   size: { w: number; h: number };
   onCenter: (x: number, y: number) => void;
 }) {

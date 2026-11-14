@@ -120,6 +120,9 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   comando). Si SSHorus no sabe si tienes sudo, un botón comprueba si funciona sin contraseña.
 
 ### Cambiado
+- **Mapa de infraestructura: zoom solo del mapa.** La rueda, el pellizco y Ctrl + / − / 0 hacen zoom del mapa
+  (20 %–400 %, hacia el puntero), no de toda la app; botones − / % / + / «Ajustar» en la esquina y cajas más
+  legibles en el tema claro.
 - **Ctrl+W (⌘W) cierra el archivo abierto dentro del servidor**, no la conexión. Cerrar el servidor pasa a
   **Ctrl+Shift+W** (⇧⌘W) y pregunta si hay archivos sin guardar o transferencias sin terminar.
 - **Atajos para moverse dentro del servidor**: sección siguiente/anterior (Alt+AvPág/RePág) y archivo abierto
