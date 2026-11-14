@@ -1,6 +1,6 @@
 # Reglas para construir SSHorus en paralelo
 
-Proyecto: `/home/mael/LEO/Projects/TERVIEW` — cliente SSH/SFTP de escritorio (estilo Termius/MobaXterm).
+Proyecto: `/home/mael/LEO/Projects/SSHorus` — cliente SSH/SFTP de escritorio (estilo Termius/MobaXterm).
 Tauri 2 + Rust (motor, `src-tauri/`) · React 19 + TypeScript + Vite (interfaz, `src/`).
 Visión y diagramas: `docs/ARQUITECTURA.md` y `docs/arquitectura/*.png` (mira `04-ventana.png`).
 El usuario habla español: **todo texto visible en la app va en español**. Calidad profesional.
@@ -68,6 +68,18 @@ npx tsc --noEmit 2>&1 | grep 'src/components/TU_CARPETA'                        
 - Densidad tipo herramienta profesional (VS Code / Termius): filas de ~28 px, fuente 13 px, sin espacios enormes.
 - Accesible por teclado donde tenga sentido. Nada de `any` salvo que sea inevitable.
 
-## 5. Informe final (máx. ~300 palabras)
+## 5. Calidad del código (pedido del usuario: nada de código ni archivos espagueti)
+
+- **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400). Si un archivo ya es grande
+  (p. ej. `FileExplorer.tsx`, `ServerEditor.tsx`, `SessionView.tsx`, `transfer/engine.rs`, `mcp/core.rs`),
+  **no le añadas lógica**: crea un componente, hook o módulo nuevo y engánchalo con lo mínimo.
+- **Una responsabilidad por función/componente**. La lógica pura (cálculos, análisis de salidas de comandos,
+  reglas) va aparte de la interfaz y de los comandos Tauri, y lleva pruebas.
+- **Datos en vez de `if` repetidos**: si hay varias variantes (asistentes, tipos de llave, modos), descríbelas en
+  una tabla y recórrela.
+- **Sin duplicar**: antes de escribir algo, busca si ya existe (diálogos, selectores, llamadas a sudo) y reutilízalo.
+- Nombres claros, sin código muerto ni comentarios que repiten el código; comentarios solo para el «por qué».
+
+## 6. Informe final (máx. ~300 palabras)
 
 Qué hiciste, archivos, cómo lo probaste (y resultado), límites conocidos, y peticiones de cambios a BASE o dependencias.

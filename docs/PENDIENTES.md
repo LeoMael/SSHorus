@@ -1,4 +1,4 @@
-# TerView — Pendientes y próximas funciones
+# SSHorus — Pendientes y próximas funciones
 
 Estado al 13/11/2026: versión publicada **0.5.0**. La 0.4.0
 no llegó a publicarse: lo marcado **v0.4.0** en este documento salió en la 0.5.0 (en el
@@ -23,6 +23,43 @@ construidos y salen en la **0.5.0**.
 ## Próxima sesión (anotado el 13/11/2026)
 
 Al decir «continúa», empezar por aquí.
+
+**Ronda de pruebas del 14/11/2026 (pedido del usuario al abrir la app con `tauri dev`).** Ya hecho por el
+usuario: repo renombrado a `LeoMael/SSHorus`, secretos de firma creados, carpeta local `SSHorus`. La
+versión se publicará cuando esto esté listo (propuesta: **1.0.0-beta.1** para probar el instalador y luego
+**1.0.0**, que además sirve para comprobar que el actualizador encuentra la versión nueva). En curso
+(agentes, una rama cada uno):
+- Ajustes → Transferencias «Si el archivo ya existe»: por defecto **Preguntar**.
+- Abrir un archivo: por defecto **dividido** junto al explorador.
+- Explorador: clic derecho en una carpeta → **«Añadir a proyecto»** (la guarda como marcador).
+- Bloqueo: elegir **PIN o contraseña**.
+- Formulario de servidor **más ancho**; «Llave SSH» **detecta las llaves de `~/.ssh`**.
+- **Crear llave SSH** (para aprender): asistente en Ajustes → «Llaves SSH» y desde el formulario; ponerla en
+  un servidor o en GitHub.
+- Administración → Usuarios: **«Añadir a SSHorus…»** con casillas para elegir qué usuarios del servidor se
+  guardan como servidores (llave SSH, con opción de instalarla, o contraseña).
+- Terminal local: además de Claude Code y Codex, **agy** (Antigravity) y **OpenCode**.
+- sudo pide la contraseña aunque esté en «Guardar». Causas: los comandos que van a la terminal los pregunta
+  el sudo del servidor (SSHorus no escribe la contraseña ahí); un fallo pasajero (llavero, bóveda bloqueada,
+  sudo lento) hace que SSHorus deje de mirar la guardada hasta reconectar; cambiar la contraseña en el
+  formulario no se aplica a las sesiones abiertas; y sudo sin contraseña fuera de wheel/sudo no se detecta.
+  Arreglo en curso. Queda para después de unir: en el formulario, avisar si «Guardar» no tiene contraseña y
+  explicar que con llave SSH «La de la conexión» no sirve.
+
+**Estado (14/11/2026):** unido a `main` (sin publicar) todo lo de esta ronda: ajustes pequeños, «Añadir a
+SSHorus…», arreglo de sudo y avisos en el formulario, agy/OpenCode, llaves SSH, PIN o contraseña. En curso:
+**atajos** — Ctrl+W hoy cierra el servidor entero; pasa a Ctrl+Shift+W y Ctrl+W cierra lo interno (p. ej. un
+archivo abierto); y atajos para moverse entre las secciones dentro de un servidor. Después: probar todo en la
+app y publicar 1.0.0-beta.1.
+
+Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
+Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
+
+Pendiente: **ronda de orden del código** (después de unir esta ronda, antes de la 1.0.0). Partir los archivos
+grandes sin cambiar lo que hace la app: `FileExplorer.tsx` (~1270 líneas), `ServerEditor.tsx` (~990, 30
+estados), `SessionView.tsx` (~990), `Sidebar.tsx`, `ContainersPanel.tsx`, `SettingsDialog.tsx`;
+`transfer/engine.rs` (~1700), `mcp/core.rs` (~1500), `storage/ssh_config.rs`, `ssh/connect.rs`. Añadir ESLint
+(no hay) y revisar duplicados. Reglas de calidad ya en `docs/dev/REGLAS-AGENTES.md` §5.
 
 **Estado.** La **0.5.0 está publicada** (13/11/2026). En `main`, sin publicar todavía (ver «Sin publicar» en el
 CHANGELOG): botón «Actualizar imagen» en el escáner, terminal local con Claude Code y Codex, añadir servidor

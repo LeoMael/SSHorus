@@ -103,8 +103,32 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   usuarios). En un proyecto une los servidores y dibuja las conexiones entre ellos (p. ej. la app de un
   servidor → la base de datos de otro). Zoom, filtros, detalles al hacer clic y exportar a PNG, SVG o
   Mermaid. Para el asistente: `get_infra_map`.
+- **Llaves SSH.** El formulario del servidor es más ancho y, al elegir «Llave SSH», muestra las llaves de
+  `~/.ssh` para elegirlas. Nuevo asistente **«Crear llave SSH»** (explica qué es, la crea y te ayuda a ponerla
+  en un servidor o en GitHub) y sección **Ajustes → Llaves SSH** para ver, copiar y usar tus llaves.
+- **Usuarios → «Añadir a SSHorus…»**: eliges con casillas qué usuarios del servidor guardar como servidores
+  (ves si tienen llaves, contraseña o sudo, y si ya estaban). Con llave SSH (SSHorus puede instalar tu llave en
+  su cuenta) o con contraseña, y prueba la conexión.
+- **Terminal local: Antigravity (agy) y OpenCode**, además de Claude Code y Codex. OpenCode recibe el contexto
+  de SSHorus y su MCP sin tocar tu configuración; agy recibe el contexto como primer mensaje (sin MCP).
+- **Bloqueo con PIN o contraseña.** Puedes proteger SSHorus con un PIN de 6 números o con una contraseña
+  (8 caracteres o más), y cambiar de uno a otro en Ajustes → Seguridad. La pantalla de bloqueo y los avisos
+  piden lo que elegiste.
+- **Explorador: clic derecho en una carpeta → «Añadir a proyecto»** (la guarda como marcador del proyecto).
+- **Comandos con sudo sin escribir la contraseña en la terminal**: los de la biblioteca, «Terminar» procesos de
+  otros usuarios e instalar Podman, Docker o tmux usan tu contraseña de sudo de SSHorus (mostrando antes el
+  comando). Si SSHorus no sabe si tienes sudo, un botón comprueba si funciona sin contraseña.
+
+### Cambiado
+- Al transferir, si el archivo ya existe, ahora **se pregunta** qué hacer (antes se sobrescribía).
+- Los archivos se abren **divididos** junto al explorador por defecto.
 
 ### Corregido
+- **Formulario de servidor: avisos claros en sudo.** Si eliges «Guardar» sin escribir la contraseña, te
+  avisa y se guarda como «Pedir cada vez». Si entras con llave SSH o agente, explica por qué no está «La de la
+  conexión» y te sugiere «Guardar».
+- **La contraseña de sudo guardada se pedía de nuevo**: tras un fallo pasajero (llavero, bóveda bloqueada,
+  sudo lento), al cambiarla en el formulario o al desbloquear, SSHorus dejaba de usarla hasta reconectar.
 - **sudo con contraseña en más sitios.** «Ejecutar en varios servidores» usa la contraseña de sudo de cada
   servidor (un diálogo a la vez, con «Saltar este servidor»). El escáner avisa si la contraseña guardada no
   funciona y deja escribir otra (un solo intento fallido por análisis). En el modo «La de la conexión» se usa
