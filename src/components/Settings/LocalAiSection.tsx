@@ -1,12 +1,15 @@
-// Ajustes → Terminal local e IA: qué contexto reciben Claude Code y Codex al abrirlos desde SSHorus,
-// por qué vía trabajan (ssh directo, MCP o las dos), la carpeta de trabajo y si están instalados.
+// Ajustes → Terminal local e IA: qué contexto reciben los asistentes de IA (Claude Code, Codex, agy,
+// OpenCode) al abrirlos desde SSHorus, por qué vía trabajan (ssh directo, MCP o las dos), la carpeta
+// de trabajo y si están instalados.
 import { useEffect, useState } from "react";
-import { Bot, Check, Eye, FolderOpen, Home } from "lucide-react";
+import { Bot, Check, ExternalLink, Eye, FolderOpen, Home } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { localTerm, type AiToolInfo } from "../../api/localterm";
 import type { LocalAiMode, LocalAiSettings } from "../../api/types";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { chooseFolder, launchAssistant, previewContext } from "../../features/localterm/launch";
+import { assistant } from "../../features/localterm/logic";
 import { openSettingsAt } from "./settingsNav";
 import "../../features/localterm/LocalTerm.css";
 import { SettingGroup, SettingRow as Row, Switch as Toggle } from "../ui/SettingsKit";
@@ -30,6 +33,16 @@ const INCLUDE: { key: keyof LocalAiSettings; label: string; hint: string }[] = [
   { key: "includeActive", label: "Servidor que estabas mirando", hint: "La última pestaña de servidor y su carpeta." },
   { key: "includeDate", label: "Fecha de hoy", hint: "" },
 ];
+
+/** Dónde está (o cómo se instala) y, si los tiene, sus límites. */
+function toolHint(t: AiToolInfo): string {
+  const where = t.installed ? (t.path ?? "") : `No instalado. Se instala con: ${t.installCommand}`;
+  return [where, assistant(t.tool).limits].filter(Boolean).join(" · ");
+}
+
+function openOfficialPage(tool: AiToolInfo["tool"]) {
+  openUrl(assistant(tool).url).catch((e) => toast.error("No se pudo abrir el enlace", e));
+}
 
 export function LocalAiSection() {
   const local = useSettings((s) => s.settings.localAi);
@@ -119,19 +132,20 @@ export function LocalAiSection() {
       <SettingGroup title="Asistentes en este equipo">
         {tools === null && <div className="st-block muted">Buscando…</div>}
         {tools?.map((t) => (
-          <Row
-            key={t.tool}
-            label={t.label}
-            hint={t.installed ? (t.path ?? undefined) : `No instalado. Se instala con: ${t.installCommand}`}
-          >
+          <Row key={t.tool} label={t.label} hint={toolHint(t)}>
             {t.installed ? (
               <span className="lt-badge">
                 <Check size={11} /> Instalado
               </span>
             ) : (
-              <button className="btn btn-sm" onClick={() => void launchAssistant(t.tool)}>
-                <Bot size={13} /> Instalar…
-              </button>
+              <>
+                <button className="btn btn-sm" title="Página oficial" onClick={() => openOfficialPage(t.tool)}>
+                  <ExternalLink size={13} />
+                </button>
+                <button className="btn btn-sm" onClick={() => void launchAssistant(t.tool)}>
+                  <Bot size={13} /> Instalar…
+                </button>
+              </>
             )}
           </Row>
         ))}

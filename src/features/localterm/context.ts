@@ -1,4 +1,4 @@
-// Contexto de SSHorus para los asistentes de IA (Claude Code, Codex). Función pura, con pruebas.
+// Contexto de SSHorus para los asistentes de IA (Claude Code, Codex, agy, OpenCode). Función pura, con pruebas.
 //
 // «La idea es solo dar contexto»: el asistente sabe qué servidores hay y cómo llegar a ellos, y
 // trabaja como mejor sepa. Dos vías:

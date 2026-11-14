@@ -1,5 +1,5 @@
 // Pestaña de terminal local: la misma vista xterm.js que las de servidor (tema, búsqueda,
-// copiar/pegar, redimensionado), con la shell de este equipo o un asistente (Claude Code, Codex).
+// copiar/pegar, redimensionado), con la shell de este equipo o un asistente de IA (Claude Code, Codex, agy, OpenCode).
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Bot, Laptop, Plug } from "lucide-react";
 import { localTerm } from "../../api/localterm";
@@ -7,7 +7,7 @@ import { TerminalView } from "../../components/Terminal/TerminalView";
 import type { TermBackend, TermController, TermStatus } from "../../components/Terminal/termController";
 import "../../components/Terminal/Terminal.css";
 import "../../components/Session/SessionView.css";
-import { KIND_LABEL } from "./logic";
+import { kindLabel } from "./logic";
 import { pasteWhenReady } from "./launch";
 import { getLocalController, setLocalController, updateLocalTab, type LocalTab } from "./store";
 import "./LocalTerm.css";
@@ -85,7 +85,7 @@ export const LocalTerminalView = memo(function LocalTerminalView({ tab, active }
       <div className="lt-bar">
         {isAi ? <Bot size={14} /> : <Laptop size={14} />}
         <span className="lt-where">Este equipo</span>
-        {isAi && <span className="lt-kind">{KIND_LABEL[tab.kind]}</span>}
+        {isAi && <span className="lt-kind">{kindLabel(tab.kind)}</span>}
         <span className="lt-cwd mono" title={tab.cwd ?? "Carpeta personal"}>
           {tab.cwd ?? "~"}
         </span>

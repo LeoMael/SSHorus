@@ -427,7 +427,7 @@ export class TermController {
     this.term.paste(text);
   }
 
-  /** El programa activó el «pegado entre corchetes» (lo hacen las shells modernas, Claude Code y Codex). */
+  /** El programa activó el «pegado entre corchetes» (lo hacen las shells modernas y los asistentes de IA). */
   acceptsBracketedPaste(): boolean {
     return !this.disposed && this.term.modes.bracketedPasteMode;
   }

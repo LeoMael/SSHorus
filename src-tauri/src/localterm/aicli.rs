@@ -1,60 +1,12 @@
-//! Asistentes de IA de línea de comandos (Claude Code y Codex): dónde están, cómo se instalan y
-//! con qué argumentos se abren para darles el contexto de SSHorus y su MCP.
+//! Dónde están los asistentes de IA de línea de comandos y la shell del sistema: búsqueda en el
+//! `PATH` y en las carpetas habituales (también las de sus instaladores), y cómo se arrancan.
 //!
 //! Todo es lógica pura (sin tocar el disco salvo por la función `is_file` que se inyecta), así se
-//! prueba igual en Linux, macOS y Windows.
-//!
-//! Cómo se pasa el contexto (sin escribir nada en la carpeta del usuario):
-//! - Claude Code: `--append-system-prompt <texto>` y `--mcp-config <json>` (el JSON va en el propio
-//!   argumento; el token NO va dentro: el puente lo lee de la variable de entorno que hereda).
-//! - Codex: `-c developer_instructions="…"` y `-c mcp_servers.sshorus.*` con
-//!   `env_vars = ["SSHORUS_MCP_TOKEN", …]` para que Codex le pase el token al puente.
+//! prueba igual en Linux, macOS y Windows. Qué asistentes hay y cómo se abren: `tools.rs` y `args.rs`.
 
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Serialize};
-
-/// Variable con el token del MCP (la lee el puente `sshorus-mcp`).
-pub const TOKEN_ENV: &str = "SSHORUS_MCP_TOKEN";
-/// Variable con el puerto del MCP.
-pub const PORT_ENV: &str = "SSHORUS_MCP_PORT";
-/// Nombre del servidor MCP en los asistentes.
-pub const MCP_NAME: &str = "sshorus";
-/// Codex corta una herramienta MCP a los 60 s por defecto; una aprobación puede tardar más.
-pub const CODEX_TOOL_TIMEOUT_SECS: u32 = 900;
-/// Límite del contexto (la línea de órdenes de Windows admite ~32 000 caracteres en total).
-pub const MAX_CONTEXT_CHARS: usize = 12_000;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum AiTool {
-    Claude,
-    Codex,
-}
-
-impl AiTool {
-    pub fn label(self) -> &'static str {
-        match self {
-            AiTool::Claude => "Claude Code",
-            AiTool::Codex => "Codex",
-        }
-    }
-
-    fn base_name(self) -> &'static str {
-        match self {
-            AiTool::Claude => "claude",
-            AiTool::Codex => "codex",
-        }
-    }
-
-    /// Archivo JavaScript del paquete de npm (para lanzarlo con node si solo hay un `.cmd`).
-    fn npm_entry(self) -> &'static [&'static str] {
-        match self {
-            AiTool::Claude => &["@anthropic-ai", "claude-code", "cli.js"],
-            AiTool::Codex => &["@openai", "codex", "bin", "codex.js"],
-        }
-    }
-}
+use super::tools::{AiTool, NpmShim, TOOLS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Os {
@@ -105,6 +57,7 @@ impl SearchEnv {
                     v.push(l.join("Programs").join("nodejs"));
                 }
                 v.push(PathBuf::from(r"C:\Program Files\nodejs"));
+                v.extend(self.installer_dirs());
             }
             Os::Linux | Os::Mac => {
                 if let Some(h) = &self.home {
@@ -112,6 +65,7 @@ impl SearchEnv {
                         v.push(h.join(d));
                     }
                 }
+                v.extend(self.installer_dirs());
                 v.extend(self.nvm_bins.iter().cloned());
                 if self.os == Os::Mac {
                     v.push(PathBuf::from("/opt/homebrew/bin"));
@@ -121,6 +75,18 @@ impl SearchEnv {
             }
         }
         v
+    }
+
+    /// Carpetas donde dejan los programas los instaladores de los asistentes (tabla `TOOLS`).
+    fn installer_dirs(&self) -> Vec<PathBuf> {
+        let windows = self.os == Os::Windows;
+        let base = if windows { self.local_appdata.as_ref() } else { self.home.as_ref() };
+        let Some(base) = base else { return Vec::new() };
+        TOOLS
+            .iter()
+            .flat_map(|t| if windows { t.local_appdata_dirs } else { t.home_dirs })
+            .map(|rel| rel.split('/').fold(base.clone(), |p, part| p.join(part)))
+            .collect()
     }
 
     /// `PATH` primero y luego las carpetas habituales (sin repetir).
@@ -167,40 +133,29 @@ pub struct Resolved {
     pub shown: PathBuf,
 }
 
-/// Busca el asistente. En Windows, si solo está el `.cmd` de npm, se lanza su `.js` con node
-/// (un `.cmd` no se puede lanzar directamente y pasarle textos largos por cmd.exe no es seguro).
+/// Busca el asistente. En Windows, si solo está el `.cmd` de npm, se lanza lo que hay detrás:
+/// su `.js` con node, o su ejecutable (un `.cmd` no se puede lanzar directamente y pasarle textos
+/// largos por cmd.exe no es seguro).
 pub fn resolve_tool(env: &SearchEnv, tool: AiTool, is_file: &dyn Fn(&Path) -> bool) -> Option<Resolved> {
-    let found = find_program(env, tool.base_name(), is_file)?;
+    let spec = tool.spec();
+    let found = find_program(env, spec.program, is_file)?;
     let is_cmd = found.extension().is_some_and(|e| e.eq_ignore_ascii_case("cmd"));
     if !is_cmd {
         return Some(Resolved { program: found.clone(), prefix: Vec::new(), shown: found });
     }
-    let dir = found.parent()?;
-    let mut js = dir.join("node_modules");
-    for part in tool.npm_entry() {
-        js.push(part);
+    let modules = found.parent()?.join("node_modules");
+    let in_modules = |parts: &[&str]| parts.iter().fold(modules.clone(), |p, x| p.join(x));
+    match spec.npm_shim? {
+        NpmShim::Js(parts) => {
+            let js = in_modules(parts);
+            let node = find_program(env, "node", is_file)?;
+            is_file(&js).then(|| Resolved { program: node, prefix: vec![js.display().to_string()], shown: found.clone() })
+        }
+        NpmShim::Exe(parts) => {
+            let exe = in_modules(parts);
+            is_file(&exe).then(|| Resolved { program: exe, prefix: Vec::new(), shown: found.clone() })
+        }
     }
-    let node = find_program(env, "node", is_file)?;
-    if !is_file(&js) {
-        return None;
-    }
-    Some(Resolved { program: node, prefix: vec![js.display().to_string()], shown: found })
-}
-
-/// Comando oficial de instalación (se muestra antes y se ejecuta en la pestaña).
-pub fn install_command(tool: AiTool, os: Os) -> &'static str {
-    match (tool, os) {
-        (AiTool::Claude, Os::Windows) => "irm https://claude.ai/install.ps1 | iex",
-        (AiTool::Claude, _) => "curl -fsSL https://claude.ai/install.sh | bash",
-        // npm.cmd: en PowerShell, `npm` (npm.ps1) puede estar bloqueado por la política de scripts.
-        (AiTool::Codex, Os::Windows) => "npm.cmd install -g @openai/codex",
-        (AiTool::Codex, _) => "npm install -g @openai/codex",
-    }
-}
-
-/// Necesita Node.js (npm) para instalarse.
-pub fn needs_node(tool: AiTool) -> bool {
-    tool == AiTool::Codex
 }
 
 /// `PATH` para los procesos de la terminal local: el actual más las carpetas habituales que
@@ -218,94 +173,6 @@ pub fn augmented_path(env: &SearchEnv, also: &[PathBuf], is_dir: &dyn Fn(&Path) 
         }
     }
     out
-}
-
-// ───────────────────────── Argumentos ─────────────────────────
-
-/// MCP de SSHorus para el asistente (el token va aparte, por variable de entorno).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct McpLaunch {
-    /// Ruta del puente `sshorus-mcp`.
-    pub bridge: String,
-}
-
-/// Quita caracteres de control (salvo saltos de línea y tabuladores) y recorta el tamaño.
-pub fn clean_context(text: &str) -> String {
-    let mut s: String = text
-        .chars()
-        .filter(|c| *c == '\n' || *c == '\t' || !c.is_control())
-        .collect();
-    if s.chars().count() > MAX_CONTEXT_CHARS {
-        s = s.chars().take(MAX_CONTEXT_CHARS).collect();
-        s.push_str("\n[…contexto recortado]");
-    }
-    s.trim().to_string()
-}
-
-/// Cadena TOML básica entre comillas (para los `-c clave=valor` de Codex).
-pub fn toml_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c.is_control() => out.push_str(&format!("\\u{:04X}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
-/// Argumentos de `claude`.
-pub fn claude_args(context: Option<&str>, mcp: Option<&McpLaunch>) -> Vec<String> {
-    let mut a = Vec::new();
-    if let Some(ctx) = context.map(clean_context).filter(|c| !c.is_empty()) {
-        a.push("--append-system-prompt".into());
-        a.push(ctx);
-    }
-    if let Some(m) = mcp {
-        let cfg = serde_json::json!({
-            "mcpServers": { MCP_NAME: { "type": "stdio", "command": m.bridge, "args": [] } }
-        });
-        // Va al final: `--mcp-config` acepta varios valores seguidos.
-        a.push("--mcp-config".into());
-        a.push(cfg.to_string());
-    }
-    a
-}
-
-/// Argumentos de `codex`.
-pub fn codex_args(context: Option<&str>, mcp: Option<&McpLaunch>) -> Vec<String> {
-    let mut a = Vec::new();
-    if let Some(ctx) = context.map(clean_context).filter(|c| !c.is_empty()) {
-        a.push("-c".into());
-        a.push(format!("developer_instructions={}", toml_string(&ctx)));
-    }
-    if let Some(m) = mcp {
-        let key = format!("mcp_servers.{MCP_NAME}");
-        a.push("-c".into());
-        a.push(format!("{key}.command={}", toml_string(&m.bridge)));
-        a.push("-c".into());
-        a.push(format!("{key}.args=[]"));
-        // Codex no pasa todo el entorno a los servidores MCP: hay que nombrar las variables.
-        a.push("-c".into());
-        a.push(format!("{key}.env_vars=[{}, {}]", toml_string(TOKEN_ENV), toml_string(PORT_ENV)));
-        a.push("-c".into());
-        a.push(format!("{key}.tool_timeout_sec={CODEX_TOOL_TIMEOUT_SECS}"));
-    }
-    a
-}
-
-pub fn tool_args(tool: AiTool, context: Option<&str>, mcp: Option<&McpLaunch>) -> Vec<String> {
-    match tool {
-        AiTool::Claude => claude_args(context, mcp),
-        AiTool::Codex => codex_args(context, mcp),
-    }
 }
 
 // ───────────────────────── Shell por defecto ─────────────────────────
@@ -431,14 +298,34 @@ mod tests {
     }
 
     #[test]
-    fn comandos_de_instalacion() {
-        assert_eq!(install_command(AiTool::Claude, Os::Linux), "curl -fsSL https://claude.ai/install.sh | bash");
-        assert_eq!(install_command(AiTool::Claude, Os::Mac), "curl -fsSL https://claude.ai/install.sh | bash");
-        assert_eq!(install_command(AiTool::Claude, Os::Windows), "irm https://claude.ai/install.ps1 | iex");
-        assert_eq!(install_command(AiTool::Codex, Os::Linux), "npm install -g @openai/codex");
-        assert_eq!(install_command(AiTool::Codex, Os::Windows), "npm.cmd install -g @openai/codex");
-        assert!(needs_node(AiTool::Codex));
-        assert!(!needs_node(AiTool::Claude));
+    fn carpetas_de_los_instaladores() {
+        // OpenCode se instala en ~/.opencode/bin; agy en ~/.local/bin (ya habitual).
+        let e = env(Os::Linux, &["/usr/bin"]);
+        let f = files(&["/home/ana/.opencode/bin/opencode", "/home/ana/.local/bin/agy"]);
+        assert_eq!(resolve_tool(&e, AiTool::OpenCode, &f).unwrap().program, PathBuf::from("/home/ana/.opencode/bin/opencode"));
+        assert_eq!(resolve_tool(&e, AiTool::Agy, &f).unwrap().program, PathBuf::from("/home/ana/.local/bin/agy"));
+
+        // Windows: agy en %LOCALAPPDATA%\agy\bin.
+        let e = env(Os::Windows, &[r"C:\Windows\System32"]);
+        let agy = PathBuf::from(r"C:\Users\ana\AppData\Local").join("agy").join("bin").join("agy.exe");
+        let r = resolve_tool(&e, AiTool::Agy, &files(&[agy.to_str().unwrap()])).unwrap();
+        assert_eq!(r.program, agy);
+    }
+
+    #[test]
+    fn windows_cmd_de_npm_con_ejecutable() {
+        // OpenCode instalado con npm: el .cmd lleva a un .exe, que se lanza directamente (sin node).
+        let e = env(Os::Windows, &[r"C:\Windows\System32"]);
+        let npm = PathBuf::from(r"C:\Users\ana\AppData\Roaming").join("npm");
+        let cmd = npm.join("opencode.cmd");
+        let exe = npm.join("node_modules").join("@opencode").join("cli").join("bin").join("opencode.exe");
+        let r = resolve_tool(&e, AiTool::OpenCode, &files(&[cmd.to_str().unwrap(), exe.to_str().unwrap()])).unwrap();
+        assert_eq!(r.program, exe);
+        assert!(r.prefix.is_empty());
+        assert_eq!(r.shown, cmd);
+        // agy no tiene paquete de npm: un .cmd suelto no sirve.
+        let agy_cmd = npm.join("agy.cmd");
+        assert!(resolve_tool(&e, AiTool::Agy, &files(&[agy_cmd.to_str().unwrap()])).is_none());
     }
 
     #[test]
@@ -455,63 +342,6 @@ mod tests {
                 PathBuf::from("/usr/local/bin"),
             ]
         );
-    }
-
-    #[test]
-    fn claude_con_contexto_y_mcp() {
-        let m = McpLaunch { bridge: "/opt/SSHorus/sshorus-mcp".into() };
-        let a = claude_args(Some("Hola\nmundo"), Some(&m));
-        assert_eq!(a[0], "--append-system-prompt");
-        assert_eq!(a[1], "Hola\nmundo");
-        assert_eq!(a[2], "--mcp-config");
-        let v: serde_json::Value = serde_json::from_str(&a[3]).unwrap();
-        assert_eq!(v["mcpServers"]["sshorus"]["command"], "/opt/SSHorus/sshorus-mcp");
-        assert_eq!(v["mcpServers"]["sshorus"]["type"], "stdio");
-        // El token nunca va en los argumentos.
-        assert!(!a[3].contains("TOKEN") && !a[3].contains("env"));
-        assert_eq!(a.len(), 4);
-    }
-
-    #[test]
-    fn claude_sin_nada() {
-        assert!(claude_args(None, None).is_empty());
-        assert!(claude_args(Some("  \n "), None).is_empty());
-    }
-
-    #[test]
-    fn codex_con_contexto_y_mcp() {
-        let m = McpLaunch { bridge: r#"C:\Program Files\SSHorus\sshorus-mcp.exe"#.into() };
-        let a = codex_args(Some("Línea \"uno\"\n\tdos"), Some(&m));
-        assert_eq!(
-            a,
-            vec![
-                "-c",
-                r#"developer_instructions="Línea \"uno\"\n\tdos""#,
-                "-c",
-                r#"mcp_servers.sshorus.command="C:\\Program Files\\SSHorus\\sshorus-mcp.exe""#,
-                "-c",
-                "mcp_servers.sshorus.args=[]",
-                "-c",
-                r#"mcp_servers.sshorus.env_vars=["SSHORUS_MCP_TOKEN", "SSHORUS_MCP_PORT"]"#,
-                "-c",
-                "mcp_servers.sshorus.tool_timeout_sec=900",
-            ]
-        );
-    }
-
-    #[test]
-    fn toml_escapa_controles() {
-        assert_eq!(toml_string("a\u{7f}b\u{1}"), "\"a\\u007Fb\\u0001\"");
-        assert_eq!(toml_string(r"c:\x"), r#""c:\\x""#);
-    }
-
-    #[test]
-    fn contexto_limpio_y_recortado() {
-        assert_eq!(clean_context("a\u{1b}[31mb\r\nc"), "a[31mb\nc");
-        let big = "x".repeat(MAX_CONTEXT_CHARS + 50);
-        let c = clean_context(&big);
-        assert!(c.ends_with("[…contexto recortado]"));
-        assert!(c.chars().count() < MAX_CONTEXT_CHARS + 40);
     }
 
     #[test]

@@ -1,4 +1,5 @@
-// Abrir terminales locales y lanzar Claude Code / Codex con el contexto de SSHorus.
+// Abrir terminales locales y lanzar los asistentes de IA (tabla ASSISTANTS de logic.ts) con el
+// contexto de SSHorus y, en los que lo admiten, su MCP.
 //   openLocalTerminal()             // shell del sistema en la última carpeta elegida
 //   launchAssistant("claude")       // detecta, ofrece instalar, pregunta por el MCP y abre
 //   sendToAi(texto, "web")          // «Enviar a la IA» desde una terminal de servidor
@@ -20,7 +21,7 @@ import { getPrivilege } from "../privileges/store";
 import { refreshStatus, useMcp } from "../mcp/store";
 import { choiceDialog } from "./ChoiceDialog";
 import { buildAiContext, selectionForAi, usesDirect, type ContextServer } from "./context";
-import { KIND_LABEL } from "./logic";
+import { assistant, assistantNames } from "./logic";
 import { getLocalController, lastSshTabId, openLocalTab, useLocalTabs } from "./store";
 
 // ───────── Carpeta de inicio ─────────
@@ -60,6 +61,7 @@ export function openLocalTerminal(cwd: string | null = lastCwd()) {
 // ───────── Instalar ─────────
 
 async function offerInstall(info: AiToolInfo, cwd: string | null): Promise<void> {
+  const def = assistant(info.tool);
   if (info.needsNode && !info.npmFound) {
     const go = await confirmDialog({
       title: `${info.label} no está instalado`,
@@ -82,13 +84,7 @@ async function offerInstall(info: AiToolInfo, cwd: string | null): Promise<void>
       null,
       createElement("p", null, `¿Instalarlo ahora? Se abrirá una terminal local y se ejecutará este comando, para que veas lo que hace:`),
       createElement("pre", { className: "lt-cmd" }, info.installCommand),
-      createElement(
-        "p",
-        { className: "muted" },
-        info.tool === "claude"
-          ? "Es el instalador oficial de Anthropic (claude.ai/install)."
-          : "Es el paquete oficial de OpenAI en npm. Si npm da un error de permisos (EACCES), configura npm para instalar en tu carpeta personal.",
-      ),
+      createElement("p", { className: "muted" }, def.installNote),
       createElement("p", { className: "muted" }, `Cuando termine, vuelve a pulsar «${info.label}».`),
     ),
     confirmText: "Instalar",
@@ -261,8 +257,8 @@ export async function detectAssistants(): Promise<AiToolInfo[] | null> {
 }
 
 /**
- * Abre Claude Code o Codex en una pestaña local, en la última carpeta elegida, con el contexto de
- * SSHorus (y su MCP si está activo). Si no está instalado, ofrece instalarlo.
+ * Abre un asistente de IA en una pestaña local, en la última carpeta elegida, con el contexto de
+ * SSHorus (y su MCP si está activo y el asistente lo admite). Si no está instalado, ofrece instalarlo.
  * `paste`: texto para pegar en el asistente cuando esté listo.
  */
 export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null; paste?: string | null } = {}) {
@@ -274,7 +270,8 @@ export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null;
     await offerInstall(info, cwd);
     return;
   }
-  const withMcp = await decideMcp();
+  // Si el asistente no admite el MCP, no se pregunta por él: se abre con el contexto.
+  const withMcp = info.supportsMcp ? await decideMcp() : false;
   if (withMcp === null) return;
   let context: { text: string | null; servers: number } = { text: null, servers: 0 };
   try {
@@ -282,15 +279,14 @@ export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null;
   } catch (e) {
     toast.error("No se pudo preparar el contexto: se abre sin él", e);
   }
-  const label = KIND_LABEL[tool];
+  const def = assistant(tool);
   const intro = [
-    `${label} en ${cwd ?? "tu carpeta personal"}.`,
+    `${def.label} en ${cwd ?? "tu carpeta personal"}.`,
     context.text
       ? `Contexto de SSHorus: ${context.servers === 1 ? "1 servidor" : `${context.servers} servidores`}${withMcp ? " y el MCP de SSHorus" : ""}.`
       : "Sin contexto de SSHorus (desactivado en Ajustes).",
-    tool === "claude"
-      ? "Si no has iniciado sesión, Claude Code te lo pedirá (o escribe /login)."
-      : "Si no has iniciado sesión, Codex te lo pedirá (o ejecuta «codex login»).",
+    ...(def.limits ? [def.limits] : []),
+    def.login,
   ];
   markToolUsed(tool);
   openLocalTab({
@@ -342,10 +338,10 @@ export async function sendToAi(text: string, serverName: string | null) {
   if (!all) return;
   const installed = all.filter((i) => i.installed);
   if (installed.length === 0) {
-    toast.info("No hay ningún asistente instalado", "Abre «Claude Code» o «Codex» desde el menú de terminal local para instalarlo.");
+    toast.info("No hay ningún asistente instalado", `Abre ${assistantNames("o")} desde el menú de terminal local para instalarlo.`);
     return;
   }
-  // Si están los dos, el último que se usó; si no, Claude Code.
+  // El último que se usó, si sigue instalado; si no, el primero de la lista.
   const prefer = lastTool && installed.some((i) => i.tool === lastTool) ? lastTool : installed[0].tool;
   await launchAssistant(prefer, { paste: payload });
 }

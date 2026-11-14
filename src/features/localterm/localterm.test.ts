@@ -1,7 +1,7 @@
 // Pruebas de funciones puras de la terminal local (contexto para la IA y «Enviar a la IA»).
 // Ejecutar: npx rolldown src/features/localterm/localterm.test.ts -p node -f esm -o /tmp/lt.mjs && node /tmp/lt.mjs
 import { buildAiContext, selectionForAi, usesDirect, type ContextInput, type ContextServer } from "./context";
-import { pickNeighbor, titleFor } from "./logic";
+import { ASSISTANTS, assistant, assistantNames, kindLabel, pickNeighbor, titleFor } from "./logic";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
@@ -145,7 +145,28 @@ eq(pickNeighbor(["a", "b"], "z"), null, "no está");
 eq(titleFor("shell", "/home/ana/proyecto"), "proyecto", "terminal: nombre de carpeta");
 eq(titleFor("claude", "/home/ana/proyecto"), "Claude Code · proyecto", "Claude con carpeta");
 eq(titleFor("codex", null), "Codex", "Codex sin carpeta");
+eq(titleFor("opencode", "/srv/app"), "OpenCode · app", "OpenCode con carpeta");
+eq(titleFor("agy", null), "Antigravity (agy)", "agy sin carpeta");
 eq(titleFor("shell", "C:\\Users\\ana\\"), "ana", "ruta de Windows");
 eq(titleFor("shell", null), "Este equipo", "sin carpeta");
+
+// ── Tabla de asistentes ──
+{
+  const tools = ASSISTANTS.map((a) => a.tool);
+  eq(tools, ["claude", "codex", "agy", "opencode"], "los cuatro, en orden");
+  eq(new Set(tools).size, tools.length, "sin repetidos");
+  for (const a of ASSISTANTS) {
+    eq(assistant(a.tool), a, `búsqueda de ${a.tool}`);
+    eq(kindLabel(a.tool), a.label, `etiqueta de ${a.tool}`);
+    ok(a.login.length > 0 && a.installNote.length > 0, `${a.tool}: textos`);
+    ok(a.url.startsWith("https://"), `${a.tool}: enlace https`);
+    // Si tiene límites, también la etiqueta corta del menú (y al revés).
+    eq(a.limits === null, a.limitsTag === null, `${a.tool}: límites y etiqueta a la vez`);
+  }
+  ok(assistant("agy").limits?.includes("Sin MCP") ?? false, "agy explica que no tiene MCP");
+  eq(kindLabel("shell"), "Terminal local", "etiqueta de la shell");
+  eq(assistantNames("o"), "Claude Code, Codex, Antigravity (agy) u OpenCode", "lista con «u» ante «O»");
+  eq(assistantNames("y"), "Claude Code, Codex, Antigravity (agy) y OpenCode", "lista con «y»");
+}
 
 console.log(`localterm: ${passed} comprobaciones correctas`);

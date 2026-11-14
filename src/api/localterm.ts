@@ -2,7 +2,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { call } from "./core";
 
-export type AiTool = "claude" | "codex";
+export type AiTool = "claude" | "codex" | "agy" | "opencode";
 
 export interface LocalTermInfo {
   home: string;
@@ -21,6 +21,8 @@ export interface AiToolInfo {
   /** Hace falta Node.js (npm) para instalarlo. */
   needsNode: boolean;
   npmFound: boolean;
+  /** Se le puede configurar el MCP de SSHorus (sin tocar sus archivos). */
+  supportsMcp: boolean;
 }
 
 export interface AiLaunch {
@@ -48,7 +50,7 @@ export interface ExportedAlias {
 
 export const localTerm = {
   info: () => call<LocalTermInfo>("local_term_info"),
-  /** Abre la shell del sistema o, con `launch`, Claude Code / Codex. `onData` recibe los bytes crudos. */
+  /** Abre la shell del sistema o, con `launch`, un asistente de IA. `onData` recibe los bytes crudos. */
   open: (
     opts: { cwd: string | null; cols: number; rows: number; launch: AiLaunch | null },
     onData: (data: Uint8Array) => void,
@@ -61,7 +63,7 @@ export const localTerm = {
   resize: (termId: string, cols: number, rows: number) => call<void>("local_term_resize", { termId, cols, rows }),
   /** Termina el programa y todo lo que lanzó. */
   close: (termId: string) => call<void>("local_term_close", { termId }),
-  /** ¿Están instalados Claude Code y Codex? */
+  /** ¿Qué asistentes de IA están instalados? */
   detect: () => call<AiToolInfo[]>("local_ai_detect"),
   /** Alias de ~/.ssh/config exportados por SSHorus que llevan de verdad a cada servidor. */
   sshAliases: () => call<ExportedAlias[]>("local_ai_ssh_aliases"),

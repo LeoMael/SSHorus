@@ -30,6 +30,7 @@ import { openManual } from "../Settings/settingsNav";
 import { closeLocalTab, moveLocalTab, openLocalTab, useLocalTabs, type LocalTab } from "../../features/localterm/store";
 import { LocalMenu } from "../../features/localterm/LocalMenu";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
+import { ASSISTANTS } from "../../features/localterm/logic";
 import "./TabBar.css";
 import { useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 
@@ -275,7 +276,7 @@ export function TabBar() {
         </button>
         <button
           className="icon-btn tabs-local-btn"
-          title="Este equipo: terminal local, Claude Code y Codex"
+          title="Este equipo: terminal local y asistentes de IA"
           aria-label="Terminal local"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
@@ -336,24 +337,18 @@ export function TabBar() {
           >
             <SquareTerminal size={14} /> Terminal local
           </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              closeMenu();
-              void launchAssistant("claude");
-            }}
-          >
-            <Bot size={14} /> Claude Code
-          </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              closeMenu();
-              void launchAssistant("codex");
-            }}
-          >
-            <Bot size={14} /> Codex
-          </button>
+          {ASSISTANTS.map((a) => (
+            <button
+              key={a.tool}
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                void launchAssistant(a.tool);
+              }}
+            >
+              <Bot size={14} /> {a.label}
+            </button>
+          ))}
         </PopupMenu>
       )}
 

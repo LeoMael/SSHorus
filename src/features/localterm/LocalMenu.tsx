@@ -1,10 +1,11 @@
-// Menú «Este equipo»: terminal local, Claude Code y Codex en la carpeta elegida.
+// Menú «Este equipo»: terminal local y los asistentes de IA (tabla ASSISTANTS) en la carpeta elegida.
 import { useEffect, useState } from "react";
 import { Bot, FolderOpen, Settings, SquareTerminal } from "lucide-react";
 import { localTerm, type AiTool, type AiToolInfo } from "../../api/localterm";
 import { PopupMenu } from "../../components/Tabs/PopupMenu";
 import { useSettings } from "../../stores/settings";
 import { chooseFolder, launchAssistant, openLocalAiSettings, openLocalTerminal } from "./launch";
+import { ASSISTANTS } from "./logic";
 import "./LocalTerm.css";
 
 export function LocalMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
@@ -44,12 +45,16 @@ export function LocalMenu({ x, y, onClose }: { x: number; y: number; onClose: ()
       <button role="menuitem" onClick={run(() => openLocalTerminal())}>
         <SquareTerminal size={14} /> Terminal local
       </button>
-      <button role="menuitem" onClick={run(() => void launchAssistant("claude"))} title="Abre Claude Code con el contexto de SSHorus">
-        <Bot size={14} /> Claude Code {hint("claude")}
-      </button>
-      <button role="menuitem" onClick={run(() => void launchAssistant("codex"))} title="Abre Codex con el contexto de SSHorus">
-        <Bot size={14} /> Codex {hint("codex")}
-      </button>
+      {ASSISTANTS.map((a) => (
+        <button
+          key={a.tool}
+          role="menuitem"
+          onClick={run(() => void launchAssistant(a.tool))}
+          title={`Abre ${a.label} con el contexto de SSHorus.${a.limits ? ` ${a.limits}` : ""}`}
+        >
+          <Bot size={14} /> {a.label} {hint(a.tool) ?? (a.limitsTag && <span className="lt-menu-hint">{a.limitsTag}</span>)}
+        </button>
+      ))}
       <hr />
       <button role="menuitem" onClick={run(() => void chooseFolder())}>
         <FolderOpen size={14} /> Cambiar carpeta…

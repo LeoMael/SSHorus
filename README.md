@@ -64,8 +64,8 @@
 - **Proteger tus contraseñas con un PIN**: quedan cifradas y SSHorus se bloquea al abrirlo y tras un rato sin uso.
 - **Dejar que un asistente de IA te ayude** (Claude Code, Claude Desktop…) con tus servidores, sin darle
   tus contraseñas y con tu permiso para cada cambio. Ver [más abajo](#usar-sshorus-con-un-asistente-de-ia-mcp).
-- **Abrir una terminal de tu propio PC** y lanzar **Claude Code** o **Codex** que ya saben qué servidores
-  tienes. Ver [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia).
+- **Abrir una terminal de tu propio PC** y lanzar **Claude Code**, **Codex**, **Antigravity (agy)** u
+  **OpenCode**, que ya saben qué servidores tienes. Ver [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia).
 - **Actualizarse sola** cuando sale una versión nueva.
 - Tema oscuro o claro y paneles ajustables.
 
@@ -263,10 +263,10 @@ Son pestañas como las demás, con la misma terminal, y se distinguen por el ico
   del sistema (`$SHELL` en Linux y macOS, PowerShell en Windows).
 - **Cerrar** la pestaña termina lo que corre en ella y todo lo que lanzó. El PIN también tapa estas pestañas.
 
-### Claude Code y Codex
+### Asistentes de IA: Claude Code, Codex, Antigravity (agy) y OpenCode
 
-En el mismo menú están **Claude Code** y **Codex**. SSHorus los abre en la carpeta elegida y **les da
-contexto** de lo que tienes, para que trabajen como mejor sepan:
+En el mismo menú están **Claude Code**, **Codex**, **Antigravity (agy)** y **OpenCode**. SSHorus los abre
+en la carpeta elegida y **les da contexto** de lo que tienes, para que trabajen como mejor sepan:
 
 - **La lista de tus servidores**: nombre, alias de `~/.ssh/config`, usuario, host, puerto, proyecto, si
   están conectados y qué servidor estabas mirando. Con eso pueden usar directamente
@@ -274,7 +274,8 @@ contexto** de lo que tienes, para que trabajen como mejor sepan:
   lo sabe): para esos usa el MCP.
 - **El MCP de SSHorus**, ya configurado, si está activo (Ajustes → Asistentes de IA). Usa tus conexiones
   (también las de contraseña) y te pide permiso antes de cada cambio, como siempre. Si está apagado,
-  SSHorus te pregunta si activarlo o abrir solo con el contexto.
+  SSHorus te pregunta si activarlo o abrir solo con el contexto. **agy no lo recibe**: solo lee el MCP de
+  sus propios archivos de configuración, y SSHorus no los toca.
 
 El contexto **nunca** lleva contraseñas, llaves, tokens ni el PIN. Puedes verlo y elegir qué incluir en
 **Ajustes → Terminal local e IA**. Para que el ssh directo funcione, exporta los servidores a
@@ -286,18 +287,26 @@ El contexto **nunca** lleva contraseñas, llaves, tokens ni el PIN. Puedes verlo
 |-----------|----------|-----|
 | Claude Code | `--append-system-prompt "<contexto>"` | `--mcp-config '{"mcpServers":{"sshorus":{…}}}'` |
 | Codex | `-c developer_instructions="<contexto>"` | `-c mcp_servers.sshorus.command=…` y `env_vars=["SSHORUS_MCP_TOKEN", …]` |
+| OpenCode | `instructions` con un archivo en la caché de SSHorus (se borra al cerrar la pestaña) | `mcp.sshorus` en `OPENCODE_CONFIG_CONTENT`, con `--standalone` |
+| Antigravity (agy) | Primer mensaje: `-i "<contexto>"` (responde «Listo» y espera) | No: solo lo lee de sus archivos |
 
 El token del MCP va en una variable de entorno del proceso del asistente, no en archivos ni en los argumentos.
+OpenCode se abre con `--standalone` (un servidor propio para esa pestaña) porque su servicio compartido no ve
+las variables de la pestaña.
 
 **Si no están instalados**, SSHorus lo dice y te ofrece instalarlos. Antes de nada te muestra el comando
 exacto, y la instalación corre en una pestaña para que veas lo que hace:
 
 - Claude Code: `curl -fsSL https://claude.ai/install.sh | bash` (en Windows, `irm https://claude.ai/install.ps1 | iex`).
 - Codex: `npm install -g @openai/codex` (hace falta Node.js; SSHorus avisa si falta).
+- Antigravity (agy): `curl -fsSL https://antigravity.google/cli/install.sh | bash` (en Windows,
+  `irm https://antigravity.google/cli/install.ps1 | iex`).
+- OpenCode: `curl -fsSL https://opencode.ai/v2/install | bash` (en Windows, `npm install -g @opencode/cli`).
 
 **Iniciar sesión**: cada programa lo hace a su manera, con tu suscripción o con una clave de API. Si no has
-iniciado sesión, el propio programa te lo pide (`/login` en Claude Code, `codex login` en Codex). SSHorus
-no lee ni copia `~/.claude` ni `~/.codex`.
+iniciado sesión, el propio programa te lo pide (`/login` en Claude Code, `codex login` en Codex; agy y
+OpenCode lo piden al abrirse). SSHorus no lee ni copia `~/.claude`, `~/.codex`, `~/.gemini` ni
+`~/.config/opencode`.
 
 **Enviar a la IA**: en la terminal de un servidor, selecciona un texto (un error, un log…) y con clic
 derecho elige **Enviar a la IA**. Se pega en la pestaña del asistente abierto, sin pulsar Enter, para que
@@ -421,7 +430,7 @@ src/              Interfaz (React + TypeScript)
 src-tauri/src/    Motor (Rust)
   ssh/            Conexión, autenticación, huellas, reconexión
   terminal/       Shells remotas
-  localterm/      Terminal local (PTY del PC) y lanzar Claude Code / Codex con contexto
+  localterm/      Terminal local (PTY del PC) y lanzar asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto
   sftp/           Explorador y edición remota
   transfer/       Cola de transferencias en paralelo
   storage/        Servidores, ajustes, llavero, ~/.ssh/config

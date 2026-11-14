@@ -1,34 +1,42 @@
 //! Terminal local: pestañas con una shell **del propio equipo** (no de un servidor), y lanzar
-//! Claude Code o Codex con el contexto de SSHorus y su MCP ya configurado.
+//! asistentes de IA (Claude Code, Codex, Antigravity/agy, OpenCode) con el contexto de SSHorus y,
+//! en los que lo admiten, su MCP ya configurado.
 //!
 //! Igual que las terminales SSH: la salida llega por el `Channel` de `local_term_open` (bytes
 //! crudos) y, al terminar, se emite `EV_TERMINAL_EXIT` con el id. Así la interfaz usa la misma vista.
 //!
-//! Lo que SSHorus NUNCA hace aquí: leer o copiar `~/.claude` ni `~/.codex`, escribir archivos en la
-//! carpeta del usuario, ni poner el token del MCP en un archivo o en los argumentos (va por
-//! variable de entorno al proceso hijo).
+//! Lo que SSHorus NUNCA hace aquí: leer o copiar la configuración de los asistentes (`~/.claude`,
+//! `~/.codex`, `~/.gemini`, `~/.config/opencode`…), escribir archivos en la carpeta del usuario,
+//! ni poner el token del MCP en un archivo o en los argumentos (va por variable de entorno al
+//! proceso hijo).
+//!
+//! Archivos: `tools` (los asistentes, como datos) · `aicli` (dónde están) · `args` (con qué
+//! argumentos se abren) · `launch` (MCP, contexto y comando final) · `env` (entorno del proceso) ·
+//! `pty` (la terminal) · `aliases` (alias de `~/.ssh/config`).
 
 pub mod aicli;
 pub mod aliases;
+pub mod args;
+pub mod env;
+pub mod launch;
 pub mod pty;
+pub mod tools;
 
 use std::collections::HashMap;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use portable_pty::CommandBuilder;
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::{AppError, AppResult};
-use crate::mcp::McpState;
 use crate::storage::ssh_config::{load_overrides, SshEnv};
 use crate::storage::ProfileStore;
 use crate::types::{TerminalExit, EV_TERMINAL_EXIT};
-use aicli::{AiTool, McpLaunch, Os, SearchEnv};
+use aicli::Os;
+use env::{base_command, is_file, resolve_cwd, search_env, shell_command};
 use pty::LocalPty;
+use tools::{AiTool, TOOLS};
 
 // ───────────────────────── Ajustes ─────────────────────────
 
@@ -106,115 +114,6 @@ impl LocalTermStore {
     }
 }
 
-// ───────────────────────── Entorno ─────────────────────────
-
-/// Carpetas `bin` de nvm, la versión más nueva primero.
-fn nvm_bins(home: &Path) -> Vec<PathBuf> {
-    let Ok(rd) = std::fs::read_dir(home.join(".nvm").join("versions").join("node")) else { return Vec::new() };
-    let mut v: Vec<(Vec<u64>, PathBuf)> = rd
-        .flatten()
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            let ver: Vec<u64> = name.trim_start_matches('v').split('.').filter_map(|p| p.parse().ok()).collect();
-            (!ver.is_empty()).then(|| (ver, e.path().join("bin")))
-        })
-        .collect();
-    v.sort_by(|a, b| b.0.cmp(&a.0));
-    v.into_iter().map(|(_, p)| p).collect()
-}
-
-fn search_env() -> SearchEnv {
-    let home = dirs::home_dir();
-    SearchEnv {
-        os: Os::current(),
-        path: std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default(),
-        nvm_bins: home.as_deref().map(nvm_bins).unwrap_or_default(),
-        appdata: std::env::var_os("APPDATA").map(PathBuf::from),
-        local_appdata: std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
-        home,
-    }
-}
-
-fn is_file(p: &Path) -> bool {
-    p.is_file()
-}
-
-fn is_dir(p: &Path) -> bool {
-    p.is_dir()
-}
-
-/// Shell del sistema (programa y argumentos).
-fn shell_command(env: &SearchEnv) -> (PathBuf, Vec<String>) {
-    let pwsh = if env.os == Os::Windows { aicli::find_program(env, "pwsh", &is_file) } else { None };
-    let shell_var = std::env::var("SHELL").ok();
-    aicli::default_shell(env.os, shell_var.as_deref(), pwsh, &is_file)
-}
-
-/// Variables que pone el lanzador de AppImage para la propia app: en una shell del usuario
-/// romperían programas del sistema (bibliotecas de la app en lugar de las suyas).
-const APPIMAGE_VARS: &[&str] = &[
-    "LD_LIBRARY_PATH",
-    "LD_PRELOAD",
-    "GTK_PATH",
-    "GTK_EXE_PREFIX",
-    "GTK_DATA_PREFIX",
-    "GTK_IM_MODULE_FILE",
-    "GTK_THEME",
-    "GDK_PIXBUF_MODULE_FILE",
-    "GDK_BACKEND",
-    "GIO_MODULE_DIR",
-    "GI_TYPELIB_PATH",
-    "GSETTINGS_SCHEMA_DIR",
-    "PYTHONHOME",
-    "PYTHONPATH",
-    "PERLLIB",
-    "QT_PLUGIN_PATH",
-    "APPDIR",
-    "APPIMAGE",
-    "ARGV0",
-    "OWD",
-];
-
-/// Comando base con el entorno de una terminal: tipo de terminal, `PATH` completo y sin restos
-/// del lanzador de la app.
-fn base_command(program: &Path, env: &SearchEnv, extra_path: &[PathBuf], cwd: &Path) -> AppResult<CommandBuilder> {
-    let mut cmd = CommandBuilder::new(program);
-    cmd.cwd(cwd);
-    let mut path = aicli::augmented_path(env, extra_path, &is_dir);
-    if let Some(appdir) = std::env::var_os("APPDIR").filter(|_| std::env::var_os("APPIMAGE").is_some()) {
-        let appdir = PathBuf::from(appdir);
-        path.retain(|d| !d.starts_with(&appdir));
-        for k in APPIMAGE_VARS {
-            cmd.env_remove(k);
-        }
-    }
-    // Lo que puso SSHorus para su propia ventana (Linux + NVIDIA).
-    cmd.env_remove("WEBKIT_DISABLE_DMABUF_RENDERER");
-    let joined: OsString =
-        std::env::join_paths(&path).map_err(|e| AppError::Invalid(format!("PATH no válido: {e}")))?;
-    cmd.env("PATH", joined);
-    cmd.env("TERM", "xterm-256color");
-    cmd.env("COLORTERM", "truecolor");
-    cmd.env("TERM_PROGRAM", "SSHorus");
-    cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
-    // El token solo lo recibe un asistente lanzado con el MCP.
-    cmd.env_remove(aicli::TOKEN_ENV);
-    cmd.env_remove(aicli::PORT_ENV);
-    Ok(cmd)
-}
-
-/// Carpeta de trabajo: la pedida si existe; si no, la carpeta personal.
-fn resolve_cwd(cwd: Option<&str>) -> AppResult<PathBuf> {
-    if let Some(c) = cwd.map(str::trim).filter(|c| !c.is_empty()) {
-        let p = PathBuf::from(c);
-        if p.is_dir() {
-            return Ok(p);
-        }
-        return Err(AppError::NotFound(format!("la carpeta {c} no existe")));
-    }
-    dirs::home_dir().ok_or_else(|| AppError::Io("no se encontró la carpeta personal del usuario".into()))
-}
-
 // ───────────────────────── Tipos de la interfaz ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -240,6 +139,8 @@ pub struct AiToolInfo {
     pub needs_node: bool,
     /// Hay npm (para el aviso «falta Node.js»).
     pub npm_found: bool,
+    /// Se le puede configurar el MCP de SSHorus sin tocar sus archivos.
+    pub supports_mcp: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -293,24 +194,26 @@ pub async fn local_term_info() -> AppResult<LocalTermInfo> {
     })
 }
 
-/// ¿Están instalados Claude Code y Codex? (Solo busca los programas; no lee su configuración.)
+/// ¿Qué asistentes están instalados? (Solo busca los programas; no lee su configuración.)
 #[tauri::command]
 pub async fn local_ai_detect() -> AppResult<Vec<AiToolInfo>> {
     tokio::task::spawn_blocking(|| {
         let env = search_env();
         let npm_found = aicli::find_program(&env, "npm", &is_file).is_some();
-        [AiTool::Claude, AiTool::Codex]
-            .into_iter()
-            .map(|tool| {
-                let r = aicli::resolve_tool(&env, tool, &is_file);
+        TOOLS
+            .iter()
+            .map(|spec| {
+                let r = aicli::resolve_tool(&env, spec.tool, &is_file);
+                let install = spec.install(env.os);
                 AiToolInfo {
-                    tool,
-                    label: tool.label().into(),
+                    tool: spec.tool,
+                    label: spec.label.into(),
                     installed: r.is_some(),
                     path: r.map(|r| r.shown.display().to_string()),
-                    install_command: aicli::install_command(tool, env.os).into(),
-                    needs_node: aicli::needs_node(tool),
+                    install_command: install.command.into(),
+                    needs_node: install.needs_node,
                     npm_found,
+                    supports_mcp: spec.supports_mcp(),
                 }
             })
             .collect()
@@ -335,28 +238,7 @@ pub async fn local_ai_ssh_aliases(store: State<'_, ProfileStore>) -> AppResult<V
     .map_err(|e| AppError::Io(format!("tarea interna interrumpida: {e}")))?
 }
 
-/// Prepara el MCP para el asistente: puente y token. Si no se puede, explica por qué.
-async fn prepare_mcp(app: &AppHandle) -> Result<(McpLaunch, String, u16), String> {
-    let state = app.state::<McpState>();
-    let st = state.status();
-    if !st.enabled {
-        return Err("El MCP de SSHorus está apagado: el asistente se abrió solo con el contexto.".into());
-    }
-    if !st.running {
-        let why = st.error.unwrap_or_else(|| "no está en marcha".into());
-        return Err(format!("El MCP de SSHorus no está disponible ({why}): el asistente se abrió solo con el contexto."));
-    }
-    if !st.bridge_found {
-        return Err(format!(
-            "No se encontró el puente {} junto a SSHorus: el asistente se abrió solo con el contexto.",
-            crate::mcp::bridge_file_name()
-        ));
-    }
-    let token = crate::mcp::ensure_token(&state).await.map_err(|e| format!("No se pudo leer el token del MCP: {e}"))?;
-    Ok((McpLaunch { bridge: st.bridge_path }, token.to_string(), st.port))
-}
-
-/// Abre una terminal local: la shell del sistema o, con `launch`, Claude Code / Codex.
+/// Abre una terminal local: la shell del sistema o, con `launch`, un asistente de IA.
 #[tauri::command]
 pub async fn local_term_open(
     app: AppHandle,
@@ -369,48 +251,16 @@ pub async fn local_term_open(
         .await
         .map_err(|e| AppError::Io(format!("tarea interna interrumpida: {e}")))?;
 
-    let mut warning = None;
-    let mut with_mcp = false;
-    let (cmd, shown) = match &opts.launch {
+    let prepared = match &opts.launch {
         None => {
             let (shell, args) = shell_command(&env);
             let mut cmd = base_command(&shell, &env, &[], &cwd)?;
             cmd.args(&args);
-            (cmd, shell)
+            launch::Prepared { cmd, shown: shell, mcp: false, warning: None, temp_files: Vec::new() }
         }
-        Some(l) => {
-            let resolved = aicli::resolve_tool(&env, l.tool, &is_file)
-                .ok_or_else(|| AppError::NotFound(format!("{} no está instalado en este equipo", l.tool.label())))?;
-            let mcp = if l.mcp {
-                match prepare_mcp(&app).await {
-                    Ok(m) => Some(m),
-                    Err(w) => {
-                        warning = Some(w);
-                        None
-                    }
-                }
-            } else {
-                None
-            };
-            // La carpeta del programa (y la de node) también van al PATH: el asistente lanza
-            // sus propios procesos y debe encontrarse a sí mismo.
-            let mut extra = Vec::new();
-            for p in [&resolved.program, &resolved.shown] {
-                if let Some(d) = p.parent() {
-                    extra.push(d.to_path_buf());
-                }
-            }
-            let mut cmd = base_command(&resolved.program, &env, &extra, &cwd)?;
-            cmd.args(&resolved.prefix);
-            cmd.args(aicli::tool_args(l.tool, l.context.as_deref(), mcp.as_ref().map(|m| &m.0)));
-            if let Some((_, token, port)) = &mcp {
-                cmd.env(aicli::TOKEN_ENV, token);
-                cmd.env(aicli::PORT_ENV, port.to_string());
-                with_mcp = true;
-            }
-            (cmd, resolved.shown)
-        }
+        Some(l) => launch::prepare(&app, &env, l, &cwd).await?,
     };
+    let launch::Prepared { cmd, shown, mcp: with_mcp, warning, temp_files } = prepared;
 
     let term_id = uuid::Uuid::new_v4().to_string();
     let exit_id = term_id.clone();
@@ -425,6 +275,9 @@ pub async fn local_term_open(
             }
         },
         move |code| {
+            for f in &temp_files {
+                let _ = std::fs::remove_file(f);
+            }
             app2.state::<LocalTermStore>().lock().remove(&exit_id);
             let _ = app2.emit(EV_TERMINAL_EXIT, TerminalExit { term_id: exit_id, code });
         },
@@ -488,13 +341,25 @@ mod tests {
     #[ignore]
     fn asistentes_reales() {
         let env = search_env();
-        let run = |tool: AiTool, extra: &[&str]| -> Option<String> {
+        // `plan`: con los argumentos de SSHorus (contexto y MCP) o solo con `extra`.
+        let run = |tool: AiTool, plan: bool, extra: &[&str]| -> Option<String> {
             let r = aicli::resolve_tool(&env, tool, &is_file)?;
             let home = dirs::home_dir().unwrap();
             let mut cmd = base_command(&r.program, &env, &[], &home).unwrap();
             cmd.args(&r.prefix);
-            let m = McpLaunch { bridge: "/opt/sshorus/sshorus-mcp".into() };
-            cmd.args(aicli::tool_args(tool, Some("Contexto \"de\" prueba\ncon dos líneas"), Some(&m)));
+            if plan {
+                let m = args::McpLaunch { bridge: "/opt/sshorus/sshorus-mcp".into() };
+                let input = args::LaunchInput {
+                    context: Some("Contexto \"de\" prueba\ncon dos líneas"),
+                    mcp: Some(&m),
+                    ..Default::default()
+                };
+                let p = args::launch_plan(tool.spec(), &input);
+                cmd.args(&p.args);
+                for (k, v) in &p.env {
+                    cmd.env(k, v);
+                }
+            }
             cmd.args(extra);
             let (tx, rx) = mpsc::channel::<Vec<u8>>();
             let (etx, erx) = mpsc::channel::<Option<u32>>();
@@ -511,13 +376,19 @@ mod tests {
             Some(out)
         };
         // Codex: los -c se aplican y el servidor MCP queda con env_vars (sin token en la configuración).
-        if let Some(out) = run(AiTool::Codex, &["mcp", "get", "sshorus", "--json"]) {
+        if let Some(out) = run(AiTool::Codex, true, &["mcp", "get", "sshorus", "--json"]) {
             assert!(out.contains("SSHORUS_MCP_TOKEN"), "codex no recibió env_vars");
             assert!(out.contains("/opt/sshorus/sshorus-mcp"));
             assert!(out.contains("900"));
         }
-        if let Some(out) = run(AiTool::Claude, &["--version"]) {
+        if let Some(out) = run(AiTool::Claude, true, &["--version"]) {
             assert!(out.contains("Claude Code"));
+        }
+        // agy y OpenCode: que se encuentran y arrancan (sin tocar su configuración).
+        for tool in [AiTool::Agy, AiTool::OpenCode] {
+            if let Some(out) = run(tool, false, &["--version"]) {
+                assert!(args::parse_major(&out).is_some(), "{tool:?}: versión no reconocida");
+            }
         }
     }
 }

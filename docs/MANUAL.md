@@ -25,7 +25,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 16. [GitHub](#github)
 17. [PIN y bloqueo](#pin-y-bloqueo)
 18. [Asistentes de IA (MCP)](#asistentes-de-ia-mcp)
-19. [Terminal local, Claude Code y Codex](#terminal-local-claude-code-y-codex)
+19. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
 20. [Ajustes](#ajustes)
 21. [Atajos de teclado](#atajos-de-teclado)
 22. [Solución de problemas](#solución-de-problemas)
@@ -517,19 +517,19 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - Mientras esté activo verás **Automático** en la barra de pestañas: un clic lo apaga en todos los servidores.
 - Nunca funciona con SSHorus bloqueado ni en servidores de solo lectura. Cada acción queda en **Actividad del asistente** marcada como «automático», y las peligrosas muestran un aviso.
 
-## Terminal local, Claude Code y Codex
+## Terminal local y asistentes de IA
 
-**Para qué sirve:** tener en SSHorus una terminal de **tu propio PC** y abrir **Claude Code** o **Codex** que ya saben qué servidores tienes.
+**Para qué sirve:** tener en SSHorus una terminal de **tu propio PC** y abrir **Claude Code**, **Codex**, **Antigravity (agy)** u **OpenCode**, que ya saben qué servidores tienes.
 
 **Cómo se usa:**
 
 1. Pulsa el botón del **portátil** en la barra de pestañas (junto a **+**).
-2. Elige **Terminal local**, **Claude Code** o **Codex**. Se abre una pestaña con el icono del portátil (o del robot).
+2. Elige **Terminal local** o un asistente: **Claude Code**, **Codex**, **Antigravity (agy)** u **OpenCode**. Se abre una pestaña con el icono del portátil (o del robot).
 3. Para trabajar en otra carpeta, pulsa **Cambiar carpeta…** en el mismo menú. SSHorus recuerda la última.
-4. Si el asistente no está instalado, SSHorus te muestra el comando oficial y, si aceptas, lo ejecuta en una pestaña para que veas la instalación. Al terminar, vuelve a pulsar **Claude Code** o **Codex**.
-5. La primera vez, el asistente te pide iniciar sesión (con tu suscripción o una clave de API): `/login` en Claude Code, o lo que indique Codex.
+4. Si el asistente no está instalado, SSHorus te muestra el comando oficial y, si aceptas, lo ejecuta en una pestaña para que veas la instalación. Al terminar, vuelve a pulsarlo.
+5. La primera vez, el asistente te pide iniciar sesión (con tu suscripción o una clave de API): `/login` en Claude Code, o lo que indique cada programa.
 
-**Qué sabe el asistente:** la lista de tus servidores con su alias de `~/.ssh/config` (puede usar `ssh <alias> '<comando>'`), su usuario, host y proyecto, cuáles están conectados, qué servidor estabas mirando y la fecha. Si el **MCP** está activo, también lo tiene configurado, con tus permisos de siempre. Nunca recibe contraseñas, llaves, tokens ni el PIN.
+**Qué sabe el asistente:** la lista de tus servidores con su alias de `~/.ssh/config` (puede usar `ssh <alias> '<comando>'`), su usuario, host y proyecto, cuáles están conectados, qué servidor estabas mirando y la fecha. Si el **MCP** está activo, también lo tiene configurado, con tus permisos de siempre (menos agy, que solo lo lee de sus propios archivos; a agy el contexto le llega como primer mensaje). Nunca recibe contraseñas, llaves, tokens ni el PIN.
 
 **Enviar a la IA:** en la terminal de un servidor, selecciona un texto, haz clic derecho y elige **Enviar a la IA**. Se pega en el asistente abierto (sin `Enter`) para que añadas tu pregunta.
 
@@ -538,7 +538,7 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - Cerrar la pestaña termina lo que corre en ella y todo lo que lanzó.
 - En **Ajustes → Terminal local e IA** eliges qué contexto recibe (y lo puedes ver), y si usa ssh directo, el MCP o las dos cosas.
 - Para el ssh directo, exporta los servidores a `~/.ssh/config` (barra lateral → **Nuevo → Exportar**). Los servidores con contraseña solo funcionan por el MCP.
-- SSHorus no escribe nada en tu carpeta ni lee la configuración de Claude Code o Codex.
+- SSHorus no escribe nada en tu carpeta ni lee la configuración de los asistentes.
 
 ## Ajustes
 

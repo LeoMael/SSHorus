@@ -380,7 +380,7 @@ function TermMenu({ x, y, hasSelection, onClose, onCopy, onPaste, onSelectAll, o
         <button
           role="menuitem"
           disabled={!hasSelection}
-          title="Pega el texto seleccionado en la pestaña del asistente (Claude Code o Codex); si no hay ninguna, abre una"
+          title="Pega el texto seleccionado en la pestaña del asistente de IA abierto (Claude Code, Codex, agy u OpenCode); si no hay ninguna, abre una"
           onClick={run(onSendToAi)}
         >
           <Bot size={14} /> Enviar a la IA

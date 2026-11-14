@@ -91,7 +91,7 @@ export interface Settings {
   vulnscan: import("./vulnscan").VulnScanSettings;
   /** IA opcional para explicar informes del escáner (el token no va aquí). */
   ai: import("./vulnscan").AiSettings;
-  /** Terminal local y asistentes (Claude Code, Codex): qué contexto se les da y cómo. */
+  /** Terminal local y asistentes de IA (Claude Code, Codex, agy, OpenCode): qué contexto se les da y cómo. */
   localAi: LocalAiSettings;
   /** Atajos de teclado cambiados por el usuario: id de acción → combinación ("" = sin atajo).
    *  Solo se guardan los distintos de los de por defecto (lista en src/features/shortcuts/keys.ts). */

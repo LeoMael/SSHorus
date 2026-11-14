@@ -91,8 +91,8 @@ const NAV: { group: string; items: SectionInfo[] }[] = [
   {
     group: "Inteligencia artificial",
     items: [
-      { id: "assistants", label: "Asistentes de IA (MCP)", icon: <Bot size={15} />, desc: "Claude, Codex y otros usan tus servidores con permiso, sin ver contraseñas ni llaves.", keys: "mcp claude codex token puerto permisos sudo" },
-      { id: "localAi", label: "Terminal local e IA", icon: <Laptop size={15} />, desc: "Terminal de tu equipo y el contexto que reciben los asistentes (nunca contraseñas ni llaves).", keys: "local claude code codex contexto carpeta" },
+      { id: "assistants", label: "Asistentes de IA (MCP)", icon: <Bot size={15} />, desc: "Claude, Codex, OpenCode y otros usan tus servidores con permiso, sin ver contraseñas ni llaves.", keys: "mcp claude codex opencode token puerto permisos sudo" },
+      { id: "localAi", label: "Terminal local e IA", icon: <Laptop size={15} />, desc: "Terminal de tu equipo y el contexto que reciben los asistentes (nunca contraseñas ni llaves).", keys: "local claude code codex agy antigravity opencode contexto carpeta" },
       { id: "ai", label: "IA para explicar informes", icon: <MessageSquareText size={15} />, desc: "Modelo opcional que explica los informes del escáner.", keys: "openai ollama modelo url token escáner vulnerabilidades" },
     ],
   },

@@ -29,6 +29,7 @@ import {
   Laptop,
 } from "lucide-react";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
+import { ASSISTANTS } from "../../features/localterm/logic";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";
@@ -423,8 +424,7 @@ export function Sidebar() {
         { label: `Exportar a ${SSH_CONFIG_LABEL}`, icon: <Upload size={14} />, onClick: () => void exportSshConfig() },
         "separator",
         { label: "Terminal local (este equipo)", icon: <Laptop size={14} />, onClick: () => openLocalTerminal() },
-        { label: "Claude Code", icon: <Bot size={14} />, onClick: () => void launchAssistant("claude") },
-        { label: "Codex", icon: <Bot size={14} />, onClick: () => void launchAssistant("codex") },
+        ...ASSISTANTS.map((a) => ({ label: a.label, icon: <Bot size={14} />, onClick: () => void launchAssistant(a.tool) })),
       ],
     });
   };
