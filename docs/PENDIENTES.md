@@ -66,6 +66,13 @@ qué usuarios suyos tienes guardados (y cuáles tienen sudo). Clic → abre ese 
 - Recomendación: sí, encaja con el Mapa y la Auditoría (luego: «Auditar todos»). El usuario
   aprobó hacerlo en la 1.0.0-beta.1: **hecho** (14/11/2026). Sin instalar nada en el VPS: solo SSH y comandos estándar.
 
+**Decidido (14/11/2026): usuarios «solo por clave» con sudo.** Entrar con llave SSH es más seguro que con
+contraseña (no se puede adivinar ni robar escribiéndola), pero sudo sigue pidiendo una contraseña. Forma
+recomendada: **llave para entrar + contraseña solo para sudo**. Cambio pendiente en `KeyUserWizard`: si se marca
+«Dar sudo», generar (o pedir) una contraseña, ponérsela al usuario y guardarla en SSHorus como «Guardar» de
+sudo de ese servidor; la entrada por contraseña sigue desactivada en SSH (solo llave). Sin sudo sin contraseña.
+El Mapa de proyecto se queda como está (el usuario está conforme).
+
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
 Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
 

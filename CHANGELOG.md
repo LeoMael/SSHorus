@@ -4,7 +4,7 @@ Todos los cambios importantes de SSHorus se anotan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones
 siguen [Versionado Semántico](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [1.0.0-beta.1] - 2026-11-14
 
 ### Importante
 - **La app se llama ahora SSHorus** (antes TerView), con logo nuevo: el ojo de Horus dentro de un anillo,
