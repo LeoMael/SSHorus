@@ -75,6 +75,21 @@ eq(findConflicts("explorer.filter", "Ctrl+Shift+F", {}, false).map((a) => a.id),
 eq(findConflicts("app.sidebar", "Ctrl+Shift+F", {}, false).map((a) => a.id), ["term.find"], "global contra terminal");
 eq(findConflicts("app.palette", "Ctrl+Shift+P", {}, false).map((a) => a.id), [], "consigo misma no");
 eq(findConflicts("app.sidebar", "Ctrl+Shift+P", { "app.palette": "" }, false).map((a) => a.id), [], "si la otra quedó sin atajo");
+for (const mac of [false, true]) {
+  for (const a of SHORTCUT_ACTIONS) {
+    eq(findConflicts(a.id, resolveCombo(a.id, {}, mac), {}, mac).map((c) => c.id), [], `${a.id} sin choques por defecto (${mac ? "macOS" : "Linux"})`);
+  }
+}
+
+// Cerrar: Ctrl+W cierra el archivo abierto; la conexión entera pide Mayús
+eq(resolveCombo("tabs.close", {}, false), "Ctrl+Shift+W", "cerrar conexión en Linux");
+eq(resolveCombo("tabs.close", {}, true), "Shift+Meta+W", "cerrar conexión en macOS");
+eq(resolveCombo("session.closeItem", {}, false), "Ctrl+W", "cerrar archivo en Linux");
+eq(resolveCombo("session.closeItem", {}, true), "Meta+W", "cerrar archivo en macOS");
+eq(cleanOverrides({ "tabs.close": "Ctrl+Shift+W" }, false), {}, "el nuevo valor por defecto no se guarda");
+eq(cleanOverrides({ "tabs.close": "Ctrl+Q" }, false), { "tabs.close": "Ctrl+Q" }, "un atajo propio se conserva");
+eq(comboMatches("Alt+PageDown", ev("PageDown", "PageDown", { alt: true })), true, "sección siguiente");
+eq(comboMatches("Alt+Shift+PageUp", ev("PageUp", "PageUp", { alt: true, shift: true })), true, "archivo anterior");
 
 // Terminal y sistema
 eq(terminalOwns("Ctrl+W"), true, "Ctrl+W es de la shell");

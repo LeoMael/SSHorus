@@ -9,7 +9,7 @@ export interface ShortcutAction {
   id: string;
   /** Nombre en español para Ajustes. */
   label: string;
-  group: "Generales" | "Terminal" | "Explorador" | "Editor";
+  group: "Generales" | "Dentro del servidor" | "Terminal" | "Explorador" | "Editor";
   /** Dónde funciona: global (toda la ventana) o solo con el foco en esa zona. */
   scope: ShortcutScope;
   /** Atajo por defecto en Linux y Windows. */
@@ -24,12 +24,17 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: "tabs.prev", label: "Pestaña anterior", group: "Generales", scope: "global", def: "Ctrl+Shift+Tab" },
   { id: "tabs.nextConn", label: "Conexión siguiente", group: "Generales", scope: "global", def: "Ctrl+PageDown" },
   { id: "tabs.prevConn", label: "Conexión anterior", group: "Generales", scope: "global", def: "Ctrl+PageUp" },
-  { id: "tabs.close", label: "Cerrar la pestaña actual", group: "Generales", scope: "global", def: "Ctrl+W", mac: "Meta+W" },
+  { id: "tabs.close", label: "Cerrar la pestaña del servidor (la conexión)", group: "Generales", scope: "global", def: "Ctrl+Shift+W", mac: "Shift+Meta+W" },
   { id: "app.sidebar", label: "Mostrar u ocultar la barra lateral", group: "Generales", scope: "global", def: "Ctrl+B", mac: "Meta+B" },
-  { id: "session.terminal", label: "Mostrar u ocultar la terminal", group: "Generales", scope: "global", def: "Ctrl+`" },
-  { id: "session.split", label: "Dividir o quitar la división", group: "Generales", scope: "global", def: "Ctrl+Shift+M" },
   { id: "app.settings", label: "Ajustes", group: "Generales", scope: "global", def: "Ctrl+,", mac: "Meta+," },
   { id: "app.lock", label: "Bloquear SSHorus", group: "Generales", scope: "global", def: "Ctrl+Shift+L", mac: "Shift+Meta+L" },
+  { id: "session.closeItem", label: "Cerrar el archivo abierto", group: "Dentro del servidor", scope: "global", def: "Ctrl+W", mac: "Meta+W" },
+  { id: "session.nextView", label: "Sección siguiente", group: "Dentro del servidor", scope: "global", def: "Alt+PageDown" },
+  { id: "session.prevView", label: "Sección anterior", group: "Dentro del servidor", scope: "global", def: "Alt+PageUp" },
+  { id: "session.nextFile", label: "Archivo abierto siguiente", group: "Dentro del servidor", scope: "global", def: "Alt+Shift+PageDown" },
+  { id: "session.prevFile", label: "Archivo abierto anterior", group: "Dentro del servidor", scope: "global", def: "Alt+Shift+PageUp" },
+  { id: "session.terminal", label: "Mostrar u ocultar la terminal", group: "Dentro del servidor", scope: "global", def: "Ctrl+`" },
+  { id: "session.split", label: "Dividir o quitar la división", group: "Dentro del servidor", scope: "global", def: "Ctrl+Shift+M" },
   { id: "term.copy", label: "Copiar", group: "Terminal", scope: "terminal", def: "Ctrl+Shift+C" },
   { id: "term.paste", label: "Pegar", group: "Terminal", scope: "terminal", def: "Ctrl+Shift+V" },
   { id: "term.find", label: "Buscar", group: "Terminal", scope: "terminal", def: "Ctrl+Shift+F" },
@@ -45,7 +50,7 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: "editor.save", label: "Guardar el archivo en el servidor", group: "Editor", scope: "editor", def: "Ctrl+S", mac: "Meta+S" },
 ];
 
-export const SHORTCUT_GROUPS: ShortcutAction["group"][] = ["Generales", "Terminal", "Explorador", "Editor"];
+export const SHORTCUT_GROUPS: ShortcutAction["group"][] = ["Generales", "Dentro del servidor", "Terminal", "Explorador", "Editor"];
 
 const BY_ID = new Map(SHORTCUT_ACTIONS.map((a) => [a.id, a]));
 export const actionById = (id: string): ShortcutAction | undefined => BY_ID.get(id);

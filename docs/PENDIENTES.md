@@ -47,9 +47,8 @@ versión se publicará cuando esto esté listo (propuesta: **1.0.0-beta.1** para
   explicar que con llave SSH «La de la conexión» no sirve.
 
 **Estado (14/11/2026):** unido a `main` (sin publicar) todo lo de esta ronda: ajustes pequeños, «Añadir a
-SSHorus…», arreglo de sudo y avisos en el formulario, agy/OpenCode, llaves SSH, PIN o contraseña. En curso:
-**atajos** — Ctrl+W hoy cierra el servidor entero; pasa a Ctrl+Shift+W y Ctrl+W cierra lo interno (p. ej. un
-archivo abierto); y atajos para moverse entre las secciones dentro de un servidor. Después: probar todo en la
+SSHorus…», arreglo de sudo y avisos en el formulario, agy/OpenCode, llaves SSH, PIN o contraseña. También los **atajos** (Ctrl+W cierra lo interno,
+Ctrl+Shift+W el servidor, Alt+AvPág/RePág entre secciones). Después: probar todo en la
 app y publicar 1.0.0-beta.1.
 
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con

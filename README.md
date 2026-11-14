@@ -147,7 +147,9 @@ En Windows ese archivo está en `C:\Users\<tu usuario>\.ssh\config`.
 |-------|--------|
 | `Ctrl+Shift+P` | Paleta de comandos |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Siguiente / anterior pestaña (servidores y terminales locales) |
-| `Ctrl+W` | Cerrar la pestaña actual |
+| `Ctrl+Shift+W` | Cerrar la pestaña del servidor (pregunta si hay cambios sin guardar o transferencias) |
+| `Ctrl+W` | Cerrar el archivo abierto dentro del servidor |
+| `Alt+AvPág` / `Alt+RePág` | Siguiente / anterior sección del servidor (Archivos, Comandos, Monitor…) |
 | `Ctrl+B` | Mostrar u ocultar la barra lateral |
 | ``Ctrl+` `` | Mostrar u ocultar la terminal |
 | `Ctrl+,` | Ajustes |

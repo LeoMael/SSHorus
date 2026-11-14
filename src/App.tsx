@@ -123,7 +123,7 @@ function useGlobalShortcuts() {
         case "app.settings":
           useUi.getState().openSettings();
           return;
-        case "tabs.close":
+        case "tabs.close": // la conexión entera (Ctrl+Shift+W); Ctrl+W cierra el archivo abierto (useSessionKeys)
           if (activeTabId && isLocalTabId(activeTabId)) closeLocalTab(activeTabId);
           else if (activeTabId) void requestCloseTab(activeTabId);
           return;

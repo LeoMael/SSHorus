@@ -193,7 +193,8 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 **Notas:**
 
 - Clic derecho en la pestaña: **Dividir con Archivos** o **Dividir con Comandos**. `Ctrl+Shift+M` divide o quita la división.
-- Clic central en una pestaña la cierra.
+- Clic central en una pestaña la cierra; `Ctrl+W` cierra el archivo que estás viendo.
+- `Alt+Shift+AvPág` / `Alt+Shift+RePág` pasan al archivo abierto siguiente o anterior.
 - En **Ajustes → Editor → Al abrir un archivo** eliges **Pestaña**, **Dividido** o **En ventana aparte**.
 
 ## Comandos
@@ -581,14 +582,27 @@ En macOS, donde la tabla dice ⌘, usa ⌘ en lugar de Ctrl. Los demás atajos u
 | `Ctrl+Shift+P` | Paleta de comandos | ⌘⇧P |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Siguiente / anterior pestaña | Ctrl |
 | `Ctrl+AvPág` / `Ctrl+RePág` | Siguiente / anterior conexión | Ctrl |
-| `Ctrl+W` | Cerrar la pestaña actual | ⌘W |
+| `Ctrl+Shift+W` | Cerrar la pestaña del servidor (la conexión entera) | ⌘⇧W |
 | `Ctrl+B` | Mostrar u ocultar la barra lateral | ⌘B |
-| `` Ctrl+` `` | Mostrar u ocultar la terminal | Ctrl |
-| `Ctrl+Shift+M` | Dividir (vista y editor) o quitar la división | Ctrl |
 | `Ctrl+,` | Ajustes | ⌘, |
 | `Ctrl+Shift+L` | Bloquear SSHorus (con PIN) | ⌘⇧L |
 | `Supr` en una pestaña | Cerrar esa pestaña | Supr |
 | Clic central en una pestaña | Cerrarla | Igual |
+
+Al cerrar un servidor, SSHorus pregunta antes si hay archivos sin guardar o transferencias sin terminar.
+
+**Dentro del servidor** (la pestaña que tienes abierta)
+
+| Atajo | Qué hace | En macOS |
+|-------|----------|----------|
+| `Ctrl+W` | Cerrar el archivo abierto (pregunta si tiene cambios sin guardar) | ⌘W |
+| `Alt+AvPág` / `Alt+RePág` | Sección siguiente / anterior (Archivos, Comandos, Contenedores, Monitor, Túneles, Administración y los archivos abiertos) | ⌥AvPág / ⌥RePág |
+| `Alt+Shift+AvPág` / `Alt+Shift+RePág` | Archivo abierto siguiente / anterior | ⌥⇧AvPág / ⌥⇧RePág |
+| `` Ctrl+` `` | Mostrar u ocultar la terminal | Ctrl |
+| `Ctrl+Shift+M` | Dividir (vista y editor) o quitar la división | Ctrl |
+
+`Ctrl+W` no cierra nunca el servidor: si estás en una sección fija (Archivos, Monitor…) no hace nada, y con el foco
+en la terminal es de la shell (borrar palabra). Con la vista dividida cierra el archivo solo si el foco está en el editor.
 
 **Barra lateral**
 

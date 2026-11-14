@@ -60,10 +60,12 @@ import {
   type WindowAt,
 } from "../Editor/editorWindows";
 import { cancelReconnect, reconnectTab, requestCloseTab, setSessionPath, useEditorDirty } from "./sessionState";
+import type { WorkMode } from "./sessionNav";
+import { useSessionKeys } from "./useSessionKeys";
 import "./SessionView.css";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
-import { matchesShortcut, useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
+import { useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 
 const RemoteEditor = lazy(() => import("../Editor/RemoteEditor"));
 /** Biblioteca de comandos (catálogo grande): se carga la primera vez que se abre la pestaña «Comandos». */
@@ -100,10 +102,8 @@ const FIXED: { id: FixedTab; label: string; title?: string; icon: ReactNode }[] 
   { id: "tunnels", label: "Túneles", title: "Túneles (port forwarding)", icon: <Cable size={14} /> },
   { id: "admin", label: "Administración", title: "Administración del servidor", icon: <ShieldCheck size={14} /> },
 ];
+const FIXED_IDS = FIXED.map((f) => f.id);
 const fixedLabel = (id: FixedTab) => FIXED.find((f) => f.id === id)?.label ?? "";
-
-/** side: se ve una vista fija · editors: se ve un archivo · split: vista fija | editores, lado a lado. */
-type WorkMode = "side" | "split" | "editors";
 
 /** Distancia (px) por debajo/encima de la barra a partir de la cual la pestaña «se despega» (como en Chrome). */
 const DETACH_MARGIN = 60;
@@ -432,27 +432,21 @@ export const SessionView = memo(function SessionView({ tab, active }: SessionVie
     else p.collapse();
   }, [termPanel]);
 
-  // Ctrl+` muestra/oculta la terminal y Ctrl+Shift+M divide o quita la división (en la pestaña activa;
-  // atajos configurables en Ajustes).
-  const hasEditors = attached.length > 0;
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (matchesShortcut("session.terminal", e)) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleTerminal();
-      } else if (hasEditors && matchesShortcut("session.split", e)) {
-        if (document.querySelector(".modal-backdrop")) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (split) unsplit();
-        else splitWith(side);
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [active, toggleTerminal, hasEditors, split, side, splitWith, unsplit]);
+  // Atajos dentro del servidor (terminal, división, Ctrl+W, secciones y archivos): ver useSessionKeys.
+  useSessionKeys({
+    active,
+    mode,
+    fixed: FIXED_IDS,
+    side,
+    current,
+    files: attached,
+    toggleTerminal,
+    toggleSplit: () => (split ? unsplit() : splitWith(side)),
+    showFixed,
+    setSide,
+    showFile,
+    closeFile: (p) => void closeFile(p),
+  });
 
   const onLayoutChanged = useCallback(
     (layout: Layout, meta: LayoutChangedMeta) => {

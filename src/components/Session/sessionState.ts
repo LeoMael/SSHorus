@@ -8,6 +8,8 @@ import { connectToServer } from "../../features/connect";
 import { confirmDialog } from "../ui/dialogs";
 import { basename } from "../../lib/paths";
 import { killTmuxSessions, openTmuxNames } from "../../features/tmux";
+import { useTransfers } from "../../stores/transfers";
+import { closeWarning } from "./closeConfirm";
 
 interface DirtyState {
   /** sessionId → rutas con cambios sin guardar */
@@ -48,26 +50,23 @@ export function tabCurrentPath(tab: { sessionId: string; initialPath: string | n
   return currentPaths.get(tab.sessionId) ?? tab.initialPath;
 }
 
-/** Cierra una pestaña de conexión, pidiendo confirmación si hay archivos sin guardar. */
+/** Transferencias sin terminar (en curso, en cola o en pausa) de una conexión. */
+function pendingTransfers(sessionId: string): number {
+  let n = 0;
+  for (const b of Object.values(useTransfers.getState().batches)) {
+    if (b.sessionId === sessionId) n += b.running + b.queued + b.paused;
+  }
+  return n;
+}
+
+/** Cierra una pestaña de conexión, pidiendo confirmación si hay archivos sin guardar o transferencias
+ *  sin terminar (se cortarían). */
 export async function requestCloseTab(tabId: string): Promise<boolean> {
   const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
   if (!tab) return false;
   const dirty = useEditorDirty.getState().dirty[tab.sessionId] ?? [];
-  if (dirty.length > 0) {
-    const names = dirty.map((p) => basename(p));
-    const ok = await confirmDialog({
-      title: "Cambios sin guardar",
-      message:
-        dirty.length === 1
-          ? `«${names[0]}» tiene cambios sin guardar en «${tab.title}». ¿Cerrar la conexión y descartarlos?`
-          : `${dirty.length} archivos tienen cambios sin guardar en «${tab.title}» (${names.slice(0, 4).join(", ")}${
-              dirty.length > 4 ? "…" : ""
-            }). ¿Cerrar la conexión y descartarlos?`,
-      confirmText: "Cerrar y descartar",
-      danger: true,
-    });
-    if (!ok) return false;
-  }
+  const warn = closeWarning(tab.title, dirty.map((p) => basename(p)), pendingTransfers(tab.sessionId));
+  if (warn && !(await confirmDialog({ ...warn, danger: true }))) return false;
   useEditorDirty.getState().clearSession(tab.sessionId);
   currentPaths.delete(tab.sessionId);
   // Cerrar la pestaña a propósito termina también sus terminales persistentes (tmux), igual que una

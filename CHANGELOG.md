@@ -120,6 +120,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   comando). Si SSHorus no sabe si tienes sudo, un botón comprueba si funciona sin contraseña.
 
 ### Cambiado
+- **Ctrl+W (⌘W) cierra el archivo abierto dentro del servidor**, no la conexión. Cerrar el servidor pasa a
+  **Ctrl+Shift+W** (⇧⌘W) y pregunta si hay archivos sin guardar o transferencias sin terminar.
+- **Atajos para moverse dentro del servidor**: sección siguiente/anterior (Alt+AvPág/RePág) y archivo abierto
+  siguiente/anterior (Alt+Shift+AvPág/RePág), configurables en Ajustes → Atajos.
 - Al transferir, si el archivo ya existe, ahora **se pregunta** qué hacer (antes se sobrescribía).
 - Los archivos se abren **divididos** junto al explorador por defecto.
 
