@@ -154,6 +154,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - Los archivos se abren **divididos** junto al explorador por defecto.
 
 ### Corregido
+- **Mapa: cada cosa en la caja de su dueño real** (Sistema, cada usuario o «Sin identificar» cuando sin sudo no
+  se puede saber). Ya nada del sistema aparece en la caja del usuario conectado.
+  Selector **«Lo mío» / «Todo el servidor»**: sin sudo empieza en «Lo mío» (lo tuyo y, en gris, el camino desde
+  Internet hasta ello); el resto queda plegado en «Otros», con una frase que explica qué puedes ver y qué no.
 - **Formulario de servidor: avisos claros en sudo.** Si eliges «Guardar» sin escribir la contraseña, te
   avisa y se guarda como «Pedir cada vez». Si entras con llave SSH o agente, explica por qué no está «La de la
   conexión» y te sugiere «Guardar».

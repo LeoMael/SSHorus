@@ -20,7 +20,9 @@ export const PORTS_SCRIPT = [
   "for p in $(printf '%s\\n' \"$L\" | grep -oE 'pid=[0-9]+|[[:space:]][0-9]+/' | tr -dc '0-9\\n' | sort -un); do",
   "  u=$(stat -c %U /proc/$p 2>/dev/null)",
   "  c=$(grep -oE '[^/]+\\.(service|scope)' /proc/$p/cgroup 2>/dev/null | tail -n1)",
-  '  echo "$p|$u|$c"',
+  // Bajo user@<uid>.service: servicio de `systemctl --user`, no del sistema.
+  "  s=system; grep -q 'user@[0-9]*\\.service' /proc/$p/cgroup 2>/dev/null && s=user",
+  '  echo "$p|$u|$c|$s"',
   "done",
   "echo @@ctr",
   "TO=''; command -v timeout >/dev/null 2>&1 && TO='timeout 5'",
@@ -52,6 +54,8 @@ export interface ListenPort {
   user: string | null;
   /** Servicio systemd (nginx.service). */
   unit: string | null;
+  /** El servicio es de `systemctl --user` (no del sistema). */
+  userUnit?: boolean;
   /** Nombre del contenedor (o id corto si no se encontró el nombre). */
   container: string | null;
 }
@@ -179,15 +183,17 @@ export function parseNetstat(lines: string[]): RawListen[] {
 export interface ProcInfo {
   user: string | null;
   unit: string | null;
+  /** Servicio de `systemctl --user`. */
+  userUnit: boolean;
   /** Id (largo o corto) del contenedor al que pertenece. */
   containerId: string | null;
 }
 
-/** «pid|usuario|cgroup» → datos del proceso. */
+/** «pid|usuario|cgroup|system o user» → datos del proceso. */
 export function parseProcs(lines: string[]): Map<number, ProcInfo> {
   const out = new Map<number, ProcInfo>();
   for (const line of lines) {
-    const [pidS, user = "", cg = ""] = line.split("|");
+    const [pidS, user = "", cg = "", scope = ""] = line.split("|");
     if (!/^\d+$/.test(pidS)) continue;
     let unit: string | null = null;
     let containerId: string | null = null;
@@ -195,7 +201,7 @@ export function parseProcs(lines: string[]): Map<number, ProcInfo> {
     if (c) containerId = c[1];
     // user@1000.service es el gestor de servicios del usuario, no un servicio concreto.
     else if (cg.endsWith(".service") && !/^user@\d+\.service$/.test(cg)) unit = cg;
-    out.set(Number(pidS), { user: user && user !== "UNKNOWN" ? user : null, unit, containerId });
+    out.set(Number(pidS), { user: user && user !== "UNKNOWN" ? user : null, unit, userUnit: unit !== null && scope === "user", containerId });
   }
   return out;
 }
@@ -243,6 +249,7 @@ export function parsePorts(stdout: string): PortsResult {
       procs: r.procs,
       user: info?.user ?? null,
       unit: info?.unit ?? null,
+      ...(info?.userUnit ? { userUnit: true } : {}),
       container: info?.containerId ? containerName(info.containerId, ctr) : null,
     });
   }

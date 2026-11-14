@@ -32,11 +32,14 @@ import {
   type ServerSnapshot,
 } from "../../features/infra/graph";
 import { layoutGraph } from "../../features/infra/layout";
+import { ownerLabel, ROUTE_OWNER } from "../../features/infra/owner";
 import { zoomPercent } from "../../features/infra/viewport";
 import { toMermaid } from "../../features/infra/text";
 import { exportMap, type ExportFormat } from "./exportMap";
+import { FOLD_PREFIX, FoldBox, ScopeSwitch } from "./MapScope";
 import { MiniMap, UpdatedAgo, ZoomControls } from "./MapOverlays";
 import { useMapCanvas } from "./useMapCanvas";
+import { useMapScope } from "./useMapScope";
 import { useMapViewport } from "./useMapViewport";
 import "./InfraMap.css";
 
@@ -102,8 +105,12 @@ export function InfraMapView({
   const [exportOpen, setExportOpen] = useState(false);
 
   const full = useMemo(() => (snapshots ? buildGraph(snapshots) : null), [snapshots]);
-  const allOwners = useMemo(() => (full ? graphOwners(full) : []), [full]);
-  const graph = useMemo(() => (full ? filterGraph(full, { hideLocal, hideSystem, owners }) : null), [full, hideLocal, hideSystem, owners]);
+  const scope = useMapScope(snapshots, full);
+  const scoped = scope.graph;
+  // En «Lo mío» no hay que elegir usuarios: los filtros por usuario solo valen para «Todo el servidor».
+  const ownerFilter = scope.anyMine ? null : owners;
+  const allOwners = useMemo(() => (scoped && !scope.anyMine ? graphOwners(scoped) : []), [scoped, scope.anyMine]);
+  const graph = useMemo(() => (scoped ? filterGraph(scoped, { hideLocal, hideSystem, owners: ownerFilter }) : null), [scoped, hideLocal, hideSystem, ownerFilter]);
   const layout = useMemo(() => (graph ? layoutGraph(graph) : null), [graph]);
   const sel = selected ? (graph?.nodes.find((n) => n.id === selected) ?? null) : null;
   const related = useMemo(() => {
@@ -122,8 +129,8 @@ export function InfraMapView({
   const { wrapRef, view, size, zoomIn, zoomOut, fit, center, canvasProps } = useMapViewport({
     content: layout,
     memoryKey: cacheKey,
-    refitKey,
-    onClick: setSelected,
+    refitKey: `${refitKey}|${scope.key}`,
+    onClick: (id) => (id?.startsWith(FOLD_PREFIX) ? scope.showAll(id.slice(FOLD_PREFIX.length)) : setSelected(id)),
     onEscape: () => setSelected(null),
   });
 
@@ -142,15 +149,13 @@ export function InfraMapView({
     });
   };
 
-  const notes = (snapshots ?? []).flatMap((s) => [
-    ...(s.error ? [`${s.name}: ${s.error}`] : []),
-    ...s.notes.map((n) => (snapshots!.length > 1 ? `${s.name}: ${n}` : n)),
-  ]);
+  const notes = scope.notes.other;
 
   return (
     <div className="im-root">
       <div className="im-toolbar">
         <div className="im-filters" role="group" aria-label="Filtros">
+          {scope.available && <ScopeSwitch value={scope.current} onChange={scope.setAll} />}
           <label className="im-check">
             <input type="checkbox" checked={hideLocal} onChange={(e) => setHideLocal(e.target.checked)} /> Ocultar locales
           </label>
@@ -164,7 +169,7 @@ export function InfraMapView({
               </button>
               {allOwners.map((o) => (
                 <button key={o} className={`im-chip${!owners || owners.has(o) ? " on" : ""}`} onClick={() => toggleOwner(o)} aria-pressed={!owners || owners.has(o)}>
-                  {o}
+                  {ownerLabel(o, true)}
                 </button>
               ))}
             </div>
@@ -194,6 +199,13 @@ export function InfraMapView({
           </button>
         </div>
       </div>
+      {scope.notes.scope.length > 0 && (
+        <div className="im-scope-note" role="status">
+          {scope.notes.scope.map((n, i) => (
+            <span key={i}>{n}</span>
+          ))}
+        </div>
+      )}
       {notes.length > 0 && (
         <div className="im-notes" role="status">
           {notes.slice(0, 3).map((n, i) => (
@@ -244,12 +256,13 @@ export function InfraMapView({
                       </text>
                       {s.bands.map((b) => (
                         <g key={b.owner}>
-                          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={8} className="im-band" />
+                          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={8} className={`im-band${b.owner === ROUTE_OWNER ? " route" : ""}`} />
                           <text x={b.x + 10} y={b.y + 16} className="im-band-name">
-                            {b.owner}
+                            {ownerLabel(b.owner)}
                           </text>
                         </g>
                       ))}
+                      {s.fold && <FoldBox box={s.fold} serverId={s.id} hidden={srv.hidden ?? 0} />}
                     </g>
                   );
                 })}
@@ -282,7 +295,7 @@ export function InfraMapView({
                     <g
                       key={n.id}
                       data-node={n.id}
-                      className={`im-node im-k-${n.kind}${selected === n.id ? " sel" : ""}${dim ? " dim" : ""}`}
+                      className={`im-node im-k-${n.kind}${n.owner === ROUTE_OWNER ? " ghost" : ""}${selected === n.id ? " sel" : ""}${dim ? " dim" : ""}`}
                       transform={`translate(${p.x},${p.y})`}
                     >
                       <title>{`${KIND_LABEL[n.kind]}: ${n.label}${n.sub ? `\n${n.sub}` : ""}`}</title>

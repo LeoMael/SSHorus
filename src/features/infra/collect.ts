@@ -4,6 +4,7 @@
 import { errorMessage } from "../../api/core";
 import { PORTS_SCRIPT, WEB_SCRIPT, parsePorts, parseWeb, readElevated, runScript } from "../admin";
 import {
+  canElevate,
   computeElevation,
   detectPrivilege,
   getPrivilege,
@@ -12,8 +13,9 @@ import {
   sudoPasswordNeeded,
   type Elevation,
 } from "../privileges";
-import { SYSTEM_OWNER, type OwnedContainer, type ServerSnapshot } from "./graph";
-import { INFRA_SCRIPT, USER_SERVICES_SCRIPT, parseInfra, parseUnits, type HumanUser } from "./parse";
+import type { OwnedContainer, ServerSnapshot } from "./graph";
+import { NO_SUDO_NOTE } from "./owner";
+import { INFRA_SCRIPT, USER_SERVICES_SCRIPT, configOwnersScript, parseConfigOwners, parseInfra, parseUnits, type HumanUser } from "./parse";
 
 const NONE: Elevation = { kind: "none" };
 
@@ -49,8 +51,9 @@ async function readContainers(sessionId: string, el: Elevation | null, me: strin
     const selfSudo = engine === "docker" && st.needsSudo && !isRoot;
     const usable = owners.filter((o) => o.kind !== "self" || st.accessible || (selfSudo && !!el));
     if (usable.length === 0) continue;
+    // Usuario real del contenedor; la caja la decide el mapa (ver owner.ts).
     const userOf = (o: (typeof owners)[number]) =>
-      o.kind === "user" ? o.user.name : o.kind === "root" || isRoot || (engine === "docker" && !st.rootless) ? SYSTEM_OWNER : (me ?? SYSTEM_OWNER);
+      o.kind === "user" ? o.user.name : o.kind === "root" || isRoot || (engine === "docker" && !st.rootless) ? "root" : (me ?? "");
     const runner = {
       sessionId,
       engine,
@@ -96,6 +99,13 @@ async function readUserServices(sessionId: string, el: Elevation, humans: HumanU
   return out;
 }
 
+/** Dueño de los archivos de configuración de los servidores web (se ven sin sudo). */
+async function readConfigOwners(sessionId: string, paths: string[]): Promise<Record<string, string>> {
+  if (paths.length === 0) return {};
+  const r = await runScript(sessionId, configOwnersScript(paths), NONE, "", 10).catch(() => null);
+  return r ? parseConfigOwners(r.stdout) : {};
+}
+
 /**
  * Lee un servidor conectado. Con sudo (contraseña guardada o de otra pestaña, sin preguntar) se ve todo.
  * `elevate: false` (asistentes por MCP): como el usuario conectado, igual que list_ports.
@@ -120,6 +130,7 @@ export async function collectServer(t: CollectTarget, opts: { elevate?: boolean 
     const known = getPrivilege(t.sessionId);
     const info = known && known.level !== "unknown" ? known : await detectPrivilege(t.sessionId);
     snap.me = info.user;
+    snap.canSudo = canElevate(info.level);
     const elevate = opts.elevate !== false;
     if (elevate && sudoPasswordNeeded(info)) await obtainSudoPassword(t.sessionId, t.profileId).catch(() => null);
     const el = elevate ? computeElevation(info, getSudoPassword(t.sessionId)).elevation : null;
@@ -135,10 +146,15 @@ export async function collectServer(t: CollectTarget, opts: { elevate?: boolean 
     snap.web = web ? parseWeb(web.result.stdout) : null;
     snap.extra = infra ? parseInfra(infra.result.stdout) : null;
     const usedEl = elevated ? el : isRoot ? NONE : null;
-    snap.containers = await readContainers(t.sessionId, usedEl, info.user, isRoot, snap.notes).catch((e) => {
-      snap.notes.push(`Contenedores: ${errorMessage(e)}`);
-      return [];
-    });
+    const [containers, configOwners] = await Promise.all([
+      readContainers(t.sessionId, usedEl, info.user, isRoot, snap.notes).catch((e) => {
+        snap.notes.push(`Contenedores: ${errorMessage(e)}`);
+        return [];
+      }),
+      readConfigOwners(t.sessionId, snap.web?.servers.map((w) => w.configPath) ?? []),
+    ]);
+    snap.containers = containers;
+    snap.configOwners = configOwners;
     // Servicios de usuario: los propios siempre; los de los demás, con sudo.
     if (snap.extra) {
       let own = snap.extra.userServices;
@@ -152,7 +168,7 @@ export async function collectServer(t: CollectTarget, opts: { elevate?: boolean 
         Object.assign(snap.userServices, await readUserServices(t.sessionId, usedEl, others).catch(() => ({})));
       }
     }
-    if (!snap.elevated) snap.notes.unshift("Con sudo verías los de todos los usuarios");
+    if (!snap.elevated) snap.notes.unshift(NO_SUDO_NOTE);
   } catch (e) {
     snap.error = errorMessage(e);
   }

@@ -2,11 +2,13 @@
 // conexiones TCP establecidas) y su parseo. Funciones puras, sin React ni Tauri. Solo lectura.
 import { splitSections } from "../admin/parse";
 import { parseAddr } from "../admin/ports";
+import { shQuote } from "../admin/shell";
 
 /**
  * Script de lectura. Secciones: @@os (PRETTY_NAME) · @@host (hostname) · @@addrs (IPs del equipo) ·
  * @@fw («herramienta estado») · @@humans («usuario|uid» con uid ≥ 1000) · @@est (`ss -tnp` establecidas) ·
- * @@usvc («unidad» de `systemctl --user` del usuario conectado).
+ * @@estown («pid|usuario» de sus procesos) · @@usvc («unidad» de `systemctl --user` del usuario conectado) ·
+ * @@procvis (1 si se pueden leer los procesos de otros: /proc sin hidepid).
  */
 export const INFRA_SCRIPT = [
   "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin",
@@ -24,9 +26,13 @@ export const INFRA_SCRIPT = [
   "  r=0; [ -d /run/user/$u ] && r=1; echo \"$n|$u|$h|$r\"",
   "done",
   "echo @@est",
-  "if command -v ss >/dev/null 2>&1; then ss -tnpH state established 2>/dev/null || ss -tnH state established 2>/dev/null; fi",
+  "E=''; if command -v ss >/dev/null 2>&1; then E=$(ss -tnpH state established 2>/dev/null || ss -tnH state established 2>/dev/null); fi",
+  "printf '%s\\n' \"$E\"",
+  "echo @@estown",
+  "for p in $(printf '%s\\n' \"$E\" | grep -oE 'pid=[0-9]+' | tr -dc '0-9\\n' | sort -un); do echo \"$p|$(stat -c %U /proc/$p 2>/dev/null)\"; done",
   "echo @@usvc",
   "systemctl --user list-units --type=service --state=running --no-legend --plain 2>/dev/null | awk '{print $1}'",
+  "echo @@procvis; cat /proc/1/cmdline >/dev/null 2>&1 && echo 1 || echo 0",
   "echo @@end",
 ].join("\n");
 
@@ -67,8 +73,12 @@ export interface InfraExtra {
   /** Usuarios de personas (uid ≥ 1000). */
   humans: Map<string, HumanUser>;
   established: EstConn[];
+  /** Usuario de cada proceso con conexiones (pid → usuario). */
+  procUsers: Map<number, string>;
   /** Servicios de usuario del conectado. */
   userServices: string[];
+  /** Se pueden leer los procesos de los demás (null = no se sabe). */
+  othersVisible?: boolean | null;
 }
 
 /**
@@ -134,8 +144,42 @@ export function parseInfra(stdout: string): InfraExtra {
     firewall: parseFirewall(s.get("fw") ?? []),
     humans,
     established: parseEstablished(s.get("est") ?? []),
+    procUsers: parsePidUsers(s.get("estown") ?? []),
     userServices: parseUnits(s.get("usvc") ?? []),
+    othersVisible: flag((s.get("procvis") ?? [])[0]),
   };
+}
+
+function flag(v: string | undefined): boolean | null {
+  const t = v?.trim();
+  return t === "1" ? true : t === "0" ? false : null;
+}
+
+/** «pid|usuario» → pid → usuario (sin los que no se pudieron ver). */
+export function parsePidUsers(lines: string[]): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const l of lines) {
+    const [pid, user = ""] = l.trim().split("|");
+    if (/^\d+$/.test(pid ?? "") && user && user !== "UNKNOWN") out.set(Number(pid), user);
+  }
+  return out;
+}
+
+/** Dueño de los archivos de configuración de nginx y Caddy: «usuario|ruta» por archivo. */
+export function configOwnersScript(paths: string[]): string {
+  const list = [...new Set(paths)].map(shQuote).join(" ");
+  return `for f in ${list}; do echo "$(stat -c %U "$f" 2>/dev/null)|$f"; done; true`;
+}
+
+/** «usuario|ruta» → ruta → usuario. */
+export function parseConfigOwners(stdout: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const l of stdout.split("\n")) {
+    const i = l.indexOf("|");
+    const user = l.slice(0, i).trim();
+    if (i > 0 && user && user !== "UNKNOWN") out[l.slice(i + 1).replace(/\r$/, "")] = user;
+  }
+  return out;
 }
 
 export function parseUnits(lines: string[]): string[] {

@@ -1,5 +1,6 @@
 // Mapa de infraestructura como texto: Mermaid (flowchart) y un resumen JSON corto. Funciones puras.
 import type { InfraGraph, MapNode } from "./graph";
+import { ownerLabel } from "./owner";
 
 function mid(id: string, ids: Map<string, string>): string {
   let v = ids.get(id);
@@ -42,7 +43,7 @@ export function toMermaid(g: InfraGraph): string {
     s.owners.forEach((o, oi) => {
       const mine = g.nodes.filter((n) => n.server === s.id && n.owner === o);
       if (mine.length === 0) return;
-      out.push(`    subgraph s${si}u${oi}["${esc(o)}"]`);
+      out.push(`    subgraph s${si}u${oi}["${esc(ownerLabel(o))}"]`);
       for (const n of mine) out.push(`      ${mid(n.id, ids)}${nodeText(n)}`);
       out.push("    end");
     });

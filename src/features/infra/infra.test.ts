@@ -2,7 +2,7 @@
 // (puertos, sitios con proxy_pass, contenedores publicados, varios usuarios, conexiones entre dos
 // servidores), filtros, disposición y texto Mermaid.
 // Ejecutar: npx rolldown src/features/infra/infra.test.ts -p node -f esm -o /tmp/infra.mjs && node /tmp/infra.mjs
-import { buildGraph, filterGraph, graphOwners, SYSTEM_OWNER, type InfraGraph } from "./graph";
+import { buildGraph, filterGraph, graphOwners, SYSTEM_OWNER, UNKNOWN_OWNER, type InfraGraph } from "./graph";
 import { layoutGraph, spreadRows } from "./layout";
 import { parseEstLine, parseInfra } from "./parse";
 import { sampleSnapshots } from "./sample";
@@ -146,16 +146,49 @@ eq(g.servers[0].health, "warn", "web-prod con algo caído: aviso");
   eq(g2.nodes.find((x) => x.label === "127.0.0.1:7777")?.health, "bad", "upstream local donde no escucha nadie: caído");
 }
 
-// Sin sudo: solo lo del conectado; los procesos de otros sin nombre.
+// Sin sudo: solo lo del conectado es suyo; lo que no se ve de quién es, «sin identificar».
 {
   const s = sampleSnapshots(NOW).slice(0, 1);
   s[0].elevated = false;
-  s[0].containers = s[0].containers.filter((c) => c.user === "deploy");
+  s[0].containers = s[0].containers.filter((c) => c.user === "deploy" || c.user === "root");
   s[0].ports!.ports = s[0].ports!.ports.map((p) => (p.user === "deploy" ? p : { ...p, procs: [], user: null, unit: null }));
   s[0].userServices = { deploy: ["api.service"] };
   const g3 = buildGraph(s, NOW);
-  eq(g3.servers[0].owners, [SYSTEM_OWNER, "deploy"], "sin sudo: sistema y el conectado");
-  ok(g3.nodes.some((x) => x.label === "HTTPS" || x.sub === "sin permiso para ver el proceso"), "procesos sin permiso");
+  const of = (id: string) => g3.nodes.find((x) => x.id === id)?.owner;
+  eq(g3.servers[0].owners, [SYSTEM_OWNER, "deploy", UNKNOWN_OWNER], "sin sudo: sistema, el conectado y sin identificar");
+  eq(of("srv-web|proc:?:tcp:80"), UNKNOWN_OWNER, "puerto sin proceso visible: sin identificar");
+  eq(of("srv-web|port:tcp:443"), UNKNOWN_OWNER, "y su nodo de puerto también");
+  eq(g3.nodes.find((x) => x.kind === "proxy")?.owner, SYSTEM_OWNER, "nginx con unidad systemd del sistema: sistema");
+  eq(g3.nodes.find((x) => x.label === "api.example.com")?.owner, SYSTEM_OWNER, "sus sitios, también");
+  eq(of("srv-web|svc:deploy:api.service"), "deploy", "su servicio --user: en su caja");
+  eq(of("srv-web|ctr:root:portainer"), SYSTEM_OWNER, "Docker rootful (por el grupo docker): sistema");
+  eq(g3.nodes.filter((x) => x.owner === "deploy").map((x) => x.id), ["srv-web|ctr:deploy:backup-viejo", "srv-web|svc:deploy:api.service"], "nada más en la caja del conectado");
+  ok(g3.nodes.some((x) => x.sub === "sin permiso para ver el proceso"), "procesos sin permiso");
+  eq(overlaps(g3), null, "disposición con la caja «sin identificar»");
+}
+
+// Sin sudo, nginx sin systemd: manda el dueño del archivo de configuración; un nginx propio no se lo lleva.
+{
+  const s = sampleSnapshots(NOW).slice(0, 1);
+  s[0].elevated = false;
+  s[0].web!.servers[0].status = null;
+  s[0].ports!.ports = s[0].ports!.ports.map((p) => (p.port === 80 ? { ...p, user: "deploy", unit: null } : p.user === "deploy" ? p : { ...p, procs: [], user: null, unit: null }));
+  s[0].configOwners = { "/etc/nginx/nginx.conf": "root" };
+  const g4 = buildGraph(s, NOW);
+  const proxy = g4.nodes.find((x) => x.label === "tienda.example.com +1");
+  eq(proxy?.owner, SYSTEM_OWNER, "configuración de root: sitios en sistema");
+  eq(g4.nodes.find((x) => x.id === "srv-web|proc:deploy:nginx")?.owner, "deploy", "el nginx de deploy sigue en su caja, aparte");
+  s[0].configOwners = {};
+  eq(buildGraph(s, NOW).nodes.find((x) => x.kind === "proxy")?.owner, "deploy", "sin otra pista: el dueño del proceso que escucha");
+}
+
+// Contenedor parado: no se queda con un puerto sin proceso visible.
+{
+  const s = sampleSnapshots(NOW).slice(0, 1);
+  s[0].elevated = false;
+  s[0].containers = [{ ...s[0].containers[0], user: "deploy", state: "exited" }];
+  s[0].ports!.ports = s[0].ports!.ports.map((p) => (p.port === 8080 ? { ...p, procs: [], user: null } : p));
+  eq(buildGraph(s, NOW).nodes.find((x) => x.id === "srv-web|proc:?:tcp:8080")?.owner, UNKNOWN_OWNER, "el puerto va a sin identificar");
 }
 
 // ───────── Filtros ─────────

@@ -5,7 +5,7 @@ import type { Site, WebResult } from "../admin/web";
 import type { OwnedContainer, ServerSnapshot } from "./graph";
 import type { HumanUser } from "./parse";
 
-function port(p: number, ip: string, proc: string | null, pid: number, user: string | null, extra: Partial<ListenPort> = {}): ListenPort {
+export function port(p: number, ip: string, proc: string | null, pid: number, user: string | null, extra: Partial<ListenPort> = {}): ListenPort {
   const scope: PortScope = ip === "0.0.0.0" || ip === "::" || ip === "*" ? "public" : ip.startsWith("127.") || ip === "::1" ? "local" : "ip";
   return {
     key: `tcp|${ip}|${p}`,
@@ -23,7 +23,7 @@ function port(p: number, ip: string, proc: string | null, pid: number, user: str
   };
 }
 
-function ctr(name: string, image: string, user: string, x: Partial<OwnedContainer> = {}): OwnedContainer {
+export function ctr(name: string, image: string, user: string, x: Partial<OwnedContainer> = {}): OwnedContainer {
   return {
     id: `${name.replace(/[^a-f0-9]/g, "a")}0123456789abcdef`.slice(0, 64),
     shortId: name.slice(0, 12),
@@ -70,7 +70,7 @@ function site(key: string, names: string[], routes: Site["routes"], certExpires:
 
 const DAY = 86_400_000;
 
-function humans(list: [string, number][]): Map<string, HumanUser> {
+export function humans(list: [string, number][]): Map<string, HumanUser> {
   return new Map(list.map(([name, uid]) => [name, { name, uid, home: `/home/${name}`, runtimeDir: true }]));
 }
 
@@ -118,7 +118,7 @@ export function sampleSnapshots(now = Date.now()): ServerSnapshot[] {
         port(443, "0.0.0.0", "nginx", 1201, "root", { unit: "nginx.service" }),
         port(22, "0.0.0.0", "sshd", 900, "root", { unit: "ssh.service" }),
         port(8080, "127.0.0.1", "rootlessport", 3301, "ana"),
-        port(3000, "127.0.0.1", "node", 812, "deploy", { unit: "api.service" }),
+        port(3000, "127.0.0.1", "node", 812, "deploy", { unit: "api.service", userUnit: true }),
         port(9443, "0.0.0.0", "docker-proxy", 4100, "root"),
         port(53, "127.0.0.53", "systemd-resolve", 700, "systemd-resolve", { unit: "systemd-resolved.service", iface: "lo" }),
       ],
@@ -132,7 +132,7 @@ export function sampleSnapshots(now = Date.now()): ServerSnapshot[] {
         networks: ["tienda_default"],
       }),
       ctr("tienda-redis", "docker.io/library/redis:7", "ana", { composeProject: "tienda", composeService: "redis", networks: ["tienda_default"] }),
-      ctr("portainer", "portainer/portainer-ce:2.21", "sistema", {
+      ctr("portainer", "portainer/portainer-ce:2.21", "root", {
         engine: "docker",
         ports: [{ hostIp: "", hostPort: 9443, containerPort: 9443, protocol: "tcp", range: 1 }],
       }),
@@ -151,6 +151,7 @@ export function sampleSnapshots(now = Date.now()): ServerSnapshot[] {
         { localIp: "10.0.0.5", localPort: 51234, peerIp: "10.0.0.9", peerPort: 5432, proc: "node", pid: 812 },
         { localIp: "203.0.113.10", localPort: 22, peerIp: "198.51.100.7", peerPort: 60001, proc: "sshd", pid: 2001 },
       ],
+      procUsers: new Map(),
       userServices: [],
     },
     userServices: { ana: ["sync-fotos.service"], deploy: ["api.service"] },
@@ -182,6 +183,7 @@ export function sampleSnapshots(now = Date.now()): ServerSnapshot[] {
       firewall: [{ tool: "nftables", state: "4 cadenas", active: true }],
       humans: humans([["deploy", 1000]]),
       established: [{ localIp: "10.0.0.9", localPort: 5432, peerIp: "10.0.0.5", peerPort: 51234, proc: "postgres", pid: 1777 }],
+      procUsers: new Map(),
       userServices: [],
     },
     userServices: {},

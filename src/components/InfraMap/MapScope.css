@@ -1,0 +1,44 @@
+/* «Lo mío»: frase de alcance, camino desde Internet en gris y caja plegada «Otros». */
+.im-scope-note {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.im-band.route {
+  fill: transparent;
+}
+.im-node.ghost {
+  opacity: 0.55;
+}
+.im-node.ghost .im-icon {
+  stroke: var(--text-faint);
+  color: var(--text-faint);
+}
+.im-fold {
+  cursor: pointer;
+}
+.im-fold-box {
+  fill: var(--mix-surface-2-60);
+  stroke: var(--border-strong);
+  stroke-dasharray: 4 3;
+}
+.im-fold:hover .im-fold-box {
+  stroke: var(--accent);
+}
+.im-fold-text {
+  fill: var(--text-muted);
+  font-size: 11.5px;
+}
+.im-fold-link {
+  fill: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.im-fold:hover .im-fold-link {
+  text-decoration: underline;
+}

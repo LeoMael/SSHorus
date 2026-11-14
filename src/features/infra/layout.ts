@@ -10,6 +10,7 @@ const ROW_H = 58;
 const SERVER_HEAD = 34;
 const BAND_HEAD = 24;
 const BAND_PAD = 10;
+const FOLD_H = 32;
 const SERVER_GAP = 34;
 const PAD = 14;
 const MARGIN = 24;
@@ -36,6 +37,8 @@ export interface PlacedGroup extends Box {
 export interface PlacedServer extends Box {
   id: string;
   bands: PlacedBand[];
+  /** Caja plegada «Otros» (en «Lo mío»). */
+  fold: Box | null;
 }
 
 export interface PlacedEdge {
@@ -139,9 +142,13 @@ export function layoutGraph(g: InfraGraph): Layout {
       bands.push({ owner, x: boxX + 6, y: bandTop, w: boxW - 12, h });
       by = bandTop + h + 8;
     }
-    if (owners.length === 0) by += 40;
+    let fold: Box | null = null;
+    if (srv.hidden) {
+      fold = { x: boxX + 6, y: by, w: boxW - 12, h: FOLD_H };
+      by += FOLD_H + 8;
+    } else if (owners.length === 0) by += 40;
     const height = by - top + 4;
-    servers.push({ id: srv.id, x: boxX, y: top, w: boxW, h: height, bands });
+    servers.push({ id: srv.id, x: boxX, y: top, w: boxW, h: height, bands, fold });
     y = top + height + SERVER_GAP;
   }
 
