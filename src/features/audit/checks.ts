@@ -10,6 +10,7 @@ import { splitSections } from "../admin/parse";
 import { shQuote } from "../admin/shell";
 import type { PortsResult } from "../admin/ports";
 import { certStatus, type WebResult } from "../admin/web";
+import { sshListenPorts } from "./fixSafety";
 
 export interface AuditInput {
   /** Salida de AUDIT_SCRIPT. */
@@ -112,17 +113,22 @@ export function parseSshd(sec: Map<string, string[]>): SshdConfig {
   return { source, values, include };
 }
 
+// Sin recargar, sshd sigue con la configuración vieja. Sin systemd ni OpenRC (contenedores): SIGHUP al
+// proceso principal por su pid (nunca `pkill sshd`, que también cortaría las sesiones abiertas).
+const SSHD_RELOAD =
+  'systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || rc-service sshd reload 2>/dev/null || kill -HUP "$(cat /run/sshd.pid 2>/dev/null || cat /var/run/sshd.pid)"';
+
 /** Comando para fijar opciones de sshd con comprobación (`sshd -t`) y recarga. */
 export function sshdFixCommand(settings: [string, string][], include: boolean): string {
-  const reload = "systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || rc-service sshd reload";
   if (include) {
+    // 00-: los .conf se leen en orden y sshd se queda con el PRIMER valor de cada opción.
     const f = "/etc/ssh/sshd_config.d/00-sshorus.conf";
     return [
       `f=${f}`,
-      'touch "$f" && chmod 600 "$f"',
+      'touch "$f" && chmod 600 "$f" && cp -p "$f" "$f.bak"',
       ...settings.map(([k, v]) => `sed -i '/^${k}[[:space:]]/d' "$f" && echo '${k} ${v}' >> "$f"`),
-      `sshd -t || { rm -f "$f"; echo 'sshd -t falló: no se cambió nada' >&2; exit 1; }`,
-      reload,
+      `sshd -t || { cp -p "$f.bak" "$f"; echo 'sshd -t falló: se dejó como estaba' >&2; exit 1; }`,
+      SSHD_RELOAD,
     ].join("\n");
   }
   // Sin sshd_config.d: al principio del archivo principal (gana el primer valor), con copia.
@@ -131,7 +137,7 @@ export function sshdFixCommand(settings: [string, string][], include: boolean): 
     `cp -p ${c} ${c}.sshorus.bak`,
     ...settings.map(([k, v]) => `sed -i '1i ${k} ${v}' ${c}`),
     `sshd -t || { cp -p ${c}.sshorus.bak ${c}; echo 'sshd -t falló: se dejó como estaba' >&2; exit 1; }`,
-    reload,
+    SSHD_RELOAD,
   ].join("\n");
 }
 
@@ -279,7 +285,8 @@ function userChecks(ctx: AuditCtx): Check[] {
         ? check("users.empty", "users", "Cuentas sin contraseña", "bad", `${plural(empty.length, "cuenta no tiene", "cuentas no tienen")} contraseña`, {
             weight: 3,
             items: empty,
-            fix: fix(empty.map((u) => `passwd -l ${shQuote(u)}`).join("\n"), { note: "Bloquea la contraseña (las claves SSH siguen sirviendo)" }),
+            // A mano: es la cuenta de otra persona (mejor ponerle una contraseña o hablar con ella).
+            fix: fix(empty.map((u) => `passwd -l ${shQuote(u)}`).join("\n"), { manual: true, note: "Bloquea su contraseña (sus llaves SSH siguen sirviendo)" }),
           })
         : check("users.empty", "users", "Cuentas sin contraseña", "ok", "Todas las cuentas tienen contraseña o están bloqueadas", { weight: 3 }),
     );
@@ -365,11 +372,13 @@ function netChecks(ctx: AuditCtx, ports: PortsResult | null): Check[] {
     const allow = [...new Set(web)];
     let f: Fix;
     const strong = { danger: true, note: "Solo deja pasar SSH y la web: abre antes lo que necesites" };
+    // Todos los puertos donde escucha sshd: si no, el cortafuegos cortaría esta conexión.
+    const ssh = sshListenPorts(ports, ctx.sshPort);
     if (fw.installed.includes("firewalld")) {
-      const svc = [ctx.sshPort === 22 ? "--add-service=ssh" : `--add-port=${ctx.sshPort}/tcp`, ...allow.map((p) => (p === 80 ? "--add-service=http" : "--add-service=https"))];
+      const svc = [...ssh.map((p) => (p === 22 ? "--add-service=ssh" : `--add-port=${p}/tcp`)), ...allow.map((p) => (p === 80 ? "--add-service=http" : "--add-service=https"))];
       f = fix(["systemctl enable --now firewalld", `firewall-cmd --permanent ${svc.join(" ")}`, "firewall-cmd --reload"].join("\n"), strong);
     } else if (fw.installed.includes("ufw")) {
-      f = fix([`ufw allow ${ctx.sshPort}/tcp`, ...allow.map((p) => `ufw allow ${p}/tcp`), "ufw --force enable"].join("\n"), strong);
+      f = fix([...ssh.map((p) => `ufw allow ${p}/tcp`), ...allow.map((p) => `ufw allow ${p}/tcp`), "ufw --force enable"].join("\n"), strong);
     } else {
       const install =
         ctx.family === "debian" ? "apt-get install -y ufw" : ctx.family === "alpine" ? "apk add nftables" : ctx.family === "other" ? "# instala un cortafuegos" : "dnf -y install firewalld";
@@ -388,7 +397,9 @@ function upgradeCommand(mgr: string, securityOnly: boolean): string | null {
     case "yum":
       return `${mgr} -y upgrade${securityOnly ? " --security" : ""}`;
     case "apt":
-      return "apt-get update\nDEBIAN_FRONTEND=noninteractive apt-get -y upgrade";
+      // --with-new-pkgs: si no, los núcleos nuevos quedan «retenidos» y la comprobación los sigue viendo.
+      // confdef/confold: sin preguntas por archivos de configuración cambiados (se queda el tuyo).
+      return "apt-get update\nDEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --with-new-pkgs upgrade";
     case "apk":
       return "apk update\napk upgrade";
     default:
@@ -674,7 +685,7 @@ function loginChecks(ctx: AuditCtx): Check[] {
   }
   if (f2b === "active") out.push(check("logins.fail2ban", "logins", "fail2ban", "ok", "Activo: bloquea a quien falla muchas veces", { weight: 2 }));
   else {
-    const cmd = f2b === "inactive" ? (ctx.family === "alpine" ? "rc-service fail2ban start" : "systemctl enable --now fail2ban") : fail2banInstall(ctx.family);
+    const cmd = f2b === "inactive" ? (ctx.family === "alpine" ? "rc-update add fail2ban\nrc-service fail2ban start" : "systemctl enable --now fail2ban") : fail2banInstall(ctx.family);
     const need = ctx.passwordAuth !== false;
     out.push(
       check(
@@ -702,7 +713,12 @@ function hardeningChecks(ctx: AuditCtx): Check[] {
       check("hard.hidepid", "hardening", "Procesos ocultos a otros usuarios", "warn", "Cualquier usuario ve los procesos de todos (/proc sin hidepid)", {
         weight: 1,
         fix: fix(
-          ["mount -o remount,hidepid=2 /proc", "grep -qE '^proc[[:space:]]+/proc' /etc/fstab || echo 'proc /proc proc defaults,hidepid=2 0 0' >> /etc/fstab"].join("\n"),
+          // Si fstab ya tiene /proc sin hidepid, se le añade (si no, al reiniciar volvería a salir).
+          [
+            "mount -o remount,hidepid=2 /proc",
+            "grep -qE '^proc[[:space:]]+/proc' /etc/fstab || echo 'proc /proc proc defaults,hidepid=2 0 0' >> /etc/fstab",
+            "sed -i -E '/^proc[[:space:]]+\\/proc[[:space:]]/{/hidepid=/!s/^(proc[[:space:]]+\\/proc[[:space:]]+proc[[:space:]]+)([^[:space:]]+)/\\1\\2,hidepid=2/}' /etc/fstab",
+          ].join("\n"),
           { danger: true, note: "Algunas herramientas de monitorización dejan de ver procesos ajenos" },
         ),
       }),

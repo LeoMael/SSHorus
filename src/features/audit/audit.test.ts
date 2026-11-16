@@ -166,7 +166,7 @@ function byId(checks: Check[]): Map<string, Check> {
   const c = byId(checks);
   eq(os, "Ubuntu 24.04.3 LTS", "ubuntu: sistema");
   eq(c.get("updates.pending")?.status, "bad", "ubuntu: 3 de seguridad = mal");
-  eq(c.get("updates.pending")?.fix?.command, "apt-get update\nDEBIAN_FRONTEND=noninteractive apt-get -y upgrade", "ubuntu: actualizar con apt");
+  ok(c.get("updates.pending")?.fix?.command.endsWith("--with-new-pkgs upgrade"), "ubuntu: actualizar con apt, también lo retenido (núcleos)");
   eq(c.get("updates.reboot")?.status, "warn", "ubuntu: /var/run/reboot-required");
   eq(c.get("net.firewall")?.fix?.command, "ufw allow 2222/tcp\nufw allow 443/tcp\nufw allow 80/tcp\nufw --force enable", "ubuntu: cortafuegos con ufw");
   eq(c.get("logins.fail2ban")?.fix?.command.split("\n")[0], "apt-get install -y fail2ban python3-systemd", "ubuntu: fail2ban con apt");

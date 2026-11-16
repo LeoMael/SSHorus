@@ -57,8 +57,10 @@ export const AUDIT_SCRIPT = [
   "  if [ $rc = 1 ]; then t='?'; else t=$(printf '%s\\n' \"$o\" | grep -cE '^[A-Za-z0-9_.+-]+\\.[a-z0-9_]+[[:space:]]+[^[:space:]]+[[:space:]]'); fi",
   "  s=$($TO $P -q -C updateinfo list --security 2>/dev/null | grep -cE '^[A-Z][A-Z0-9]*-[0-9]{4}[-:]')",
   "  echo \"$P|$t|$s\"",
-  "elif command -v apt >/dev/null 2>&1; then L=$(apt list --upgradable 2>/dev/null | grep '/')",
-  "  echo \"apt|$(printf '%s\\n' \"$L\" | grep -c /)|$(printf '%s\\n' \"$L\" | grep -c -- '-security')\"",
+  // apt: simula el mismo «upgrade» que hace el arreglo; así no cuenta lo retenido ni las actualizaciones
+  // escalonadas de Ubuntu, que «apt list --upgradable» enseña aunque no se puedan instalar todavía.
+  "elif command -v apt-get >/dev/null 2>&1; then L=$(apt-get -s -o Debug::NoLocking=1 --with-new-pkgs upgrade 2>/dev/null | grep '^Inst ')",
+  "  echo \"apt|$(printf '%s\\n' \"$L\" | grep -c '^Inst')|$(printf '%s\\n' \"$L\" | grep -c -- '-security')\"",
   "elif command -v apk >/dev/null 2>&1; then echo \"apk|$(apk version -l '<' 2>/dev/null | grep -c '<')|?\"",
   "else echo 'none|?|?'; fi",
   "echo @@reboot",

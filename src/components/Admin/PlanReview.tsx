@@ -6,7 +6,7 @@ import { wrapScript, type Elevation } from "../../features/privileges";
 import { AdmModal } from "./AdmModal";
 import { useAdmin } from "./context";
 
-function elevationText(el: Elevation | null): string {
+export function elevationText(el: Elevation | null): string {
   switch (el?.kind) {
     case "root":
       return "Se ejecutará como root:";
