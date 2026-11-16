@@ -184,6 +184,62 @@ revisa todo de una vez, sin instalar nada en el servidor, y al final da un **rep
 - Reutilizar el escáner (`src-tauri/src/vulnscan/`), Administración (puertos, sitios, usuarios), Monitor y
   Contenedores; también exponerlo por el MCP para el asistente.
 
+**5a. Idea del usuario (16/11/2026): Claude Code en la terminal del VPS con la cuenta del PC.** Hoy los
+botones de Claude Code, Codex, agy y OpenCode solo existen en la terminal local. Pedido: poder abrirlo también en la
+terminal SSH de un servidor, **llevando la cuenta del PC al VPS** sin iniciar sesión por navegador allí.
+Referencia: el proyecto del usuario `~/LEO/Projects/CLAUDE_COPY` (`copysse`, ver su `docs/DISENO.md` y
+`docs/UX_DESKTOP.md`), que ya resuelve esto:
+- **«Copiar mi sesión»** (lo que recomienda copysse): copia `~/.claude/.credentials.json` (0600). Rápido y sin
+  navegador, pero no oficial y **compartida**: si un equipo renueva la sesión, el otro puede quedarse fuera.
+- **Llave de acceso**: `claude setup-token` en el PC (oficial, dura 1 año) y en el VPS la variable
+  `CLAUDE_CODE_OAUTH_TOKEN`. Para un servidor parece lo más sano (no tumba la sesión del PC).
+- Transporte: `copysse auth send HOST` manda el secreto **por stdin de ssh** (nunca en argumentos ni en archivos
+  temporales). SSHorus ya tiene la conexión abierta: mismo camino por un canal exec.
+- Decidir: reutilizar `copysse` (si está instalado) o hacerlo en SSHorus; instalar Claude Code en el VPS si falta
+  (mostrando el comando); qué usuario del VPS (ojo: quien tenga root en el VPS puede usar la sesión); y quitar la
+  cuenta del VPS con un botón. Relacionado con el punto 5.
+- **Decidido por el usuario (16/11/2026): que estén las dos opciones** («Copiar mi sesión» y «Llave de acceso»),
+  explicando la diferencia en una línea cada una.
+
+**5b. Idea del usuario (16/11/2026): que la IA despliegue un proyecto sola.** Con Claude Code y el MCP de SSHorus,
+la IA ya tiene acceso a los servidores: podría crear un usuario nuevo, compilar un proyecto y desplegarlo, con un
+dominio o solo con la IP. Casi todo existe ya por el MCP (`run_command` con sudo, `write_file`, `upload`, Usuarios
+de Administración, Contenedores, Sitios web). Faltaría: una guía o «receta de despliegue» que la IA siga (usuario
+aparte → código → compilar → contenedor o servicio systemd → Caddy/nginx con HTTPS → comprobar), herramientas MCP
+de más alto nivel (crear usuario, crear sitio) para no improvisar comandos, y el DNS (el usuario crea el registro A
+o se usa la API de su proveedor). Con solo IP no hay HTTPS de Let's Encrypt (salvo servicios tipo sslip.io).
+Riesgo: muchos pasos con sudo; usar «aceptar automáticamente» con duración y el registro de Actividad.
+- **Aclarado por el usuario: lo quiere desde el celular (APK).** Caminos, de menos a más trabajo:
+  1. Claude Code en el **VPS** con `claude remote-control` (punto 5) y la app oficial de Claude en el celular. No
+     necesita SSHorus ni APK propia; la IA trabaja directamente en ese servidor.
+     Según la documentación oficial (code.claude.com/docs/en/remote-control): solo conexiones salientes por 443,
+     servidor con `claude remote-control` (varias sesiones, dentro de tmux), aprobaciones y avisos en el
+     celular, y los MCP de esa máquina funcionan. **Ojo: no sirve con la llave de `claude setup-token` ni con
+     clave de API** (pide un inicio de sesión completo): para esto hace falta `/login` en el VPS o «Copiar mi
+     sesión» (5a). La primera vez pide confirmar en una terminal (activar y confiar en la carpeta). Si la red
+     cae más de ~10 min, el modo servidor se cierra: hay que relanzarlo (systemd o tmux con reintento).
+  2. Claude Code en el **PC** con el MCP de SSHorus y `remote-control`. Problema: los diálogos de aprobación de
+     SSHorus salen en el PC, no en el celular. Habría que pasar las aprobaciones al celular o usar «aceptar
+     automáticamente».
+  **Elegido por el usuario (16/11/2026): el camino 2.** Claude Code fuera del servidor (en el PC, como hoy con
+  SSHorus) controlando los servidores por el MCP: decide en cuál desplegar, configura Caddy, etc., sin gastar
+  RAM del VPS. No le gusta instalar Claude Code dentro del VPS. Falta: `server_status` por MCP (CPU, RAM y disco
+  de cada servidor, reutilizando el Panel de VPS) para elegir dónde desplegar; herramientas de alto nivel (crear
+  usuario, crear sitio en Caddy/nginx, desplegar contenedor o servicio); compilar en el PC y subir el resultado
+  o la imagen, para no cargar el VPS; y **aprobar desde el celular**: ver si las aprobaciones de SSHorus pueden ir
+  como pregunta del MCP (elicitation) que Remote Control lleve al celular; si no, «aceptar automáticamente»
+  por servidor y con duración. El PC tiene que estar encendido con SSHorus abierto.
+  Investigado (docs de Claude Code, 16/11/2026): Claude Code **sí** muestra las preguntas MCP (elicitation, modo
+  formulario; hay hook `Elicitation`), pero **no está documentado** que Remote Control las lleve al celular (sí lleva
+  los permisos de herramientas y `AskUserQuestion`). Plan: (A) mandar la aprobación de SSHorus también como
+  elicitation, a la vez que el diálogo del PC (gana la primera respuesta), y **probarlo** desde el celular; (B) si
+  no llega, modo «Aprobar en Claude Code» por servidor y con duración: SSHorus no pregunta y se confía en el
+  permiso de Claude Code (que sí llega al celular), con aviso de que una regla «allow» en Claude Code lo saltaría.
+  Además: tiempo de aprobación más largo para el celular y qué hacer con el bloqueo por PIN (si se bloquea solo,
+  la IA no puede hacer nada).
+  3. **APK propia** (punto 6): Tauri 2 compila para Android, así que se podría reutilizar parte del motor Rust y de
+     la interfaz. Es un proyecto grande.
+
 **5. Plan (no programar aún): asistente en el servidor, para usarlo desde el celular.** Botón «Asistente en
 el servidor»: instalar Claude Code en el servidor con un **usuario aparte** (sudo solo para lo que se
 permita); sesión oficial (el enlace de `/login` o un token de `claude setup-token`, nunca copiar
@@ -195,6 +251,22 @@ pararlo o quitarlo. Desde la app de Claude en el celular: «¿hay algo caído?»
 
 **6. Más adelante: app móvil propia.** Proyecto aparte, con la misma idea que la app de escritorio
 (monitorear y usar el asistente desde el celular).
+- **Decidido por el usuario (16/11/2026):** nada de Remote Control ni de Claude Code dentro del VPS. Una **app
+  móvil (APK) totalmente aparte**, con la misma idea: desde el celular, una IA que maneja tus servidores (elegir
+  dónde desplegar, crear usuario, Caddy, contenedores…) sin correr en el servidor. Esto deja en pausa el plan
+  A/B de aprobaciones del punto 5b.
+- Propuesta: Tauri 2 para Android (reutiliza el motor Rust: russh, sudo, escáner, auditoría; y parte de la
+  interfaz), SSH directo desde el celular a los servidores (no necesita el PC encendido), la IA dentro de la app
+  con la API de Claude (clave de API, se paga por uso; según Anthropic, las apps de terceros no pueden usar el
+  inicio de sesión de claude.ai salvo aprobación: confirmarlo antes de diseñar) y herramientas iguales a las del MCP, con las aprobaciones en la pantalla del celular. Secretos en el
+  almacén seguro de Android. Pendiente: diseño, qué se comparte con el escritorio (repo único o separado) y,
+  **opcional**, importar la lista de servidores guardados del escritorio (exportación cifrada o la copia
+  sincronizada de GitHub). El usuario lo quiere **directo celular → servidor, sin intermediarios**: el PC no
+  participa en la conexión; los servidores también se pueden añadir a mano en el celular.
+- Prototipo (16/11/2026): `docs/movil/prototipo.html` (pantallas, recorrido de un despliegue y diseño de sistema).
+  Aprobado por el usuario: **aprobación automática** opcional (por tarea, 1 hora o siempre; lo peligroso aparte),
+  **segundo plano** con aviso fijo de Android y **aviso al terminar** (o si necesita tu OK), y **seguridad con
+  huella** (abrir la app y usar sudo con la contraseña guardada).
 
 **7. Limpieza.** ✅ Hecha el 13/11/2026: borradas `../TERVIEW-v050` (rama `v0.5.0`; la etiqueta sigue) y
 las copias de `.claude/worktrees/`.

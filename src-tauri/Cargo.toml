@@ -99,6 +99,11 @@ drag = "2.1.1"
 opt-level = 3
 [profile.dev.package.blake2]
 opt-level = 3
+# El resto de dependencias (russh y su cifrado, tokio, xterm por IPC…) también optimizadas en
+# desarrollo: sin esto, cada tecla en la terminal SSH pasa por cifrado sin optimizar y se nota el
+# retraso al escribir. El código propio sigue sin optimizar (compila rápido y se depura bien).
+[profile.dev.package."*"]
+opt-level = 2
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

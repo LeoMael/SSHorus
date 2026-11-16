@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSHorus Móvil</title>
+<style>
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --sunken: #eef0f3; --text: #1b1f24; --muted: #5d6673;
+  --border: #d9dde3; --accent: #2f6fde; --accent-soft: #e3ecfc; --ok: #1f8a4c; --ok-soft: #e1f3e8;
+  --warn: #b26a00; --warn-soft: #fbf0dc; --err: #c4352b; --err-soft: #fbe4e2; --ai: #7b4bd6; --ai-soft: #efe8fb;
+  --srv: #1f8a4c; --phone: #2f6fde; --cloud: #b26a00; --frame: #1b1f24; --on-accent: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418; --surface: #1a1e24; --sunken: #232831; --text: #e7eaee; --muted: #9aa3ae;
+    --border: #313844; --accent: #6b9cf0; --accent-soft: #1e2b45; --ok: #4cc27f; --ok-soft: #173326;
+    --warn: #e0a440; --warn-soft: #3a2e17; --err: #ef6b61; --err-soft: #3d1e1c; --ai: #a988ec; --ai-soft: #2a2140;
+    --srv: #4cc27f; --phone: #6b9cf0; --cloud: #e0a440; --frame: #000; --on-accent: #0b1220; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418; --surface: #1a1e24; --sunken: #232831; --text: #e7eaee; --muted: #9aa3ae;
+  --border: #313844; --accent: #6b9cf0; --accent-soft: #1e2b45; --ok: #4cc27f; --ok-soft: #173326;
+  --warn: #e0a440; --warn-soft: #3a2e17; --err: #ef6b61; --err-soft: #3d1e1c; --ai: #a988ec; --ai-soft: #2a2140;
+  --srv: #4cc27f; --phone: #6b9cf0; --cloud: #e0a440; --frame: #000; --on-accent: #0b1220; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding-block: 24px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 20px; margin: 40px 0 8px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+p.lead { color: var(--muted); margin: 0 0 20px; max-width: 760px; }
+code { font: 12.5px ui-monospace, "Cascadia Mono", Menlo, monospace; background: var(--sunken);
+  padding: 1px 5px; border-radius: 4px; }
+
+/* ── Prototipo ── */
+.proto { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .proto { grid-template-columns: 1fr; justify-items: center; } }
+.phone { width: 340px; max-width: 100%; height: 700px; border-radius: 38px; background: var(--frame);
+  padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.screen { height: 100%; border-radius: 28px; background: var(--bg); overflow: hidden;
+  display: flex; flex-direction: column; position: relative; }
+.status { display: flex; justify-content: space-between; padding: 8px 20px 4px; font-size: 12px;
+  color: var(--muted); }
+.appbar { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px;
+  border-bottom: 1px solid var(--border); background: var(--surface); }
+.appbar b { font-size: 16px; flex: 1; }
+.logo { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--accent);
+  display: grid; place-items: center; font: 700 10px ui-monospace, monospace; color: var(--accent); }
+.body { flex: 1; overflow-y: auto; padding: 12px; }
+.tabbar { display: flex; border-top: 1px solid var(--border); background: var(--surface); }
+.tabbar button { flex: 1; padding: 8px 0 10px; border: 0; background: none; color: var(--muted);
+  font: inherit; font-size: 11.5px; cursor: pointer; }
+.tabbar button[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+.tabbar svg { display: block; margin: 0 auto 2px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 10px; }
+.srv-head { display: flex; align-items: center; gap: 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.off { background: var(--err); }
+.srv-name { font-weight: 600; flex: 1; }
+.srv-host { color: var(--muted); font-size: 12px; }
+.bars { display: grid; grid-template-columns: 44px 1fr 62px; gap: 4px 8px; align-items: center;
+  font-size: 12px; margin-top: 8px; color: var(--muted); }
+.bar { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bar i.hi { background: var(--warn); }
+.pill { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--sunken); color: var(--muted); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.hint { font-size: 12px; color: var(--muted); text-align: center; margin: 6px 0 12px; }
+
+/* chat */
+.msg { max-width: 88%; padding: 8px 11px; border-radius: 14px; margin-bottom: 8px; font-size: 13.5px;
+  animation: in .25s ease; }
+.msg.me { margin-left: auto; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+.msg.ai { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.tool { border: 1px solid var(--border); border-left: 3px solid var(--ai); background: var(--surface);
+  border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; font-size: 12.5px; animation: in .25s ease; }
+.tool .t { display: flex; gap: 6px; align-items: center; font-weight: 600; }
+.tool .t span:first-child { flex: 1; }
+.tool pre { margin: 6px 0 0; padding: 6px 8px; background: var(--sunken); border-radius: 6px;
+  font: 11.5px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.tool.wait { border-left-color: var(--warn); }
+.tool.done { border-left-color: var(--ok); }
+.composer { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--border);
+  background: var(--surface); }
+.composer div { flex: 1; background: var(--sunken); border-radius: 18px; padding: 7px 12px;
+  color: var(--muted); font-size: 13px; }
+.composer button { align-self: center; }
+.composer button, .btn { border: 0; border-radius: 18px; padding: 7px 14px; font: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; background: var(--accent); color: var(--on-accent); }
+.btn.ghost { background: var(--sunken); color: var(--text); }
+@keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* hoja de aprobación */
+.sheet { position: absolute; inset: auto 0 0 0; background: var(--surface); border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0; padding: 14px 16px 18px; box-shadow: 0 -8px 24px rgba(0,0,0,.18);
+  transform: translateY(105%); transition: transform .25s ease; }
+.sheet.open { transform: none; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 10px; }
+.sheet pre { background: var(--sunken); border-radius: 8px; padding: 8px; font: 12px/1.4 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap; margin: 8px 0; }
+.sheet .row { display: flex; gap: 8px; margin-top: 10px; }
+.sheet .row .btn { flex: 1; padding: 10px; }
+.danger-note { font-size: 12px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 6px 8px; }
+.finger { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+
+/* terminal */
+.term { background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 10px; height: 100%;
+  font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+.term .g { color: #56d364; } .term .b { color: #79c0ff; }
+
+/* panel lateral del prototipo */
+.side .step-list { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+.side .step-list li { counter-increment: s; position: relative; padding: 8px 10px 8px 40px; border-radius: 10px;
+  margin-bottom: 4px; color: var(--muted); }
+.side .step-list li::before { content: counter(s); position: absolute; left: 10px; top: 8px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--sunken); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.side .step-list li.now { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.side .step-list li.now::before { background: var(--accent); color: #fff; }
+.side .step-list li.past::before { background: var(--ok-soft); color: var(--ok); content: "✓"; }
+.side .where { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; margin-left: 4px; }
+.where.w-phone { background: var(--accent-soft); color: var(--phone); }
+.where.w-cloud { background: var(--warn-soft); color: var(--cloud); }
+.where.w-srv { background: var(--ok-soft); color: var(--srv); }
+.controls { display: flex; gap: 8px; margin: 12px 0 0; flex-wrap: wrap; }
+
+/* ajustes */
+.set { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.set div { flex: 1; } .set b { display: block; font-size: 13.5px; font-weight: 600; }
+.set small { color: var(--muted); font-size: 12px; line-height: 1.35; display: block; }
+.set.off { opacity: .45; pointer-events: none; }
+.sw { appearance: none; width: 40px; height: 24px; border-radius: 12px; background: var(--border); position: relative;
+  cursor: pointer; flex: none; transition: background .15s; margin: 0; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .15s; }
+.sw:checked { background: var(--accent); } .sw:checked::after { transform: translateX(16px); }
+.seg { display: flex; gap: 4px; margin-top: 6px; } .seg button { flex: 1; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); border-radius: 8px; padding: 4px 0; font: inherit; font-size: 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.modechip { font-size: 11px; padding: 2px 8px; border-radius: 99px; cursor: pointer; border: 0; font-weight: 600; }
+.modechip.ask { background: var(--warn-soft); color: var(--warn); } .modechip.auto { background: var(--ok-soft); color: var(--ok); }
+
+/* segundo plano: pantalla de inicio de Android con avisos */
+.home { position: absolute; inset: 0; z-index: 5; display: none; flex-direction: column; padding: 30px 12px 12px;
+  background: linear-gradient(160deg, #2b3a67 0%, #4b2d6b 55%, #1d2a3a 100%); color: #fff; }
+.home.on { display: flex; }
+.home .clock { text-align: center; font-size: 46px; font-weight: 300; margin: 6px 0 0; }
+.home .date { text-align: center; font-size: 13px; opacity: .8; margin-bottom: 18px; }
+.notif { background: rgba(255,255,255,.93); color: #1b1f24; border-radius: 16px; padding: 10px 12px; margin-bottom: 8px;
+  animation: in .3s ease; cursor: pointer; }
+.notif .h { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: #5d6673; }
+.notif .h .logo { width: 18px; height: 18px; font-size: 7px; border-width: 1.5px; }
+.notif b { display: block; font-size: 13.5px; margin-top: 3px; } .notif span.d { font-size: 12.5px; color: #3d4652; }
+.notif .pbar { height: 4px; border-radius: 2px; background: #dfe3ea; margin-top: 7px; overflow: hidden; }
+.notif .pbar i { display: block; height: 100%; background: #2f6fde; transition: width .3s; }
+.notif .acts { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; font-weight: 600; color: #2f6fde; }
+.home .back { margin-top: auto; align-self: center; background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 99px;
+  padding: 7px 16px; font: inherit; font-size: 12.5px; cursor: pointer; }
+
+/* ── Diseño de sistema ── */
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.diagram text { fill: var(--text); font-family: system-ui, sans-serif; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+.box ul { margin: 6px 0 0; padding-left: 18px; }
+.box li { margin-bottom: 4px; }
+.tag-q { color: var(--warn); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SSHorus Móvil: prototipo</h1>
+  <p class="lead">Una app aparte para el celular. Se conecta <b>directo por SSH</b> a tus servidores, sin PC en medio,
+  y trae una IA que hace el trabajo por ti: elige el servidor, crea el usuario, despliega y configura Caddy.
+  La IA nunca corre en el servidor ni entra en él: <b>la app ejecuta cada paso</b>, preguntándote antes o sola si activas la aprobación automática. Sigue trabajando en segundo plano y te avisa al terminar.</p>
+
+  <section class="proto">
+    <div class="phone" aria-label="Prototipo de la app en un celular">
+      <div class="screen">
+        <div class="status"><span>9:41</span><span>5G ▮▮▮ 82%</span></div>
+        <div class="appbar"><div class="logo">&gt;_</div><b id="title">Asistente</b><button class="modechip ask" id="modechip" type="button" title="Cambiar en Ajustes">Pregunta</button></div>
+
+        <div class="body" id="v-servers" hidden>
+          <div class="hint">Conexión directa desde el celular · actualiza cada 15 s</div>
+          <div class="card"><div class="srv-head"><span class="dot"></span><span class="srv-name">vps-principal</span><span class="pill ok">En línea</span></div>
+            <div class="srv-host">deploy@203.0.113.10 · Ubuntu 24.04</div>
+            <div class="bars"><span>CPU</span><div class="bar"><i style="width:12%"></i></div><span>12 %</span>
+              <span>RAM</span><div class="bar"><i style="width:28%"></i></div><span>1,1/4 GB</span>
+              <span>Disco</span><div class="bar"><i style="width:40%"></i></div><span>32/80 GB</span></div></div>
+          <div class="card"><div class="srv-head"><span class="dot"></span><span class="srv-name">vps-pruebas</span><span class="pill warn">RAM alta</span></div>
+            <div class="srv-host">leo@198.51.100.7 · Rocky 9</div>
+            <div class="bars"><span>CPU</span><div class="bar"><i style="width:35%"></i></div><span>35 %</span>
+              <span>RAM</span><div class="bar"><i class="hi" style="width:88%"></i></div><span>0,9/1 GB</span>
+              <span>Disco</span><div class="bar"><i style="width:61%"></i></div><span>15/25 GB</span></div></div>
+          <div class="card"><div class="srv-head"><span class="dot off"></span><span class="srv-name">raspberry-casa</span><span class="pill">Sin conexión</span></div>
+            <div class="srv-host">pi@192.168.1.20 · solo en tu wifi</div></div>
+        </div>
+
+        <div class="body" id="v-chat"></div>
+
+        <div class="body" id="v-set" hidden>
+          <div class="hint">Ajustes del asistente</div>
+          <label class="set"><div><b>Aprobación automática</b><small>La IA ejecuta sin preguntarte. Lo ves todo en la conversación y en el registro.</small></div><input type="checkbox" class="sw" id="o-auto"></label>
+          <label class="set off" id="row-danger"><div><b>También lo peligroso</b><small>Borrar, reiniciar, cerrar puertos… Apagado: eso te sigue preguntando.</small></div><input type="checkbox" class="sw" id="o-danger"></label>
+          <div class="set off" id="row-for"><div><b>Durante</b><small>Cuándo vuelve a preguntar.</small>
+            <div class="seg" id="o-for"><button type="button" aria-pressed="true" data-v="tarea">Esta tarea</button><button type="button" aria-pressed="false" data-v="1h">1 hora</button><button type="button" aria-pressed="false" data-v="siempre">Siempre</button></div></div></div>
+          <label class="set"><div><b>sudo con huella una vez</b><small>Al empezar la tarea pones la huella; la app usa la contraseña guardada en cada sudo. La IA nunca la ve.</small></div><input type="checkbox" class="sw" checked disabled></label>
+          <label class="set"><div><b>Seguir en segundo plano</b><small>Puedes salir de la app: sigue trabajando con un aviso fijo de Android.</small></div><input type="checkbox" class="sw" id="o-bg" checked></label>
+          <label class="set"><div><b>Avisarme</b><small>Al terminar, si algo falla o si necesita tu OK.</small></div><input type="checkbox" class="sw" checked disabled></label>
+        </div>
+
+        <div class="body" id="v-term" hidden>
+          <div class="term"><span class="g">deploy@vps-principal</span>:<span class="b">~</span>$ podman ps
+CONTAINER ID  IMAGE                 STATUS        NAMES
+a1f3c9e2b7d4  localhost/tienda:1.0  Up 3 minutes  tienda
+<span class="g">deploy@vps-principal</span>:<span class="b">~</span>$ curl -sI https://tienda.ejemplo.com | head -1
+HTTP/2 200
+<span class="g">deploy@vps-principal</span>:<span class="b">~</span>$ ▌</div>
+        </div>
+
+        <div class="composer" id="composer"><div id="draft">Escribe qué quieres hacer…</div><button id="send" type="button">Enviar</button><button class="btn ghost" id="tobg" type="button" hidden>Salir</button></div>
+
+        <nav class="tabbar" role="tablist">
+          <button role="tab" data-v="servers" aria-selected="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/></svg>Servidores</button>
+          <button role="tab" data-v="chat" aria-selected="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H8l-4 4z"/></svg>Asistente</button>
+          <button role="tab" data-v="term" aria-selected="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l5 5-5 5M12 18h8"/></svg>Terminal</button>
+          <button role="tab" data-v="set" aria-selected="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Ajustes</button>
+        </nav>
+
+        <div class="sheet" id="sheet" aria-live="polite">
+          <div class="grab"></div>
+          <h3 id="sh-title">La IA quiere ejecutar</h3>
+          <div class="srv-host" id="sh-srv">en vps-principal</div>
+          <pre id="sh-cmd"></pre>
+          <div class="danger-note" id="sh-note"></div>
+          <div class="finger" id="sh-finger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11v4M8 9a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0M5 10a7 7 0 0 1 14 0v4"/></svg>sudo: con tu huella, la app pone la contraseña guardada. La IA no la ve.</div>
+          <div class="row"><button class="btn ghost" id="deny" type="button">Denegar</button><button class="btn" id="allow" type="button">Permitir</button></div>
+        </div>
+
+        <div class="home" id="home" aria-live="polite">
+          <div class="clock">9:42</div><div class="date">martes, 17 de noviembre</div>
+          <div id="notifs"></div>
+          <button class="back" id="openapp" type="button">Abrir SSHorus</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h3>Recorrido: «Despliega mi tienda con mi dominio»</h3>
+      <p style="color:var(--muted);margin:0 0 10px;font-size:14px">Pulsa <b>Siguiente</b> o <b>Reproducir</b>. Prueba también <b>Ajustes → Aprobación automática</b> y el botón <b>Salir</b> del chat: la tarea sigue en segundo plano y te avisa al terminar. La etiqueta dice <b>dónde</b> pasa cada cosa.</p>
+      <ol class="step-list" id="steps"></ol>
+      <div class="controls">
+        <button class="btn ghost" id="restart" type="button">Empezar de nuevo</button>
+        <button class="btn ghost" id="play" type="button">Reproducir</button>
+        <button class="btn" id="next" type="button">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <h2>Diseño de sistema</h2>
+  <p class="lead">Tres lugares y nada más. La app es el centro: habla con la IA por internet y con tus servidores por SSH,
+  pero <b>la IA y los servidores nunca se hablan entre sí</b>.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1000 545" role="img" aria-label="Diagrama: el celular conecta por SSH directo a los servidores y por HTTPS a la API de Claude; la API no toca los servidores">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker>
+      </defs>
+      <!-- Celular -->
+      <rect x="20" y="20" width="380" height="505" rx="16" fill="none" stroke="var(--phone)" stroke-width="2" stroke-dasharray="7 5"/>
+      <text x="40" y="50" font-weight="700" font-size="16" style="fill:var(--phone)">Tu celular · app SSHorus Móvil</text>
+      <g font-size="13.5">
+        <rect x="45" y="70" width="330" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--phone)"/>
+        <text x="60" y="92" font-weight="600">Interfaz</text><text x="60" y="110" style="fill:var(--muted)" font-size="12">Servidores · Asistente · Terminal · Archivos</text>
+        <rect x="45" y="135" width="330" height="62" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
+        <text x="60" y="157" font-weight="600">Agente (bucle de la IA)</text><text x="60" y="175" style="fill:var(--muted)" font-size="12">manda tu pedido + resultados a Claude,</text><text x="60" y="190" style="fill:var(--muted)" font-size="12">recibe «usa esta herramienta con esto»</text>
+        <rect x="45" y="212" width="330" height="62" rx="10" fill="var(--warn-soft)" stroke="var(--warn)"/>
+        <text x="60" y="234" font-weight="600">Permisos y aprobación</text><text x="60" y="252" style="fill:var(--muted)" font-size="12">Preguntar: lectura pasa sola, cambios preguntan</text><text x="60" y="267" style="fill:var(--muted)" font-size="12">Automático: todo pasa solo (lo peligroso, opcional)</text>
+        <rect x="45" y="289" width="330" height="62" rx="10" fill="var(--ok-soft)" stroke="var(--srv)"/>
+        <text x="60" y="311" font-weight="600">Motor SSH (Rust, el de SSHorus)</text><text x="60" y="329" style="fill:var(--muted)" font-size="12">russh · SFTP · sudo sin mostrar la contraseña</text><text x="60" y="344" style="fill:var(--muted)" font-size="12">escáner · auditoría · contenedores</text>
+        <rect x="45" y="366" width="330" height="62" rx="10" fill="var(--sunken)" stroke="var(--border)"/>
+        <text x="60" y="388" font-weight="600">Almacén seguro de Android</text><text x="60" y="406" style="fill:var(--muted)" font-size="12">llaves SSH, contraseñas y clave de la IA</text><text x="60" y="421" style="fill:var(--muted)" font-size="12">se abre con tu huella</text>
+        <rect x="45" y="443" width="330" height="62" rx="10" fill="var(--accent-soft)" stroke="var(--phone)" stroke-dasharray="4 3"/>
+        <text x="60" y="465" font-weight="600">Segundo plano y avisos</text><text x="60" y="483" style="fill:var(--muted)" font-size="12">servicio de Android con aviso fijo (progreso)</text><text x="60" y="498" style="fill:var(--muted)" font-size="12">avisa al terminar, si falla o si necesita tu OK</text>
+      </g>
+      <!-- Nube -->
+      <rect x="560" y="20" width="420" height="140" rx="16" fill="none" stroke="var(--cloud)" stroke-width="2" stroke-dasharray="7 5"/>
+      <text x="580" y="50" font-weight="700" font-size="16" style="fill:var(--cloud)">Internet · API de Claude</text>
+      <text x="580" y="78" font-size="13.5">Solo piensa: recibe texto y responde</text>
+      <text x="580" y="98" font-size="13.5">qué herramienta usar. No tiene acceso</text>
+      <text x="580" y="118" font-size="13.5">a tus servidores ni a tus contraseñas.</text>
+      <text x="580" y="144" font-size="12" style="fill:var(--muted)">Se paga por uso con una clave de API.</text>
+      <!-- Servidores -->
+      <rect x="560" y="230" width="420" height="295" rx="16" fill="none" stroke="var(--srv)" stroke-width="2" stroke-dasharray="7 5"/>
+      <text x="580" y="260" font-weight="700" font-size="16" style="fill:var(--srv)">Tus servidores (VPS)</text>
+      <g font-size="13.5">
+        <rect x="580" y="278" width="180" height="70" rx="10" fill="var(--ok-soft)" stroke="var(--srv)"/>
+        <text x="594" y="302" font-weight="600">vps-principal</text><text x="594" y="320" font-size="12" style="fill:var(--muted)">sshd · sudo · Podman</text><text x="594" y="336" font-size="12" style="fill:var(--muted)">Caddy (HTTPS)</text>
+        <rect x="780" y="278" width="180" height="70" rx="10" fill="var(--ok-soft)" stroke="var(--srv)"/>
+        <text x="794" y="302" font-weight="600">vps-pruebas</text><text x="794" y="320" font-size="12" style="fill:var(--muted)">sshd · sudo · systemd</text><text x="794" y="336" font-size="12" style="fill:var(--muted)">nginx</text>
+        <text x="580" y="380" font-size="12.5" style="fill:var(--muted)">No se instala nada de la IA aquí:</text>
+        <text x="580" y="398" font-size="12.5" style="fill:var(--muted)">el servidor solo ejecuta los comandos</text>
+        <text x="580" y="416" font-size="12.5" style="fill:var(--muted)">que tú apruebas. No gasta RAM en la IA.</text>
+      </g>
+      <!-- Flechas -->
+      <path d="M377 166 H556" stroke="var(--cloud)" stroke-width="2.5" fill="none" marker-end="url(#ah)" marker-start="url(#ah)"/>
+      <text x="414" y="138" font-size="12.5" font-weight="600" style="fill:var(--cloud)">HTTPS</text>
+      <text x="414" y="155" font-size="11.5" style="fill:var(--muted)">pedido y resultados</text>
+      <text x="414" y="186" font-size="11.5" style="fill:var(--muted)">sin contraseñas ni llaves</text>
+      <path d="M377 320 H556" stroke="var(--srv)" stroke-width="2.5" fill="none" marker-end="url(#ah)"/>
+      <text x="414" y="292" font-size="12.5" font-weight="600" style="fill:var(--srv)">SSH directo</text>
+      <text x="414" y="309" font-size="11.5" style="fill:var(--muted)">puerto 22</text>
+      <text x="414" y="340" font-size="11.5" style="fill:var(--muted)">sin PC ni intermediarios</text>
+      <!-- No hay flecha entre nube y servidores -->
+      <line x1="770" y1="168" x2="770" y2="222" stroke="var(--err)" stroke-width="2" stroke-dasharray="4 4"/>
+      <text x="784" y="200" font-size="12.5" font-weight="600" style="fill:var(--err)">✕ Claude no entra a los servidores</text>
+    </svg>
+  </div>
+
+  <h2>Cómo da un paso la IA</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="Bucle: tú pides, Claude propone una herramienta, la app revisa permisos, tú apruebas, la app ejecuta por SSH y devuelve el resultado a Claude">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+      <g font-size="13">
+        <rect x="10" y="40" width="150" height="76" rx="12" fill="var(--accent-soft)" stroke="var(--phone)"/>
+        <text x="24" y="66" font-weight="700">1 · Tú pides</text><text x="24" y="86" font-size="12" style="fill:var(--muted)">«despliega mi tienda</text><text x="24" y="102" font-size="12" style="fill:var(--muted)">con mi dominio»</text>
+        <rect x="210" y="40" width="160" height="76" rx="12" fill="var(--warn-soft)" stroke="var(--cloud)"/>
+        <text x="224" y="66" font-weight="700">2 · Claude propone</text><text x="224" y="86" font-size="12" style="fill:var(--muted)">«usa create_user con</text><text x="224" y="102" font-size="12" style="fill:var(--muted)">name=tienda»</text>
+        <rect x="420" y="40" width="160" height="76" rx="12" fill="var(--warn-soft)" stroke="var(--warn)"/>
+        <text x="434" y="66" font-weight="700">3 · La app revisa</text><text x="434" y="86" font-size="12" style="fill:var(--muted)">¿lectura? ¿cambio?</text><text x="434" y="102" font-size="12" style="fill:var(--muted)">¿sudo? ¿peligroso?</text>
+        <rect x="630" y="40" width="160" height="76" rx="12" fill="var(--accent-soft)" stroke="var(--phone)"/>
+        <text x="644" y="66" font-weight="700">4 · Tú apruebas</text><text x="644" y="86" font-size="12" style="fill:var(--muted)">ves el comando exacto</text><text x="644" y="102" font-size="12" style="fill:var(--muted)">huella si es sudo</text>
+        <rect x="840" y="40" width="150" height="76" rx="12" fill="var(--ok-soft)" stroke="var(--srv)"/>
+        <text x="854" y="66" font-weight="700">5 · Se ejecuta</text><text x="854" y="86" font-size="12" style="fill:var(--muted)">por SSH, desde el</text><text x="854" y="102" font-size="12" style="fill:var(--muted)">celular al servidor</text>
+      </g>
+      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ah2)">
+        <path d="M160 78 H206"/><path d="M370 78 H416"/><path d="M580 78 H626"/><path d="M790 78 H836"/>
+        <path d="M915 116 V190 H290 V120"/>
+      </g>
+      <text x="300" y="212" font-size="12.5" style="fill:var(--muted)">6 · El resultado vuelve a Claude, que decide el siguiente paso, hasta terminar o hasta que tú lo pares.</text>
+      <text x="300" y="232" font-size="12.5" style="fill:var(--muted)">Lectura (ver RAM, puertos) pasa sola. Con aprobación automática, el paso 4 también.</text>
+    </svg>
+  </div>
+
+  <h2>Qué hace falta</h2>
+  <div class="grid2">
+    <div class="box">
+      <h3>Se reutiliza del SSHorus de escritorio</h3>
+      <table>
+        <tr><th>Pieza</th><th>Estado</th></tr>
+        <tr><td>Motor SSH, SFTP, sudo sin mostrar la contraseña</td><td>Ya existe (Rust; Tauri 2 compila para Android)</td></tr>
+        <tr><td>Permisos y aprobación del MCP (lectura / cambio / peligroso)</td><td>Ya existe; se reutiliza la misma lógica</td></tr>
+        <tr><td>Herramientas: comandos, archivos, contenedores, puertos, sitios, escáner, auditoría</td><td>Ya existen; se exponen a la IA de la app</td></tr>
+        <tr><td>Lectura de CPU, RAM y disco (Panel de VPS)</td><td>Ya existe</td></tr>
+        <tr><td>Agente (bucle con la API de Claude)</td><td>Nuevo</td></tr>
+        <tr><td>Herramientas de despliegue: crear usuario, crear sitio en Caddy, desplegar</td><td>Nuevo</td></tr>
+        <tr><td>Pantallas para celular</td><td>Nuevo</td></tr>
+        <tr><td>Segundo plano y avisos de Android</td><td>Nuevo</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>Decisiones abiertas</h3>
+      <ul>
+        <li><span class="tag-q">Pago de la IA:</span> lo oficial para una app propia es una clave de API de Claude (pago por uso, aparte de tu suscripción).</li>
+        <li><span class="tag-q">Segundo plano:</span> Android corta las conexiones de las apps en segundo plano. Solución: un «servicio en primer plano» con aviso fijo mientras dura la tarea (Android lo exige) y un aviso al terminar. Si el celular pierde la red a mitad, la tarea se pausa y te avisa.</li>
+        <li><span class="tag-q">Aprobación automática:</span> por tarea, 1 hora o siempre; lo peligroso aparte. Todo queda en el registro.</li>
+        <li><span class="tag-q">Compilar:</span> en el servidor (usa su RAM) o en GitHub Actions y solo bajar la imagen. La app avisaría si el servidor tiene poca RAM.</li>
+        <li><span class="tag-q">Dominio:</span> tú creas el registro DNS (la app comprueba que apunte al servidor) o se usa la API de tu proveedor.</li>
+        <li><span class="tag-q">Código:</span> mismo repositorio que el escritorio (comparte el motor) o uno aparte.</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<script>
+const STEPS = [
+  { where: "phone", label: "Tú", t: "Escribes el pedido",
+    me: "Despliega mi tienda (github.com/yo/tienda) con el dominio tienda.ejemplo.com" },
+  { where: "cloud", label: "Claude", t: "Claude decide mirar los servidores (solo lectura)",
+    ai: "Primero miro qué servidor tiene más recursos libres.",
+    tool: { name: "server_status", kind: "Lectura · pasa sola", cmd: "todos los servidores", state: "done",
+      out: "vps-principal  RAM libre 2,9 GB · disco 48 GB\nvps-pruebas    RAM libre 0,1 GB · disco 10 GB" } },
+  { where: "cloud", label: "Claude", t: "Claude elige servidor y te cuenta el plan",
+    ai: "Usaré vps-principal (vps-pruebas está casi sin RAM). Plan: 1) usuario «tienda» 2) bajar el código 3) contenedor 4) Caddy con HTTPS 5) comprobar." },
+  { where: "phone", label: "Tú", t: "Apruebas crear el usuario (con sudo)",
+    tool: { name: "create_user", kind: "Cambio con sudo", cmd: "sudo useradd -m -s /bin/bash tienda\nsudo loginctl enable-linger tienda", state: "wait" },
+    sheet: { title: "La IA quiere crear un usuario", cmd: "sudo useradd -m -s /bin/bash tienda\nsudo loginctl enable-linger tienda", note: "Usa sudo. Con «Aprobación automática» pasaría solo.", finger: true } },
+  { where: "srv", label: "Servidor", t: "La app lo ejecuta por SSH",
+    toolDone: "create_user", out: "usuario tienda creado" },
+  { where: "phone", label: "Tú", t: "Apruebas bajar el código y crear el contenedor",
+    tool: { name: "deploy_container", kind: "Cambio", cmd: "git clone https://github.com/yo/tienda ~/tienda\npodman build -t tienda:1.0 ~/tienda\npodman run -d --name tienda -p 127.0.0.1:3000:3000 tienda:1.0", state: "wait" },
+    sheet: { title: "La IA quiere desplegar", cmd: "git clone https://github.com/yo/tienda ~/tienda\npodman build -t tienda:1.0 ~/tienda\npodman run -d --name tienda \\\n  -p 127.0.0.1:3000:3000 tienda:1.0", note: "Como usuario «tienda». Compilar usa RAM del servidor (~600 MB).", finger: false } },
+  { where: "srv", label: "Servidor", t: "Se compila y arranca en el servidor",
+    toolDone: "deploy_container", out: "contenedor tienda en marcha (puerto 3000, solo local)" },
+  { where: "cloud", label: "Claude", t: "Claude comprueba el dominio antes de tocar Caddy",
+    ai: "Compruebo que tienda.ejemplo.com apunte al servidor.",
+    tool: { name: "check_dns", kind: "Lectura · pasa sola", cmd: "tienda.ejemplo.com", state: "done", out: "A → 203.0.113.10 ✓ es vps-principal" } },
+  { where: "phone", label: "Tú", t: "Apruebas el sitio en Caddy",
+    tool: { name: "create_site", kind: "Cambio con sudo", cmd: "tienda.ejemplo.com → 127.0.0.1:3000 (HTTPS automático)", state: "wait" },
+    sheet: { title: "La IA quiere crear un sitio en Caddy", cmd: "tienda.ejemplo.com {\n  reverse_proxy 127.0.0.1:3000\n}\n→ /etc/caddy/sites/tienda.caddy\nsudo systemctl reload caddy", note: "Usa sudo. Si Caddy no valida la configuración, se deja como estaba.", finger: true } },
+  { where: "srv", label: "Servidor", t: "Caddy recarga y saca el certificado",
+    toolDone: "create_site", out: "caddy validate ✓ · recargado · certificado emitido" },
+  { where: "cloud", label: "Claude", t: "Claude verifica y te resume",
+    tool: { name: "run_command", kind: "Lectura · pasa sola", cmd: "curl -sI https://tienda.ejemplo.com", state: "done", out: "HTTP/2 200" },
+    ai: "Listo: https://tienda.ejemplo.com responde. Usuario «tienda», contenedor «tienda», sitio en Caddy. Si quieres, programo actualizaciones con «Actualizar imagen»." },
+];
+
+const $ = (id) => document.getElementById(id);
+const chat = $("v-chat");
+const TOTAL = STEPS.length;
+let i = -1, auto = false, bg = false, timer = 0, sheetTimer = 0, waiting = false;
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function toolCard(t, autoOk) {
+  const c = el("div", "tool " + (t.state === "done" ? "done" : autoOk ? "" : "wait"));
+  c.dataset.name = t.name;
+  const h = el("div", "t");
+  const label = t.state === "done" ? "hecho" : autoOk ? "aprobado solo" : "esperando tu OK";
+  h.append(el("span", null, "⚙ " + t.name), el("span", "pill " + (t.state === "done" || autoOk ? "ok" : "warn"), label));
+  c.append(h, el("div", "srv-host", t.kind), el("pre", null, t.cmd + (t.out ? "\n→ " + t.out : "")));
+  return c;
+}
+
+function stepTitle(s) { return s.sheet && auto ? s.t.replace(/^Apruebas /, "Se aprueba solo: ") : s.t; }
+
+function renderSteps() {
+  const ol = $("steps"); ol.innerHTML = "";
+  STEPS.forEach((s, k) => {
+    const li = el("li", k < i ? "past" : k === i ? "now" : "");
+    li.append(document.createTextNode(stepTitle(s)));
+    li.append(el("span", "where w-" + (s.sheet && auto ? "srv" : s.where), s.sheet && auto ? "Automático" : s.label));
+    ol.append(li);
+  });
+  const done = i >= TOTAL - 1;
+  $("next").disabled = done || timer !== 0;
+  $("next").textContent = done ? "Terminado" : "Siguiente";
+  $("play").textContent = timer ? "Pausar" : "Reproducir";
+  $("play").disabled = done;
+  $("tobg").hidden = i < 0 || done || bg;
+  $("send").hidden = !$("tobg").hidden;
+}
+
+function closeSheet() { clearTimeout(sheetTimer); $("sheet").classList.remove("open"); }
+
+/* ── avisos de Android (segundo plano) ── */
+function notif(id, title, text, opts = {}) {
+  let n = document.getElementById("n-" + id);
+  if (!n) { n = el("div", "notif"); n.id = "n-" + id; $("notifs").prepend(n); n.addEventListener("click", () => leaveBg(opts.onTap)); }
+  n.innerHTML = "";
+  const h = el("div", "h"); const lg = el("div", "logo", ">_"); h.append(lg, document.createTextNode("SSHorus · " + (opts.when || "ahora")));
+  n.append(h, el("b", null, title), el("span", "d", text));
+  if (opts.progress != null) { const pb = el("div", "pbar"); const bar = el("i"); bar.style.width = opts.progress + "%"; pb.append(bar); n.append(pb); }
+  if (opts.actions) { const ac = el("div", "acts"); opts.actions.forEach((x) => ac.append(el("span", null, x))); n.append(ac); }
+}
+function dropNotif(id) { document.getElementById("n-" + id)?.remove(); }
+function progressNotif() {
+  notif("run", "Desplegando tienda… paso " + (i + 1) + " de " + TOTAL, stepTitle(STEPS[i] || STEPS[0]),
+    { progress: Math.round(((i + 1) / TOTAL) * 100), actions: ["Detener"], when: "en curso" });
+}
+function goBg() {
+  if (i < 0 || i >= TOTAL - 1) return;
+  bg = true; closeSheet(); $("home").classList.add("on"); progressNotif();
+  if (!timer && !waiting) play();
+  renderSteps();
+}
+function leaveBg(then) {
+  bg = false; $("home").classList.remove("on"); $("notifs").innerHTML = ""; show("chat");
+  if (then) then();
+  renderSteps();
+}
+
+/* ── un paso ── */
+function step() {
+  if (i >= TOTAL - 1) return;
+  i++;
+  const s = STEPS[i];
+  if (!bg) show("chat");
+  closeSheet(); waiting = false;
+  if (s.me) { chat.append(el("div", "msg me", s.me)); $("draft").textContent = "Escribe qué quieres hacer…"; }
+  if (s.ai && !s.tool) chat.append(el("div", "msg ai", s.ai));
+  if (s.tool) {
+    if (s.ai && s.tool.state === "done" && s.tool.name !== "run_command") chat.append(el("div", "msg ai", s.ai));
+    chat.append(toolCard(s.tool, s.sheet && auto));
+    if (s.ai && s.tool.name === "run_command") chat.append(el("div", "msg ai", s.ai));
+  }
+  if (s.toolDone) {
+    const c = [...chat.querySelectorAll(".tool")].reverse().find((x) => x.dataset.name === s.toolDone);
+    if (c) { c.className = "tool done"; const p = c.querySelector(".pill"); p.className = "pill ok"; p.textContent = "hecho"; c.querySelector("pre").textContent += "\n→ " + s.out; }
+  }
+  if (s.sheet && !auto) {
+    waiting = true; stop();
+    $("sh-title").textContent = s.sheet.title;
+    $("sh-cmd").textContent = s.sheet.cmd;
+    $("sh-note").textContent = s.sheet.note;
+    $("sh-finger").style.display = s.sheet.finger ? "flex" : "none";
+    if (bg) {
+      notif("run", "SSHorus necesita tu OK", s.sheet.title + " en vps-principal", { actions: ["Ver y aprobar"], when: "en pausa" });
+    } else sheetTimer = setTimeout(() => $("sheet").classList.add("open"), 150);
+  } else if (bg) progressNotif();
+  if (i >= TOTAL - 1) finish();
+  chat.scrollTop = chat.scrollHeight;
+  renderSteps();
+}
+
+function finish() {
+  stop();
+  if (bg) {
+    dropNotif("run");
+    notif("done", "✓ Tienda desplegada", "https://tienda.ejemplo.com responde (HTTP 200). 11 pasos, 0 errores.", { actions: ["Abrir", "Ver registro"] });
+  }
+}
+
+function play() {
+  if (timer || i >= TOTAL - 1) return;
+  if (i < 0) step();
+  timer = setInterval(() => { if (waiting) return stop(); step(); }, bg ? 1100 : 1400);
+  renderSteps();
+}
+function stop() { clearInterval(timer); timer = 0; renderSteps(); }
+
+function restart() {
+  stop(); i = -1; waiting = false; chat.innerHTML = ""; closeSheet(); leaveBg();
+  chat.append(el("div", "hint", "La IA corre en la nube de Claude; los comandos los ejecuta esta app por SSH."));
+  $("draft").textContent = STEPS[0].me;
+  renderSteps();
+}
+
+function show(v) {
+  for (const id of ["servers", "chat", "term", "set"]) $("v-" + id).hidden = id !== v;
+  $("composer").style.display = v === "chat" ? "flex" : "none";
+  document.querySelectorAll(".tabbar button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.v === v)));
+  $("title").textContent = { servers: "Servidores", chat: "Asistente", term: "vps-principal", set: "Ajustes" }[v];
+  if (v !== "chat") closeSheet();
+  else if (waiting && !bg) sheetTimer = setTimeout(() => $("sheet").classList.add("open"), 150);
+}
+
+function setAuto(on) {
+  auto = on;
+  $("o-auto").checked = on;
+  $("row-danger").classList.toggle("off", !on); $("row-for").classList.toggle("off", !on);
+  const chip = $("modechip"); chip.className = "modechip " + (on ? "auto" : "ask"); chip.textContent = on ? "Automático" : "Pregunta";
+  if (on && waiting) { // lo que esperaba tu OK pasa solo
+    waiting = false; closeSheet();
+    const c = [...chat.querySelectorAll(".tool.wait")].pop();
+    if (c) { c.className = "tool"; const p = c.querySelector(".pill"); p.className = "pill ok"; p.textContent = "aprobado solo"; }
+  }
+  renderSteps();
+}
+
+document.querySelectorAll(".tabbar button").forEach((b) => b.addEventListener("click", () => show(b.dataset.v)));
+$("o-auto").addEventListener("change", (e) => setAuto(e.target.checked));
+$("modechip").addEventListener("click", () => show("set"));
+document.querySelectorAll("#o-for button").forEach((b) => b.addEventListener("click", () =>
+  document.querySelectorAll("#o-for button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)))));
+$("o-bg").addEventListener("change", (e) => { $("tobg").style.display = e.target.checked ? "" : "none"; });
+$("next").addEventListener("click", step);
+$("play").addEventListener("click", () => (timer ? stop() : play()));
+$("send").addEventListener("click", () => { if (i < 0) step(); });
+$("tobg").addEventListener("click", goBg);
+$("openapp").addEventListener("click", () => leaveBg());
+$("allow").addEventListener("click", () => { waiting = false; step(); });
+$("deny").addEventListener("click", () => {
+  closeSheet(); stop(); waiting = false;
+  chat.append(el("div", "msg ai", "Entendido, no lo hago. ¿Quieres que lo haga de otra forma?"));
+  chat.scrollTop = chat.scrollHeight;
+  i = TOTAL - 1; renderSteps(); $("next").textContent = "Denegado: empieza de nuevo";
+});
+$("restart").addEventListener("click", restart);
+restart();
+const q = new URLSearchParams(location.search);
+if (q.get("auto") === "1") setAuto(true);
+const pasoN = Number(q.get("paso")) || 0;
+for (let k = 0; k < pasoN; k++) { waiting = false; step(); }
+if (q.get("bg") === "1") { bg = true; $("home").classList.add("on"); if (i >= TOTAL - 1) { notif("done", "✓ Tienda desplegada", "https://tienda.ejemplo.com responde (HTTP 200). 11 pasos, 0 errores.", { actions: ["Abrir", "Ver registro"] }); } else progressNotif(); }
+if (q.get("vista") === "ajustes") show("set");
+</script>
+</body>
+</html>
