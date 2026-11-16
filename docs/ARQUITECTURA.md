@@ -8,10 +8,9 @@ contraseñas guardadas y bloquea la app.
 
 **Tecnología:** Tauri 2 + Rust (motor, `src-tauri/`) · React 19 + TypeScript + zustand (interfaz, `src/`).
 
-**Estado que describe este documento:** el código de la versión **0.5.0**, la que se publica (la 0.4.0
-no llegó a publicarse: lo suyo sale en la 0.5.0). Sus novedades principales son el servidor MCP para
-asistentes de IA, el escáner de vulnerabilidades, la bóveda con PIN y las terminales persistentes con
-tmux.
+**Estado que describe este documento:** el código de la versión **1.0.0-beta.1** (antes TerView). Algunas
+secciones todavía hablan de la 0.5.0; lo que está en `main` sin publicar se ve en el
+[diagrama interactivo](diagrama-arquitectura.html) y en el [CHANGELOG](../CHANGELOG.md).
 
 ---
 
@@ -50,6 +49,7 @@ lenguaje visual: zonas con borde discontinuo (Tu PC, Internet, Tus servidores, G
 | 15 | [Bóveda y bloqueo](arquitectura/15-boveda-y-bloqueo.png) | PIN, cómo se saca la llave, estados y qué protege |
 | 16 | [Terminales con tmux](arquitectura/16-terminales-tmux.png) | Terminales que siguen vivas aunque se corte la red |
 | 17 | [Escáner de vulnerabilidades](arquitectura/17-vulnerabilidades.png) | **Hecho en v0.5.0** (ver sección 16b): OSV.dev, herramientas de la distro, Trivy e IA opcional |
+| 18 | [Diagrama interactivo](diagrama-arquitectura.html) (ábrelo en el navegador; [captura](arquitectura/18-diagrama-interactivo.png)) | Todo de un vistazo y 8 recorridos animados paso a paso: conectar, tmux, subir una carpeta, la IA con sudo, escáner, auditoría, túnel y actualización |
 
 Lo que falta y el plan detallado: **[PENDIENTES.md](PENDIENTES.md)**.
 Todos los comandos de la biblioteca: **[comandos/CATALOGO.md](comandos/CATALOGO.md)**.

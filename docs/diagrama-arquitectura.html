@@ -1,0 +1,3304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagrama de arquitectura</title>
+<style>
+/* Plantilla de diagrama de arquitectura (estilo AWS). Motor y datos van separados:
+   los datos son el bloque JSON <script id="spec" type="application/json"> del final; el motor es el <script> que lo sigue.
+   Para hacer un diagrama: copiar este archivo y reemplazar SOLO el bloque spec (ver SKILL.md).
+   Vista «Arquitectura»: todo de un vistazo. Vista «Recorrido animado»: un paquete viaja por las flechas, paso a paso.
+   Parámetros de URL: ?captura=1 (sin controles ni animación, para capturas), ?vista=arquitectura|recorrido,
+   ?escenario=N y ?paso=K (desde 1, para el recorrido), ?tema=claro|oscuro.
+   Sin dependencias externas: tipografías del sistema, un solo archivo. */
+:root{
+  --bg:#f3f6fa; --surface:#ffffff; --ink:#122033; --muted:#566a7f; --line:#d5dee8; --line2:#8da1b6;
+  --acc:#6a3de8; --acc-soft:#ece6fd; --on-acc:#ffffff;
+  --ok:#177a3c; --ok-soft:#dff2e6; --warn:#9a5600; --warn-soft:#fcefd2; --err:#b3261e; --err-soft:#fbe3e0;
+  --zone:#eef3f8; --zone-line:#8fa6bd;
+  --k-actor:#4b5d73; --k-client:#2c7bbd; --k-server:#244d8f; --k-data:#0d7a84; --k-store:#3c8a4d; --k-queue:#b0702a; --k-ext:#7660ad; --k-mem:#4a8397;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b131c; --surface:#121d2a; --ink:#e6eef6; --muted:#9bb0c3; --line:#26384a; --line2:#56708a;
+    --acc:#a98fff; --acc-soft:#2b2254; --on-acc:#140a33;
+    --ok:#52c982; --ok-soft:#12301f; --warn:#e8ac45; --warn-soft:#3a2a0d; --err:#ff8077; --err-soft:#3d1a18;
+    --zone:#0f1a26; --zone-line:#3d546b;
+    --k-actor:#5d738c; --k-client:#2f84c8; --k-server:#3a62a8; --k-data:#139099; --k-store:#46a05a; --k-queue:#c28036; --k-ext:#8a74c4; --k-mem:#5a97ac;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b131c; --surface:#121d2a; --ink:#e6eef6; --muted:#9bb0c3; --line:#26384a; --line2:#56708a;
+  --acc:#a98fff; --acc-soft:#2b2254; --on-acc:#140a33;
+  --ok:#52c982; --ok-soft:#12301f; --warn:#e8ac45; --warn-soft:#3a2a0d; --err:#ff8077; --err-soft:#3d1a18;
+  --zone:#0f1a26; --zone-line:#3d546b;
+  --k-actor:#5d738c; --k-client:#2f84c8; --k-server:#3a62a8; --k-data:#139099; --k-store:#46a05a; --k-queue:#c28036; --k-ext:#8a74c4; --k-mem:#5a97ac;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:6px}
+code{font-family:var(--mono);font-size:.88em;background:var(--acc-soft);color:var(--ink);padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.wrap{max-width:1680px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.top h1{margin:0;font-size:24px;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+.top p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.top p a{color:var(--acc);font-weight:600;text-underline-offset:2px}
+.top .acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:3px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:8px 14px;border-radius:8px;font-weight:600;font-size:14px}
+.tabs button[aria-selected="true"]{background:var(--acc);color:var(--on-acc)}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:40px;height:40px;display:grid;place-items:center}
+.icon-btn svg{width:20px;height:20px}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:14px;align-items:start}
+@media (max-width:1500px){.layout{grid-template-columns:minmax(0,1fr) 310px}}
+@media (max-width:1040px){.layout{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;min-width:0}
+.stage-card{padding:10px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:4px 6px 10px}
+.toolbar label{font-size:13px;color:var(--muted);font-weight:600}
+.toolbar select{border:1px solid var(--line2);background:var(--surface);border-radius:9px;padding:7px 10px;max-width:100%;font-size:14px}
+.toolbar .sc-tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.canvas{overflow-x:auto;overflow-y:hidden;border-radius:10px;background:var(--surface)}
+.canvas svg{display:block;width:100%;min-width:900px;height:auto}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 6px 2px;color:var(--muted);font-size:12.5px}
+.legend span{display:inline-flex;gap:7px;align-items:center}
+.legend svg{width:34px;height:10px;flex:none}
+.legend .n{width:20px;height:20px;border-radius:50%;border:2px solid var(--acc);background:var(--surface);color:var(--ink);font-size:11px;font-weight:700;display:inline-grid;place-items:center}
+.fl{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.01em}
+.fl.dev{background:var(--warn-soft);color:var(--warn)} .fl.prop{background:var(--acc-soft);color:var(--acc)} .fl.pend{background:var(--line);color:var(--muted)}
+
+.anim-bar{display:flex;flex-direction:column;gap:10px;padding:12px 6px 4px;border-top:1px solid var(--line);margin-top:10px}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cbtn{border:1px solid var(--line2);background:var(--surface);border-radius:10px;min-width:42px;height:42px;padding:0 12px;display:inline-flex;gap:7px;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.cbtn svg{width:18px;height:18px;flex:none}
+.cbtn:disabled{opacity:.4;cursor:default}
+.cbtn.main{background:var(--acc);border-color:var(--acc);color:var(--on-acc);min-width:128px}
+.speed{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.seg{display:flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:0 12px;height:40px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--acc-soft);color:var(--acc)}
+.dots{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);background:var(--surface);font-size:11.5px;font-weight:700;padding:0;color:var(--muted)}
+.dot.ok{border-color:var(--ok)} .dot.warn{border-color:var(--warn)} .dot.err{border-color:var(--err)}
+.dot.past{background:var(--line);color:var(--ink)}
+.dot.cur{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+
+.estado{display:flex;flex-direction:column;gap:8px;padding:10px 6px 2px;border-top:1px solid var(--line);margin-top:10px}
+.estado .fila{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.estado .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;min-width:98px}
+.chain{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 4px;align-items:center}
+.chain li{font-family:var(--mono);font-size:12px;padding:3px 9px;border-radius:7px;border:1px solid var(--line);color:var(--muted)}
+.chain li+li::before{content:"";}
+.chain li.seen{color:var(--ink);border-color:var(--line2)}
+.chain li.cur{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:700}
+.chain li.cur.ok{background:var(--ok);border-color:var(--ok)} .chain li.cur.warn{background:var(--warn);border-color:var(--warn)} .chain li.cur.err{background:var(--err);border-color:var(--err)}
+.chain .sep{border:0;padding:0;color:var(--line2)}
+.obs{display:flex;flex-wrap:wrap;gap:6px}
+.obs span{font-family:var(--mono);font-size:12px;padding:3px 9px;border-radius:7px;background:var(--warn-soft);color:var(--warn)}
+.obs em{font-style:normal;color:var(--muted);font-size:13px}
+.vis{font-size:13px;color:var(--muted)} .vis b{color:var(--ink)}
+
+.panel{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px}
+@media (min-width:1041px){.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+.meta{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;min-height:24px}
+.cnt{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.chip{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--acc-soft);color:var(--acc)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.err{background:var(--err-soft);color:var(--err)}
+.chip.dev{background:var(--warn-soft);color:var(--warn)} .chip.pend{background:var(--line);color:var(--muted)}
+.panel h2{margin:0;font-size:20px;line-height:1.25;font-weight:700;text-wrap:balance}
+.panel h3{margin:0 0 3px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.panel p{margin:0}
+.simple{font-size:16px;line-height:1.5}
+.guarda{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.guarda li{font-size:13px;padding:3px 10px;border-radius:8px;border:1px solid var(--line2);background:var(--surface)}
+details.det{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+details.det summary{cursor:pointer;padding:9px 12px;font-weight:700;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px;border-radius:10px}
+details.det summary::-webkit-details-marker{display:none}
+details.det summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details.det[open] summary::before{transform:rotate(45deg)}
+.tech{padding:2px 12px 12px;font-size:13.5px;line-height:1.55;color:var(--ink)}
+.tech ul{margin:0;padding-left:18px} .tech li{margin:3px 0}
+.tech p+p{margin-top:8px}
+.back{align-self:flex-start;border:1px solid var(--line2);background:var(--surface);border-radius:9px;padding:6px 12px;font-weight:600;font-size:13.5px}
+.hint{font-size:12.5px;color:var(--muted)}
+[hidden]{display:none!important}
+
+/* ---------- SVG ---------- */
+.zona{fill:var(--zone);stroke:var(--zone-line);stroke-width:1.5;stroke-dasharray:7 5}
+.zona-t{fill:var(--muted);font:700 13.5px var(--font)}
+.edge{fill:none;stroke:var(--line2);stroke-width:1.9;stroke-linejoin:round;marker-end:url(#ah)}
+.edge.opt{stroke-dasharray:6 5;marker-end:url(#ah-o)}
+.edge.act{stroke:var(--acc);stroke-width:3;marker-end:url(#ah-a)}
+.edge.dim,.node.dim,.num.dim{opacity:.22}
+#ah path{fill:var(--line2)} #ah-o path{fill:var(--line2)} #ah-a path{fill:var(--acc)}
+.node{cursor:pointer}
+.node .tile{stroke:none}
+.node.k-actor .tile{fill:var(--k-actor)} .node.k-client .tile{fill:var(--k-client)} .node.k-server .tile{fill:var(--k-server)}
+.node.k-data .tile{fill:var(--k-data)} .node.k-store .tile{fill:var(--k-store)} .node.k-queue .tile{fill:var(--k-queue)}
+.node.k-ext .tile{fill:var(--k-ext)} .node.k-mem .tile{fill:var(--k-mem)}
+.node.opt .tile{opacity:.5} .node.opt .odash{display:block}
+.odash{display:none;fill:none;stroke:var(--muted);stroke-width:1.8;stroke-dasharray:5 4}
+.node .ic{color:#fff;pointer-events:none}
+.n-name{fill:var(--ink);font:700 14.5px var(--font);text-anchor:middle}
+.n-tag{fill:var(--muted);font:500 12px var(--font);text-anchor:middle}
+.node .ring{fill:none;stroke:transparent;stroke-width:3.5}
+.node .halo{fill:none;stroke:transparent;stroke-width:3;transform-box:fill-box;transform-origin:center}
+.node.r-info .ring{stroke:var(--acc)} .node.r-ok .ring{stroke:var(--ok)} .node.r-warn .ring{stroke:var(--warn)} .node.r-err .ring{stroke:var(--err)}
+.node.r-info .halo{stroke:var(--acc);animation:halo 1.3s ease-out 2} .node.r-ok .halo{stroke:var(--ok);animation:halo 1.3s ease-out 2}
+.node.r-warn .halo{stroke:var(--warn);animation:halo 1.3s ease-out 2} .node.r-err .halo{stroke:var(--err);animation:halo 1.3s ease-out 2}
+@keyframes halo{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.28)}}
+.node.sel .ring{stroke:var(--ink);stroke-dasharray:3 4}
+.node:focus-visible{outline:none}
+.node:focus-visible .ring{stroke:var(--acc);stroke-width:4}
+.flag rect{stroke:var(--surface);stroke-width:2}
+.flag text{font:700 10.5px var(--font);text-anchor:middle}
+.flag.dev rect{fill:var(--warn-soft)} .flag.dev text{fill:var(--warn)}
+.flag.prop rect{fill:var(--acc-soft)} .flag.prop text{fill:var(--acc)}
+.flag.pend rect{fill:var(--line)} .flag.pend text{fill:var(--muted)}
+.badge rect{stroke-width:1.2}
+.badge text{font:700 11px var(--mono);text-anchor:middle}
+.badge.info rect{fill:var(--acc-soft);stroke:var(--acc)} .badge.info text{fill:var(--acc)}
+.badge.ok rect{fill:var(--ok-soft);stroke:var(--ok)} .badge.ok text{fill:var(--ok)}
+.badge.warn rect{fill:var(--warn-soft);stroke:var(--warn)} .badge.warn text{fill:var(--warn)}
+.badge.err rect{fill:var(--err-soft);stroke:var(--err)} .badge.err text{fill:var(--err)}
+.badge.mut rect{fill:var(--line);stroke:var(--line2)} .badge.mut text{fill:var(--muted)}
+.v-arq .badge{display:none}
+.num circle{fill:var(--surface);stroke:var(--acc);stroke-width:2}
+.num .nt{fill:var(--ink);font:700 11.5px var(--font);text-anchor:middle;dominant-baseline:central}
+.num.future{opacity:.4}
+.num.past circle{fill:var(--line)}
+.num.cur circle{fill:var(--acc);stroke:var(--acc)} .num.cur .nt{fill:var(--on-acc)}
+.num.cur.ok circle{fill:var(--ok);stroke:var(--ok)} .num.cur.warn circle{fill:var(--warn);stroke:var(--warn)} .num.cur.err circle{fill:var(--err);stroke:var(--err)}
+.num.dim{opacity:.15}
+.word{fill:var(--muted);font:600 12px var(--font);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.v-anim .word{display:none}
+.pq .dotp{fill:var(--acc);stroke:var(--surface);stroke-width:2.5}
+.pq .pill{fill:var(--acc)} .pq text{fill:var(--on-acc);font:700 11.5px var(--font);text-anchor:middle}
+.pq.ok .dotp,.pq.ok .pill{fill:var(--ok)} .pq.warn .dotp,.pq.warn .pill{fill:var(--warn)} .pq.err .dotp,.pq.err .pill{fill:var(--err)}
+.pq.ok text,.pq.warn text,.pq.err text{fill:#fff}
+.xmark circle{fill:var(--err);stroke:var(--surface);stroke-width:2.5} .xmark text{fill:#fff;font:700 17px var(--font);text-anchor:middle;dominant-baseline:central}
+@media (prefers-reduced-motion:reduce){
+  .node .halo{animation:none!important}
+  details.det summary::before{transition:none}
+}
+#errores{margin:0 0 14px;padding:12px 16px;border-radius:12px;background:var(--err-soft);color:var(--err);border:1px solid var(--err);font-size:14px}
+#errores ul{margin:6px 0 0;padding-left:20px}
+/* ?captura=1: una sola columna, sin controles y sin animaciones de reloj (lo anima el exportador fotograma a fotograma) */
+.captura .acciones,.captura .ctrls{display:none}
+.captura .layout{grid-template-columns:minmax(0,1fr)}
+.captura .panel{position:static;max-height:none}
+.captura .toolbar select{pointer-events:none;appearance:none;-webkit-appearance:none}
+.captura *{animation:none!important;transition:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="titulo">Diagrama de arquitectura</h1>
+      <p id="subtitulo"></p>
+    </div>
+    <div class="acciones">
+      <nav class="tabs" role="tablist" aria-label="Vistas">
+        <button role="tab" id="tab-arq" aria-selected="true" aria-controls="stage">Arquitectura</button>
+        <button role="tab" id="tab-anim" aria-selected="false" aria-controls="stage">Recorrido animado</button>
+      </nav>
+      <button class="icon-btn" id="tema" type="button" aria-label="Cambiar entre tema automático, claro y oscuro" title="Tema">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="errores" role="alert" hidden></div>
+
+  <main class="layout">
+    <section class="card stage-card" id="stage" role="tabpanel">
+      <div class="toolbar" id="toolbar" hidden>
+        <label for="esc">Escenario</label>
+        <select id="esc"></select>
+        <span class="sc-tag" id="sc-tag"></span>
+      </div>
+
+      <div class="canvas" id="canvas">
+        <svg id="svg" role="img"></svg>
+      </div>
+
+      <div class="legend" id="legend" aria-label="Leyenda">
+        <span><svg viewBox="0 0 34 10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="var(--line2)" stroke-width="2"/></svg>Funciona</span>
+        <span id="lg-opc"><svg viewBox="0 0 34 10" aria-hidden="true"><line x1="0" y1="5" x2="34" y2="5" stroke="var(--line2)" stroke-width="2" stroke-dasharray="6 5"/></svg>Propuesto o pendiente</span>
+        <span id="lg-fl"><span class="fl dev" hidden>En desarrollo</span><span class="fl prop" hidden>Propuesto</span><span class="fl pend" hidden>Pendiente</span></span>
+        <span><span class="n">1</span><span id="leg-num">Orden del camino normal</span></span>
+      </div>
+
+      <div class="anim-bar" id="anim-bar" hidden>
+        <div class="ctrls">
+          <button class="cbtn" id="b-ini" type="button" aria-label="Volver al primer paso" title="Inicio"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5h2.4v14H5zM20 5.5v13a.8.8 0 0 1-1.25.66L9.6 12.66a.8.8 0 0 1 0-1.32l9.15-6.5A.8.8 0 0 1 20 5.5z"/></svg></button>
+          <button class="cbtn" id="b-ant" type="button" aria-label="Paso anterior" title="Anterior (flecha izquierda)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 5.5v13a.8.8 0 0 1-1.25.66l-9.15-6.5a.8.8 0 0 1 0-1.32l9.15-6.5a.8.8 0 0 1 1.25.66z"/></svg><span>Anterior</span></button>
+          <button class="cbtn main" id="b-play" type="button"><svg id="ico-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l12-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg><span id="t-play">Reproducir</span></button>
+          <button class="cbtn" id="b-sig" type="button" aria-label="Paso siguiente" title="Siguiente (flecha derecha)"><span>Siguiente</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 5.5v13a.8.8 0 0 0 1.25.66l9.15-6.5a.8.8 0 0 0 0-1.32L7.75 4.84A.8.8 0 0 0 6.5 5.5z"/></svg></button>
+          <div class="speed"><span id="lbl-vel">Velocidad</span>
+            <div class="seg" role="group" aria-labelledby="lbl-vel" id="vel">
+              <button type="button" data-v="0.55" aria-pressed="false">Lenta</button>
+              <button type="button" data-v="1" aria-pressed="true">Normal</button>
+              <button type="button" data-v="2" aria-pressed="false">Rápida</button>
+            </div>
+          </div>
+        </div>
+        <ol class="dots" id="dots" aria-label="Pasos del escenario"></ol>
+      </div>
+
+      <div class="estado" id="estado" hidden>
+        <div class="fila" id="fila-estados"><span class="lbl" id="lbl-estado">Estado</span><ol class="chain" id="chain"></ol><span class="vis" id="vis"></span></div>
+        <div class="fila" id="fila-obs"><span class="lbl" id="lbl-obs">Observaciones</span><div class="obs" id="obs"></div></div>
+      </div>
+    </section>
+
+    <aside class="card panel" id="panel" aria-live="polite">
+      <div class="meta" id="p-meta"></div>
+      <h2 id="p-title"></h2>
+      <div><h3>En palabras simples</h3><p class="simple" id="p-simple"></p></div>
+      <div id="p-guarda-wrap" hidden><h3>Qué guarda</h3><ul class="guarda" id="p-guarda"></ul></div>
+      <details class="det" id="p-det"><summary>Detalle técnico</summary><div class="tech" id="p-tech"></div></details>
+      <button class="back" id="p-back" type="button" hidden>Volver al recorrido</button>
+      <p class="hint" id="p-hint"></p>
+    </aside>
+  </main>
+</div>
+
+<script id="spec" type="application/json">
+{
+ "titulo": "Arquitectura de SSHorus",
+ "subtitulo": "Dónde vive cada pieza y cómo viaja la información, en la versión 1.0.0-beta.1 más lo que está «Sin publicar» en main. Todo corre en tu PC: la ventana solo habla con el motor, y el motor es el único que sale a la red. Lo atenuado es una idea que aún no existe. Pulsa una ficha para ver qué es y qué guarda, o abre el recorrido animado.",
+ "enlaces": [
+  {
+   "texto": "Documento completo de arquitectura",
+   "href": "ARQUITECTURA.md"
+  }
+ ],
+ "descripcion": "Diagrama de la arquitectura de SSHorus. Arriba, tú e Internet (API de IA opcional, OSV.dev y GitHub). En tu PC: la ventana React con las terminales y los paneles, el puente IPC de Tauri, los asistentes de IA locales y el motor Rust con auditoría, IA que explica, escáner, actualizador, terminal local, túneles, terminal SSH, archivos, servidor MCP, exec cancelable y sesiones SSH; abajo, tus datos: ~/.config/sshorus, el llavero o la bóveda y ~/.ssh. A la derecha, tu servidor: sshd, shell con tmux, sudo, paquetes, Podman o Docker, systemd, un servicio interno y, atenuada, la idea de una IA en el servidor.",
+ "lienzo": {
+  "x": 0,
+  "y": 0,
+  "ancho": 1292,
+  "alto": 1022,
+  "minAncho": 900
+ },
+ "zonas": [
+  {
+   "titulo": "Internet",
+   "x": 340,
+   "y": 12,
+   "ancho": 565,
+   "alto": 140
+  },
+  {
+   "titulo": "Tu PC",
+   "x": 12,
+   "y": 165,
+   "ancho": 893,
+   "alto": 845
+  },
+  {
+   "titulo": "Motor · Rust",
+   "x": 190,
+   "y": 348,
+   "ancho": 710,
+   "alto": 488
+  },
+  {
+   "titulo": "Datos",
+   "x": 340,
+   "y": 860,
+   "ancho": 560,
+   "alto": 138
+  },
+  {
+   "titulo": "Tus servidores",
+   "x": 925,
+   "y": 172,
+   "ancho": 355,
+   "alto": 662
+  }
+ ],
+ "nodos": {
+  "tu": {
+   "x": 85,
+   "y": 70,
+   "ic": "user",
+   "k": "actor",
+   "n": "Tú",
+   "tag": "Quien usa SSHorus",
+   "simple": "Eliges un servidor y decides lo importante: si confías en su huella, qué contraseña escribir y qué le dejas hacer a la IA.",
+   "guarda": [
+    "Nada: lo que configuras se guarda en tu PC"
+   ],
+   "tech": "<p>SSHorus es una app de escritorio para una persona. No hay cuenta ni servidor de SSHorus: todo corre en tu PC y habla directo con tus servidores.<\/p><p>Con PIN (Ajustes → Seguridad) puedes bloquear la app: una pantalla tapa todas las ventanas y la bóveda se cierra.<\/p>"
+  },
+  "ui_main": {
+   "x": 270,
+   "y": 240,
+   "ic": "browser",
+   "k": "client",
+   "n": "Ventana",
+   "tag": "React · paneles y diálogos",
+   "simple": "Lo que ves: tus servidores, las pestañas y los paneles (Archivos, Comandos, Contenedores, Monitor, Túneles, Administración). Aquí salen también los diálogos: huella, contraseñas y permisos de la IA. No se conecta a nada por su cuenta: todo se lo pide al motor.",
+   "guarda": [
+    "Contraseña de sudo de cada conexión, solo en memoria",
+    "Preferencias de vista (localStorage)"
+   ],
+   "tech": "<p>React 19 + TypeScript + zustand (<code>src/<\/code>). La lógica de cada función vive en <code>src/features/<\/code>: <code>connect.ts<\/code>, <code>admin<\/code>, <code>audit<\/code>, <code>vulnscan<\/code>, <code>tunnels<\/code>, <code>mcp<\/code>, <code>privileges<\/code>, <code>updater<\/code>…<\/p><p>La CSP de la ventana no le deja salir a Internet. Diálogos: huella (<code>HostKeyUnknown<\/code> / <code>HostKeyChanged<\/code>), contraseña y 2FA, permiso del MCP (<code>ApprovalDialog<\/code>), sudo (<code>SudoDialog<\/code>) y «la IA pide la contraseña» (<code>SudoRevealDialog<\/code>).<\/p><p>La contraseña de sudo (<code>useSudo<\/code>) se olvida al cerrar la pestaña, al perder la conexión, al bloquear o si sudo la rechaza.<\/p>"
+  },
+  "ui_term": {
+   "x": 85,
+   "y": 240,
+   "ic": "panel",
+   "k": "client",
+   "n": "Terminales",
+   "tag": "SSH y este equipo",
+   "simple": "Las pestañas de terminal: las de tus servidores (con ∞ si siguen vivas con tmux) y las de tu propio PC, donde puedes abrir Claude Code, Codex, agy u OpenCode.",
+   "guarda": [
+    "Nada en disco: lo que ves vive en memoria"
+   ],
+   "tech": "<p><code>@xterm/xterm<\/code> con WebGL. Los bytes llegan del motor por un <code>Channel<\/code> de Tauri; lo que escribes va con <code>term_write<\/code> o <code>local_term_write<\/code>.<\/p><p>Ctrl+C copia si hay texto seleccionado; aviso antes de pegar varias líneas; anchos Unicode 11 para que los emojis no descuadren el texto.<\/p><p>En una terminal local: «Asistente con contexto» y «Copiar contexto». En una de servidor: «Enviar a la IA» (<code>src/features/localterm/<\/code>).<\/p>"
+  },
+  "ipc": {
+   "x": 85,
+   "y": 415,
+   "ic": "api",
+   "k": "server",
+   "n": "IPC de Tauri",
+   "tag": "invoke · eventos",
+   "simple": "El puente entre la ventana y el motor. La ventana pide algo («lista esta carpeta») y el motor responde; lo que no para (la terminal, el progreso) llega solo.",
+   "guarda": [],
+   "tech": "<p><code>src/api/*<\/code> es la única puerta al motor (un archivo por módulo; <code>types.ts<\/code> es espejo de <code>types.rs<\/code>).<\/p><ul><li><code>invoke()<\/code>: 164 comandos registrados en <code>src-tauri/src/lib.rs<\/code>.<\/li><li><code>Channel<\/code>: bytes de las terminales.<\/li><li><code>emit()<\/code>: <code>transfer://update<\/code> (~200 ms), <code>transfer://conflict<\/code>, <code>tunnel://status<\/code>, <code>session://reconnecting<\/code>, <code>vault://state<\/code>, <code>mcp://approval<\/code>, <code>mcp://ui-request<\/code>, <code>vulnscan://progress<\/code>, <code>exec://output<\/code>.<\/li><\/ul><p>Todo ocurre dentro del mismo proceso: no abre puertos.<\/p>"
+  },
+  "ia": {
+   "x": 85,
+   "y": 745,
+   "ic": "chat",
+   "k": "client",
+   "n": "Asistentes de IA",
+   "tag": "Claude Code · Codex",
+   "simple": "Programas de IA de tu PC. SSHorus los abre en una terminal local con el contexto de tus servidores y, si lo activas, con su servidor MCP. Nunca reciben contraseñas, llaves ni tokens.",
+   "guarda": [
+    "Su propia sesión (SSHorus no lee ~/.claude ni ~/.codex)"
+   ],
+   "tech": "<p>Se lanzan desde la terminal local (<code>src-tauri/src/localterm/<\/code>): a Claude Code con <code>--append-system-prompt<\/code> y <code>--mcp-config<\/code>; a Codex con <code>-c developer_instructions=…<\/code> y <code>-c mcp_servers.sshorus.…<\/code>; OpenCode con su MCP; agy solo con el contexto como primer mensaje.<\/p><p>El MCP se configura como <code>stdio<\/code> con el puente <code>sshorus-mcp<\/code>; el token va en la variable <code>SSHORUS_MCP_TOKEN<\/code> del proceso, nunca en archivos ni en los argumentos.<\/p><p>También sirve cualquier cliente MCP de tu PC (Claude Desktop…), configurado desde Ajustes → Asistentes de IA.<\/p>"
+  },
+  "audit": {
+   "x": 270,
+   "y": 415,
+   "ic": "wrench",
+   "k": "server",
+   "n": "Auditoría",
+   "tag": "audit/ · historial",
+   "simple": "Guarda las auditorías del servidor. La revisión la hace la ventana: lanza los scripts, pone la nota y propone los arreglos.",
+   "guarda": [
+    "Las 30 últimas auditorías de cada servidor"
+   ],
+   "tech": "<p>El motor solo guarda (<code>src-tauri/src/audit/<\/code>): <code>&lt;config&gt;/sshorus/audit/&lt;idServidor&gt;.json<\/code>, 0600. Comandos <code>audit_save<\/code>, <code>audit_latest<\/code>, <code>audit_history_*<\/code>.<\/p><p>En la ventana (<code>src/features/audit/<\/code>): <code>script.ts<\/code> (POSIX sh), <code>checks.ts<\/code> (ok · aviso · mal), <code>score.ts<\/code> (nota A–F), <code>fixSafety.ts<\/code> («Arreglar todo lo seguro» y la comprobación previa), <code>recheck.ts<\/code> (volver a comprobar solo lo tocado).<\/p><p>Para la IA: <code>get_audit_report<\/code> y <code>run_audit<\/code>.<\/p>"
+  },
+  "ai": {
+   "x": 450,
+   "y": 415,
+   "ic": "send",
+   "k": "server",
+   "n": "IA que explica",
+   "tag": "ai/ · opcional",
+   "simple": "Si la activas, explica un informe en palabras simples. Antes de enviar te muestra el texto exacto. Nunca ejecuta nada.",
+   "guarda": [
+    "URL y modelo en settings.json; el token en la bóveda o el llavero"
+   ],
+   "tech": "<p><code>src-tauri/src/ai/<\/code>: endpoint compatible con OpenAI (<code>POST &lt;URL&gt;/chat/completions<\/code>). HTTPS obligatorio salvo <code>localhost<\/code>, sin redirecciones.<\/p><p>El servidor se llama «servidor-1»: sin IP, usuarios, rutas, contenedores ni secretos. Con SSHorus bloqueado no hay IA. No es el MCP: aquí SSHorus le pregunta a la IA.<\/p>"
+  },
+  "vuln": {
+   "x": 630,
+   "y": 415,
+   "ic": "cert",
+   "k": "server",
+   "n": "Escáner",
+   "tag": "vulnscan/ · OSV y distro",
+   "simple": "Dice qué hay instalado en el servidor y qué avisos de seguridad le afectan. Después de arreglar, vuelve a comprobar y lo arreglado desaparece.",
+   "guarda": [
+    "Los 20 últimos análisis de cada servidor",
+    "Caché de avisos de OSV"
+   ],
+   "tech": "<p>La ventana pide el script de cada fase (<code>vulnscan_script<\/code>) y lo ejecuta por exec: detectar (20 s) → inventario (60 s) → herramienta de la distro (300 s), sin root; con sudo, también las imágenes de contenedores.<\/p><p><code>vulnscan_analyze<\/code>: <code>parse/<\/code> lee rpm, dpkg, apk, dnf, debsecan, pro, zypper y Trivy; <code>osv.rs<\/code> consulta OSV en lotes de 1000; <code>analyze.rs<\/code> deja una fila por CVE, paquete y objetivo; <code>store.rs<\/code> guarda el historial.<\/p><p><code>vulnscan_recheck<\/code>: vuelve a leer el sistema y consulta OSV con las versiones de ahora; guarda un análisis nuevo.<\/p>"
+  },
+  "upd": {
+   "x": 810,
+   "y": 415,
+   "ic": "download",
+   "k": "server",
+   "n": "Actualizador",
+   "tag": "plugin updater · firmado",
+   "simple": "Busca versiones nuevas en GitHub a los 6 s de abrir, comprueba la firma y, si aceptas, instala y reinicia.",
+   "guarda": [],
+   "tech": "<p><code>tauri-plugin-updater<\/code> (lo maneja <code>src/features/updater/<\/code>) lee <code>latest.json<\/code> y verifica la firma con la <code>pubkey<\/code> de <code>tauri.conf.json<\/code>.<\/p><p>AppImage reemplaza el archivo; <code>.deb<\/code>/<code>.rpm<\/code> con <code>pkexec<\/code>; NSIS y MSI en modo pasivo; macOS reemplaza la app. Reinicia con <code>tauri-plugin-process<\/code>. Una instalación a mano solo avisa y enlaza a Releases.<\/p>"
+  },
+  "lterm": {
+   "x": 270,
+   "y": 580,
+   "ic": "desktop",
+   "k": "server",
+   "n": "Terminal local",
+   "tag": "localterm/ · tu shell",
+   "simple": "Abre una terminal de tu propio PC dentro de SSHorus y, si quieres, un asistente de IA con el contexto de tus servidores.",
+   "guarda": [
+    "Un archivo de contexto temporal en la caché, que se borra al cerrar"
+   ],
+   "tech": "<p><code>src-tauri/src/localterm/<\/code>: PTY con <code>$SHELL<\/code> (PowerShell en Windows). Al cerrar la pestaña termina lo que corre en ella y sus hijos.<\/p><p><code>launch.rs<\/code> prepara el MCP (puente y token) y el contexto; <code>args.rs<\/code> arma los argumentos de cada asistente; <code>aliases.rs<\/code> lee los alias de <code>~/.ssh/config<\/code>. Nunca escribe en la carpeta del proyecto.<\/p>"
+  },
+  "tun": {
+   "x": 450,
+   "y": 580,
+   "ic": "flow",
+   "k": "server",
+   "n": "Túneles",
+   "tag": "tunnels/ · -L -R -D",
+   "simple": "Trae a tu PC algo que solo escucha dentro del servidor (una base de datos, un panel web) sin abrir puertos.",
+   "guarda": [
+    "Los túneles guardados en tunnels.json"
+   ],
+   "tech": "<p>Local (-L): escucha en tu PC y abre un canal <code>direct-tcpip<\/code> por cada conexión. Remoto (-R): <code>tcpip-forward<\/code> y <code>forwarded-tcpip<\/code>. SOCKS5 (-D).<\/p><p>El vigilante (cada segundo) marca «Esperando» si se cae la conexión, reabre los remotos al reconectar y arranca los <code>autoStart<\/code>. Estados: <code>Starting<\/code>, <code>Active<\/code>, <code>Waiting<\/code>, <code>Stopped<\/code>, <code>Error<\/code>.<\/p>"
+  },
+  "term": {
+   "x": 630,
+   "y": 580,
+   "ic": "panel",
+   "k": "server",
+   "n": "Terminal SSH",
+   "tag": "terminal/ · PTY y tmux",
+   "simple": "Cada terminal de un servidor es un canal con PTY. Si el servidor tiene tmux, la terminal sigue viva aunque se corte la red.",
+   "guarda": [
+    "Nada en tu PC: la sesión tmux vive en el servidor"
+   ],
+   "tech": "<p><code>shell.rs<\/code>: canal <code>session<\/code> + PTY. <code>tmux.rs<\/code>: busca tmux ≥ 1.8 por exec y usa su propio servidor <code>tmux -L sshorus -f /dev/null<\/code>, sesión <code>sshorus-<\/code> + 8 hex, historial de 50.000 líneas. No toca tu <code>~/.tmux.conf<\/code>.<\/p><p>Reabrir en otra terminal vuelca hasta 10.000 líneas (<code>capture-pane<\/code>). Comandos <code>term_open<\/code>, <code>term_tmux_list<\/code>, <code>term_tmux_kill<\/code>.<\/p>"
+  },
+  "files": {
+   "x": 810,
+   "y": 580,
+   "ic": "queue",
+   "k": "server",
+   "n": "Archivos",
+   "tag": "sftp/ · transfer/",
+   "simple": "El explorador, el editor y las transferencias. Sube y baja muchos archivos a la vez, pregunta si uno ya existe y sigue donde se quedó si se corta la red.",
+   "guarda": [
+    "La cola de transferencias, en memoria"
+   ],
+   "tech": "<p><code>sftp/<\/code>: un canal SFTP por sesión para listar, leer y guardar. <code>transfer/<\/code>: reserva de hasta 10 canales por servidor, de 1 a 8 archivos a la vez (4 por defecto), bloques de 255 KB con unos 4 MB en vuelo.<\/p><p>Si el archivo existe: Preguntar (por defecto), sobrescribir, omitir o solo si es más nuevo. Hasta 3 reintentos; tras un corte espera la reconexión hasta 5 minutos y sigue desde el último byte. Estados: <code>queued<\/code>, <code>running<\/code>, <code>done<\/code>, <code>skipped<\/code>, <code>error<\/code>…<\/p>"
+  },
+  "mcp": {
+   "x": 270,
+   "y": 745,
+   "ic": "chip",
+   "k": "server",
+   "n": "Servidor MCP",
+   "tag": "mcp/ · 127.0.0.1:47821",
+   "simple": "Deja que un asistente de IA use tus servidores a través de SSHorus, con tus permisos. Lo que cambia algo te pide permiso; lo de sudo, siempre.",
+   "guarda": [
+    "Permisos y reglas en mcp.json (nunca el token)",
+    "Registro de lo que hizo la IA (mcp-audit.jsonl)"
+   ],
+   "tech": "<p>Apagado por defecto. HTTP en <code>127.0.0.1:47821/mcp<\/code> (o stdio con el puente <code>sshorus-mcp<\/code>). Puerta (<code>http.rs<\/code>): con cabecera <code>Origin<\/code> → 403; SSHorus bloqueado → error; token <code>Bearer<\/code> distinto → 401.<\/p><p>23 herramientas (<code>server.rs<\/code>, crate <code>rmcp<\/code>). Acceso por servidor: Sin acceso, Solo lectura o Completo. Los cambios abren <code>mcp://approval<\/code> y esperan hasta 120 s. «Aceptar automáticamente» por servidor y tiempo (nunca bloqueado ni en solo lectura).<\/p><p><b>sudo:<\/b> la contraseña la pone SSHorus por stdin (<code>snippets/sudo.rs<\/code>); a la IA solo le llega la salida, con la contraseña tapada. <b><code>request_sudo_password<\/code><\/b> es la única que se la da a la IA, y siempre con diálogo (<code>core/sudo_reveal.rs<\/code>).<\/p>"
+  },
+  "exec": {
+   "x": 450,
+   "y": 745,
+   "ic": "steps",
+   "k": "server",
+   "n": "Exec cancelable",
+   "tag": "snippets/ · canal exec",
+   "simple": "Ejecuta un comando aparte, sin terminal, y devuelve lo que imprime. Si lo cancelas, lo detiene de verdad en el servidor.",
+   "guarda": [
+    "Las ejecuciones en curso, en memoria"
+   ],
+   "tech": "<p><code>exec_capture<\/code>, <code>exec_capture_stdin<\/code>, <code>exec_capture_stdin_live<\/code> (salida en vivo, <code>exec://output<\/code>) y <code>exec_capture_sudo<\/code>. Límites: 2 MB por flujo, de 1 a 600 s.<\/p><p>El comando real va por stdin, no en la línea de comandos; luego el script, la contraseña de sudo si hace falta y un secreto. sudo: <code>sudo -k -S -v<\/code> la comprueba y <code>sudo -k -S sh -c …<\/code> ejecuta. El stdin se pisa con ceros al terminar.<\/p><p>Cancelar: TERM por el canal, espera 1,5 s, luego <code>kill -TERM -PID<\/code> al grupo por otro canal y, si sigue, KILL.<\/p>"
+  },
+  "ssh": {
+   "x": 630,
+   "y": 745,
+   "ic": "gate",
+   "k": "server",
+   "n": "Sesiones SSH",
+   "tag": "ssh/ · russh · reconexión",
+   "simple": "Una sola conexión cifrada por pestaña. Comprueba la huella del servidor, entra con llave, contraseña o 2FA y, si se corta, reconecta solo.",
+   "guarda": [
+    "Las sesiones abiertas, en memoria",
+    "La contraseña escrita al conectar, solo mientras dure la sesión"
+   ],
+   "tech": "<p><code>connect.rs<\/code>: TCP, cifrado y huella contra <code>known_hosts<\/code>. Si falta algo responde <code>NeedsPassword<\/code>, <code>NeedsPassphrase<\/code> o <code>NeedsOtp<\/code>; si la huella es nueva o cambió, <code>HostKeyUnknown<\/code> / <code>HostKeyChanged<\/code>.<\/p><p><code>reconnect.rs<\/code>: señal de vida cada 10 s, caída tras 3 sin respuesta y 5 intentos de reconexión en la misma pestaña (ajustable).<\/p><p>Todo lo demás son canales dentro de esta conexión: PTY, SFTP, exec y <code>direct-tcpip<\/code>.<\/p>"
+  },
+  "cfg": {
+   "x": 450,
+   "y": 915,
+   "ic": "disk",
+   "k": "store",
+   "n": "~/.config/sshorus",
+   "tag": "JSON en tu PC",
+   "simple": "Los archivos de configuración de SSHorus. Nunca guardan contraseñas.",
+   "guarda": [
+    "profiles.json: servidores y proyectos",
+    "settings.json: ajustes",
+    "mcp.json y mcp-audit.jsonl",
+    "tunnels.json, commands.json",
+    "audit/ y vulnscan/: historiales"
+   ],
+   "tech": "<p>Escritura atómica (temporal + renombrar), archivos 0600 y carpeta 0700. Un archivo dañado se aparta como <code>.bak-&lt;fecha&gt;<\/code>.<\/p><p>En Windows <code>%APPDATA%\\sshorus<\/code>; en macOS <code>~/Library/Application Support/sshorus<\/code>.<\/p>"
+  },
+  "vault": {
+   "x": 630,
+   "y": 915,
+   "ic": "lock",
+   "k": "data",
+   "n": "Llavero o bóveda",
+   "tag": "contraseñas y tokens",
+   "simple": "Donde quedan tus contraseñas y tokens. Sin PIN, en el llavero del sistema; con PIN o contraseña, en una bóveda cifrada que se cierra al bloquear.",
+   "guarda": [
+    "Contraseñas y frases de los servidores",
+    "Contraseñas de sudo guardadas",
+    "Tokens: GitHub, MCP e IA"
+   ],
+   "tech": "<p>Llavero: servicio <code>sshorus<\/code> (crate <code>keyring<\/code>). Bóveda: <code>vault.json<\/code> con AES-256-GCM; la llave es Argon2id(PIN, llave del equipo). 5 intentos libres; después espera de 30 s que se dobla hasta 15 min.<\/p><p>Al bloquear, los secretos en memoria se pisan con ceros (<code>Zeroizing<\/code>).<\/p>"
+  },
+  "sshdir": {
+   "x": 810,
+   "y": 915,
+   "ic": "file",
+   "k": "store",
+   "n": "~/.ssh",
+   "tag": "known_hosts · llaves",
+   "simple": "La carpeta de SSH de siempre: las huellas de los servidores en los que confías, tus llaves y, si quieres, tus servidores para usar «ssh alias».",
+   "guarda": [
+    "known_hosts: huellas",
+    "config: bloque opcional con tus servidores",
+    "Tus llaves (las privadas solo se leen)"
+   ],
+   "tech": "<p><code>ssh/known_hosts.rs<\/code> lee, añade o reemplaza huellas con escritura atómica. <code>storage/ssh_config.rs<\/code> escribe un bloque marcado en <code>~/.ssh/config<\/code> (la primera vez guarda <code>config.bak-sshorus<\/code>) y también importa desde ahí.<\/p>"
+  },
+  "aiapi": {
+   "x": 450,
+   "y": 70,
+   "ic": "globe",
+   "k": "ext",
+   "n": "API de IA",
+   "tag": "opcional · tipo OpenAI",
+   "simple": "Un servicio de IA que tú eliges, solo para explicar informes. Si no lo configuras, no se usa.",
+   "guarda": [
+    "Nada que SSHorus le pida guardar"
+   ],
+   "tech": "<p>Solo la URL que guardas en Ajustes → IA para explicar informes. Recibe el texto que viste antes de enviar, con el token en <code>Authorization<\/code>.<\/p>"
+  },
+  "osv": {
+   "x": 630,
+   "y": 70,
+   "ic": "db",
+   "k": "ext",
+   "n": "OSV.dev",
+   "tag": "avisos de seguridad",
+   "simple": "Una base pública de avisos de seguridad. SSHorus le pregunta por los paquetes instalados.",
+   "guarda": [
+    "Nada de tu servidor"
+   ],
+   "tech": "<p><code>POST api.osv.dev/v1/querybatch<\/code> (≤ 1000 por lote, con paginación) y <code>GET /v1/vulns/{id}<\/code>, 8 a la vez. Solo ecosistema, nombre y versión: nunca IP, nombre del servidor ni usuarios. Sin token ni redirecciones. Cada informe guarda lo que se envió.<\/p>"
+  },
+  "gh": {
+   "x": 810,
+   "y": 70,
+   "ic": "cloud",
+   "k": "ext",
+   "n": "GitHub",
+   "tag": "Releases · latest.json",
+   "simple": "De aquí salen las versiones nuevas de SSHorus: los instaladores, sus firmas y el archivo latest.json.",
+   "guarda": [
+    "Instaladores, firmas .sig y latest.json"
+   ],
+   "tech": "<p><code>github.com/LeoMael/SSHorus/releases/latest/download/latest.json<\/code>. Los genera <code>.github/workflows/release.yml<\/code> con una etiqueta <code>v*<\/code>, firmados con minisign. Un Release en borrador no cuenta.<\/p><p>El módulo <code>github/<\/code> del motor usa además la API de GitHub (cuenta, llaves, Actions y el Gist cifrado); aquí no se dibuja.<\/p>"
+  },
+  "sshd": {
+   "x": 1000,
+   "y": 745,
+   "ic": "server",
+   "k": "server",
+   "n": "sshd",
+   "tag": "OpenSSH · puerto 22",
+   "simple": "La puerta de tu servidor. Por una sola conexión cifrada pasan la terminal, los archivos, los comandos y los túneles.",
+   "guarda": [
+    "Su llave de host (la huella que ves al conectar)"
+   ],
+   "tech": "<p>Canales que abre SSHorus: <code>session<\/code> + PTY (terminal), subsistema <code>sftp<\/code>, <code>exec<\/code> (comandos aparte), <code>direct-tcpip<\/code> y <code>forwarded-tcpip<\/code> (túneles).<\/p><p>SSHorus no instala nada en el servidor.<\/p>"
+  },
+  "svc": {
+   "x": 1180,
+   "y": 745,
+   "ic": "db",
+   "k": "data",
+   "n": "Servicio interno",
+   "tag": "p. ej. PostgreSQL :5432",
+   "simple": "Algo que solo escucha dentro del servidor, como una base de datos o un panel web. Con un túnel lo usas desde tu PC.",
+   "guarda": [
+    "Sus propios datos"
+   ],
+   "tech": "<p>Túneles → «Servicios que puedes traer» los detecta (PostgreSQL, MySQL, Redis, MongoDB, paneles web, contenedores…) y «Traer a mi PC» crea el túnel en un puerto libre.<\/p>"
+  },
+  "shell": {
+   "x": 1000,
+   "y": 580,
+   "ic": "panel",
+   "k": "server",
+   "n": "Shell y tmux",
+   "tag": "tu usuario · tmux propio",
+   "simple": "Tu shell en el servidor. Las terminales persistentes viven en un tmux propio de SSHorus que no toca el tuyo.",
+   "guarda": [
+    "Sesiones sshorus-…, con 50.000 líneas de historial"
+   ],
+   "tech": "<p>Los comandos aparte entran por un arranque corto: <code>sh -c 'echo __SSHORUS_PID__=$$ &gt;&amp;2; c=$(dd bs=1 count=N); exec \"$SHELL\" -c \"$c\"'<\/code>.<\/p><p>Las sesiones sueltas se ven en «Sesiones en el servidor» y se pueden reabrir o cerrar.<\/p>"
+  },
+  "ctr": {
+   "x": 1180,
+   "y": 580,
+   "ic": "layers",
+   "k": "server",
+   "n": "Podman / Docker",
+   "tag": "contenedores",
+   "simple": "Tus contenedores. SSHorus los lista, los arranca y los actualiza entrando como su dueño, nunca como root.",
+   "guarda": [
+    "Imágenes, contenedores y volúmenes"
+   ],
+   "tech": "<p>Con sudo se ven los de todos los usuarios; cada acción entra como el dueño con <code>runuser<\/code> (o <code>sudo -u<\/code>, o <code>su<\/code>). El escáner lee la base de paquetes de cada imagen sin arrancarla y «Actualizar imagen» usa Compose, systemd/Quadlet o el formulario según cómo se creó.<\/p>"
+  },
+  "sudo": {
+   "x": 1000,
+   "y": 415,
+   "ic": "cv",
+   "k": "server",
+   "n": "sudo",
+   "tag": "contraseña por stdin",
+   "simple": "Da permisos de administrador. SSHorus le pasa tu contraseña por dentro, nunca en la línea de comandos ni a la IA.",
+   "guarda": [
+    "Nada de SSHorus"
+   ],
+   "tech": "<p>Sin terminal, sudo no puede preguntar. SSHorus comprueba la contraseña con <code>sudo -k -S -v<\/code> y ejecuta. Para la IA, un envoltorio crea una carpeta temporal 0700 con un FIFO, un askpass y un <code>sudo<\/code> de paso: así funcionan <code>sudo a &amp;&amp; sudo b<\/code> o <code>echo x | sudo tee<\/code>. Al terminar se borra.<\/p><p>Contraseña incorrecta: error en seguida, con un solo intento fallido.<\/p>"
+  },
+  "pkg": {
+   "x": 1180,
+   "y": 415,
+   "ic": "briefcase",
+   "k": "server",
+   "n": "Paquetes",
+   "tag": "dnf · apt · zypper · apk",
+   "simple": "El gestor de paquetes del sistema. El escáner lee qué hay instalado y, si lo pides, lo actualiza.",
+   "guarda": [
+    "La base de paquetes instalados"
+   ],
+   "tech": "<p>Inventario sin root: <code>rpm<\/code>, <code>dpkg<\/code>, <code>apk<\/code>. Herramienta de la distro: <code>dnf updateinfo<\/code>/<code>advisory<\/code>, <code>pro<\/code>, <code>debsecan<\/code>, <code>zypper list-patches<\/code>.<\/p><p>«Arreglar todo lo que tiene solución»: un solo comando como root y sin preguntas (<code>-y<\/code> / <code>--non-interactive<\/code>), con la salida en vivo y 600 s como máximo.<\/p>"
+  },
+  "sysd": {
+   "x": 1000,
+   "y": 240,
+   "ic": "steps",
+   "k": "server",
+   "n": "systemd",
+   "tag": "servicios",
+   "simple": "Arranca y reinicia los servicios (nginx, sshd…). Tras actualizar o arreglar, SSHorus reinicia aquí lo que haga falta.",
+   "guarda": [
+    "Las unidades de los servicios"
+   ],
+   "tech": "<p>Tras arreglar vulnerabilidades, <code>restart.ts<\/code> mira qué servicios siguen con la versión vieja y si hay que reiniciar el servidor (<code>needrestart<\/code> o <code>needs-restarting<\/code>, si la distro los tiene). La auditoría recarga sshd solo si <code>sshd -t<\/code> da bien; si no, recupera la configuración anterior.<\/p>"
+  },
+  "srvia": {
+   "x": 1180,
+   "y": 240,
+   "ic": "chat",
+   "k": "server",
+   "n": "IA en el servidor",
+   "tag": "idea anotada · sin código",
+   "simple": "Plan para más adelante: instalar Claude Code en el servidor, con un usuario aparte, para usarlo desde el celular. Todavía no existe.",
+   "guarda": [],
+   "tech": "<p>Anotado en <code>docs/PENDIENTES.md<\/code> («Próxima sesión», punto 5, «no programar aún»): un usuario aparte con sudo limitado, sesión oficial (nunca copiar <code>~/.claude<\/code>) y <code>claude remote-control<\/code> como servicio. Ojo: quien tenga root en el servidor podría usar la sesión.<\/p>",
+   "flag": [
+    "prop",
+    "Propuesto"
+   ],
+   "opt": true
+  }
+ },
+ "flechas": {
+  "tu_uit": {
+   "a": "tu",
+   "b": "ui_term",
+   "pts": [
+    [
+     85,
+     136
+    ],
+    [
+     85,
+     206
+    ]
+   ]
+  },
+  "tu_uim": {
+   "a": "tu",
+   "b": "ui_main",
+   "pts": [
+    [
+     117,
+     70
+    ],
+    [
+     270,
+     70
+    ],
+    [
+     270,
+     206
+    ]
+   ]
+  },
+  "uit_ipc": {
+   "a": "ui_term",
+   "b": "ipc",
+   "pts": [
+    [
+     73,
+     306
+    ],
+    [
+     73,
+     381
+    ]
+   ]
+  },
+  "uim_ipc": {
+   "a": "ui_main",
+   "b": "ipc",
+   "pts": [
+    [
+     270,
+     306
+    ],
+    [
+     270,
+     336
+    ],
+    [
+     97,
+     336
+    ],
+    [
+     97,
+     381
+    ]
+   ]
+  },
+  "ipc_audit": {
+   "a": "ipc",
+   "b": "audit",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     238,
+     415
+    ]
+   ]
+  },
+  "ipc_ai": {
+   "a": "ipc",
+   "b": "ai",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     438,
+     515
+    ],
+    [
+     438,
+     485
+    ]
+   ]
+  },
+  "ipc_vuln": {
+   "a": "ipc",
+   "b": "vuln",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     618,
+     515
+    ],
+    [
+     618,
+     485
+    ]
+   ]
+  },
+  "ipc_upd": {
+   "a": "ipc",
+   "b": "upd",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     798,
+     515
+    ],
+    [
+     798,
+     485
+    ]
+   ]
+  },
+  "ipc_lterm": {
+   "a": "ipc",
+   "b": "lterm",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     282,
+     515
+    ],
+    [
+     282,
+     546
+    ]
+   ]
+  },
+  "ipc_tun": {
+   "a": "ipc",
+   "b": "tun",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     462,
+     515
+    ],
+    [
+     462,
+     546
+    ]
+   ]
+  },
+  "ipc_term": {
+   "a": "ipc",
+   "b": "term",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     642,
+     515
+    ],
+    [
+     642,
+     546
+    ]
+   ]
+  },
+  "ipc_files": {
+   "a": "ipc",
+   "b": "files",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     515
+    ],
+    [
+     822,
+     515
+    ],
+    [
+     822,
+     546
+    ]
+   ]
+  },
+  "ipc_mcp": {
+   "a": "ipc",
+   "b": "mcp",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     680
+    ],
+    [
+     258,
+     680
+    ],
+    [
+     258,
+     711
+    ]
+   ]
+  },
+  "ipc_exec": {
+   "a": "ipc",
+   "b": "exec",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     680
+    ],
+    [
+     438,
+     680
+    ],
+    [
+     438,
+     711
+    ]
+   ]
+  },
+  "ipc_ssh": {
+   "a": "ipc",
+   "b": "ssh",
+   "pts": [
+    [
+     117,
+     415
+    ],
+    [
+     175,
+     415
+    ],
+    [
+     175,
+     680
+    ],
+    [
+     618,
+     680
+    ],
+    [
+     618,
+     711
+    ]
+   ]
+  },
+  "lterm_ia": {
+   "a": "lterm",
+   "b": "ia",
+   "pts": [
+    [
+     238,
+     580
+    ],
+    [
+     85,
+     580
+    ],
+    [
+     85,
+     711
+    ]
+   ]
+  },
+  "ia_mcp": {
+   "a": "ia",
+   "b": "mcp",
+   "pts": [
+    [
+     117,
+     745
+    ],
+    [
+     238,
+     745
+    ]
+   ]
+  },
+  "mcp_exec": {
+   "a": "mcp",
+   "b": "exec",
+   "pts": [
+    [
+     302,
+     745
+    ],
+    [
+     418,
+     745
+    ]
+   ]
+  },
+  "exec_ssh": {
+   "a": "exec",
+   "b": "ssh",
+   "pts": [
+    [
+     482,
+     757
+    ],
+    [
+     598,
+     757
+    ]
+   ]
+  },
+  "tun_ssh": {
+   "a": "tun",
+   "b": "ssh",
+   "pts": [
+    [
+     482,
+     580
+    ],
+    [
+     540,
+     580
+    ],
+    [
+     540,
+     733
+    ],
+    [
+     598,
+     733
+    ]
+   ]
+  },
+  "term_ssh": {
+   "a": "term",
+   "b": "ssh",
+   "pts": [
+    [
+     642,
+     646
+    ],
+    [
+     642,
+     711
+    ]
+   ]
+  },
+  "files_ssh": {
+   "a": "files",
+   "b": "ssh",
+   "pts": [
+    [
+     810,
+     646
+    ],
+    [
+     810,
+     733
+    ],
+    [
+     662,
+     733
+    ]
+   ]
+  },
+  "ssh_sshd": {
+   "a": "ssh",
+   "b": "sshd",
+   "pts": [
+    [
+     662,
+     757
+    ],
+    [
+     968,
+     757
+    ]
+   ]
+  },
+  "ssh_vault": {
+   "a": "ssh",
+   "b": "vault",
+   "pts": [
+    [
+     618,
+     811
+    ],
+    [
+     618,
+     881
+    ]
+   ]
+  },
+  "ssh_sshdir": {
+   "a": "ssh",
+   "b": "sshdir",
+   "pts": [
+    [
+     642,
+     811
+    ],
+    [
+     642,
+     848
+    ],
+    [
+     810,
+     848
+    ],
+    [
+     810,
+     881
+    ]
+   ]
+  },
+  "mcp_cfg": {
+   "a": "mcp",
+   "b": "cfg",
+   "pts": [
+    [
+     270,
+     811
+    ],
+    [
+     270,
+     848
+    ],
+    [
+     438,
+     848
+    ],
+    [
+     438,
+     881
+    ]
+   ]
+  },
+  "ai_aiapi": {
+   "a": "ai",
+   "b": "aiapi",
+   "pts": [
+    [
+     450,
+     383
+    ],
+    [
+     450,
+     140
+    ]
+   ]
+  },
+  "vuln_osv": {
+   "a": "vuln",
+   "b": "osv",
+   "pts": [
+    [
+     630,
+     383
+    ],
+    [
+     630,
+     140
+    ]
+   ]
+  },
+  "upd_gh": {
+   "a": "upd",
+   "b": "gh",
+   "pts": [
+    [
+     810,
+     383
+    ],
+    [
+     810,
+     140
+    ]
+   ]
+  },
+  "sshd_shell": {
+   "a": "sshd",
+   "b": "shell",
+   "pts": [
+    [
+     1000,
+     713
+    ],
+    [
+     1000,
+     650
+    ]
+   ]
+  },
+  "sshd_svc": {
+   "a": "sshd",
+   "b": "svc",
+   "pts": [
+    [
+     1032,
+     745
+    ],
+    [
+     1148,
+     745
+    ]
+   ]
+  },
+  "shell_sudo": {
+   "a": "shell",
+   "b": "sudo",
+   "pts": [
+    [
+     1000,
+     548
+    ],
+    [
+     1000,
+     485
+    ]
+   ]
+  },
+  "shell_ctr": {
+   "a": "shell",
+   "b": "ctr",
+   "pts": [
+    [
+     1032,
+     592
+    ],
+    [
+     1148,
+     592
+    ]
+   ]
+  },
+  "shell_pkg": {
+   "a": "shell",
+   "b": "pkg",
+   "pts": [
+    [
+     1032,
+     568
+    ],
+    [
+     1090,
+     568
+    ],
+    [
+     1090,
+     427
+    ],
+    [
+     1148,
+     427
+    ]
+   ]
+  },
+  "sudo_pkg": {
+   "a": "sudo",
+   "b": "pkg",
+   "pts": [
+    [
+     1032,
+     403
+    ],
+    [
+     1148,
+     403
+    ]
+   ]
+  },
+  "sudo_sysd": {
+   "a": "sudo",
+   "b": "sysd",
+   "pts": [
+    [
+     1000,
+     383
+    ],
+    [
+     1000,
+     310
+    ]
+   ]
+  },
+  "sysd_srvia": {
+   "a": "sysd",
+   "b": "srvia",
+   "pts": [
+    [
+     1032,
+     240
+    ],
+    [
+     1148,
+     240
+    ]
+   ],
+   "opt": true
+  }
+ },
+ "escenarioArquitectura": 0,
+ "resumen": {
+  "chip": "Arquitectura",
+  "titulo": "Cómo está armado",
+  "simple": "SSHorus es una app de tu PC con dos mitades: la ventana, que ves, y el motor, que hace el trabajo. La ventana nunca sale a la red: todo se lo pide al motor. El motor abre una sola conexión SSH por servidor y por ella pasan la terminal, los archivos, los comandos y los túneles. Tus contraseñas quedan en el llavero o en una bóveda con PIN, y la IA nunca las ve cuando ejecuta algo con sudo.",
+  "tech": [
+   "<b>Ventana ↔ motor:<\/b> IPC de Tauri en el mismo proceso: <code>invoke()<\/code>, <code>Channel<\/code> y eventos.",
+   "<b>Motor → servidor:<\/b> SSH 2 (russh), una conexión por pestaña con canales PTY, SFTP, exec y <code>direct-tcpip<\/code>.",
+   "<b>Motor → Internet:<\/b> HTTPS con reqwest + rustls: OSV.dev (solo nombre y versión de paquetes), GitHub (actualizaciones firmadas) y la API de IA si la configuras.",
+   "<b>IA local → motor:<\/b> MCP en <code>127.0.0.1:47821<\/code> con token, permisos por servidor y aprobación; sudo por stdin, sin que la IA vea la contraseña.",
+   "<b>Datos:<\/b> JSON en <code>~/.config/sshorus<\/code> (sin contraseñas), secretos en el llavero o en <code>vault.json<\/code> (AES-256-GCM + Argon2id) y <code>~/.ssh<\/code> de siempre.",
+   "<b>Propuesto:<\/b> IA en el servidor para usarla desde el celular (PENDIENTES, punto 5). La app móvil propia queda fuera del dibujo."
+  ],
+  "pista": "Pulsa una ficha para ver su detalle, o abre «Recorrido animado» para seguir un escenario paso a paso."
+ },
+ "escenarios": [
+  {
+   "n": "Conectar a un servidor (huella, contraseña o llave, 2FA)",
+   "c": "ok",
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "conectar",
+     "t": "Eliges el servidor",
+     "s": "Haces doble clic en un servidor de la barra lateral.",
+     "d": "<code>src/features/connect.ts<\/code> prepara el perfil (host, usuario, puerto, tipo de autenticación). La contraseña no va en el perfil."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "ssh"
+     ],
+     "w": "ssh_connect",
+     "t": "La ventana pide la conexión al motor",
+     "s": "La ventana no se conecta sola: se lo pide al motor.",
+     "d": "<code>invoke(\"ssh_connect\", …)<\/code>. Si SSHorus está bloqueado, responde <code>Locked<\/code>.",
+     "wl": "u"
+    },
+    {
+     "path": [
+      "ssh",
+      "vault"
+     ],
+     "w": "secreto",
+     "t": "Busca la contraseña guardada",
+     "s": "Si guardaste la contraseña o la frase de la llave, el motor la saca de la bóveda (con PIN) o del llavero del sistema. Solo vive en memoria.",
+     "d": "<code>storage/secrets.rs<\/code> o <code>storage/vault.rs<\/code>; usuario = id del servidor.",
+     "rt": "contraseña",
+     "wl": "l"
+    },
+    {
+     "path": [
+      "ssh",
+      "sshd"
+     ],
+     "w": "TCP + cifrado",
+     "t": "Abre la conexión y recibe la huella",
+     "s": "El motor abre la conexión cifrada y el servidor le enseña su huella, como un DNI.",
+     "d": "<code>ssh/connect.rs<\/code> (russh): TCP al puerto 22, negociación del cifrado y llave de host.",
+     "rt": "huella",
+     "wl": "d"
+    },
+    {
+     "path": [
+      "ssh",
+      "sshdir"
+     ],
+     "w": "known_hosts",
+     "t": "Compara la huella con las conocidas",
+     "s": "Mira si ya confiabas en este servidor. Es la primera vez: la huella es nueva.",
+     "d": "<code>ssh/known_hosts.rs<\/code> lee <code>~/.ssh/known_hosts<\/code>. Huella nueva → <code>HostKeyUnknown<\/code>; cambiada → <code>HostKeyChanged<\/code> (aviso rojo de posible ataque, solo sigue si lo confirmas).",
+     "k": "warn",
+     "set": {
+      "ssh": [
+       "huella nueva",
+       "warn"
+      ]
+     }
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main",
+      "ipc",
+      "ssh",
+      "sshdir"
+     ],
+     "w": "confío",
+     "t": "Confías y se guarda la huella",
+     "s": "SSHorus te enseña la huella y no sigue hasta que digas que confías. Dices que sí y queda guardada para la próxima vez.",
+     "d": "El error <code>HostKeyUnknown<\/code> lleva la huella y la ventana abre el diálogo. <code>ssh_trust_host<\/code> añade o reemplaza la línea con escritura atómica y se repite la conexión.",
+     "set": {
+      "ssh": [
+       "",
+       "mut"
+      ],
+      "sshdir": [
+       "huella guardada",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ssh",
+      "sshd"
+     ],
+     "w": "llave",
+     "t": "Entra con la llave o la contraseña",
+     "s": "El motor se identifica. Este servidor pide además un código de 2FA.",
+     "d": "La autenticación puede encadenar llave, contraseña, agente y código. Si falta algo: <code>NeedsPassword<\/code>, <code>NeedsPassphrase<\/code> o <code>NeedsOtp<\/code>.",
+     "rt": "pide código",
+     "k": "warn",
+     "wl": "d"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main",
+      "ipc",
+      "ssh",
+      "sshd"
+     ],
+     "w": "código 2FA",
+     "t": "Escribes el código y entras",
+     "s": "La ventana te pide el código de tu app de 2FA. Lo escribes y la conexión queda lista en su pestaña.",
+     "d": "<code>NeedsOtp<\/code> → diálogo → se repite <code>ssh_connect<\/code> con el código, que nunca se guarda. Con «Recordar», la contraseña se guarda solo si la conexión funcionó. Después arranca el vigilante (<code>ssh/reconnect.rs<\/code>, señal de vida cada 10 s) y, en segundo plano, la detección de privilegios y los túneles con <code>autoStart<\/code>.",
+     "k": "ok",
+     "wl": "l",
+     "set": {
+      "ssh": [
+       "conectado",
+       "ok"
+      ],
+      "sshd": [
+       "sesión abierta",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "Terminal persistente con tmux y reconexión",
+   "c": "ok",
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_term"
+     ],
+     "w": "nueva terminal",
+     "t": "Abres una terminal",
+     "s": "Abres una terminal del servidor en la parte de abajo.",
+     "d": "Cada sub-pestaña recibe un nombre estable: <code>sshorus-<\/code> + 8 hex."
+    },
+    {
+     "path": [
+      "ui_term",
+      "ipc",
+      "term"
+     ],
+     "w": "term_open",
+     "t": "La ventana pide la terminal",
+     "s": "Le pide al motor una terminal con ese nombre.",
+     "d": "<code>term_open<\/code> con <code>{ name, replay }<\/code> según el modo (Automático, Siempre o Nunca; manda el del servidor).",
+     "ne": "ipc_term"
+    },
+    {
+     "path": [
+      "term",
+      "ssh",
+      "sshd",
+      "shell"
+     ],
+     "w": "¿tmux?",
+     "t": "Busca tmux en el servidor",
+     "s": "Mira si el servidor tiene tmux. Lo tiene.",
+     "d": "<code>terminal/tmux.rs<\/code> lo busca por exec en el PATH y en rutas típicas; exige 1.8 o más nuevo (por <code>new-session -A<\/code>). El resultado se recuerda por conexión.",
+     "rt": "tmux 3.x"
+    },
+    {
+     "path": [
+      "term",
+      "ssh",
+      "sshd",
+      "shell"
+     ],
+     "w": "new-session -A",
+     "t": "Abre la sesión tmux",
+     "s": "Abre un canal con PTY que se engancha a una sesión tmux propia de SSHorus.",
+     "d": "<code>tmux -L sshorus -f /dev/null new-session -A -s sshorus-…<\/code>: sin barra de estado ni tecla prefijo, historial de 50.000 líneas.",
+     "ne": "ssh_sshd",
+     "set": {
+      "shell": [
+       "sshorus-1a2b3c4d",
+       "info"
+      ],
+      "term": [
+       "∞ tmux",
+       "info"
+      ]
+     }
+    },
+    {
+     "path": [
+      "shell",
+      "sshd",
+      "ssh",
+      "term",
+      "ipc",
+      "ui_term"
+     ],
+     "w": "bytes",
+     "t": "Ves la terminal",
+     "s": "Lo que escribes va al servidor y lo que responde llega a tu pantalla al momento.",
+     "d": "Los bytes llegan por un <code>Channel<\/code> de Tauri; lo que escribes va con <code>term_write<\/code>.",
+     "ne": "sshd_shell"
+    },
+    {
+     "path": [
+      "ssh",
+      "sshd"
+     ],
+     "w": "señal de vida",
+     "t": "Se corta la red",
+     "s": "Tu wifi se cae. El servidor deja de responder y SSHorus se da cuenta.",
+     "d": "Tras 3 señales de vida sin respuesta (cada 10 s) se da por caída y empieza la reconexión (<code>session://reconnecting<\/code>).",
+     "k": "warn",
+     "fail": 1,
+     "bad": "sshd",
+     "set": {
+      "ssh": [
+       "reconectando",
+       "warn"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ssh",
+      "sshd"
+     ],
+     "w": "reconectar",
+     "t": "Reconecta solo",
+     "s": "Cuando vuelve la red, SSHorus reconecta en la misma pestaña, sin pedirte nada si la contraseña está guardada.",
+     "d": "Hasta 5 intentos por defecto, con el mismo <code>sessionId<\/code>.",
+     "k": "ok",
+     "set": {
+      "ssh": [
+       "conectado",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "term",
+      "ssh",
+      "sshd",
+      "shell"
+     ],
+     "w": "volver a tmux",
+     "t": "Vuelve a la misma sesión",
+     "s": "La terminal vuelve a la sesión que seguía viva: tu programa siguió corriendo.",
+     "d": "«Volviendo a la sesión tmux». La ✕ cierra y mata la sesión; «Desacoplar» la deja viva para después.",
+     "k": "ok",
+     "ne": "ssh_sshd",
+     "set": {
+      "shell": [
+       "sigue viva",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "Subir una carpeta grande",
+   "c": "ok",
+   "estado": {
+    "titulo": "Estado de cada archivo",
+    "lista": [
+     [
+      "queued",
+      "queued"
+     ],
+     [
+      "running",
+      "running"
+     ],
+     [
+      "done",
+      "done"
+     ],
+     [
+      "error",
+      "error"
+     ]
+    ],
+    "inicial": "queued",
+    "alt": 3,
+    "publico": {
+     "queued": "En cola",
+     "running": "Subiendo",
+     "done": "Listo",
+     "error": "Error"
+    },
+    "publicoTitulo": "En el panel: "
+   },
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "arrastrar",
+     "t": "Arrastras una carpeta",
+     "s": "Arrastras una carpeta con miles de archivos al explorador del servidor.",
+     "d": "Explorador de archivos (<code>components/FileExplorer<\/code>)."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "files"
+     ],
+     "w": "transfer_upload",
+     "t": "Pide la subida",
+     "s": "La ventana le pasa la carpeta al motor y sigue libre para otras cosas.",
+     "d": "<code>transfer_upload<\/code>; todos los archivos comparten un <code>batch_id<\/code>.",
+     "ne": "ipc_files",
+     "st": "queued"
+    },
+    {
+     "path": [
+      "files"
+     ],
+     "w": "cola",
+     "t": "Arma la cola",
+     "s": "Recorre la carpeta y pone cada archivo en la cola de ese servidor.",
+     "d": "<code>transfer/paths.rs<\/code> recorre; los enlaces simbólicos se recrean, nunca se siguen. Cada servidor tiene su cola: dos servidores avanzan en paralelo."
+    },
+    {
+     "path": [
+      "files",
+      "ssh",
+      "sshd"
+     ],
+     "w": "mkdir",
+     "t": "Crea las carpetas",
+     "s": "Crea las carpetas en el servidor, varias a la vez.",
+     "d": "Por SFTP, dentro de la misma conexión SSH."
+    },
+    {
+     "path": [
+      "files",
+      "ssh",
+      "sshd"
+     ],
+     "w": "4 a la vez",
+     "t": "Sube varios archivos a la vez",
+     "s": "Sube 4 archivos a la vez por canales SFTP separados, sin esperar cada respuesta.",
+     "d": "<code>transfer/pool.rs<\/code>: hasta 10 canales; <code>transferConcurrency<\/code> 1–8 (4 por defecto). <code>copy.rs<\/code>: bloques de 255 KB y unos 4 MB en vuelo. Al final copia fecha y permisos.",
+     "st": "running",
+     "set": {
+      "files": [
+       "4 a la vez",
+       "info"
+      ]
+     }
+    },
+    {
+     "path": [
+      "files",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "¿ya existe?",
+     "t": "Un archivo ya existe",
+     "s": "Uno de los archivos ya está en el servidor. SSHorus pregunta qué hacer.",
+     "d": "Política «Preguntar» (por defecto desde la 1.0.0-beta.1): <code>transfer://conflict<\/code>. Ese trabajo suelta su turno y espera; los demás siguen.",
+     "k": "warn"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main",
+      "ipc",
+      "files"
+     ],
+     "w": "mantener ambos",
+     "t": "Eliges «Mantener ambos»",
+     "s": "Eliges conservar los dos y marcas «aplicar a todos».",
+     "d": "<code>transfer_resolve_conflict<\/code>: se sube como <code>nombre (2).ext<\/code>. También: sobrescribir, omitir (<code>skipped<\/code>) o solo si es más nuevo.",
+     "ne": "tu_uim"
+    },
+    {
+     "path": [
+      "files",
+      "ssh",
+      "sshd"
+     ],
+     "w": "corte",
+     "t": "Se corta la conexión a mitad",
+     "s": "Se corta la red. Los archivos esperan sin gastar reintentos.",
+     "d": "Esperan la reconexión hasta 5 minutos y siguen desde el último byte confirmado. Un error normal se reintenta hasta 3 veces.",
+     "k": "warn",
+     "fail": 1,
+     "bad": "sshd"
+    },
+    {
+     "path": [
+      "files",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "progreso",
+     "t": "Termina la subida",
+     "s": "Al reconectar, la subida sigue donde se quedó y termina.",
+     "d": "Cada 200 ms el motor envía solo los trabajos que cambiaron (<code>transfer://update<\/code>).",
+     "k": "ok",
+     "st": "done",
+     "set": {
+      "files": [
+       "lote terminado",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "La IA ejecuta un comando con sudo por MCP",
+   "c": "ok",
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_term",
+      "ipc",
+      "lterm",
+      "ia"
+     ],
+     "w": "asistente",
+     "t": "Abres Claude Code desde SSHorus",
+     "s": "En una terminal de tu PC eliges «Asistente con contexto»: Claude Code se abre en la carpeta donde estás, sabiendo qué servidores tienes.",
+     "d": "<code>localterm/launch.rs<\/code>: contexto (servidores, alias, a cuál miras; nunca contraseñas) y el MCP como <code>stdio<\/code> con el puente <code>sshorus-mcp<\/code>; el token va en <code>SSHORUS_MCP_TOKEN<\/code>.",
+     "ne": "ipc_lterm"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_term",
+      "ipc",
+      "lterm",
+      "ia"
+     ],
+     "w": "pedido",
+     "t": "Le pides algo",
+     "s": "Le escribes: «reinicia nginx en web-prod».",
+     "d": "Lo que escribes va a la terminal local (<code>local_term_write<\/code>), donde corre el asistente.",
+     "ne": "lterm_ia"
+    },
+    {
+     "path": [
+      "ia",
+      "mcp"
+     ],
+     "w": "run_command",
+     "t": "La IA pide ejecutar un comando",
+     "s": "La IA no entra al servidor: le pide a SSHorus que ejecute «sudo systemctl restart nginx».",
+     "d": "El puente reenvía a <code>127.0.0.1:47821/mcp<\/code> con el token <code>Bearer<\/code>. La puerta rechaza <code>Origin<\/code> (403), token malo (401) o SSHorus bloqueado."
+    },
+    {
+     "path": [
+      "mcp"
+     ],
+     "w": "reglas",
+     "t": "Comprueba los permisos",
+     "s": "web-prod tiene acceso Completo. Como lleva sudo, es peligroso: hay que preguntarte siempre.",
+     "d": "<code>mcp/policy.rs<\/code>: <code>uses_sudo<\/code>. Lo peligroso no admite «Permitir siempre»; solo «Aceptar automáticamente: todo» lo deja pasar.",
+     "set": {
+      "mcp": [
+       "pide permiso",
+       "warn"
+      ]
+     }
+    },
+    {
+     "path": [
+      "mcp",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "¿permitir?",
+     "t": "Te pide permiso",
+     "s": "SSHorus se pone al frente y te enseña el comando exacto.",
+     "d": "<code>mcp://approval<\/code>; espera la respuesta hasta 120 s (<code>mcp_approval_reply<\/code>).",
+     "ne": "ipc_mcp"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main",
+      "ipc",
+      "mcp"
+     ],
+     "w": "permitir",
+     "t": "Lo permites",
+     "s": "Pulsas «Permitir».",
+     "d": "Se anota en el registro <code>mcp-audit.jsonl<\/code> con quién lo aprobó.",
+     "ne": "tu_uim",
+     "set": {
+      "mcp": [
+       "aprobado",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "mcp",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "¿sudo?",
+     "t": "Busca la contraseña de sudo",
+     "s": "SSHorus busca tu contraseña de sudo: primero en memoria, luego la guardada, luego otra pestaña al mismo servidor. Si no hay, te la pide.",
+     "d": "<code>mcp://ui-request<\/code> de tipo <code>sudo<\/code> → <code>obtainSudoPassword<\/code>; si no hay, <code>SudoDialog<\/code>. Se pide como mucho una vez por conexión."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "mcp"
+     ],
+     "w": "contraseña",
+     "t": "La contraseña va al motor, no a la IA",
+     "s": "La contraseña se queda en SSHorus. La IA nunca la ve.",
+     "d": "<code>mcp_ui_reply<\/code>. Si SSHorus se bloquea mientras espera, no se ejecuta nada.",
+     "ne": "ipc_mcp",
+     "set": {
+      "ia": [
+       "sin contraseña",
+       "mut"
+      ]
+     }
+    },
+    {
+     "path": [
+      "mcp",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo"
+     ],
+     "w": "stdin",
+     "t": "Ejecuta con sudo",
+     "s": "El comando va al servidor y la contraseña viaja por dentro, nunca en la línea de comandos.",
+     "d": "<code>snippets/sudo.rs<\/code>: la contraseña en la primera línea de stdin; <code>sudo -k -S -v<\/code> la comprueba; un askpass la da a cada <code>sudo<\/code> por un FIFO; la carpeta temporal se borra al terminar.",
+     "set": {
+      "sudo": [
+       "root",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "sudo",
+      "sysd"
+     ],
+     "w": "restart nginx",
+     "t": "Se reinicia nginx",
+     "s": "systemd reinicia nginx.",
+     "d": "<code>systemctl restart nginx<\/code> como root.",
+     "k": "ok",
+     "set": {
+      "sysd": [
+       "nginx reiniciado",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "sysd",
+      "sudo",
+      "shell",
+      "sshd",
+      "ssh",
+      "exec",
+      "mcp",
+      "ia"
+     ],
+     "w": "salida",
+     "t": "La IA recibe el resultado",
+     "s": "La IA recibe lo que imprimió el comando, con la contraseña tapada por si apareciera.",
+     "d": "Si un comando la mostrara se cambia por <code>********<\/code>. El registro solo guarda el comando y «(con sudo)».",
+     "ne": "exec_ssh",
+     "k": "ok"
+    },
+    {
+     "path": [
+      "ia",
+      "mcp",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "request_sudo_password",
+     "t": "La IA pide ver la contraseña: siempre te pregunta",
+     "s": "Después, la IA pide la contraseña en texto «para instalar un programa que la pide». SSHorus te enseña el motivo y avisa: «La contraseña quedará en la conversación con la IA».",
+     "d": "<code>request_sudo_password<\/code> (nueva, «Sin publicar»): solo con acceso Completo y el ajuste encendido (lo está por defecto). Diálogo propio (<code>SudoRevealDialog<\/code>, <code>core/sudo_reveal.rs<\/code>) sin «Permitir siempre»; «Aceptar automáticamente» no lo salta. Sin respuesta a tiempo, se deniega.",
+     "ne": "ipc_mcp",
+     "k": "warn"
+    },
+    {
+     "path": [
+      "mcp",
+      "ia"
+     ],
+     "w": "denegado",
+     "t": "Dices que no",
+     "s": "No se la das. La IA recibe un «no» y la sugerencia de usar run_command con sudo, que no necesita verla.",
+     "d": "<code>REVEAL_DENIED_MSG<\/code>. Se anota en el registro (motivo y resultado), nunca la contraseña.",
+     "k": "err",
+     "fail": 2,
+     "bad": "ia",
+     "set": {
+      "ia": [
+       "sin contraseña",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "Escanear vulnerabilidades, arreglar y volver a comprobar",
+   "c": "ok",
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "analizar",
+     "t": "Pulsas «Analizar»",
+     "s": "En Administración → Vulnerabilidades pulsas «Analizar».",
+     "d": "<code>src/features/vulnscan/run.ts<\/code>."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "vuln"
+     ],
+     "w": "vulnscan_script",
+     "t": "Pide los scripts",
+     "s": "La ventana le pide al motor el script de cada fase.",
+     "d": "<code>vulnscan_script<\/code> y <code>vulnscan_plan<\/code> (<code>vulnscan/scripts.rs<\/code>).",
+     "ne": "uim_ipc",
+     "rt": "scripts"
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "pkg"
+     ],
+     "w": "inventario",
+     "t": "Lee lo instalado, sin root",
+     "s": "Mira qué sistema es, qué paquetes tiene y qué dice la herramienta de seguridad de la distro.",
+     "d": "Fases 1–3 sin root, cada una con su <code>execId<\/code> (Cancelar la detiene en el servidor): detectar (20 s), inventario (60 s), herramienta de la distro (300 s).",
+     "ne": "ipc_exec",
+     "rt": "paquetes"
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "vuln"
+     ],
+     "w": "vulnscan_analyze",
+     "t": "Entrega las salidas al motor",
+     "s": "Pasa lo leído al motor para cruzarlo con las bases de avisos.",
+     "d": "Salidas en bruto → <code>parse/<\/code> → <code>ecosystem.rs<\/code> elige el ecosistema de OSV.",
+     "ne": "ipc_vuln"
+    },
+    {
+     "path": [
+      "vuln",
+      "osv"
+     ],
+     "w": "querybatch",
+     "t": "Pregunta a OSV.dev",
+     "s": "Pregunta qué avisos afectan a cada paquete. Solo envía nombre y versión.",
+     "d": "Lotes de 1000 con paginación; el detalle de cada aviso, 8 a la vez, con caché.",
+     "rt": "avisos"
+    },
+    {
+     "path": [
+      "vuln",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "informe",
+     "t": "Ves el informe",
+     "s": "Ves los avisos con su gravedad y cuáles tienen arreglo.",
+     "d": "<code>analyze.rs<\/code> + <code>severity.rs<\/code> (distro → CVSS → sin clasificar). Se guarda en el historial (<code>vulnscan/&lt;id&gt;.json<\/code>).",
+     "ne": "ipc_vuln",
+     "set": {
+      "vuln": [
+       "14 avisos · 12 con arreglo",
+       "warn"
+      ]
+     }
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "arreglar todo",
+     "t": "«Arreglar todo lo que tiene solución»",
+     "s": "SSHorus separa lo que se arregla ya, lo que solo pide reiniciar y lo que aún no tiene arreglo, y te enseña el comando exacto.",
+     "d": "<code>fixPlan.ts<\/code>: grupos <code>now<\/code>, <code>reboot<\/code>, <code>nofix<\/code>, <code>image<\/code>, <code>manual<\/code>; un solo comando por familia de distro."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo",
+      "pkg"
+     ],
+     "w": "dnf upgrade -y",
+     "t": "Actualiza como root",
+     "s": "Lanza la actualización con tu contraseña de sudo guardada. Ves la salida en vivo y puedes cancelar.",
+     "d": "<code>exec_capture_stdin_live<\/code> (<code>exec://output<\/code>), 600 s como máximo. La contraseña viaja por stdin.",
+     "ne": "ipc_exec",
+     "set": {
+      "pkg": [
+       "actualizado",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo",
+      "sysd"
+     ],
+     "w": "¿reiniciar?",
+     "t": "Mira qué reiniciar",
+     "s": "Comprueba qué servicios usan librerías viejas y si el servidor pide reiniciarse.",
+     "d": "<code>restart.ts<\/code> como root; puedes reiniciar cada servicio con un botón.",
+     "ne": "ipc_exec"
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "pkg"
+     ],
+     "w": "volver a comprobar",
+     "t": "Vuelve a leer lo instalado",
+     "s": "Vuelve a mirar los paquetes, sin root, con las versiones de ahora.",
+     "d": "<code>recheckSystem<\/code>: fases 1–3 otra vez. Las imágenes se quedan como estaban.",
+     "ne": "ipc_exec"
+    },
+    {
+     "path": [
+      "vuln",
+      "osv"
+     ],
+     "w": "versiones nuevas",
+     "t": "Pregunta otra vez a OSV",
+     "s": "Pregunta por las versiones nuevas.",
+     "d": "<code>vulnscan_recheck<\/code>: la consulta a OSV nunca va a caché; la caché solo guarda el detalle de cada aviso.",
+     "rt": "avisos"
+    },
+    {
+     "path": [
+      "vuln",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "Arreglado: 12 · Siguen: 2",
+     "t": "Lo arreglado desaparece",
+     "s": "Ves «Arreglado: 12 · Siguen: 2» con el motivo de lo que sigue. Al volver a abrir la pestaña no reaparece.",
+     "d": "Se guarda como un análisis nuevo en el historial. Los kernels viejos que quedan instalados ya no cuentan.",
+     "k": "ok",
+     "ne": "uim_ipc",
+     "set": {
+      "vuln": [
+       "2 siguen",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "Auditar, arreglar y volver a comprobar",
+   "c": "warn",
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "auditar",
+     "t": "Pulsas «Auditar servidor»",
+     "s": "En Administración → Auditoría pulsas el botón. No se instala nada.",
+     "d": "<code>src/features/audit/run.ts<\/code>."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo"
+     ],
+     "w": "auditar",
+     "t": "Revisa todo el servidor",
+     "s": "Revisa SSH, usuarios con sudo, puertos y cortafuegos, actualizaciones, certificados, contenedores, servicios, disco y endurecimiento.",
+     "d": "<code>AUDIT_SCRIPT<\/code> (POSIX sh, una sección <code>@@<\/code> por tema), <code>PORTS_SCRIPT<\/code> y <code>WEB_SCRIPT<\/code>, con la elevación de Administración. Si sudo falla, sigue sin elevar.",
+     "ne": "ipc_exec"
+    },
+    {
+     "path": [
+      "ui_main"
+     ],
+     "w": "nota",
+     "t": "Pone la nota",
+     "s": "Convierte lo leído en comprobaciones (bien, aviso, mal) y pone una nota por tema y una general.",
+     "d": "<code>checks.ts<\/code> + <code>score.ts<\/code>: nota A–F; «mal» de peso 3 deja la general en C como mucho. <code>compare<\/code> marca qué mejoró o empeoró.",
+     "set": {
+      "ui_main": [
+       "nota C · 4 problemas",
+       "warn"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "audit"
+     ],
+     "w": "audit_save",
+     "t": "Guarda la auditoría",
+     "s": "Guarda la auditoría en el historial del servidor.",
+     "d": "<code>audit/&lt;idServidor&gt;.json<\/code>, las 30 últimas, 0600.",
+     "ne": "ipc_audit"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "arreglar todo lo seguro",
+     "t": "«Arreglar todo lo seguro»",
+     "s": "Ves los comandos exactos de los arreglos seguros y confirmas.",
+     "d": "<code>fixSafety.ts<\/code>: <code>auto<\/code> entra en el lote; <code>confirm<\/code> va uno a uno con aviso; <code>manual<\/code> solo explica qué hacer."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo",
+      "sysd"
+     ],
+     "w": "arreglos",
+     "t": "Aplica los arreglos",
+     "s": "Aplica los arreglos como root y recarga lo que haga falta.",
+     "d": "<code>fixRun.ts<\/code>: por stdin, cancelable y anotado en el historial de Administración. sshd solo se recarga si <code>sshd -t<\/code> da bien; si no, vuelve la configuración anterior.",
+     "ne": "ipc_exec",
+     "k": "ok",
+     "set": {
+      "ui_main": [
+       "",
+       "mut"
+      ]
+     }
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "arreglar",
+     "t": "Quieres quitar la contraseña de SSH",
+     "s": "Pulsas «Arreglar» en «SSH admite contraseña». Es de los que pueden dejarte fuera.",
+     "d": "<code>ssh.password<\/code> es <code>confirm<\/code>: necesita la comprobación previa."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell"
+     ],
+     "w": "comprobación previa",
+     "t": "Comprueba que no te quedes fuera",
+     "s": "Antes de tocar nada mira con qué usuario entras y si tiene alguna llave SSH.",
+     "d": "<code>GUARD_SCRIPT<\/code> sin sudo: <code>id -un<\/code>, <code>$SSH_CONNECTION<\/code> y las líneas de <code>~/.ssh/authorized_keys<\/code>.",
+     "ne": "ipc_exec",
+     "rt": "0 llaves"
+    },
+    {
+     "path": [
+      "ui_main"
+     ],
+     "w": "bloqueado",
+     "t": "No lo aplica: te dejaría fuera",
+     "s": "Tu usuario no tiene ninguna llave. SSHorus no lo aplica y te dice qué hacer antes: instalar una llave.",
+     "d": "<code>guardProblem<\/code>: «no tiene ninguna llave en ~/.ssh/authorized_keys: instala una antes (Usuarios → Llaves)». Lo mismo con prohibir root o un cortafuegos que cerraría tu puerto.",
+     "k": "err",
+     "set": {
+      "ui_main": [
+       "bloqueado: te dejaría fuera",
+       "err"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "exec",
+      "ssh",
+      "sshd",
+      "shell",
+      "sudo"
+     ],
+     "w": "volver a comprobar",
+     "t": "Vuelve a comprobar lo tocado",
+     "s": "Vuelve a revisar solo los temas que se arreglaron.",
+     "d": "<code>recheck.ts<\/code>: <code>recheckCategories<\/code> y <code>mergeRecheck<\/code>; recalcula las notas. Un «sin comprobar» nuevo no pisa un resultado de verdad.",
+     "ne": "ipc_exec",
+     "set": {
+      "ui_main": [
+       "",
+       "mut"
+      ]
+     }
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "audit"
+     ],
+     "w": "informe nuevo",
+     "t": "Lo arreglado desaparece",
+     "s": "La nota sube y lo arreglado ya no sale. Queda pendiente lo que pide una llave antes.",
+     "d": "Se guarda el informe actualizado en el historial.",
+     "ne": "ipc_audit",
+     "k": "ok"
+    }
+   ]
+  },
+  {
+   "n": "Túnel local a una base de datos",
+   "c": "ok",
+   "estado": {
+    "titulo": "Estado del túnel",
+    "lista": [
+     [
+      "Stopped",
+      "Stopped"
+     ],
+     [
+      "Starting",
+      "Starting"
+     ],
+     [
+      "Active",
+      "Active"
+     ],
+     [
+      "Error",
+      "Error"
+     ]
+    ],
+    "inicial": "Stopped",
+    "alt": 3,
+    "publico": {
+     "Stopped": "Parado",
+     "Starting": "Arrancando",
+     "Active": "Activo",
+     "Error": "Error"
+    },
+    "publicoTitulo": "En la pestaña Túneles: "
+   },
+   "pasos": [
+    {
+     "path": [
+      "tu",
+      "ui_main"
+     ],
+     "w": "traer a mi PC",
+     "t": "Eliges un servicio del servidor",
+     "s": "En Túneles → «Servicios que puedes traer» ves PostgreSQL, que solo escucha dentro del servidor, y pulsas «Traer a mi PC».",
+     "d": "La lista sale de lo que escucha en el servidor (bases de datos, webs, cachés…), agrupada por tipo."
+    },
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "tun"
+     ],
+     "w": "tunnel_start",
+     "t": "Crea y arranca el túnel",
+     "s": "SSHorus busca un puerto libre en tu PC y arranca el túnel.",
+     "d": "<code>tunnels_suggest_local_ports<\/code>, <code>tunnels_save<\/code> (<code>tunnels.json<\/code>) y <code>tunnel_start<\/code>. Si el puerto es menor de 1024, usa uno libre.",
+     "ne": "ipc_tun",
+     "st": "Starting"
+    },
+    {
+     "path": [
+      "tun"
+     ],
+     "w": "localhost:15432",
+     "t": "Escucha en tu PC",
+     "s": "Te da la cadena de conexión para copiar. Tu programa (psql, DBeaver…) se conecta a localhost.",
+     "d": "El túnel escucha en <code>127.0.0.1<\/code>; la pestaña muestra estado, conexiones y bytes (<code>tunnel://status<\/code>).",
+     "st": "Active",
+     "set": {
+      "tun": [
+       "activo",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "tun",
+      "ssh",
+      "sshd",
+      "svc"
+     ],
+     "w": "direct-tcpip",
+     "t": "Cada conexión viaja por SSH",
+     "s": "Cada conexión de tu programa viaja cifrada dentro de la conexión SSH hasta la base de datos.",
+     "d": "Un canal <code>direct-tcpip<\/code> por conexión hacia <code>127.0.0.1:5432<\/code> visto desde el servidor. No se abre ningún puerto hacia Internet.",
+     "rt": "datos",
+     "k": "ok",
+     "set": {
+      "svc": [
+       "1 conexión",
+       "ok"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "n": "Actualización automática desde GitHub",
+   "c": "ok",
+   "pasos": [
+    {
+     "path": [
+      "ui_main",
+      "ipc",
+      "upd"
+     ],
+     "w": "check()",
+     "t": "Busca versión nueva al abrir",
+     "s": "A los 6 segundos de abrir SSHorus, mira si hay versión nueva (se puede desactivar).",
+     "d": "<code>src/features/updater/autoCheck.tsx<\/code> (<code>START_DELAY_MS = 6000<\/code>) llama al plugin.",
+     "ne": "ipc_upd"
+    },
+    {
+     "path": [
+      "upd",
+      "gh"
+     ],
+     "w": "latest.json",
+     "t": "Lee latest.json en GitHub",
+     "s": "Lee en GitHub qué versión es la última publicada.",
+     "d": "<code>releases/latest/download/latest.json<\/code>: versión, notas (del CHANGELOG) y, por sistema, la URL y la firma.",
+     "rt": "hay nueva"
+    },
+    {
+     "path": [
+      "upd",
+      "ipc",
+      "ui_main"
+     ],
+     "w": "aviso",
+     "t": "Te avisa",
+     "s": "Ves un aviso con las novedades.",
+     "d": "<code>UpdateNotice<\/code>, en su propia raíz de React.",
+     "ne": "ipc_upd"
+    },
+    {
+     "path": [
+      "tu",
+      "ui_main",
+      "ipc",
+      "upd"
+     ],
+     "w": "actualizar",
+     "t": "Pulsas «Actualizar»",
+     "s": "Decides actualizar.",
+     "d": "Si fue una instalación a mano, solo avisa y enlaza a Releases.",
+     "ne": "tu_uim"
+    },
+    {
+     "path": [
+      "upd",
+      "gh"
+     ],
+     "w": "instalador + .sig",
+     "t": "Descarga el instalador",
+     "s": "Descarga el instalador de tu sistema y su firma.",
+     "d": "AppImage, <code>.deb<\/code>, <code>.rpm<\/code>, NSIS, MSI o la app de macOS.",
+     "rt": "archivo"
+    },
+    {
+     "path": [
+      "upd"
+     ],
+     "w": "firma",
+     "t": "Comprueba la firma",
+     "s": "Comprueba que el instalador lo firmó quien publica SSHorus. Si no coincide, no instala nada.",
+     "d": "minisign con la <code>pubkey<\/code> de <code>tauri.conf.json<\/code>.",
+     "k": "ok",
+     "set": {
+      "upd": [
+       "firma válida",
+       "ok"
+      ]
+     }
+    },
+    {
+     "path": [
+      "upd"
+     ],
+     "w": "instalar",
+     "t": "Instala y reinicia",
+     "s": "Instala la versión nueva y SSHorus se reinicia.",
+     "d": "AppImage reemplaza el archivo; <code>.deb<\/code>/<code>.rpm<\/code> con <code>pkexec<\/code> (pide tu contraseña de administrador); Windows en modo pasivo. Reinicia con <code>tauri-plugin-process<\/code>.",
+     "k": "ok"
+    }
+   ]
+  }
+ ]
+}
+</script>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+var reduce=false;
+try{reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){}
+function $(id){return document.getElementById(id);}
+function el(n,a,p){var e=document.createElementNS(NS,n);if(a){for(var k in a){e.setAttribute(k,a[k]);}}if(p){p.appendChild(e);}return e;}
+function h(t,c,x){var e=document.createElement(t);if(c){e.className=c;}if(x!==undefined){e.textContent=x;}return e;}
+function esArr(x){return Object.prototype.toString.call(x)==="[object Array]";}
+function copia(b,o){var x={};for(var k in b){x[k]=b[k];}if(o){for(var j in o){x[j]=o[j];}}return x;}
+
+/* ======================= Parámetros de la dirección ======================= */
+var Q={};
+try{new URLSearchParams(location.search).forEach(function(v,k){Q[k]=v;});}catch(e){}
+var CAPTURA=Q.captura==="1";
+if(CAPTURA){document.body.classList.add("captura");}
+
+/* ======================= Datos (bloque <script id="spec">) ======================= */
+var ERR=[];
+var SPEC={};
+try{SPEC=JSON.parse($("spec").textContent);}catch(e){ERR.push("El bloque de datos (script id=\"spec\") no es JSON válido: "+e.message);}
+var LZ=copia({x:0,y:0,ancho:1280,alto:800,minAncho:900},SPEC.lienzo);
+var NODES=SPEC.nodos||{},EDGES=SPEC.flechas||{},PASOS=SPEC.pasos||{},ZONAS=SPEC.zonas||[];
+var KINDS=["actor","client","server","data","store","queue","ext","mem"];
+var FLAGS=["dev","prop","pend"],KS=["ok","warn","err"],CS=["ok","warn","err","prop"];
+
+/* Iconos (24x24, trazo blanco). Para un icono nuevo: añadir una entrada aquí y usar su clave en "ic". */
+var ICONS={
+  user:'<circle cx="12" cy="8" r="3.7"/><path d="M4.6 20c0-4.1 3.3-6.4 7.4-6.4s7.4 2.3 7.4 6.4"/>',
+  people:'<circle cx="9" cy="8.4" r="3.1"/><path d="M3.4 19.4c0-3.5 2.5-5.4 5.6-5.4s5.6 1.9 5.6 5.4"/><circle cx="16.8" cy="9.4" r="2.5"/><path d="M16.4 14.1c2.6 0 4.4 1.6 4.4 4.7"/>',
+  browser:'<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18"/><circle cx="6" cy="6.8" r=".6" fill="#fff"/><circle cx="8.3" cy="6.8" r=".6" fill="#fff"/><path d="M7 13h10M7 16h6"/>',
+  desktop:'<rect x="3" y="4" width="18" height="12" rx="1.8"/><path d="M9 20h6M12 16v4"/><path d="M6.5 11.6c1.2-2.6 2-2.6 2.6-.2s1.4 1.6 2.2-.2 1.6-1.2 2.4-.2 1.4.7 2-.4"/>',
+  server:'<rect x="4" y="3.5" width="16" height="6.2" rx="1.5"/><rect x="4" y="12.3" width="16" height="6.2" rx="1.5"/><circle cx="7.5" cy="6.6" r=".8" fill="#fff"/><circle cx="7.5" cy="15.4" r=".8" fill="#fff"/><path d="M11 6.6h6M11 15.4h6M12 9.8v2.5M12 18.5V21"/>',
+  api:'<path d="M9.2 5c-2 0-2.6 1-2.6 2.6v2c0 1-.8 2-2.1 2.4 1.3.4 2.1 1.4 2.1 2.4v2c0 1.6.6 2.6 2.6 2.6"/><path d="M14.8 5c2 0 2.6 1 2.6 2.6v2c0 1 .8 2 2.1 2.4-1.3.4-2.1 1.4-2.1 2.4v2c0 1.6-.6 2.6-2.6 2.6"/><circle cx="12" cy="12" r="1" fill="#fff"/>',
+  db:'<ellipse cx="12" cy="6" rx="7.2" ry="2.9"/><path d="M4.8 6v12c0 1.6 3.2 2.9 7.2 2.9s7.2-1.3 7.2-2.9V6"/><path d="M4.8 12c0 1.6 3.2 2.9 7.2 2.9s7.2-1.3 7.2-2.9"/>',
+  disk:'<path d="M4 13.5l2.1-7A2 2 0 0 1 8 5h8a2 2 0 0 1 1.9 1.5l2.1 7"/><rect x="4" y="13.5" width="16" height="5.5" rx="1.6"/><circle cx="16.8" cy="16.2" r=".9" fill="#fff"/><path d="M7.5 16.2h5"/>',
+  queue:'<rect x="3" y="5" width="10" height="3.6" rx="1"/><rect x="3" y="10.2" width="10" height="3.6" rx="1"/><rect x="3" y="15.4" width="10" height="3.6" rx="1"/><path d="M15.6 12h5.4M18.4 9.2 21.2 12l-2.8 2.8"/>',
+  mail:'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.6 7.2 8.4 6.2 8.4-6.2"/>',
+  cloud:'<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7.1 9.2 4.7 4.7 0 0 0 7 18.5z"/>',
+  gate:'<path d="M4 8h13M13.8 4.6 17.2 8l-3.4 3.4M20 16H7M10.2 12.6 6.8 16l3.4 3.4"/>',
+  chip:'<rect x="6.5" y="6.5" width="11" height="11" rx="1.6"/><rect x="10" y="10" width="4" height="4" rx=".6"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/>',
+  cert:'<rect x="4.5" y="3.5" width="15" height="11.5" rx="1.6"/><path d="M8 7.5h8M8 10.5h4"/><circle cx="15.2" cy="16.2" r="3"/><path d="m13.9 19-.8 2.3 2.1-1 2.1 1-.8-2.3"/>',
+  panel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M12 8.5h6M12 12h6M12 15.5h4"/>',
+  file:'<path d="M6.5 3.5h7.2L18.5 8.3V20a.5.5 0 0 1-.5.5H6.5A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z"/><path d="M13.5 3.5V8.5h5M9 12.5h6M9 16h6"/>',
+  cv:'<path d="M6.5 3.5h11a.5.5 0 0 1 .5.5v16a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z"/><circle cx="12" cy="9" r="2"/><path d="M8.8 15.5c.4-1.6 1.6-2.4 3.2-2.4s2.8.8 3.2 2.4M9 18.3h6"/>',
+  chat:'<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7l-4.2 3.5V16.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5z"/><path d="M12 8.2v4.6M9.7 10.5h4.6"/>',
+  briefcase:'<rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17"/>',
+  bookmark:'<path d="M7 3.8h10a.5.5 0 0 1 .5.5V20l-5.5-3.8L6.5 20V4.3a.5.5 0 0 1 .5-.5z"/><path d="M12 7.5v4M10 9.5h4"/>',
+  globe:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5z"/>',
+  wrench:'<path d="M14.5 5.5a4 4 0 0 0-4.6 5.2L4.4 16.2a1.9 1.9 0 0 0 2.7 2.7l5.5-5.5a4 4 0 0 0 5.2-4.6l-2.4 2.4-2.4-.6-.6-2.4z"/>',
+  download:'<path d="M12 4v10M7.5 10 12 14.5 16.5 10M5 19.5h14"/>',
+  layers:'<path d="M12 4 3.5 8.5 12 13l8.5-4.5L12 4z"/><path d="M3.5 12.5 12 17l8.5-4.5M3.5 16 12 20.5l8.5-4.5"/>',
+  send:'<path d="M20.5 3.5 3.5 10.8l6.2 2.3 2.3 6.2z"/><path d="M9.7 13.1 20.5 3.5"/>',
+  flow:'<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="6" cy="18" r="2.2"/><path d="M8.2 6H12a4 4 0 0 1 4 4M8.2 18H12a4 4 0 0 0 4-4"/>',
+  steps:'<path d="M4 19.5h4.5v-5H13v-5h4.5v-5H20"/>',
+  lock:'<rect x="5.5" y="10.5" width="13" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><circle cx="12" cy="15" r="1" fill="#fff"/>'
+};
+
+/* ======================= Validación de los datos ======================= */
+var PAIR={};
+function validarGrafo(){
+  if(!SPEC.escenarios||!esArr(SPEC.escenarios)||!SPEC.escenarios.length){ERR.push("Falta «escenarios»: debe haber al menos uno.");}
+  var ids=Object.keys(NODES);
+  if(!ids.length){ERR.push("Falta «nodos».");}
+  ids.forEach(function(id){
+    var n=NODES[id];
+    if(typeof n.x!=="number"||typeof n.y!=="number"){ERR.push("Nodo «"+id+"»: faltan x e y (centro del icono).");}
+    if(!ICONS[n.ic]){ERR.push("Nodo «"+id+"»: el icono «"+n.ic+"» no existe. Disponibles: "+Object.keys(ICONS).join(", ")+".");}
+    if(KINDS.indexOf(n.k)<0){ERR.push("Nodo «"+id+"»: «k» debe ser uno de "+KINDS.join(", ")+".");}
+    if(!n.n||!n.tag){ERR.push("Nodo «"+id+"»: faltan «n» (nombre) o «tag» (subtítulo).");}
+    if(!n.simple||!esArr(n.guarda)||!n.tech){ERR.push("Nodo «"+id+"»: faltan «simple», «guarda» (lista) o «tech».");}
+    if(n.flag&&(!esArr(n.flag)||FLAGS.indexOf(n.flag[0])<0||!n.flag[1])){ERR.push("Nodo «"+id+"»: «flag» debe ser [\"dev\"|\"prop\"|\"pend\", \"texto\"].");}
+  });
+  Object.keys(EDGES).forEach(function(id){
+    var e=EDGES[id];
+    if(!NODES[e.a]||!NODES[e.b]){ERR.push("Flecha «"+id+"»: «a» o «b» no son nodos.");return;}
+    if(!esArr(e.pts)||e.pts.length<2||e.pts.some(function(p){return !esArr(p)||p.length!==2||typeof p[0]!=="number"||typeof p[1]!=="number";})){ERR.push("Flecha «"+id+"»: «pts» debe ser una lista de al menos dos puntos [x,y].");return;}
+    PAIR[e.a+"|"+e.b]={id:id,rev:false};
+    if(!PAIR[e.b+"|"+e.a]){PAIR[e.b+"|"+e.a]={id:id,rev:true};}
+  });
+  ZONAS.forEach(function(z,i){
+    if(typeof z.x!=="number"||typeof z.y!=="number"||typeof z.ancho!=="number"||typeof z.alto!=="number"){ERR.push("Zona "+(i+1)+": faltan x, y, ancho o alto.");}
+  });
+}
+function validarPaso(s,ctx,est){
+  if(!esArr(s.path)||!s.path.length){ERR.push(ctx+": «path» debe ser una lista de nodos.");return;}
+  s.path.forEach(function(x){if(!NODES[x]){ERR.push(ctx+": el nodo «"+x+"» de «path» no existe.");}});
+  for(var i=1;i<s.path.length;i++){
+    if(NODES[s.path[i-1]]&&NODES[s.path[i]]&&!PAIR[s.path[i-1]+"|"+s.path[i]]){ERR.push(ctx+": no hay flecha entre «"+s.path[i-1]+"» y «"+s.path[i]+"»; añádela en «flechas» o cambia el camino.");}
+  }
+  if(!s.t||!s.s||!s.d){ERR.push(ctx+": faltan «t» (título), «s» (en palabras simples) o «d» (detalle técnico).");}
+  if(s.k&&KS.indexOf(s.k)<0){ERR.push(ctx+": «k» debe ser ok, warn o err.");}
+  if(s.fail&&s.fail!==1&&s.fail!==2){ERR.push(ctx+": «fail» debe ser 1 o 2.");}
+  if(s.fail===1&&s.path.length<2){ERR.push(ctx+": «fail»:1 necesita un camino de al menos dos nodos.");}
+  if(s.ne&&!EDGES[s.ne]){ERR.push(ctx+": «ne» («"+s.ne+"») no es una flecha.");}
+  if(s.wl&&["u","d","l","r"].indexOf(s.wl)<0){ERR.push(ctx+": «wl» debe ser u, d, l o r.");}
+  if(s.bad&&!NODES[s.bad]){ERR.push(ctx+": «bad» («"+s.bad+"») no es un nodo.");}
+  if(s.set){Object.keys(s.set).forEach(function(n){
+    if(!NODES[n]){ERR.push(ctx+": «set» nombra el nodo «"+n+"», que no existe.");}
+    else if(!esArr(s.set[n])||typeof s.set[n][0]!=="string"||["info","ok","warn","err","mut"].indexOf(s.set[n][1])<0){ERR.push(ctx+": «set."+n+"» debe ser [\"texto\",\"info|ok|warn|err|mut\"].");}
+  });}
+  if(s.st){if(!est||!est.claves[s.st]){ERR.push(ctx+": «st» («"+s.st+"») no está en la lista de estados del escenario.");}}
+  if(s.obs&&!esArr(s.obs)){ERR.push(ctx+": «obs» debe ser una lista de textos.");}
+}
+/* Escenarios: un paso puede ser un id de «pasos», {usa:"id", ...cambios} o un paso completo */
+var ESC=[];
+function resolverEscenarios(){
+  (SPEC.escenarios||[]).forEach(function(e,ei){
+    var cx="Escenario "+(ei+1)+" («"+(e.n||"sin nombre")+"»)";
+    if(!e.n){ERR.push(cx+": falta «n».");}
+    if(CS.indexOf(e.c)<0){ERR.push(cx+": «c» debe ser ok, warn, err o prop.");}
+    var estSpec=e.estado||SPEC.estado||null,est=null;
+    if(estSpec){
+      est={titulo:estSpec.titulo||"Estado",lista:estSpec.lista||[],inicial:estSpec.inicial||(estSpec.lista&&estSpec.lista[0]&&estSpec.lista[0][0]),
+        alt:typeof estSpec.alt==="number"?estSpec.alt:-1,publico:estSpec.publico||null,publicoTitulo:estSpec.publicoTitulo||"",claves:{}};
+      est.lista.forEach(function(x){est.claves[x[0]]=1;});
+      if(!est.claves[est.inicial]){ERR.push(cx+": «estado.inicial» no está en «estado.lista».");}
+    }
+    var ss=[];
+    (e.pasos||[]).forEach(function(p,pi){
+      var ctx=cx+", paso "+(pi+1),s;
+      if(typeof p==="string"){
+        if(!PASOS[p]){ERR.push(ctx+": el paso «"+p+"» no existe en «pasos».");return;}
+        s=copia(PASOS[p]);
+      }else if(p&&p.usa){
+        if(!PASOS[p.usa]){ERR.push(ctx+": el paso «"+p.usa+"» no existe en «pasos».");return;}
+        s=copia(PASOS[p.usa],p);delete s.usa;
+      }else if(p&&p.path){s=copia(p);}
+      else{ERR.push(ctx+": no es un id, un {usa} ni un paso con «path».");return;}
+      validarPaso(s,ctx,est);
+      ss.push(s);
+    });
+    if(!ss.length){ERR.push(cx+": no tiene pasos.");}
+    var ini=typeof e.ini==="number"?e.ini:0;
+    if(ini<0||ini>=ss.length){ERR.push(cx+": «ini» fuera de rango.");ini=0;}
+    var tieneObs=ss.some(function(s){return s.obs&&s.obs.length;});
+    ESC.push({n:e.n,c:e.c,ini:ini,steps:ss,est:est,tieneObs:tieneObs});
+  });
+}
+validarGrafo();
+if(!ERR.length){resolverEscenarios();}
+var ARQ=typeof SPEC.escenarioArquitectura==="number"?SPEC.escenarioArquitectura:0;
+if(!ERR.length&&(ARQ<0||ARQ>=ESC.length)){ERR.push("«escenarioArquitectura» fuera de rango.");}
+if(ERR.length){
+  var box=$("errores");box.hidden=false;box.textContent="";
+  box.appendChild(h("b","","El diagrama no se puede dibujar: hay errores en los datos."));
+  var ul=h("ul");ERR.slice(0,40).forEach(function(m){ul.appendChild(h("li","",m));});box.appendChild(ul);
+  return;
+}
+
+/* ======================= Encabezado, leyenda ======================= */
+document.title=SPEC.titulo||document.title;
+$("titulo").textContent=SPEC.titulo||"Diagrama de arquitectura";
+$("subtitulo").textContent=SPEC.subtitulo||"";
+(SPEC.enlaces||[]).forEach(function(l){
+  if(!l||!l.texto||!l.href){return;}
+  $("subtitulo").appendChild(document.createTextNode(" · "));
+  var a=h("a","",l.texto);a.href=l.href;$("subtitulo").appendChild(a);
+});
+var svg=$("svg");
+svg.setAttribute("viewBox",LZ.x+" "+LZ.y+" "+LZ.ancho+" "+LZ.alto);
+svg.style.minWidth=LZ.minAncho+"px";
+svg.setAttribute("aria-label",SPEC.descripcion||SPEC.titulo||"Diagrama de arquitectura");
+svg.setAttribute("class","v-arq");
+(function(){
+  var hayOpt=Object.keys(NODES).some(function(i){return NODES[i].opt;})||Object.keys(EDGES).some(function(i){return EDGES[i].opt;});
+  $("lg-opc").hidden=!hayOpt;
+  var usadas={};Object.keys(NODES).forEach(function(i){if(NODES[i].flag){usadas[NODES[i].flag[0]]=1;}});
+  var fl=$("lg-fl").children;
+  Array.prototype.forEach.call(fl,function(s){var k=s.className.replace("fl ","");s.hidden=!usadas[k];});
+  $("lg-fl").hidden=!Object.keys(usadas).length;
+})();
+
+/* ======================= SVG: defs, zonas, flechas, fichas ======================= */
+var defs=el("defs",null,svg);
+Object.keys(ICONS).forEach(function(k){
+  var s=el("symbol",{id:"i-"+k,viewBox:"0 0 24 24"},defs);
+  var g=el("g",{fill:"none",stroke:"#fff","stroke-width":"1.6","stroke-linecap":"round","stroke-linejoin":"round"},s);
+  g.innerHTML=ICONS[k];
+});
+[["ah"],["ah-o"],["ah-a"]].forEach(function(m){
+  var mk=el("marker",{id:m[0],viewBox:"0 0 10 10",refX:"8.5",refY:"5",markerWidth:"11",markerHeight:"11",markerUnits:"userSpaceOnUse",orient:"auto"},defs);
+  el("path",{d:"M0.5 0.8 9.5 5 0.5 9.2z"},mk);
+});
+var gZ=el("g",null,svg),gE=el("g",null,svg),gN=el("g",null,svg),gNum=el("g",null,svg),gP=el("g",null,svg);
+
+ZONAS.forEach(function(z){
+  el("rect",{x:z.x,y:z.y,width:z.ancho,height:z.alto,rx:14,"class":"zona"},gZ);
+  if(z.abajo){
+    z.abajo.forEach(function(l,i){
+      var t=el("text",{x:z.x+z.ancho/2,y:z.y+z.alto-14-(z.abajo.length-1-i)*16,"class":"zona-t","text-anchor":"middle"},gZ);t.textContent=l;
+    });
+  }else if(z.titulo){
+    var t=el("text",{x:z.x+14,y:z.y+22,"class":"zona-t"},gZ);t.textContent=z.titulo;
+  }
+});
+var edgeEl={};
+Object.keys(EDGES).forEach(function(id){
+  var e=EDGES[id];
+  edgeEl[id]=el("polyline",{points:e.pts.map(function(p){return p.join(",");}).join(" "),"class":"edge"+(e.opt?" opt":"")},gE);
+});
+var nodeEl={},badgeEl={};
+Object.keys(NODES).forEach(function(id){
+  var n=NODES[id];
+  var g=el("g",{"class":"node k-"+n.k+(n.opt?" opt":""),tabindex:"0",role:"button","aria-label":n.n+". "+n.tag+". Pulsa para ver qué es y qué guarda."},gN);
+  el("rect",{"class":"halo",x:n.x-34,y:n.y-34,width:68,height:68,rx:16},g);
+  el("rect",{"class":"tile",x:n.x-30,y:n.y-30,width:60,height:60,rx:13},g);
+  el("rect",{"class":"odash",x:n.x-33,y:n.y-33,width:66,height:66,rx:15},g);
+  el("rect",{"class":"ring",x:n.x-34,y:n.y-34,width:68,height:68,rx:16},g);
+  el("use",{href:"#i-"+n.ic,x:n.x-19,y:n.y-19,width:38,height:38,"class":"ic"},g);
+  var t1=el("text",{"class":"n-name",x:n.x,y:n.y+46},g);t1.textContent=n.n;
+  var t2=el("text",{"class":"n-tag",x:n.x,y:n.y+60},g);t2.textContent=n.tag;
+  var b=el("g",{"class":"badge info"},g);b.setAttribute("visibility","hidden");
+  var br=el("rect",{x:n.x-40,y:n.y+68,width:80,height:16,rx:8},b);
+  var bt=el("text",{x:n.x,y:n.y+80},b);
+  badgeEl[id]={g:b,r:br,t:bt};
+  if(n.flag){
+    var fw=n.flag[1].length*6.4+14;
+    var f=el("g",{"class":"flag "+n.flag[0]},g);
+    el("rect",{x:n.x+16,y:n.y-40,width:fw,height:17,rx:8.5},f);
+    var ft=el("text",{x:n.x+16+fw/2,y:n.y-28},f);ft.textContent=n.flag[1];
+  }
+  nodeEl[id]=g;
+  g.addEventListener("click",function(){elegirNodo(id);});
+  g.addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();elegirNodo(id);}});
+});
+/* Paquete y marca de fallo */
+var pq=el("g",{"class":"pq"},gP);pq.setAttribute("visibility","hidden");
+var pillG=el("g",{transform:"translate(0,-20)"},pq);
+var pillR=el("rect",{"class":"pill",x:-40,y:-11,width:80,height:22,rx:11},pillG);
+var pillT=el("text",{x:0,y:4},pillG);
+el("circle",{"class":"dotp",r:7,cx:0,cy:0},pq);
+var xm=el("g",{"class":"xmark"},gP);xm.setAttribute("visibility","hidden");
+el("circle",{r:13,cx:0,cy:0},xm);
+var xt=el("text",{x:0,y:1},xm);xt.textContent="✕";
+
+/* ======================= Geometría ======================= */
+function dist(a,b){return Math.hypot(b[0]-a[0],b[1]-a[1]);}
+function polyRoute(pts){
+  var cum=[0];for(var i=1;i<pts.length;i++){cum.push(cum[i-1]+dist(pts[i-1],pts[i]));}
+  return {pts:pts,cum:cum,total:cum[cum.length-1]};
+}
+function pointAt(r,d){
+  d=Math.max(0,Math.min(r.total,d));
+  for(var i=1;i<r.pts.length;i++){
+    if(d<=r.cum[i]||i===r.pts.length-1){
+      var seg=r.cum[i]-r.cum[i-1],u=seg?(d-r.cum[i-1])/seg:1;
+      return {x:r.pts[i-1][0]+(r.pts[i][0]-r.pts[i-1][0])*u,y:r.pts[i-1][1]+(r.pts[i][1]-r.pts[i-1][1])*u,
+              dx:r.pts[i][0]-r.pts[i-1][0],dy:r.pts[i][1]-r.pts[i-1][1]};
+    }
+  }
+}
+/* Ruta del paquete: une las flechas de los saltos del camino */
+function buildRoute(path){
+  var pts=[],hops=[];
+  for(var i=1;i<path.length;i++){
+    var info=PAIR[path[i-1]+"|"+path[i]];
+    var p=EDGES[info.id].pts.slice();if(info.rev){p.reverse();}
+    hops.push({id:info.id,from:pts.length,to:pts.length+p.length-1});
+    pts=pts.concat(p);
+  }
+  var r=polyRoute(pts);
+  hops.forEach(function(hp){hp.d0=r.cum[hp.from];hp.d1=r.cum[hp.to];});
+  r.hops=hops;
+  return r;
+}
+function ease(p){return p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;}
+
+/* ======================= Estado de la vista ======================= */
+var vista="arq",esc=0,idx=0,playing=false,speed=1,gen=0,timer=0,raf=0,selNodo=null,modo="resumen";
+var canvas=$("canvas");
+function steps(){return ESC[esc].steps;}
+function escenarioNumeros(){return vista==="arq"?ESC[ARQ]:ESC[esc];}
+
+function calcular(k){
+  var mem={},est=ESC[esc].est,st=est?est.inicial:"",obs=[],vistos={};
+  if(est){vistos[st]=1;}
+  var ss=steps();
+  for(var i=0;i<=k&&i<ss.length;i++){
+    var s=ss[i];
+    if(s.set){for(var n in s.set){mem[n]=s.set[n];}}
+    if(s.st){st=s.st;vistos[st]=1;}
+    if(s.obs){obs=s.obs;}
+  }
+  return {mem:mem,st:st,obs:obs,vistos:vistos};
+}
+
+/* ======================= Insignias, números, atenuado ======================= */
+function pintarInsignias(k){
+  var c=calcular(k);
+  Object.keys(badgeEl).forEach(function(id){
+    var b=badgeEl[id],m=c.mem[id];
+    if(!m||!m[0]){b.g.setAttribute("visibility","hidden");return;}
+    var w=m[0].length*6.9+18;
+    b.r.setAttribute("x",NODES[id].x-w/2);b.r.setAttribute("width",w);
+    b.t.textContent=m[0];
+    b.g.setAttribute("class","badge "+m[1]);
+    b.g.setAttribute("visibility","visible");
+  });
+  return c;
+}
+function usados(){
+  var n={},e={};
+  steps().forEach(function(s){
+    s.path.forEach(function(x){n[x]=1;});
+    if(s.set){for(var k in s.set){n[k]=1;}}
+    for(var i=1;i<s.path.length;i++){e[PAIR[s.path[i-1]+"|"+s.path[i]].id]=1;}
+  });
+  return {n:n,e:e};
+}
+function pintarAtenuado(){
+  var u=vista==="anim"?usados():null;
+  Object.keys(nodeEl).forEach(function(id){nodeEl[id].classList.toggle("dim",!!u&&!u.n[id]);});
+  Object.keys(edgeEl).forEach(function(id){edgeEl[id].classList.toggle("dim",!!u&&!u.e[id]);});
+}
+var numEls=[];
+function textoPalabra(g,x,y,side,t){
+  var w=el("text",{x:x,y:y,"class":"word","text-anchor":side==="r"?"start":side==="l"?"end":"middle"},g);
+  w.textContent=t;
+}
+function dibujarNumeros(){
+  gNum.textContent="";numEls=[];
+  var sc=escenarioNumeros(),ss=sc.steps,porArista={},internos=[];
+  ss.forEach(function(s,i){
+    if(s.path.length>1){var id=s.ne||PAIR[s.path[0]+"|"+s.path[1]].id;(porArista[id]=porArista[id]||[]).push(i);}
+    else{internos.push(i);}
+  });
+  var u=vista==="anim"?usados():null;
+  function crear(i,x,y,palabra,lado,id){
+    var s=ss[i];
+    var g=el("g",{"class":"num"+(u&&!u.e[id||""]&&id?" dim":"")},gNum);
+    var tt=el("title",null,g);tt.textContent=(i+1)+". "+s.t;
+    el("circle",{cx:x,cy:y,r:11},g);
+    var t=el("text",{x:x,y:y+.5,"class":"nt"},g);t.textContent=String(i+1);
+    if(vista==="arq"&&palabra){textoPalabra(g,lado==="r"?x+16:lado==="l"?x-16:x,lado==="u"?y-18:lado==="d"?y+27:y+4,lado,palabra);}
+    numEls[i]=g;
+  }
+  Object.keys(porArista).forEach(function(id){
+    var lista=porArista[id],r=polyRoute(EDGES[id].pts);
+    lista.forEach(function(i,j){
+      var p=pointAt(r,r.total*(j+1)/(lista.length+1));
+      var horiz=Math.abs(p.dx)>=Math.abs(p.dy);
+      var lado=ss[i].wl||(horiz?(j%2?"d":"u"):(j%2?"l":"r"));
+      crear(i,p.x,p.y,ss[i].w,lado,id);
+    });
+  });
+  var apiladas={};
+  internos.forEach(function(i){
+    var id=ss[i].path[0],n=NODES[id],k=apiladas[id]||0;
+    apiladas[id]=k+1;
+    crear(i,n.x-38-k*25,n.y-36,ss[i].w,ss[i].wl||"l");
+  });
+}
+function pintarNumeros(k){
+  numEls.forEach(function(g,i){
+    if(!g){return;}
+    var cl="num";
+    if(vista==="anim"){
+      var s=steps()[i];
+      if(i>k){cl+=" future";}
+      else if(i===k){cl+=" cur"+(s.k?" "+s.k:"");}
+      else{cl+=" past";}
+    }
+    if(g.getAttribute("class").indexOf("dim")>=0){cl+=" dim";}
+    g.setAttribute("class",cl);
+  });
+}
+
+/* ======================= Panel ======================= */
+function panelResumen(){
+  modo="resumen";
+  var r=SPEC.resumen||{};
+  $("p-meta").textContent="";$("p-meta").appendChild(h("span","chip",r.chip||"Arquitectura"));
+  $("p-title").textContent=r.titulo||"Cómo está armado";
+  $("p-simple").textContent=r.simple||"";
+  $("p-guarda-wrap").hidden=true;
+  var t=r.tech;
+  $("p-tech").innerHTML=esArr(t)?"<ul>"+t.map(function(x){return "<li>"+x+"</li>";}).join("")+"</ul>":(t||"");
+  $("p-det").hidden=!t;
+  $("p-back").hidden=true;
+  $("p-hint").textContent=r.pista||"Pulsa cualquier ficha para ver qué es y qué guarda.";
+}
+function panelNodo(id){
+  modo="nodo";
+  var n=NODES[id];
+  var m=$("p-meta");m.textContent="";
+  m.appendChild(h("span","chip",n.tag));
+  if(n.flag){m.appendChild(h("span","chip "+n.flag[0],n.flag[1]));}
+  $("p-title").textContent=n.n;
+  $("p-simple").textContent=n.simple;
+  var ul=$("p-guarda");ul.textContent="";
+  n.guarda.forEach(function(x){ul.appendChild(h("li","",x));});
+  $("p-guarda-wrap").hidden=!n.guarda.length;
+  $("p-det").hidden=false;
+  $("p-tech").innerHTML=n.tech;
+  $("p-back").hidden=vista!=="anim";
+  $("p-hint").textContent="";
+}
+function panelPaso(k){
+  modo="paso";
+  var s=steps()[k];
+  var m=$("p-meta");m.textContent="";
+  m.appendChild(h("span","cnt","Paso "+(k+1)+" de "+steps().length));
+  var lab={ok:"Correcto",warn:"Atención",err:"Rechazo o error"}[s.k||""];
+  if(lab){m.appendChild(h("span","chip "+s.k,lab));}
+  if(s.tag){m.appendChild(h("span","chip",s.tag));}
+  $("p-title").textContent=s.t;
+  $("p-simple").textContent=s.s;
+  $("p-guarda-wrap").hidden=true;
+  $("p-det").hidden=false;
+  $("p-tech").innerHTML=s.d;
+  $("p-back").hidden=true;
+  $("p-hint").textContent="";
+}
+function elegirNodo(id){
+  if(vista==="anim"){playing=false;clearTimeout(timer);actualizarControles();}
+  selNodo=id;
+  Object.keys(nodeEl).forEach(function(k){nodeEl[k].classList.toggle("sel",k===id);});
+  panelNodo(id);
+  try{if(window.matchMedia("(max-width:1040px)").matches){$("panel").scrollIntoView({block:"nearest",behavior:reduce?"auto":"smooth"});}}catch(e){}
+}
+function quitarSeleccion(){
+  selNodo=null;
+  Object.keys(nodeEl).forEach(function(k){nodeEl[k].classList.remove("sel");});
+}
+
+/* ======================= Barra de estado ======================= */
+function filasEstado(){
+  var e=ESC[esc],an=vista==="anim";
+  $("fila-estados").hidden=!e.est;
+  $("fila-obs").hidden=!e.tieneObs;
+  $("estado").hidden=!an||(!e.est&&!e.tieneObs);
+  if(e.est){$("lbl-estado").textContent=e.est.titulo;}
+}
+function pintarEstado(k){
+  var e=ESC[esc],est=e.est,c=calcular(k),kind=k>=0?(steps()[k].k||""):"";
+  if(est){
+    var ch=$("chain");ch.textContent="";
+    est.lista.forEach(function(it,i){
+      if(i===est.alt){ch.appendChild(h("li","sep","/"));}
+      else if(i>0){ch.appendChild(h("li","sep","→"));}
+      var li=h("li","",it[1]);
+      if(it[0]===c.st){li.className="cur"+(k>=0&&steps()[k].st===c.st&&kind?" "+kind:"");}
+      else if(c.vistos[it[0]]){li.className="seen";}
+      ch.appendChild(li);
+    });
+    var v=$("vis");v.textContent="";
+    if(est.publico&&est.publico[c.st]){
+      v.appendChild(document.createTextNode(est.publicoTitulo||""));
+      v.appendChild(h("b","",est.publico[c.st]));
+    }
+  }
+  if(e.tieneObs){
+    var ob=$("obs");ob.textContent="";
+    if(c.obs.length){c.obs.forEach(function(x){ob.appendChild(h("span","",x));});}
+    else{ob.appendChild(h("em","","Ninguna"));}
+  }
+}
+
+/* ======================= Controles ======================= */
+function actualizarControles(){
+  var n=steps().length;
+  $("b-ant").disabled=idx<=0;
+  $("b-sig").disabled=idx>=n-1;
+  $("t-play").textContent=playing?"Pausar":(idx>=n-1?"Repetir":"Reproducir");
+  $("ico-play").innerHTML=playing?'<path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z"/>':'<path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l12-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/>';
+  Array.prototype.forEach.call($("dots").children,function(li,i){
+    var b=li.firstChild;
+    b.classList.toggle("cur",i===idx);b.classList.toggle("past",i<idx);
+    if(i===idx){b.setAttribute("aria-current","step");}else{b.removeAttribute("aria-current");}
+  });
+}
+function construirPuntos(){
+  var ol=$("dots");ol.textContent="";
+  steps().forEach(function(s,i){
+    var li=h("li");var b=h("button","dot "+(s.k||""),String(i+1));b.type="button";
+    b.setAttribute("aria-label","Paso "+(i+1)+": "+s.t);b.title=(i+1)+". "+s.t;
+    b.addEventListener("click",function(){ir(i);});
+    li.appendChild(b);ol.appendChild(li);
+  });
+}
+
+/* ======================= Animación ======================= */
+function limpiarEscena(){
+  pq.setAttribute("visibility","hidden");xm.setAttribute("visibility","hidden");
+  Object.keys(nodeEl).forEach(function(id){nodeEl[id].classList.remove("r-info","r-ok","r-warn","r-err");});
+  Object.keys(edgeEl).forEach(function(id){edgeEl[id].classList.remove("act");});
+}
+function cancelar(){gen++;clearTimeout(timer);cancelAnimationFrame(raf);limpiarEscena();}
+function seguir(x){
+  if(canvas.scrollWidth<=canvas.clientWidth+1){return;}
+  var f=svg.getBoundingClientRect().width/LZ.ancho;
+  canvas.scrollLeft=(x-LZ.x)*f-canvas.clientWidth/2;
+}
+function etiqueta(t,kind){
+  pillT.textContent=t;
+  var w=Math.max(40,t.length*6.9+20);
+  pillR.setAttribute("x",-w/2);pillR.setAttribute("width",w);
+  pq.setAttribute("class","pq"+(kind?" "+kind:""));
+}
+function mover(r,a,b,ms,mi,fin){
+  var t0=performance.now();
+  function f(t){
+    if(mi!==gen){return;}
+    var p=Math.min(1,(t-t0)/ms),d=a+(b-a)*ease(p);
+    var pt=pointAt(r,d);
+    pq.setAttribute("transform","translate("+pt.x+","+pt.y+")");
+    seguir(pt.x);
+    if(p<1){raf=requestAnimationFrame(f);}else{fin();}
+  }
+  raf=requestAnimationFrame(f);
+}
+function viajar(s,mi,fin){
+  var r=buildRoute(s.path),tope=r.total;
+  if(s.fail===1){var hp=r.hops[r.hops.length-1];tope=hp.d0+(hp.d1-hp.d0)*.55;}
+  var ms=Math.min(2800,650+tope*1.9)/speed;
+  etiqueta(s.w||"",s.k==="err"?"err":s.k==="warn"?"warn":"");
+  pq.setAttribute("visibility","visible");
+  var p0=pointAt(r,0);pq.setAttribute("transform","translate("+p0.x+","+p0.y+")");
+  mover(r,0,tope,ms,mi,function(){
+    if(s.rt&&!s.fail){
+      timer=setTimeout(function(){
+        if(mi!==gen){return;}
+        etiqueta(s.rt,"ok");
+        mover(r,tope,0,ms*.7,mi,function(){pq.setAttribute("visibility","hidden");fin();});
+      },260/speed);
+    }else{
+      pq.setAttribute("visibility","hidden");fin();
+    }
+  });
+}
+function posFallo(s){
+  if(s.fail===1){
+    var r=buildRoute(s.path),hp=r.hops[r.hops.length-1],p=pointAt(r,hp.d0+(hp.d1-hp.d0)*.55);
+    return {x:p.x,y:p.y};
+  }
+  var n=NODES[s.bad||s.path[s.path.length-1]];
+  return {x:n.x+30,y:n.y-30};
+}
+function llegada(i){
+  var s=steps()[i];
+  var c=pintarInsignias(i);
+  pintarEstado(i);pintarNumeros(i);
+  limpiarEscena();
+  for(var j=1;j<s.path.length;j++){edgeEl[PAIR[s.path[j-1]+"|"+s.path[j]].id].classList.add("act");}
+  var fin=s.bad||s.path[s.path.length-1];
+  var kind=s.k||"info";
+  nodeEl[fin].classList.add("r-"+kind);
+  if(s.fail){var p=posFallo(s);xm.setAttribute("transform","translate("+p.x+","+p.y+")");xm.setAttribute("visibility","visible");}
+  seguir(NODES[fin].x);
+  actualizarControles();
+  return c;
+}
+function mostrar(i,animar,cb){
+  cancelar();var mi=gen;
+  idx=i;quitarSeleccion();
+  panelPaso(i);
+  var s=steps()[i];
+  actualizarControles();
+  if(!animar||reduce){llegada(i);if(cb){cb();}return;}
+  pintarInsignias(i-1);pintarEstado(i-1);pintarNumeros(i);
+  for(var j=1;j<s.path.length;j++){edgeEl[PAIR[s.path[j-1]+"|"+s.path[j]].id].classList.add("act");}
+  function fin(){if(mi!==gen){return;}llegada(i);if(cb){cb();}}
+  if(s.path.length>1){viajar(s,mi,fin);}
+  else{timer=setTimeout(fin,450/speed);}
+}
+function programar(){
+  if(!playing){return;}
+  if(idx>=steps().length-1){playing=false;actualizarControles();return;}
+  var mi=gen;
+  clearTimeout(timer);
+  timer=setTimeout(function(){
+    if(playing&&mi===gen){mostrar(idx+1,true,programar);}
+  },(1500+steps()[idx].s.length*13)/speed);
+}
+function reproducir(){
+  if(playing){playing=false;clearTimeout(timer);actualizarControles();return;}
+  playing=true;
+  if(idx>=steps().length-1){mostrar(0,true,programar);}
+  else{actualizarControles();programar();}
+}
+function ir(i){
+  playing=false;
+  mostrar(Math.max(0,Math.min(steps().length-1,i)),true);
+}
+
+/* ======================= Escenarios y vistas ======================= */
+var ICO_C={ok:"✓",warn:"⚠",err:"✕",prop:"◌"};
+function construirSelector(){
+  var s=$("esc");s.textContent="";
+  ESC.forEach(function(e,i){var o=h("option","",ICO_C[e.c]+"  "+e.n);o.value=String(i);s.appendChild(o);});
+  s.value=String(esc);
+}
+function etiquetaEscenario(){
+  var e=ESC[esc],t=$("sc-tag");
+  var cl={ok:["Funciona","ok"],warn:["Queda por revisar o reintentar","warn"],err:["Se detiene","err"],prop:["Propuesto","prop"]}[e.c];
+  t.textContent=cl[0];
+  t.style.background="var(--"+({ok:"ok-soft",warn:"warn-soft",err:"err-soft",prop:"acc-soft"}[e.c])+")";
+  t.style.color="var(--"+({ok:"ok",warn:"warn",err:"err",prop:"acc"}[e.c])+")";
+}
+function elegirEscenario(i,autoplay,paso){
+  cancelar();esc=i;
+  $("esc").value=String(i);
+  etiquetaEscenario();
+  construirPuntos();dibujarNumeros();pintarAtenuado();filasEstado();
+  $("leg-num").textContent="Orden del paso (los claros aún no ocurren)";
+  playing=autoplay&&!reduce;
+  mostrar(typeof paso==="number"?paso:ESC[i].ini,false,programar);
+}
+function cambiarVista(v,paso){
+  vista=v;
+  var an=v==="anim";
+  $("tab-arq").setAttribute("aria-selected",an?"false":"true");
+  $("tab-anim").setAttribute("aria-selected",an?"true":"false");
+  $("toolbar").hidden=!an;$("anim-bar").hidden=!an;
+  svg.setAttribute("class",an?"v-anim":"v-arq");
+  cancelar();quitarSeleccion();playing=false;
+  if(an){
+    elegirEscenario(esc,!CAPTURA,paso);
+  }else{
+    filasEstado();
+    Object.keys(badgeEl).forEach(function(id){badgeEl[id].g.setAttribute("visibility","hidden");});
+    $("leg-num").textContent="Orden de «"+ESC[ARQ].n+"»";
+    dibujarNumeros();pintarAtenuado();pintarNumeros(-1);
+    panelResumen();
+  }
+  try{history.replaceState(null,"",location.search+"#"+(an?"recorrido":"arquitectura"));}catch(e){}
+}
+
+/* ======================= Tema ======================= */
+var TEMAS=["auto","light","dark"],temaIdx=0;
+(function(){
+  var q=(Q.tema||"").toLowerCase();
+  if(q==="claro"||q==="light"){temaIdx=1;}
+  else if(q==="oscuro"||q==="dark"){temaIdx=2;}
+  else{try{var t=localStorage.getItem("diagrama-tema");if(t&&TEMAS.indexOf(t)>=0){temaIdx=TEMAS.indexOf(t);}}catch(e){}}
+  aplicarTema();
+})();
+function aplicarTema(){
+  var t=TEMAS[temaIdx];
+  if(t==="auto"){document.documentElement.removeAttribute("data-theme");}else{document.documentElement.setAttribute("data-theme",t);}
+  var nombre={auto:"automático",light:"claro",dark:"oscuro"}[t];
+  $("tema").title="Tema: "+nombre;$("tema").setAttribute("aria-label","Cambiar tema (ahora: "+nombre+")");
+}
+
+/* ======================= Eventos ======================= */
+$("tab-arq").addEventListener("click",function(){cambiarVista("arq");});
+$("tab-anim").addEventListener("click",function(){cambiarVista("anim");});
+$("esc").addEventListener("change",function(){elegirEscenario(parseInt(this.value,10),true);});
+$("b-play").addEventListener("click",reproducir);
+$("b-sig").addEventListener("click",function(){ir(idx+1);});
+$("b-ant").addEventListener("click",function(){ir(idx-1);});
+$("b-ini").addEventListener("click",function(){ir(0);});
+$("vel").addEventListener("click",function(ev){
+  var b=ev.target.closest("button");if(!b){return;}
+  speed=parseFloat(b.dataset.v)||1;
+  Array.prototype.forEach.call($("vel").children,function(x){x.setAttribute("aria-pressed",x===b?"true":"false");});
+});
+$("p-back").addEventListener("click",function(){quitarSeleccion();panelPaso(idx);});
+$("tema").addEventListener("click",function(){
+  temaIdx=(temaIdx+1)%TEMAS.length;aplicarTema();
+  try{localStorage.setItem("diagrama-tema",TEMAS[temaIdx]);}catch(e){}
+});
+document.addEventListener("keydown",function(ev){
+  if(vista!=="anim"||ev.altKey||ev.ctrlKey||ev.metaKey){return;}
+  var t=ev.target&&ev.target.tagName;
+  if(t==="SELECT"||t==="INPUT"||t==="TEXTAREA"||t==="SUMMARY"){return;}
+  if(ev.key==="ArrowRight"){ev.preventDefault();ir(idx+1);}
+  else if(ev.key==="ArrowLeft"){ev.preventDefault();ir(idx-1);}
+});
+
+/* ======================= Inicio ======================= */
+/* ?vista=arquitectura|recorrido (o #recorrido), ?escenario=N y ?paso=K (desde 1), ?captura=1, ?tema=claro|oscuro */
+construirSelector();
+(function(){
+  var an=Q.vista==="recorrido"||(!Q.vista&&location.hash==="#recorrido");
+  var e=parseInt(Q.escenario,10),p=parseInt(Q.paso,10);
+  if(e>=1&&e<=ESC.length){esc=e-1;}
+  var paso=(p>=1&&p<=ESC[esc].steps.length)?p-1:undefined;
+  cambiarVista(an?"anim":"arq",paso);
+})();
+})();
+</script>
+</body>
+</html>
