@@ -267,6 +267,44 @@ pararlo o quitarlo. Desde la app de Claude en el celular: «¿hay algo caído?»
   Aprobado por el usuario: **aprobación automática** opcional (por tarea, 1 hora o siempre; lo peligroso aparte),
   **segundo plano** con aviso fijo de Android y **aviso al terminar** (o si necesita tu OK), y **seguridad con
   huella** (abrir la app y usar sudo con la contraseña guardada).
+- **Pedido del usuario (16/11/2026): permisos configurables por servidor.** Que la IA no toque ciertos servidores
+  y, en otros, solo pueda hacer ciertas cosas (p. ej. en un servidor solo crear/editar/borrar usuarios; en otro
+  solo Caddy y poco más). Diseño propuesto:
+  - Por servidor: **Sin acceso** (ni aparece) · **Solo mirar** · **Solo lo marcado** · **Todo**.
+  - «Solo lo marcado» = casillas por tarea: Usuarios (crear / editar / borrar por separado), Sitios web (Caddy,
+    nginx), Contenedores, Servicios (systemd), Paquetes, Archivos (solo en carpetas elegidas), Firewall, y
+    **Comandos libres** (apagado por defecto: si está encendido, la IA podría hacer cualquier cosa y las
+    casillas ya no limitan).
+  - Plantillas: «Solo usuarios», «Solo web», «Despliegue», «Todo». Igual que la aprobación automática, se puede
+    poner por servidor.
+  - Doble candado (opcional): además de la regla en la app, un usuario del servidor con `sudoers` limitado a esos
+    comandos (p. ej. solo `useradd`/`usermod`/`userdel`, o solo `systemctl reload caddy` y escribir en
+    `/etc/caddy/sites/`). Así, aunque la app fallara, el servidor no deja hacer más. SSHorus podría crearlo con
+    un asistente.
+  - Sirve también para el MCP del escritorio (hoy solo tiene Sin acceso / Solo lectura / Completo).
+- **El usuario quiere usar su suscripción con Claude Code, no clave de API (16/11/2026).** Única forma en el
+  propio celular: **Claude Code corriendo en el celular** (Termux, un Linux dentro de Android), con su `/login`
+  normal (o la sesión copiada con copysse), y la APK haciendo lo mismo que el escritorio con la terminal local:
+  lanzar Claude Code con el contexto y con el **MCP de SSHorus Móvil** (la APK sirve el MCP en `127.0.0.1` y hace el
+  SSH directo). Sin PC ni VPS en medio. Riesgo: Claude Code no tiene soporte oficial en Android → **primero una
+  prueba de viabilidad**: Termux + Node + `npm install -g @anthropic-ai/claude-code`, `/login`, un `claude -p`
+  con un MCP local, y ver segundo plano y batería. Si no funciona: clave de API (plan B).
+  **Resultado de la prueba (16/11/2026, Termux 0.118, Node 24, `android arm64`):** la versión actual de Claude Code
+  (2.1.325) **no se instala**: ya trae binarios nativos y no hay para Android («linux-arm64-android are not available»;
+  sí hay `linux-arm64` y `linux-arm64-musl`). **La 2.1.112 sí funciona** (`npm install -g @anthropic-ai/claude-code@2.1.112`),
+  que todavía corre sobre Node. Problema: queda fija en una versión vieja (hay que apagar la actualización automática
+  con `DISABLE_AUTOUPDATER=1`) y algún día el servicio podría dejar de aceptarla. Camino a probar para tener la
+  versión actual: `proot-distro` (un Debian dentro de Termux, con glibc) e instalar ahí el binario oficial
+  `linux-arm64`. Falta probar `/login`, `claude -p` en segundo plano y un MCP local.
+- **Decidido (16/11/2026): la APK lleva su propio Linux mínimo**, al estilo Termux pero solo lo necesario para
+  correr Claude Code (primero), Codex, agy y OpenCode con sus instaladores oficiales y al día:
+  - **Debian por defecto** (glibc: máxima compatibilidad; ~100–150 MB instalado). **El usuario puede elegir**
+    otra distro (p. ej. Alpine, ~10 MB, musl: Claude Code y Codex tienen binario musl; agy quizá no).
+  - `proot` para que los programas vean un Linux normal (`/etc`, certificados, DNS) sin root.
+  - APK con `targetSdk 28` (como Termux) para poder ejecutar lo descargado y que Claude Code se actualice
+    solo; se instala a mano, no por Google Play.
+  - No se empaqueta Claude Code dentro de la APK: se baja con su instalador oficial (licencia).
+  - Siguiente paso: probar el mismo montaje en Termux con `proot-distro install debian` + instalador oficial.
 
 **7. Limpieza.** ✅ Hecha el 13/11/2026: borradas `../TERVIEW-v050` (rama `v0.5.0`; la etiqueta sigue) y
 las copias de `.claude/worktrees/`.
