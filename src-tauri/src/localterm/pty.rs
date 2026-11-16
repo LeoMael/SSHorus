@@ -154,6 +154,11 @@ impl LocalPty {
         }
     }
 
+    /// Proceso principal (la shell o el asistente).
+    pub fn pid(&self) -> Option<u32> {
+        self.inner.pid
+    }
+
     pub fn is_finished(&self) -> bool {
         self.inner.finished.load(Ordering::SeqCst)
     }

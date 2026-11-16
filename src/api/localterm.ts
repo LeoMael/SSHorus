@@ -43,6 +43,13 @@ export interface LocalOpened {
   warning: string | null;
 }
 
+/** Lo que hace ahora la shell de una pestaña local (null = no se sabe en este sistema). */
+export interface LocalTermState {
+  cwd: string | null;
+  /** Ejecuta otro programa en primer plano. */
+  busy: boolean | null;
+}
+
 export interface ExportedAlias {
   serverId: string;
   alias: string;
@@ -63,6 +70,8 @@ export const localTerm = {
   resize: (termId: string, cols: number, rows: number) => call<void>("local_term_resize", { termId, cols, rows }),
   /** Termina el programa y todo lo que lanzó. */
   close: (termId: string) => call<void>("local_term_close", { termId }),
+  /** Carpeta actual de la shell y si está ocupada con otro programa. */
+  state: (termId: string) => call<LocalTermState>("local_term_state", { termId }),
   /** ¿Qué asistentes de IA están instalados? */
   detect: () => call<AiToolInfo[]>("local_ai_detect"),
   /** Alias de ~/.ssh/config exportados por SSHorus que llevan de verdad a cada servidor. */

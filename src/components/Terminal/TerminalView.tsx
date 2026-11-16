@@ -12,6 +12,7 @@ import {
   type TermStatus,
   type TmuxState,
 } from "./termController";
+import { cleanCopiedText } from "./termText";
 
 interface TerminalViewProps {
   sessionId: string;
@@ -169,7 +170,7 @@ export function TerminalView({
           onSendToAi={
             onSendToAi
               ? () => {
-                  const text = ctrlRef.current?.term.getSelection() ?? "";
+                  const text = cleanCopiedText(ctrlRef.current?.term.getSelection() ?? "");
                   if (text.trim()) onSendToAi(text);
                 }
               : undefined

@@ -6,7 +6,7 @@
 import { createElement } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { localTerm, type AiTool, type AiToolInfo } from "../../api/localterm";
+import { localTerm, type AiLaunch, type AiTool, type AiToolInfo } from "../../api/localterm";
 import { mcp, type McpConfig } from "../../api/mcp";
 import { confirmDialog } from "../../components/ui/dialogs";
 import { openSettingsAt } from "../../components/Settings/settingsNav";
@@ -256,23 +256,27 @@ export async function detectAssistants(): Promise<AiToolInfo[] | null> {
   }
 }
 
+/** Asistente listo para abrir: qué lanzar y las líneas informativas de la terminal. */
+export interface PreparedAssistant {
+  launch: AiLaunch;
+  intro: string[];
+}
+
 /**
- * Abre un asistente de IA en una pestaña local, en la última carpeta elegida, con el contexto de
- * SSHorus (y su MCP si está activo y el asistente lo admite). Si no está instalado, ofrece instalarlo.
- * `paste`: texto para pegar en el asistente cuando esté listo.
+ * Prepara un asistente de IA en `cwd` con el contexto de SSHorus (y su MCP si está activo y el
+ * asistente lo admite). Si no está instalado, ofrece instalarlo y devuelve null (también si se cancela).
  */
-export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null; paste?: string | null } = {}) {
-  const cwd = opts.cwd ?? lastCwd();
+export async function prepareAssistant(tool: AiTool, cwd: string | null): Promise<PreparedAssistant | null> {
   const all = await detectAssistants();
   const info = all?.find((i) => i.tool === tool);
-  if (!info) return;
+  if (!info) return null;
   if (!info.installed) {
     await offerInstall(info, cwd);
-    return;
+    return null;
   }
   // Si el asistente no admite el MCP, no se pregunta por él: se abre con el contexto.
   const withMcp = info.supportsMcp ? await decideMcp() : false;
-  if (withMcp === null) return;
+  if (withMcp === null) return null;
   let context: { text: string | null; servers: number } = { text: null, servers: 0 };
   try {
     context = await gatherContext(cwd, withMcp);
@@ -289,13 +293,21 @@ export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null;
     def.login,
   ];
   markToolUsed(tool);
-  openLocalTab({
-    kind: tool,
-    cwd,
-    launch: { tool, context: context.text, mcp: withMcp },
-    intro,
-    pendingPaste: opts.paste ?? null,
-  });
+  return { launch: { tool, context: context.text, mcp: withMcp }, intro };
+}
+
+/** Abre un asistente en una pestaña local nueva, en la última carpeta elegida (ver `prepareAssistant`).
+ *  `paste`: texto para pegar en el asistente cuando esté listo. */
+export async function launchAssistant(tool: AiTool, opts: { cwd?: string | null; paste?: string | null } = {}) {
+  const cwd = opts.cwd ?? lastCwd();
+  const prepared = await prepareAssistant(tool, cwd);
+  if (!prepared) return;
+  openLocalTab({ kind: tool, cwd, ...prepared, pendingPaste: opts.paste ?? null });
+}
+
+/** Contexto de SSHorus sin MCP, para pegarlo a mano en un asistente («Copiar contexto»). */
+export async function plainContext(cwd: string | null): Promise<string> {
+  return (await gatherContext(cwd, false, true)).text ?? "";
 }
 
 // ───────── Enviar a la IA ─────────
@@ -328,7 +340,8 @@ export async function pasteWhenReady(getCtrl: () => TermController | null, text:
 export async function sendToAi(text: string, serverName: string | null) {
   const payload = selectionForAi(text, serverName);
   const tabs = useLocalTabs.getState().tabs;
-  const target = [...tabs].reverse().find((t) => t.kind !== "shell" && t.aiAlive);
+  // También las terminales normales con un asistente abierto encima («Asistente con contexto»).
+  const target = [...tabs].reverse().find((t) => t.aiAlive);
   if (target) {
     useTabs.getState().setActive(target.id);
     await pasteWhenReady(() => getLocalController(target.id), payload);

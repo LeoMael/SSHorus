@@ -4,16 +4,21 @@ import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Bot, Laptop, Plug } from "lucide-react";
 import { localTerm } from "../../api/localterm";
 import { TerminalView } from "../../components/Terminal/TerminalView";
-import type { TermBackend, TermController, TermStatus } from "../../components/Terminal/termController";
+import type { TermController, TermStatus } from "../../components/Terminal/termController";
+import { onTerminalExit } from "../../components/Terminal/exitEvents";
 import "../../components/Terminal/Terminal.css";
 import "../../components/Session/SessionView.css";
 import { kindLabel } from "./logic";
 import { pasteWhenReady } from "./launch";
-import { getLocalController, setLocalController, updateLocalTab, type LocalTab } from "./store";
+import { getLocalController, setLocalController, setLocalSession, updateLocalTab, type LocalTab } from "./store";
+import { LocalSession, type LocalApi } from "./session";
+import { HereMenu } from "./HereMenu";
 import "./LocalTerm.css";
 
 /** Para escribir en la shell recién abierta: se espera a que dibuje su prompt (máx. 1,5 s). */
 const INPUT_WAIT_MS = 1500;
+
+const LOCAL_API: LocalApi = { ...localTerm, onExit: onTerminalExit };
 
 export const LocalTerminalView = memo(function LocalTerminalView({ tab, active }: { tab: LocalTab; active: boolean }) {
   // Lo que se lanza solo la primera vez: al terminar el asistente, Enter abre una shell normal.
@@ -22,22 +27,26 @@ export const LocalTerminalView = memo(function LocalTerminalView({ tab, active }
   const tabId = tab.id;
   const cwd = tab.cwd;
 
-  const backend = useMemo<TermBackend>(
-    () => ({
-      open: async (cols, rows, onData) => {
+  const backend = useMemo(
+    () =>
+      new LocalSession(LOCAL_API, async (cols, rows, onData) => {
         const launch = launchRef.current;
         launchRef.current = null;
         const r = await localTerm.open({ cwd, cols, rows, launch }, onData);
         if (launch) updateLocalTab(tabId, { mcp: r.mcp, aiAlive: true });
         if (r.warning) ctrlRef.current?.note(r.warning);
         return { termId: r.termId };
-      },
-      write: localTerm.write,
-      resize: localTerm.resize,
-      close: localTerm.close,
-    }),
+      }),
     [tabId, cwd],
   );
+
+  useEffect(() => {
+    setLocalSession(tabId, backend);
+    return () => {
+      setLocalSession(tabId, null);
+      backend.dispose();
+    };
+  }, [tabId, backend]);
 
   const firstRun = useRef(true);
   const onStatus = useCallback(
@@ -79,13 +88,14 @@ export const LocalTerminalView = memo(function LocalTerminalView({ tab, active }
 
   useEffect(() => () => setLocalController(tabId, null), [tabId]);
 
-  const isAi = tab.kind !== "shell";
+  const running = tab.here ?? (tab.kind !== "shell" ? tab.kind : null);
+  const isAi = running !== null;
   return (
     <div className={`sv-root lt-root${active ? "" : " sv-hidden"}`} aria-hidden={!active || undefined}>
       <div className="lt-bar">
         {isAi ? <Bot size={14} /> : <Laptop size={14} />}
         <span className="lt-where">Este equipo</span>
-        {isAi && <span className="lt-kind">{kindLabel(tab.kind)}</span>}
+        {running && <span className="lt-kind">{kindLabel(running)}</span>}
         <span className="lt-cwd mono" title={tab.cwd ?? "Carpeta personal"}>
           {tab.cwd ?? "~"}
         </span>
@@ -94,6 +104,7 @@ export const LocalTerminalView = memo(function LocalTerminalView({ tab, active }
             <Plug size={11} /> MCP
           </span>
         )}
+        <HereMenu tab={tab} />
       </div>
       <div className="term-body">
         <TerminalView

@@ -384,3 +384,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Aviso al pegar varias líneas */
+.term-paste-preview {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  white-space: pre;
+}

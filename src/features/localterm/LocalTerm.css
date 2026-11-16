@@ -109,3 +109,15 @@
   overflow: auto;
   word-break: normal;
 }
+
+/* «Asistente con contexto» en la barra de la terminal local */
+.lt-here-btn {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+}

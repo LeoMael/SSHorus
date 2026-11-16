@@ -2,11 +2,12 @@
 // la pestaña activa (`useTabs.activeTabId`), pero se guardan aparte: así nada de lo que trabaja con
 // conexiones SSH (privilegios, monitor, transferencias…) las confunde con un servidor.
 import { create } from "zustand";
-import type { AiLaunch } from "../../api/localterm";
+import type { AiLaunch, AiTool } from "../../api/localterm";
 import type { TermController, TermStatus } from "../../components/Terminal/termController";
 import { useTabs } from "../../stores/tabs";
 import { moveById } from "../tabbar/order";
 import { pickNeighbor, titleFor, type LocalKind } from "./logic";
+import type { LocalSession } from "./session";
 
 export interface LocalTab {
   /** Empieza por «local-» (nunca choca con un sessionId). */
@@ -28,6 +29,8 @@ export interface LocalTab {
   mcp: boolean;
   /** El asistente sigue abierto (no ha salido a la shell): «Enviar a la IA» pega aquí. */
   aiAlive: boolean;
+  /** Asistente abierto encima de la shell con «Asistente con contexto» (null = ninguno). */
+  here: AiTool | null;
 }
 
 interface LocalTabsState {
@@ -63,6 +66,7 @@ export function openLocalTab(opts: OpenLocalOpts = {}): string {
     status: "opening",
     mcp: false,
     aiAlive: false,
+    here: null,
   };
   useLocalTabs.setState((s) => ({ tabs: [...s.tabs, tab] }));
   useTabs.getState().setActive(tab.id);
@@ -88,6 +92,7 @@ export function closeLocalTab(id: string) {
   const next = pickNeighbor(ids, id);
   useLocalTabs.setState((s) => ({ tabs: s.tabs.filter((t) => t.id !== id) }));
   controllers.delete(id);
+  sessions.delete(id);
   if (useTabs.getState().activeTabId === id) useTabs.setState({ activeTabId: next });
 }
 
@@ -95,7 +100,7 @@ export function moveLocalTab(id: string, toIndex: number) {
   useLocalTabs.setState((s) => ({ tabs: moveById(s.tabs, id, toIndex) }));
 }
 
-// ───────── Controladores (para pegar texto desde fuera) ─────────
+// ───────── Controladores y sesiones (para pegar texto o abrir un asistente desde fuera) ─────────
 
 const controllers = new Map<string, TermController>();
 
@@ -106,6 +111,17 @@ export function setLocalController(id: string, c: TermController | null) {
 
 export function getLocalController(id: string): TermController | null {
   return controllers.get(id) ?? null;
+}
+
+const sessions = new Map<string, LocalSession>();
+
+export function setLocalSession(id: string, s: LocalSession | null) {
+  if (s) sessions.set(id, s);
+  else sessions.delete(id);
+}
+
+export function getLocalSession(id: string): LocalSession | null {
+  return sessions.get(id) ?? null;
 }
 
 // ───────── Pestaña de servidor que se miraba (para el contexto) ─────────

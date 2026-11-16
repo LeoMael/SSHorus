@@ -12,7 +12,7 @@
 //!
 //! Archivos: `tools` (los asistentes, como datos) · `aicli` (dónde están) · `args` (con qué
 //! argumentos se abren) · `launch` (MCP, contexto y comando final) · `env` (entorno del proceso) ·
-//! `pty` (la terminal) · `aliases` (alias de `~/.ssh/config`).
+//! `pty` (la terminal) · `state` (carpeta actual de la shell) · `aliases` (alias de `~/.ssh/config`).
 
 pub mod aicli;
 pub mod aliases;
@@ -20,6 +20,7 @@ pub mod args;
 pub mod env;
 pub mod launch;
 pub mod pty;
+pub mod state;
 pub mod tools;
 
 use std::collections::HashMap;

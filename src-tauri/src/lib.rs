@@ -95,6 +95,7 @@ pub fn run() {
             localterm::local_term_write,
             localterm::local_term_resize,
             localterm::local_term_close,
+            localterm::state::local_term_state,
             localterm::local_ai_detect,
             localterm::local_ai_ssh_aliases,
             // sftp

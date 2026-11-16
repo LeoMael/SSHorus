@@ -6,7 +6,6 @@ import "@xterm/xterm/css/xterm.css";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SearchAddon, type ISearchResultChangeEvent } from "@xterm/addon-search";
-import { WebglAddon } from "@xterm/addon-webgl";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { terminal } from "../../api/terminal";
 import { errorMessage } from "../../api/core";
@@ -14,8 +13,11 @@ import { toast } from "../../stores/toasts";
 import { buildSearchDecorations, buildTermTheme, onAppThemeChange } from "./termTheme";
 import { ensureExitListener, onTerminalExit } from "./exitEvents";
 import { clipboard } from "../../lib/clipboard";
-import { getTerminalGpu, isWebglUnsupported, markWebglUnsupported, onTerminalGpuChange } from "./gpuPref";
 import { matchesShortcut } from "../../features/shortcuts/shortcuts";
+import { RENDER_OPTIONS, TermGpu, enableUnicode11 } from "./termRender";
+import { terminalFontStack } from "./termFont";
+import { cleanCopiedText, isPlainCtrlC } from "./termText";
+import { confirmPaste } from "./pasteGuard";
 
 export type TermStatus = "opening" | "running" | "exited";
 /** Estado de la conexión SSH de la pestaña (de `useTabs`). */
@@ -75,8 +77,9 @@ export interface SearchResults {
  *  decidir qué mensaje mostrar: el vigilante del motor detecta la caída en ~1,5 s. */
 const EXIT_GRACE_MS = 2500;
 
-/** Si el contexto WebGL se pierde más veces que esto, la terminal se queda con el dibujado normal. */
-const MAX_WEBGL_LOSSES = 2;
+/** Espera tras el último cambio de tamaño antes de ajustar columnas y filas (y avisar al programa):
+ *  al arrastrar el borde de la ventana, el programa redibuja una vez y no en cada píxel. */
+const FIT_DEBOUNCE_MS = 80;
 
 const DIM = (s: string) => `\x1b[0m\x1b[2m${s}\x1b[0m`;
 const RED = (s: string) => `\x1b[0m\x1b[31m${s}\x1b[0m`;
@@ -117,10 +120,7 @@ export class TermController {
   private readonly ro: ResizeObserver;
   private readonly unTheme: () => void;
   private unExit: (() => void) | null = null;
-  private readonly unGpu: () => void;
-  /** Dibujado por GPU (null = dibujado normal por DOM). */
-  private webgl: WebglAddon | null = null;
-  private webglLosses = 0;
+  private readonly gpu: TermGpu;
 
   constructor(host: HTMLElement, opts: TermControllerOptions) {
     this.host = host;
@@ -135,9 +135,9 @@ export class TermController {
     this.connState = opts.connState;
 
     this.term = new Terminal({
+      ...RENDER_OPTIONS,
       fontSize: opts.fontSize,
-      fontFamily: opts.fontFamily,
-      lineHeight: 1.1,
+      fontFamily: terminalFontStack(opts.fontFamily),
       theme: buildTermTheme(),
       cursorBlink: true,
       cursorStyle: "block",
@@ -145,9 +145,8 @@ export class TermController {
       drawBoldTextInBrightColors: true,
       macOptionIsMeta: true,
       rightClickSelectsWord: false,
-      // Las decoraciones de la búsqueda usan la API "experimental".
-      allowProposedApi: true,
     });
+    enableUnicode11(this.term);
     this.term.loadAddon(this.fit);
     this.term.loadAddon(this.search);
     this.term.loadAddon(
@@ -160,19 +159,15 @@ export class TermController {
     this.term.attachCustomKeyEventHandler(this.handleKey);
     this.term.onData((d) => this.handleInput(d));
     this.term.onResize(() => this.sendResize());
+    // Todo pegado (también el del sistema: clic central en Linux) pasa por el aviso de varias líneas.
+    this.term.element?.addEventListener("paste", this.handlePasteEvent, true);
 
     this.ro = new ResizeObserver(() => this.scheduleFit());
     this.ro.observe(host);
     this.unTheme = onAppThemeChange(() => {
       if (!this.disposed) this.term.options.theme = buildTermTheme();
     });
-    this.unGpu = onTerminalGpuChange((on) => {
-      if (on) {
-        this.webglLosses = 0;
-        this.enableWebgl();
-      } else this.disableWebgl();
-    });
-    this.enableWebgl();
+    this.gpu = new TermGpu(this.term);
     // Cuando cargan las fuentes cambian las medidas de cada celda.
     document.fonts?.ready.then(() => this.fitNow()).catch(() => {});
 
@@ -183,39 +178,6 @@ export class TermController {
   /** Escribir, redimensionar y cerrar: por SSH o por el `backend` propio. */
   private get api(): Pick<TermBackend, "write" | "resize" | "close"> {
     return this.backend ?? terminal;
-  }
-
-  // ───────── Dibujado por GPU (WebGL) ─────────
-
-  /** Activa el dibujado por GPU si está permitido y disponible; si falla, sigue con el normal (DOM). */
-  private enableWebgl() {
-    if (this.disposed || this.webgl) return;
-    if (!getTerminalGpu() || isWebglUnsupported() || this.webglLosses > MAX_WEBGL_LOSSES) return;
-    try {
-      const addon = new WebglAddon();
-      addon.onContextLoss(() => {
-        // La tarjeta gráfica se reinició o hay demasiados contextos abiertos: volver al dibujado normal.
-        this.webglLosses++;
-        this.disableWebgl();
-      });
-      this.term.loadAddon(addon);
-      this.webgl = addon;
-    } catch (e) {
-      console.warn("Terminal: sin aceleración por GPU, se usa el dibujado normal", e);
-      markWebglUnsupported();
-    }
-  }
-
-  private disableWebgl() {
-    const w = this.webgl;
-    if (!w) return;
-    this.webgl = null;
-    try {
-      w.dispose();
-    } catch {
-      /* ya estaba liberado */
-    }
-    if (!this.disposed) this.term.refresh(0, this.term.rows - 1);
   }
 
   // ───────── Ciclo de vida de la shell ─────────
@@ -408,6 +370,14 @@ export class TermController {
       }
       return false;
     }
+    // Ctrl+C con texto seleccionado copia (y quita la selección); sin selección, interrumpe.
+    if (isPlainCtrlC(ev) && this.term.hasSelection()) {
+      if (ev.type === "keydown") {
+        ev.preventDefault();
+        this.copy(true);
+      }
+      return false;
+    }
     const copy = matchesShortcut("term.copy", ev);
     if (copy || matchesShortcut("term.paste", ev)) {
       if (ev.type === "keydown") {
@@ -443,21 +413,37 @@ export class TermController {
     this.term.write(`${DIM(text.replace(/\r?\n/g, "\r\n"))}\r\n`);
   }
 
-  copy() {
-    const sel = this.term.getSelection();
+  /** Copia la selección sin los espacios de relleno del final de cada línea. */
+  copy(clearSelection = false) {
+    const sel = cleanCopiedText(this.term.getSelection());
     if (!sel) return;
     clipboard.write(sel).catch((e) => toast.error("No se pudo copiar", e));
+    if (clearSelection) this.term.clearSelection();
   }
 
   paste() {
     clipboard
       .read()
-      .then((text) => {
-        if (text && !this.disposed) this.term.paste(text);
-      })
+      .then((text) => this.pasteChecked(text))
       .catch((e) => toast.error("No se pudo leer el portapapeles", e));
     this.term.focus();
   }
+
+  /** Pega lo que pegó el usuario, avisando antes si son varias líneas y el programa las ejecutaría. */
+  private async pasteChecked(text: string) {
+    if (!text || this.disposed) return;
+    const ok = await confirmPaste(text, this.term.modes.bracketedPasteMode);
+    if (!this.disposed) {
+      if (ok) this.term.paste(text);
+      this.term.focus();
+    }
+  }
+
+  private handlePasteEvent = (ev: ClipboardEvent) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    void this.pasteChecked(ev.clipboardData?.getData("text/plain") ?? "");
+  };
 
   selectAll() {
     this.term.selectAll();
@@ -511,7 +497,7 @@ export class TermController {
 
   private scheduleFit() {
     clearTimeout(this.fitTimer);
-    this.fitTimer = setTimeout(() => this.fitNow(), 50);
+    this.fitTimer = setTimeout(() => this.fitNow(), FIT_DEBOUNCE_MS);
   }
 
   /** Ajusta columnas/filas al contenedor, solo si está visible. */
@@ -537,7 +523,7 @@ export class TermController {
     requestAnimationFrame(() => {
       if (this.disposed) return;
       // Si perdió el contexto GPU mientras estaba oculta, reintentar (con límite).
-      if (!this.webgl) this.enableWebgl();
+      this.gpu.enable();
       this.fitNow();
       if (focus) this.term.focus();
     });
@@ -549,9 +535,10 @@ export class TermController {
 
   setFont(size: number, family: string) {
     if (this.disposed) return;
-    if (this.term.options.fontSize === size && this.term.options.fontFamily === family) return;
+    const stack = terminalFontStack(family);
+    if (this.term.options.fontSize === size && this.term.options.fontFamily === stack) return;
     this.term.options.fontSize = size;
-    this.term.options.fontFamily = family;
+    this.term.options.fontFamily = stack;
     this.fitNow();
   }
 
@@ -567,8 +554,8 @@ export class TermController {
     this.cancelExitMessage();
     this.ro.disconnect();
     this.unTheme();
-    this.unGpu();
-    this.disableWebgl();
+    this.term.element?.removeEventListener("paste", this.handlePasteEvent, true);
+    this.gpu.dispose();
     this.unExit?.();
     if (this.termId) this.api.close(this.termId).catch(() => {});
     this.termId = null;
