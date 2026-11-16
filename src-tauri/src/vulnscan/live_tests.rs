@@ -9,6 +9,8 @@
 //!   `cargo test --lib vulnscan::live_tests::images -- --ignored --nocapture`
 //! - Servidor de pruebas `terview-sshd` (127.0.0.1:2222, usuario `test`, sin sudo):
 //!   `cargo test --lib vulnscan::live_tests::sshd -- --ignored --nocapture`
+//! - Arreglar y volver a comprobar (contenedor `alpine:3.18.0` con red: actualiza openssl dentro):
+//!   `cargo test --lib vulnscan::live_tests::recheck -- --ignored --nocapture`
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -271,4 +273,71 @@ async fn distro_fedora_44_dnf5() {
     assert_eq!(dnf.label, "dnf advisory");
     assert!(r.osv_sample.is_empty(), "Fedora no va a OSV");
     assert!(r.findings.iter().all(|f| f.sources == [SourceId::Distro] && f.has_fix));
+}
+
+// ───────────── Arreglar y volver a comprobar ─────────────
+
+/// Contenedor de larga duración (se borra al soltarlo) para poder cambiar sus paquetes entre análisis.
+struct Box(String);
+
+impl Box {
+    fn start(image: &str) -> Self {
+        let name = format!("sshorus-recheck-{}", uuid::Uuid::new_v4().simple());
+        let ok = Command::new("podman").args(["run", "-d", "--name", &name, image, "sleep", "900"]).status().is_ok_and(|s| s.success());
+        assert!(ok, "no se pudo arrancar {image}");
+        Box(name)
+    }
+
+    fn sh(&self, script: &str) -> String {
+        let mut child = Command::new("podman")
+            .args(["exec", "-i", &self.0, "sh", "-s"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(script.as_bytes()).unwrap();
+        let out = child.wait_with_output().unwrap();
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    }
+
+    async fn scan(&self) -> Report {
+        let input = ScanInput {
+            server_id: "prueba-recheck".into(),
+            detect: raw(self.sh(&script_for(&ScriptRequest::Detect))),
+            inventory: raw(self.sh(&script_for(&ScriptRequest::Inventory))),
+            use_osv: true,
+            ..Default::default()
+        };
+        let p = quiet();
+        analyze(&input, Some(&HttpOsv::default()), &OsvCache::system(), &CancellationToken::new(), &p).await.unwrap()
+    }
+}
+
+impl Drop for Box {
+    fn drop(&mut self) {
+        let _ = Command::new("podman").args(["rm", "-f", "-t", "0", &self.0]).output();
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn recheck_after_upgrading_openssl_in_alpine_3_18_0() {
+    assert!(has_image("docker.io/library/alpine:3.18.0"), "falta alpine:3.18.0");
+    let b = Box::start("docker.io/library/alpine:3.18.0");
+    let base = b.scan().await;
+    let before: Vec<&Finding> = base.findings.iter().filter(|f| f.package == "openssl").collect();
+    assert!(before.iter().any(|f| f.id == "CVE-2023-2650"), "openssl 3.1.0-r4 tiene CVE-2023-2650");
+    // Lo que haría «Arreglar» (fixPlan.ts, apk): un solo comando con los binarios de openssl.
+    let bins = before[0].binaries.join(" ");
+    let out = b.sh(&format!("apk update >/dev/null && apk upgrade {bins} 2>&1; echo rc=$?"));
+    eprintln!("apk upgrade {bins}: {}", out.lines().last().unwrap_or(""));
+    assert!(out.contains("rc=0"), "{out}");
+    let partial = b.scan().await;
+    let merged = super::recheck::merge_system(&base, &partial);
+    let after = merged.findings.iter().filter(|f| f.package == "openssl").count();
+    eprintln!("openssl: {} vulnerabilidades antes, {after} después; total {} → {}", before.len(), base.summary.total, merged.summary.total);
+    assert!(!merged.findings.iter().any(|f| f.package == "openssl" && f.id == "CVE-2023-2650"), "lo arreglado desaparece");
+    assert!(after < before.len());
+    assert!(merged.summary.total < base.summary.total);
 }

@@ -187,6 +187,39 @@ pub async fn run_cancellable(
     run_inner(session, command, stdin, timeout_secs, Some(cancel), true).await
 }
 
+/// Recibe la salida según llega: (es stderr, texto). Sin la marca de PID del arranque.
+pub type OutputSink<'a> = &'a (dyn Fn(bool, &str) + Send + Sync);
+
+/// Como [`run_cancellable`], pero además pasa la salida a `sink` según llega (para mostrarla en vivo).
+pub async fn run_live(
+    session: &SshSession,
+    command: &str,
+    stdin: Option<&[u8]>,
+    timeout_secs: u32,
+    cancel: &CancellationToken,
+    sink: OutputSink<'_>,
+) -> AppResult<ExecResult> {
+    run_core(session, command, stdin, timeout_secs, Some(cancel), true, Some(sink)).await
+}
+
+/// Envía a `sink` lo nuevo de `buf` desde `sent`. Un carácter UTF-8 cortado al final espera al
+/// siguiente trozo; `all` = enviar todo lo que quede.
+fn emit_new(buf: &[u8], sent: &mut usize, stderr: bool, all: bool, sink: OutputSink<'_>) {
+    let new = &buf[(*sent).min(buf.len())..];
+    if new.is_empty() {
+        return;
+    }
+    let take = match std::str::from_utf8(new) {
+        Ok(_) => new.len(),
+        Err(e) if e.error_len().is_none() && !all => e.valid_up_to(),
+        Err(_) => new.len(),
+    };
+    if take > 0 {
+        sink(stderr, &String::from_utf8_lossy(&new[..take]));
+        *sent += take;
+    }
+}
+
 /// Lo que se va leyendo del canal.
 #[derive(Default)]
 struct Output {
@@ -300,6 +333,18 @@ pub(super) async fn run_inner(
     cancel: Option<&CancellationToken>,
     channel_signals: bool,
 ) -> AppResult<ExecResult> {
+    run_core(session, command, stdin, timeout_secs, cancel, channel_signals, None).await
+}
+
+async fn run_core(
+    session: &SshSession,
+    command: &str,
+    stdin: Option<&[u8]>,
+    timeout_secs: u32,
+    cancel: Option<&CancellationToken>,
+    channel_signals: bool,
+    sink: Option<OutputSink<'_>>,
+) -> AppResult<ExecResult> {
     if command.trim().is_empty() {
         return Err(AppError::Invalid("El comando está vacío".into()));
     }
@@ -337,6 +382,7 @@ pub(super) async fn run_inner(
     let mut out = Output::default();
     let mut timed_out = false;
     let mut canceled = false;
+    let (mut sent_out, mut sent_err) = (0usize, 0usize);
 
     loop {
         let msg = tokio::select! {
@@ -356,7 +402,15 @@ pub(super) async fn run_inner(
                 break;
             }
             Ok(msg) => match out.handle(msg) {
-                Flow::Continue => {}
+                Flow::Continue => {
+                    if let Some(sink) = sink {
+                        emit_new(&out.stdout, &mut sent_out, false, false, sink);
+                        // stderr solo cuando ya se quitó la marca de PID.
+                        if out.mark_search_done {
+                            emit_new(&out.stderr, &mut sent_err, true, false, sink);
+                        }
+                    }
+                }
                 Flow::Closed => break,
                 Flow::Rejected => {
                     let _ = writer.close().await;
@@ -364,6 +418,10 @@ pub(super) async fn run_inner(
                 }
             },
         }
+    }
+    if let Some(sink) = sink {
+        emit_new(&out.stdout, &mut sent_out, false, true, sink);
+        emit_new(&out.stderr, &mut sent_err, true, true, sink);
     }
 
     if timed_out || canceled {
@@ -391,4 +449,24 @@ pub(super) async fn run_inner(
         truncated: out.truncated,
         timed_out,
     })
+}
+
+#[cfg(test)]
+mod live_tests {
+    use super::emit_new;
+    use std::sync::Mutex;
+
+    #[test]
+    fn utf8_cut_in_half_waits_for_the_rest() {
+        let got = Mutex::new(Vec::<String>::new());
+        let sink = |_: bool, t: &str| got.lock().unwrap().push(t.to_string());
+        let text = "Configurando ñandú".as_bytes();
+        let cut = text.iter().position(|&b| b == 0xC3).unwrap() + 1; // mitad de «ñ»
+        let mut sent = 0;
+        emit_new(&text[..cut], &mut sent, false, false, &sink);
+        emit_new(text, &mut sent, false, false, &sink);
+        emit_new(text, &mut sent, false, true, &sink);
+        assert_eq!(got.lock().unwrap().join(""), "Configurando ñandú");
+        assert_eq!(got.lock().unwrap().len(), 2);
+    }
 }

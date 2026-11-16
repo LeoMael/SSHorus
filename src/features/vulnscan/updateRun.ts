@@ -51,6 +51,31 @@ export function ownerScript(engine: Engine, user: UserCtx | null, inner: string)
   return vulnscan.script({ kind: "asOwner", engine, user, script: inner });
 }
 
+/**
+ * Ejecuta `script` con su execId en `c` (para «Cancelar»). Lanza `UpdateCanceled` si se canceló y
+ * `ElevationError` si falla sudo. Con `onOutput`, la salida llega también en vivo.
+ */
+export async function runCancellable(
+  sessionId: string,
+  script: string,
+  el: Elevation,
+  timeoutSecs: number,
+  c: UpdateCancel,
+  onOutput?: (text: string, stderr: boolean) => void,
+): Promise<ExecResult> {
+  if (c.canceled) throw new UpdateCanceled();
+  const execId = newExecId();
+  c.execId = execId;
+  try {
+    return await runScript(sessionId, script, el, "", timeoutSecs, execId, onOutput);
+  } catch (e) {
+    if (isApiError(e, "Canceled") || c.canceled) throw new UpdateCanceled();
+    throw e;
+  } finally {
+    c.execId = null;
+  }
+}
+
 /** Ejecuta `inner` como el dueño. Lanza `UpdateCanceled` si se canceló y `ElevationError` si falla sudo. */
 export async function runAsOwner(
   sessionId: string,
@@ -62,21 +87,11 @@ export async function runAsOwner(
   c: UpdateCancel,
 ): Promise<ExecResult> {
   if (c.canceled) throw new UpdateCanceled();
-  const script = await ownerScript(engine, user, inner);
-  const execId = newExecId();
-  c.execId = execId;
-  try {
-    return await runScript(sessionId, script, el, "", timeoutSecs, execId);
-  } catch (e) {
-    if (isApiError(e, "Canceled") || c.canceled) throw new UpdateCanceled();
-    throw e;
-  } finally {
-    c.execId = null;
-  }
+  return runCancellable(sessionId, await ownerScript(engine, user, inner), el, timeoutSecs, c);
 }
 
 /** Una ejecución del vulnscan (listado o lectura de imagen) con el contexto del dueño. */
-async function scanScript(
+export async function scanScript(
   sessionId: string,
   req: Parameters<typeof vulnscan.script>[0],
   el: Elevation,
@@ -84,17 +99,7 @@ async function scanScript(
   c: UpdateCancel,
 ): Promise<ExecResult> {
   if (c.canceled) throw new UpdateCanceled();
-  const script = await vulnscan.script(req);
-  const execId = newExecId();
-  c.execId = execId;
-  try {
-    return await runScript(sessionId, script, el, "", timeoutSecs, execId);
-  } catch (e) {
-    if (isApiError(e, "Canceled") || c.canceled) throw new UpdateCanceled();
-    throw e;
-  } finally {
-    c.execId = null;
-  }
+  return runCancellable(sessionId, await vulnscan.script(req), el, timeoutSecs, c);
 }
 
 export interface RescanResult {

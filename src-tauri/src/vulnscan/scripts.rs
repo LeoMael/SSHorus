@@ -62,6 +62,8 @@ if command -v pro >/dev/null 2>&1; then
 fi
 echo @@docker
 if command -v docker >/dev/null 2>&1 && docker info --format '{{{{.ServerVersion}}}}' >/dev/null 2>&1; then echo ok; else echo no; fi
+echo @@reboot
+if [ -f /var/run/reboot-required ]; then echo required; fi
 echo @@end
 "#
     )

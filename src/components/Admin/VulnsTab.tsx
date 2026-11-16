@@ -28,10 +28,12 @@ import { errorMessage } from "../../api/core";
 import { ai, vulnscan, type Finding, type Report, type Severity } from "../../api/vulnscan";
 import {
   cancelScan,
+  fixKind,
   loadStoreUsers,
   startScan,
   useVulnNav,
   useVulnScan,
+  type FixKind,
   type Phase,
 } from "../../features/vulnscan";
 import { useLock } from "../../features/lock/lockStore";
@@ -45,6 +47,9 @@ import { VulnDetail } from "./VulnDetail";
 import { AiAnswer, AiExplainDialog } from "./AiExplainDialog";
 import { ExportDialog, HistoryDialog, OptionsDialog, OsvSampleDialog, UsersDialog } from "./VulnsDialogs";
 import { originLabel, SEV_LABEL, SEV_ORDER, SevTag, SOURCE_LABEL, sudoToolOf } from "./vulnUi";
+import { VulnFixBar } from "./VulnFixBar";
+import { FixDialog } from "./FixDialog";
+import { useVulnFix } from "./useVulnFix";
 import "./Vulns.css";
 
 const KERNEL_KEY = "__kernel__";
@@ -100,6 +105,8 @@ export function VulnsTab() {
   const [severity, setSeverity] = useState<Severity | "all">("all");
   const [origin, setOrigin] = useState("all");
   const [onlyFix, setOnlyFix] = useState(false);
+  const [fixFilter, setFixFilter] = useState<FixKind | null>(null);
+  const fix = useVulnFix(sessionId, report);
   const [showUnimportant, setShowUnimportant] = useState(false);
   const [query, setQuery] = useState("");
   const [kernelOpen, setKernelOpen] = useState(false);
@@ -175,9 +182,10 @@ export function VulnsTab() {
           (severity === "all" || f.severity === severity) &&
           (origin === "all" || f.target === origin) &&
           (!onlyFix || f.hasFix) &&
+          (!fixFilter || (!!report && fixKind(report, f) === fixFilter)) &&
           matches(f, query.trim()),
       ),
-    [all, showUnimportant, severity, origin, onlyFix, query],
+    [all, report, showUnimportant, severity, origin, onlyFix, fixFilter, query],
   );
   const rows = useMemo<Row[]>(() => {
     const kernel = filtered.filter((f) => f.kernel && f.target === "system");
@@ -385,7 +393,7 @@ export function VulnsTab() {
           <button
             className="btn btn-sm btn-primary"
             onClick={() => void analyze()}
-            disabled={disabled}
+            disabled={disabled || !!fix.checking}
             title={disabled ? "Sin conexión con el servidor" : "Analiza el servidor (solo lectura)"}
           >
             <Play size={13} /> Analizar
@@ -472,6 +480,18 @@ export function VulnsTab() {
       ) : (
         <>
           <VulnSummary report={report} diff={diff} severity={severity} onSeverity={setSeverity} />
+          <VulnFixBar
+            report={report}
+            sessionId={sessionId}
+            sudoTool={tool}
+            filter={fixFilter}
+            onFilter={setFixFilter}
+            onFixAll={() => fix.openFix(report.findings)}
+            checking={fix.checking}
+            onRecheck={() => void fix.recheck()}
+            onCancelCheck={fix.cancelRecheck}
+            disabled={disabled || running}
+          />
           {report.ai && (
             <details className="vs-ai-details">
               <summary>
@@ -555,7 +575,7 @@ export function VulnsTab() {
               placeholder={
                 <div className="adm-empty-text">
                   {all.length === 0 ? "No se encontraron vulnerabilidades conocidas." : "Ninguna coincide con los filtros."}
-                  {all.length > 0 && (query || severity !== "all" || origin !== "all" || onlyFix) && (
+                  {all.length > 0 && (query || severity !== "all" || origin !== "all" || onlyFix || fixFilter) && (
                     <div>
                       <button
                         className="btn btn-sm"
@@ -564,6 +584,7 @@ export function VulnsTab() {
                           setSeverity("all");
                           setOrigin("all");
                           setOnlyFix(false);
+                          setFixFilter(null);
                         }}
                       >
                         Quitar filtros
@@ -580,6 +601,7 @@ export function VulnsTab() {
                 kernel={selRow.kind === "kernel" ? selRow.items : null}
                 sessionId={sessionId}
                 tool={tool}
+                onFix={running || disabled ? undefined : fix.openFix}
                 onClose={() => setSelected(null)}
               />
             )}
@@ -602,6 +624,7 @@ export function VulnsTab() {
         </>
       )}
 
+      {fix.fixScope && report && <FixDialog report={report} findings={fix.fixScope} onClose={fix.closeFix} />}
       {dialog === "osv" && <OsvSampleDialog report={report ?? null} onClose={() => setDialog(null)} />}
       {dialog === "history" && (
         <HistoryDialog

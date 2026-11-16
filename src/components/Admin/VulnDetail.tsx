@@ -1,10 +1,10 @@
 // Panel lateral con el detalle de un hallazgo (o de la fila agrupada del kernel).
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { Box, CloudDownload, ExternalLink, RotateCcw, X } from "lucide-react";
+import { Box, CloudDownload, ExternalLink, RotateCcw, Wrench, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { errorMessage } from "../../api/core";
 import { vulnscan, type Finding, type Report, type Target, type VulnDetail as Detail } from "../../api/vulnscan";
-import { canUpdateImage, fixSuggestion, kernelSuggestion, targetOf, type FixSuggestion, type SudoTool } from "../../features/vulnscan";
+import { canUpdateImage, fixKind, fixSuggestion, kernelSuggestion, targetOf, type FixSuggestion, type SudoTool } from "../../features/vulnscan";
 import { toast } from "../../stores/toasts";
 import { useAdmin } from "./context";
 import { CommandActions, findingLinks, originLabel, SevTag, SOURCE_LABEL } from "./vulnUi";
@@ -50,11 +50,23 @@ function ImageUpdate({ report, target }: { report: Report; target: Target }) {
   );
 }
 
-function Fix({ sessionId, fix, update }: { sessionId: string; fix: FixSuggestion; update?: ReactNode }) {
+/** Botón «Arreglar» (ejecuta la actualización tras mostrarla y pedir confirmación). */
+function FixButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <div className="vs-d-actions">
+      <button className="btn btn-sm btn-primary" onClick={onClick} title="Muestra el comando exacto y pide confirmación antes de ejecutarlo con sudo">
+        <Wrench size={12} /> {label}
+      </button>
+    </div>
+  );
+}
+
+function Fix({ sessionId, fix, update, action }: { sessionId: string; fix: FixSuggestion; update?: ReactNode; action?: ReactNode }) {
   return (
     <section className="vs-d-sec">
       <h4>Cómo arreglarlo</h4>
       {update}
+      {action}
       {fix.command && (
         <>
           <pre className="mono vs-cmd">{fix.command}</pre>
@@ -71,7 +83,9 @@ function Fix({ sessionId, fix, update }: { sessionId: string; fix: FixSuggestion
       <p className="vs-d-note faint">
         {update
           ? "«Actualizar imagen» muestra los comandos exactos y pide confirmación antes de ejecutar nada."
-          : "SSHorus no lo ejecuta: revísalo antes de pulsar Enter."}
+          : action
+            ? "«Arreglar» lo ejecuta por ti tras confirmar; o cópialo y revísalo antes de pulsar Enter."
+            : "SSHorus no lo ejecuta: revísalo antes de pulsar Enter."}
       </p>
     </section>
   );
@@ -110,6 +124,7 @@ export function VulnDetail({
   kernel,
   sessionId,
   tool,
+  onFix,
   onClose,
 }: {
   report: Report;
@@ -119,6 +134,8 @@ export function VulnDetail({
   kernel: Finding[] | null;
   sessionId: string;
   tool: SudoTool;
+  /** Abre «Arreglar» con esos hallazgos (undefined = no se puede ahora). */
+  onFix?: (findings: Finding[]) => void;
   onClose: () => void;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -144,6 +161,8 @@ export function VulnDetail({
 
   if (!finding && kernel) {
     const fix = kernelSuggestion(report, kernel, tool);
+    const fixable = kernel.filter((k) => fixKind(report, k) === "now");
+    const rebootOnly = kernel.filter((k) => k.needsReboot).length;
     const pkgs = [...new Set(kernel.map((k) => `${k.package} ${k.installed}`))];
     return (
       <aside className="vs-detail" aria-label="Detalle del kernel">
@@ -157,6 +176,7 @@ export function VulnDetail({
         </div>
         <div className="vs-d-body">
           <p>Actualiza el kernel y reinicia: así se arreglan todas a la vez. Despliega la fila para verlas una por una.</p>
+          {rebootOnly > 0 && <p className="vs-d-note">{rebootOnly} ya están arregladas en el kernel nuevo instalado: solo falta reiniciar.</p>}
           <section className="vs-d-sec">
             <h4>Instalado</h4>
             {pkgs.map((p) => (
@@ -166,7 +186,11 @@ export function VulnDetail({
             ))}
             {report.host.kernel && <div className="faint">En uso ahora (uname): {report.host.kernel}</div>}
           </section>
-          <Fix sessionId={sessionId} fix={fix} />
+          <Fix
+            sessionId={sessionId}
+            fix={fix}
+            action={onFix && fixable.length > 0 ? <FixButton label="Actualizar el kernel" onClick={() => onFix(fixable)} /> : undefined}
+          />
         </div>
       </aside>
     );
@@ -223,7 +247,12 @@ export function VulnDetail({
         {f.unimportant && <p className="vs-d-note">La distro lo considera sin importancia (no suele afectar en la práctica).</p>}
         {f.upstream && <p className="vs-d-note">Programa sin paquete de la distro: se compara su versión de origen, el resultado es aproximado.</p>}
         <Containers report={report} f={f} />
-        <Fix sessionId={sessionId} fix={fix} update={target && canUpdateImage(target) ? <ImageUpdate report={report} target={target} /> : undefined} />
+        <Fix
+          sessionId={sessionId}
+          fix={fix}
+          update={target && canUpdateImage(target) ? <ImageUpdate report={report} target={target} /> : undefined}
+          action={onFix && fixKind(report, f) === "now" ? <FixButton label={`Arreglar ${f.package}`} onClick={() => onFix([f])} /> : undefined}
+        />
         <section className="vs-d-sec">
           <h4>Descripción</h4>
           {loading && <span className="spinner adm-spinner-btn" aria-label="Cargando" />}

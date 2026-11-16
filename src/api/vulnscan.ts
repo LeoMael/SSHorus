@@ -142,6 +142,10 @@ export interface HostInfo {
   ecosystem: string | null;
   inContainer: boolean;
   tools: string[];
+  /** Hay un kernel más nuevo instalado o la distro pide reiniciar (informes viejos: ausente). */
+  rebootRequired?: boolean;
+  /** Kernel que se usará al reiniciar. */
+  rebootKernel?: string | null;
 }
 
 export interface SourceInfo {
@@ -204,6 +208,8 @@ export interface Finding {
   ecosystem: string | null;
   /** Programa sin paquete de la distro (resultado aproximado por versión de origen). */
   upstream: boolean;
+  /** Ya está arreglado en el kernel nuevo instalado: solo falta reiniciar (informes viejos: ausente). */
+  needsReboot?: boolean;
 }
 
 export interface Summary {
@@ -336,6 +342,12 @@ export const vulnscan = {
    */
   rescanImage: (serverId: string, reportId: string, oldKey: string, images: ImageRaw[], useOsv: boolean, scanId: string) =>
     call<Report>("vulnscan_rescan_image", { serverId, reportId, oldKey, images, useOsv, scanId }),
+  /**
+   * «Volver a comprobar» tras arreglar: `input` trae las fases 1–3 recién leídas (sin imágenes). El sistema
+   * del informe `reportId` se cambia por lo de ahora y se guarda como un análisis nuevo.
+   */
+  recheck: (serverId: string, reportId: string, input: ScanInput, scanId: string) =>
+    call<Report>("vulnscan_recheck", { serverId, reportId, input, scanId }),
   onProgress: (cb: (p: ProgressPayload) => void): Promise<UnlistenFn> =>
     listen<ProgressPayload>("vulnscan://progress", (e) => cb(e.payload)),
 };

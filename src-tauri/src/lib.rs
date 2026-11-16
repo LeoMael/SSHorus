@@ -167,6 +167,7 @@ pub fn run() {
             snippets::snippets_delete,
             snippets::exec_capture,
             snippets::exec_capture_stdin,
+            snippets::exec_capture_stdin_live,
             snippets::exec_capture_sudo,
             snippets::exec_cancel,
             // cuenta de GitHub
@@ -241,6 +242,7 @@ pub fn run() {
             vulnscan::vulnscan_export,
             vulnscan::vulnscan_vuln_detail,
             vulnscan::vulnscan_rescan_image,
+            vulnscan::recheck::vulnscan_recheck,
             // auditoría del servidor (Administración → Auditoría)
             audit::audit_save,
             audit::audit_history_list,

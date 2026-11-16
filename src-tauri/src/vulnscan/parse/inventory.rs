@@ -33,6 +33,8 @@ pub struct Detect {
     pub pro_attached: bool,
     /// Docker responde para este usuario (socket accesible).
     pub docker_ok: bool,
+    /// La distro pide reiniciar (`/var/run/reboot-required` en Debian y Ubuntu).
+    pub reboot_required: bool,
     /// La salida llegó entera (con `@@end`).
     pub complete: bool,
 }
@@ -67,6 +69,7 @@ pub fn parse_detect(text: &str) -> Detect {
     d.trivy_version = section(&secs, "trivy").and_then(|l| l.first()).and_then(|s| trivy::version(s));
     d.pro_attached = section(&secs, "pro").and_then(|l| l.first()).is_some_and(|s| s.trim() == "attached");
     d.docker_ok = section(&secs, "docker").and_then(|l| l.first()).is_some_and(|s| s.trim() == "ok");
+    d.reboot_required = section(&secs, "reboot").and_then(|l| l.first()).is_some_and(|s| s.trim() == "required");
     d
 }
 

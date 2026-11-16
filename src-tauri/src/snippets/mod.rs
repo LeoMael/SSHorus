@@ -8,7 +8,7 @@ pub mod sudo;
 mod tests;
 
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use zeroize::Zeroizing;
 
 use crate::error::AppResult;
@@ -68,6 +68,46 @@ pub async fn exec_capture_stdin(
     let result =
         run_registered(&sessions, &registry, &session_id, &command, Some(&stdin), timeout_secs, exec_id.as_deref())
             .await;
+    wipe(&mut stdin);
+    result
+}
+
+/// Evento con la salida de `exec_capture_stdin_live` según llega.
+pub const EV_EXEC_OUTPUT: &str = "exec://output";
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OutputChunk<'a> {
+    exec_id: &'a str,
+    stderr: bool,
+    text: &'a str,
+}
+
+/// Como `exec_capture_stdin` (siempre cancelable), pero además envía la salida según llega con el evento
+/// `exec://output` (`{ execId, stderr, text }`). Para ejecuciones largas que el usuario mira en pantalla
+/// (p. ej. actualizar paquetes desde el escáner de vulnerabilidades). El resultado final trae la salida entera.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn exec_capture_stdin_live(
+    app: AppHandle,
+    sessions: State<'_, SessionStore>,
+    registry: State<'_, ExecRegistry>,
+    session_id: String,
+    command: String,
+    stdin: String,
+    timeout_secs: u32,
+    exec_id: String,
+) -> AppResult<ExecResult> {
+    let mut stdin = stdin.into_bytes();
+    let result = async {
+        let ticket = registry.register(&exec_id)?;
+        let session = sessions.get(&session_id).await?;
+        let sink = |stderr: bool, text: &str| {
+            let _ = app.emit(EV_EXEC_OUTPUT, OutputChunk { exec_id: &exec_id, stderr, text });
+        };
+        exec::run_live(&session, &command, Some(&stdin), timeout_secs, &ticket.token, &sink).await
+    }
+    .await;
     wipe(&mut stdin);
     result
 }

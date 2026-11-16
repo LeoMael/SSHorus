@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { call } from "./core";
 import type { ExecResult, Snippet } from "./types";
 
@@ -21,6 +22,27 @@ export const snippets = {
    */
   execStdin: (sessionId: string, command: string, stdin: string, timeoutSecs = 30, execId?: string) =>
     call<ExecResult>("exec_capture_stdin", { sessionId, command, stdin, timeoutSecs, execId }),
+  /**
+   * Igual que `execStdin` (cancelable con `cancelExec(execId)`), pero `onOutput` recibe la salida según
+   * llega (evento `exec://output`), para mostrarla en vivo. El resultado final trae la salida entera.
+   */
+  execStdinLive: async (
+    sessionId: string,
+    command: string,
+    stdin: string,
+    timeoutSecs: number,
+    execId: string,
+    onOutput: (text: string, stderr: boolean) => void,
+  ) => {
+    const unlisten = await listen<{ execId: string; stderr: boolean; text: string }>("exec://output", (e) => {
+      if (e.payload.execId === execId) onOutput(e.payload.text, e.payload.stderr);
+    });
+    try {
+      return await call<ExecResult>("exec_capture_stdin_live", { sessionId, command, stdin, timeoutSecs, execId });
+    } finally {
+      unlisten();
+    }
+  },
   /**
    * Ejecuta un comando escrito por el usuario (con uno o varios `sudo`, tuberías…) dando `password` a cada
    * sudo desde un envoltorio del motor (askpass + FIFO, ver src-tauri/src/snippets/sudo.rs): nunca va en la

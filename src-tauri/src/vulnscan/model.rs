@@ -272,6 +272,9 @@ pub struct Finding {
     pub ecosystem: Option<String>,
     /// Es un programa sin paquete de la distro (versión de origen): resultado aproximado.
     pub upstream: bool,
+    /// Ya está arreglado en el kernel nuevo instalado: solo falta reiniciar (ver `kernel.rs`).
+    #[serde(default)]
+    pub needs_reboot: bool,
 }
 
 /// Recuento por gravedad.
@@ -339,6 +342,11 @@ pub struct HostInfo {
     pub in_container: bool,
     /// Herramientas encontradas: «trivy», «debsecan», «pro», «dnf», «zypper», «podman», «docker».
     pub tools: Vec<String>,
+    /// Hace falta reiniciar: hay un kernel más nuevo instalado o la distro lo pide
+    /// (`/var/run/reboot-required`).
+    pub reboot_required: bool,
+    /// Versión del kernel nuevo que se usará al reiniciar (si se sabe).
+    pub reboot_kernel: Option<String>,
 }
 
 /// Programa clave encontrado (sudo, OpenSSH, nginx…, y runtimes de $HOME).

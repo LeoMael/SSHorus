@@ -8,6 +8,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::cache::OsvCache;
 use super::ecosystem;
+use super::kernel;
 use super::model::*;
 use super::osv::{self, OsvApi, OsvVuln, Query};
 use super::parse::inventory::{self, Detect, ImageRead, Inventory};
@@ -30,6 +31,8 @@ struct QueryUse {
     installed: String,
     binaries: Vec<String>,
     upstream: bool,
+    /// Kernel en uso más viejo que el instalado: sus avisos van aparte (ver `kernel.rs`).
+    reboot: bool,
 }
 
 /// Lo que se saca de un objetivo con paquetes.
@@ -77,6 +80,7 @@ fn package_queries(t: &PkgTarget<'_>, extra_eco: Option<&str>, out: &mut Vec<Que
                     installed: sv.clone(),
                     binaries: binaries.clone(),
                     upstream: false,
+                    reboot: false,
                 });
             }
         }
@@ -211,6 +215,7 @@ fn new_finding(
         kernel,
         ecosystem: ecosystem.map(str::to_string),
         upstream,
+        needs_reboot: false,
     }
 }
 
@@ -380,6 +385,7 @@ fn programs(inv: &Inventory, os: &OsRelease, out_q: &mut Vec<QueryUse>) -> Vec<P
                 installed: v,
                 binaries: vec![p.path.clone()],
                 upstream: true,
+                reboot: false,
             });
         }
         list.push(info);
@@ -443,6 +449,8 @@ pub async fn analyze<A: OsvApi>(
     let os = detect.os.clone();
     let eco = ecosystem::for_os(&os);
     let pm = inv.pm.or(detect.pm);
+    // Solo el kernel más nuevo cuenta; el que está en uso, si es más viejo, va aparte.
+    let ksplit = kernel::split(&inv.packages, pm, &detect.kernel, detect.in_container);
     let host = HostInfo {
         os: os.clone(),
         kernel: detect.kernel.clone(),
@@ -451,6 +459,8 @@ pub async fn analyze<A: OsvApi>(
         ecosystem: eco.clone(),
         in_container: detect.in_container,
         tools: detect.tools.clone(),
+        reboot_required: detect.reboot_required || ksplit.reboot_to.is_some(),
+        reboot_kernel: ksplit.reboot_to.clone(),
     };
     if detect.in_container {
         notes.push(ScanNote::new("detect", NoteLevel::Info, "Es un contenedor: el kernel es el del anfitrión y no se analiza"));
@@ -459,6 +469,7 @@ pub async fn analyze<A: OsvApi>(
     let mut queries: Vec<QueryUse> = Vec::new();
     let mut targets: Vec<Target> = Vec::new();
     let mut merger = Merger::default();
+    let mut reboot_merger = Merger::default();
     let mut sources_used: BTreeSet<SourceId> = BTreeSet::new();
 
     // ── Sistema ──
@@ -490,13 +501,29 @@ pub async fn analyze<A: OsvApi>(
     match (&eco, pm) {
         (Some(e), Some(pm)) if !inv.packages.is_empty() => {
             let pro = ecosystem::ubuntu_pro(&os, detect.pro_attached);
-            package_queries(&PkgTarget { key: "system", eco: e, pm, packages: &inv.packages, skip: &skip }, pro.as_deref(), &mut queries);
+            package_queries(&PkgTarget { key: "system", eco: e, pm, packages: &ksplit.current, skip: &skip }, pro.as_deref(), &mut queries);
+            let mut running: Vec<QueryUse> = Vec::new();
+            package_queries(&PkgTarget { key: "system", eco: e, pm, packages: &ksplit.running_old, skip: &skip }, pro.as_deref(), &mut running);
+            queries.extend(running.into_iter().map(|q| QueryUse { reboot: true, ..q }));
         }
         (None, _) => notes.push(ScanNote::new("osv", NoteLevel::Info, ecosystem::no_osv_reason(&os))),
         _ => {}
     }
     if inv.packages.is_empty() {
         system.error = Some("No se pudo leer la lista de paquetes".into());
+    }
+    if !ksplit.stale.is_empty() {
+        notes.push(ScanNote::new(
+            "inventory",
+            NoteLevel::Info,
+            format!("Kernels viejos instalados que no se usan (no se cuentan): {}", ksplit.stale.join(", ")),
+        ));
+    }
+    if host.reboot_required {
+        notes.push(ScanNote::new("inventory", NoteLevel::Warn, match &ksplit.reboot_to {
+            Some(v) => format!("Hay un kernel nuevo instalado ({v}): reinicia el servidor para usarlo"),
+            None => "La distro pide reiniciar el servidor para terminar de aplicar actualizaciones".to_string(),
+        }));
     }
     if !skip.is_empty() {
         notes.push(ScanNote::new(
@@ -677,7 +704,8 @@ pub async fn analyze<A: OsvApi>(
                                     let Some(&i) = index.get(&u.query) else { continue };
                                     for h in &outcome.hits[i] {
                                         if let Some(v) = details.get(&h.id) {
-                                            osv_findings(u, v, &mut merger, u.target == "system");
+                                            let m = if u.reboot { &mut reboot_merger } else { &mut merger };
+                                            osv_findings(u, v, m, u.target == "system");
                                         }
                                     }
                                 }
@@ -700,7 +728,7 @@ pub async fn analyze<A: OsvApi>(
 
     // ── Juntar ──
     progress("merge", 0, 1, "Juntando resultados");
-    let findings = merger.finish();
+    let findings = kernel::add_reboot_only(merger.finish(), reboot_merger.finish(), ksplit.reboot_to.as_deref());
     let mut all_targets = vec![system];
     if !program_list.is_empty() {
         all_targets.push(Target {

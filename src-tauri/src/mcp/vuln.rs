@@ -161,6 +161,7 @@ pub(crate) mod fixtures {
             kernel: false,
             ecosystem: None,
             upstream: false,
+            needs_reboot: false,
         }
     }
 

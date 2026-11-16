@@ -1,0 +1,156 @@
+/* «Arreglar» y «Volver a comprobar» del escáner de vulnerabilidades. */
+.vf-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.vf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.vf-chip:hover {
+  background: var(--surface-2);
+}
+.vf-chip.on,
+.vf-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.vf-chip-now > svg {
+  color: var(--green);
+}
+.vf-chip-reboot > svg {
+  color: var(--orange);
+}
+.vf-chip-nofix > svg,
+.vf-chip-manual > svg,
+.vf-chip-image > svg {
+  color: var(--text-muted);
+}
+.vf-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.vf-reboot {
+  flex-wrap: wrap;
+}
+
+/* Diálogo */
+.vf-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vf-pkgs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.vf-pkgs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+.vf-pkgs li:last-child {
+  border-bottom: none;
+}
+.vf-pkgs label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vf-output {
+  max-height: 260px;
+  min-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.vf-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vf-result-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+.vf-result-head.ok {
+  color: var(--green);
+  background: var(--mix-green-14);
+}
+.vf-result-head.warn {
+  background: var(--surface-2);
+}
+.vf-result-head.warn > svg {
+  color: var(--orange);
+}
+.vf-reasons,
+.vf-services ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.vf-services h4 {
+  margin: 4px 0;
+  font-size: var(--fs-sm);
+}
+.vf-services ul {
+  list-style: none;
+  padding: 0;
+}
+.vf-services li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+.vf-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font-size: var(--fs-sm);
+}
+.vf-reboot-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.vf-reboot-box > svg {
+  color: var(--orange);
+}

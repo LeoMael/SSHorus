@@ -57,8 +57,10 @@ export function kernelNotes(report: Report): string[] {
   return ["Después de actualizar el kernel hay que reiniciar el servidor para que se use el nuevo.", check];
 }
 
+const REBOOT_ONLY = "Ya está arreglado en el kernel nuevo instalado: reinicia el servidor para usarlo.";
+
 /** Paquetes binarios a actualizar (o el paquete fuente si no se conocen). */
-function packagesOf(f: Finding): string[] {
+export function packagesOf(f: Finding): string[] {
   const bins = f.binaries.filter((b) => !b.startsWith("/"));
   return safe(bins.length ? bins : [f.package]);
 }
@@ -141,6 +143,7 @@ export function fixSuggestion(report: Report, f: Finding, tool: SudoTool = "sudo
   const t = targetOf(report, f);
   if (t?.kind === "image") return imageCommand(report, f);
   if (t?.kind === "runtime" || f.upstream) return runtimeCommand(f);
+  if (f.needsReboot) return { command: null, notes: [REBOOT_ONLY] };
   if (!f.hasFix) {
     return { command: null, notes: ["Todavía no hay arreglo publicado: vigila las actualizaciones de la distro."] };
   }
@@ -153,8 +156,11 @@ export function fixSuggestion(report: Report, f: Finding, tool: SudoTool = "sudo
 
 /** Un solo comando para todos los paquetes del kernel con arreglo (fila agrupada). */
 export function kernelSuggestion(report: Report, findings: Finding[], tool: SudoTool = "sudo"): FixSuggestion {
-  const fixable = findings.filter((f) => f.kernel && f.hasFix);
-  if (!fixable.length) return { command: null, notes: ["Todavía no hay un kernel con arreglo.", ...kernelNotes(report)] };
+  const fixable = findings.filter((f) => f.kernel && f.hasFix && !f.needsReboot);
+  if (!fixable.length) {
+    const first = findings.some((f) => f.needsReboot) ? REBOOT_ONLY : "Todavía no hay un kernel con arreglo.";
+    return { command: null, notes: [first, ...kernelNotes(report)] };
+  }
   const merged: Finding = {
     ...fixable[0],
     advisories: [],
