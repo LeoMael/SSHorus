@@ -40,14 +40,13 @@ impl UiBridge {
         let id = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|p| p.into_inner()).insert(id.clone(), tx);
+        // Se olvida al terminar, también si quien espera deja de hacerlo (p. ej. SSHorus se bloqueó).
+        let _forget = Forget { bridge: self, id: &id };
         let req = UiRequest { id: id.clone(), kind: kind.to_string(), payload };
         if let Err(e) = app.emit(EV_UI_REQUEST, &req) {
-            self.forget(&id);
             return Err(AppError::Invalid(format!("no se pudo hablar con la ventana de SSHorus: {e}")));
         }
-        let out = tokio::time::timeout(timeout, rx).await;
-        self.forget(&id);
-        match out {
+        match tokio::time::timeout(timeout, rx).await {
             Ok(Ok(Ok(v))) => Ok(v),
             Ok(Ok(Err(msg))) => Err(AppError::Invalid(msg)),
             Ok(Err(_)) => Err(AppError::Invalid("la ventana de SSHorus no respondió".into())),
@@ -66,5 +65,16 @@ impl UiBridge {
 
     fn forget(&self, id: &str) {
         self.pending.lock().unwrap_or_else(|p| p.into_inner()).remove(id);
+    }
+}
+
+struct Forget<'a> {
+    bridge: &'a UiBridge,
+    id: &'a str,
+}
+
+impl Drop for Forget<'_> {
+    fn drop(&mut self) {
+        self.bridge.forget(self.id);
     }
 }

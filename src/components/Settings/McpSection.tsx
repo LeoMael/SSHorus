@@ -9,6 +9,7 @@ import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { activeAuto, openActivity, refreshAuto, refreshStatus, useMcp } from "../../features/mcp/store";
 import { AutoAcceptPicker, autoText, useMinuteClock } from "../../features/mcp/AutoAccept";
+import { SudoRevealSetting } from "../../features/mcp/SudoRevealSetting";
 import "../../features/mcp/Mcp.css";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 
@@ -229,6 +230,8 @@ export function McpSection() {
                 ))}
               </div>
             </Row>
+
+            <SudoRevealSetting cfg={cfg} onChange={setCfg} />
 
             <Row label="Token" hint="Lo usa el asistente. Se guarda como tus contraseñas.">
               <code className="mcp-token">{client ? (showToken ? client.token : "tv_" + "•".repeat(16)) : "…"}</code>

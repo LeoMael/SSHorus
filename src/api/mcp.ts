@@ -27,6 +27,8 @@ export interface McpConfig {
   remembered: Record<string, string[]>;
   /** id de servidor → «Aceptar automáticamente» guardado («siempre»). */
   autoAccept: Record<string, McpAutoLevel>;
+  /** La IA puede pedir la contraseña de sudo (`request_sudo_password`; siempre pregunta). */
+  allowSudoPasswordRequest: boolean;
 }
 
 /** «Aceptar automáticamente»: apagado, cambios normales o todo (también lo peligroso y sudo). */
@@ -106,7 +108,7 @@ export interface AuditEntry {
 
 export interface McpUiRequest {
   id: string;
-  kind: "connect" | "catalog" | "ports" | "sites" | "containers" | "sudo" | "sudo-rejected" | string;
+  kind: "connect" | "catalog" | "ports" | "sites" | "containers" | "sudo" | "sudo-reveal" | "sudo-rejected" | string;
   payload: Record<string, unknown>;
 }
 
@@ -116,6 +118,7 @@ export const mcp = {
   setPort: (port: number) => call<McpStatus>("mcp_set_port", { port }),
   setApprovalTimeout: (secs: number) => call<McpConfig>("mcp_set_approval_timeout", { secs }),
   config: () => call<McpConfig>("mcp_config"),
+  setSudoPasswordRequest: (allow: boolean) => call<McpConfig>("mcp_set_sudo_password_request", { allow }),
   setAccess: (serverId: string, access: McpAccess) => call<McpConfig>("mcp_set_access", { serverId, access }),
   /** Borra una regla «Permitir siempre» (o todas las del servidor si `key` es null). */
   forgetRule: (serverId: string, key: string | null) => call<McpConfig>("mcp_forget_rule", { serverId, key }),

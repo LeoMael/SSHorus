@@ -10,7 +10,8 @@
 //! - `server_audit`: resumen de las auditorías del servidor (`get_audit_report`, `run_audit`).
 //! - `vuln`: resumen de los informes del escáner de vulnerabilidades para el asistente.
 //! - `sudo`: envoltorio que da la contraseña de sudo (la de la interfaz) sin que el asistente la vea
-//!   (vive en `snippets::sudo`: también lo usa «Ejecutar en varios servidores»).
+//!   (vive en `snippets::sudo`: también lo usa «Ejecutar en varios servidores»). `request_sudo_password`
+//!   (`core/sudo_reveal.rs`) sí se la da, siempre con un diálogo propio y si el ajuste lo permite.
 //! - `bridge`: puente stdio (`sshorus-mcp`), compartido con `src/bin/sshorus-mcp.rs`.
 //!
 //! Apagado por defecto. Se activa en Ajustes → Asistentes de IA (MCP).
@@ -369,6 +370,12 @@ pub async fn mcp_set_port(app: AppHandle, state: State<'_, McpState>, port: u16)
 #[tauri::command]
 pub async fn mcp_set_approval_timeout(state: State<'_, McpState>, secs: u32) -> AppResult<McpConfig> {
     state.core.config.update(|c| c.approval_timeout_secs = secs)
+}
+
+/// «La IA puede pedir la contraseña de sudo» (`request_sudo_password`; siempre pregunta).
+#[tauri::command]
+pub async fn mcp_set_sudo_password_request(state: State<'_, McpState>, allow: bool) -> AppResult<McpConfig> {
+    state.core.config.update(|c| c.allow_sudo_password_request = allow)
 }
 
 #[tauri::command]

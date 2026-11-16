@@ -38,6 +38,8 @@ pub struct McpConfig {
     /// «Aceptar automáticamente» guardado («siempre»): id → nivel. Lo temporal (15 min, 1 h, hasta
     /// cerrar SSHorus) vive solo en memoria (`McpCore`).
     pub auto_accept: BTreeMap<String, AutoLevel>,
+    /// La IA puede pedir la contraseña de sudo con `request_sudo_password` (siempre pregunta).
+    pub allow_sudo_password_request: bool,
 }
 
 impl Default for McpConfig {
@@ -49,6 +51,7 @@ impl Default for McpConfig {
             access: BTreeMap::new(),
             remembered: BTreeMap::new(),
             auto_accept: BTreeMap::new(),
+            allow_sudo_password_request: true,
         }
     }
 }

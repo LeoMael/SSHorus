@@ -211,6 +211,7 @@ pub fn run() {
             mcp::mcp_set_enabled,
             mcp::mcp_set_port,
             mcp::mcp_set_approval_timeout,
+            mcp::mcp_set_sudo_password_request,
             mcp::mcp_config,
             mcp::mcp_set_access,
             mcp::mcp_forget_rule,

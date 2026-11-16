@@ -15,7 +15,7 @@ use super::backend::Backend;
 use super::core::{
     CatalogListParams, CatalogRunParams, ConnectParams, DownloadParams, ListDirParams, McpCore, NoParams,
     PathParams, ReadFileParams, RunCommandParams, ServerParams, TransferStatusParams, UploadParams,
-    AuditReportParams, VulnReportParams, VulnScanParams, WriteFileParams,
+    AuditReportParams, SudoPasswordParams, VulnReportParams, VulnScanParams, WriteFileParams,
 };
 
 const INSTRUCTIONS: &str = "SSHorus da acceso a los servidores SSH que el usuario guardó en la app, sin \
@@ -23,6 +23,8 @@ mostrar contraseñas ni llaves. Empieza con list_servers. Para trabajar en un se
 conexión abierta (connect abre una pestaña en SSHorus). Las lecturas pasan solas; todo lo que cambia algo \
 (run_command, write_file, upload…) muestra un diálogo en SSHorus y espera a que el usuario lo permita. \
 Prefiere run_catalog_command con comandos de solo lectura (ver list_catalog) para diagnosticar. \
+Para administrar usa run_command con «sudo …» normal: SSHorus pone la contraseña de sudo sin que la veas; \
+request_sudo_password (te la muestra) es solo para cuando de verdad necesitas verla. \
 Para revisar la seguridad en general, mira get_audit_report (o run_audit). \
 Para vulnerabilidades, mira primero get_vuln_report (último informe guardado) y usa scan_vulnerabilities \
 solo si no hay informe o es viejo: tarda minutos y pide permiso.";
@@ -62,6 +64,7 @@ pub fn tools() -> Vec<Tool> {
         tool::<VulnReportParams>("get_vuln_report", "Último análisis de vulnerabilidades guardado del servidor (hecho en SSHorus o con scan_vulnerabilities): recuento por gravedad, fuentes y las vulnerabilidades más graves (limit, por defecto 20). No necesita conexión.", true),
         tool::<VulnScanParams>("scan_vulnerabilities", "Analiza ahora las vulnerabilidades del servidor sin sudo (paquetes, programas e imágenes de contenedores; OSV.dev, la herramienta de la distro y Trivy). No cambia el servidor, pero tarda minutos: pide permiso la primera vez. Devuelve el mismo resumen que get_vuln_report y guarda el informe.", true),
         tool::<AuditReportParams>("get_audit_report", "Última auditoría guardada del servidor (hecha en SSHorus o con run_audit): nota general (0-100 y A-F), nota por categoría (SSH, usuarios, red, actualizaciones, certificados, contenedores, sistema, entradas, endurecimiento) y los problemas con el comando para arreglarlos. No necesita conexión.", true),
+        tool::<SudoPasswordParams>("request_sudo_password", "Pide al usuario la contraseña de sudo de un servidor y te la devuelve EN TEXTO (queda en la conversación). Úsala solo si de verdad hace falta verla, p. ej. un programa que la pide por su cuenta y no se puede lanzar con sudo delante. Para comandos con sudo NO la necesitas: usa run_command con «sudo …» y SSHorus la pone sin que la veas. Siempre muestra un diálogo en SSHorus con tu motivo (reason) y el usuario puede negarse; solo en servidores con acceso Completo. Si te la da, no la repitas, no la guardes en archivos ni la pongas en la línea de comandos.", false),
         tool::<ServerParams>("run_audit", "Audita ahora el servidor sin sudo y sin instalar nada (SSH, usuarios, puertos y cortafuegos, actualizaciones, certificados, contenedores, servicios caídos, intentos de entrada, disco, memoria, permisos). Solo lee; pide permiso la primera vez. Devuelve el mismo resumen que get_audit_report y lo guarda. Lo que necesita sudo sale como «sin comprobar».", true),
     ]
 }

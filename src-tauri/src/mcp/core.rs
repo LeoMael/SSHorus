@@ -9,9 +9,18 @@
 //! 4. Se ejecuta con los límites de tiempo y de salida, y se anota en el registro.
 //!
 //! Las contraseñas y llaves nunca llegan al asistente: usa conexiones ya abiertas en la app. La única que
-//! pasa por aquí es la de sudo (si el usuario aprueba un comando con sudo): la consigue la interfaz y va
-//! por stdin al envoltorio de `sudo.rs`; no aparece en la respuesta, en el registro ni en la línea de
-//! comandos remota.
+//! pasa por aquí es la de sudo: tras aprobar un comando con sudo, la consigue la interfaz y va por stdin al
+//! envoltorio de `sudo.rs` (`core/elevation.rs`); no aparece en la respuesta, en el registro ni en la línea
+//! de comandos remota. Solo `request_sudo_password` (`core/sudo_reveal.rs`) se la da a la IA, y siempre
+//! con un diálogo propio.
+
+mod ask;
+mod elevation;
+mod sudo_reveal;
+
+#[cfg(test)]
+pub use elevation::SUDO_CANCELED_MSG;
+pub use sudo_reveal::SudoPasswordParams;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
@@ -21,14 +30,13 @@ use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
-use zeroize::Zeroizing;
 
-use super::approval::{ApprovalRequest, Decision};
+use super::approval::Decision;
 use super::audit::{now_ms, AuditEntry, AuditLog, AuditStatus};
 use super::backend::Backend;
 use super::config::McpConfigStore;
 use super::policy::{self, Access, Action, AutoGrant, AutoLevel, Verdict};
-use super::{diff, sudo, template};
+use super::{diff, template};
 use crate::error::{AppError, AppResult};
 use crate::types::{ExecResult, FileEntry, FileKind, ServerProfile, SessionInfo, SnippetScope, TransferJob};
 use crate::vulnscan::scan::ScanOptions;
@@ -62,11 +70,6 @@ pub const MIN_VULN_SCAN_SECS: u32 = 60;
 pub const MAX_VULN_SCAN_SECS: u32 = 1800;
 /// Margen para que el análisis termine de detenerse en el servidor tras el tiempo límite.
 const VULN_STOP_GRACE: Duration = Duration::from_secs(30);
-/// Tiempo mínimo para escribir la contraseña de sudo en SSHorus (s) y margen para comprobarla.
-const MIN_SUDO_ASK_SECS: u32 = 60;
-const SUDO_ASK_MARGIN_SECS: u64 = 30;
-pub const SUDO_CANCELED_MSG: &str =
-    "El usuario no dio la contraseña de sudo en SSHorus: no se ejecutó el comando.";
 
 // ───────────────────────── Parámetros de las herramientas ─────────────────────────
 
@@ -528,6 +531,7 @@ impl<B: Backend> McpCore<B> {
             "scan_vulnerabilities" => self.vuln_scan(parse(args)?, rec, cancel).await,
             "get_audit_report" => self.audit_report(parse(args)?, rec).await,
             "run_audit" => self.run_audit(parse(args)?, rec).await,
+            "request_sudo_password" => self.request_sudo_password(parse(args)?, rec).await,
             other => Err(Fail::Error(format!("Herramienta desconocida: {other}"))),
         }
     }
@@ -607,37 +611,13 @@ impl<B: Backend> McpCore<B> {
             }
             Verdict::Deny(msg) => Err(Fail::Denied(msg)),
             Verdict::Ask { can_remember } => {
-                let secs = cfg.approval_timeout_secs;
-                let req = ApprovalRequest {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    server_id: t.server.id.clone(),
-                    server_name: t.server.name.clone(),
-                    tool: rec.entry.tool.clone(),
-                    title: title.to_string(),
-                    command: shown.to_string(),
-                    diff,
-                    danger: action.danger.clone(),
-                    can_remember,
-                    timeout_secs: secs,
-                    expires_at: now_ms() + u64::from(secs) * 1000,
-                    client: rec.entry.client.clone(),
-                };
-                let id = req.id.clone();
-                rec.entry.message = Some("Esperando tu permiso en SSHorus".into());
-                self.audit.record(rec.entry.clone());
-                let answer = tokio::time::timeout(Duration::from_secs(u64::from(secs)), self.backend.ask_approval(req)).await;
-                self.backend.approval_done(&id);
-                rec.entry.message = None;
-                // Si se bloqueó mientras esperaba, no se hace nada.
-                if self.backend.vault_locked() {
-                    return Err(Fail::Locked);
-                }
-                match answer {
-                    Ok(Decision::Once) => {
+                let ask = ask::Ask { title, shown, diff, danger: action.danger.clone(), can_remember };
+                match self.ask_user(rec, t, ask).await? {
+                    Decision::Once => {
                         rec.entry.approved_by = Some("tú: una vez".into());
                         Ok(())
                     }
-                    Ok(Decision::Always) if can_remember => {
+                    Decision::Always if can_remember => {
                         let key = action.key.clone();
                         let sid = t.server.id.clone();
                         if let Err(e) = self.config.update(|c| {
@@ -648,19 +628,13 @@ impl<B: Backend> McpCore<B> {
                         rec.entry.approved_by = Some("tú: siempre en este servidor".into());
                         Ok(())
                     }
-                    Ok(Decision::Always) => {
+                    Decision::Always => {
                         rec.entry.approved_by = Some("tú: una vez (peligroso, no se recuerda)".into());
                         Ok(())
                     }
-                    Ok(Decision::Deny) => {
+                    Decision::Deny => {
                         rec.entry.approved_by = Some("tú: denegado".into());
                         Err(Fail::Denied("El usuario lo denegó en SSHorus.".into()))
-                    }
-                    Err(_) => {
-                        rec.entry.approved_by = Some("sin respuesta".into());
-                        Err(Fail::Denied(format!(
-                            "Nadie respondió en SSHorus en {secs} s: se denegó. Pide al usuario que mire SSHorus y vuelve a intentarlo."
-                        )))
                     }
                 }
             }
@@ -955,71 +929,6 @@ impl<B: Backend> McpCore<B> {
         let title = format!("quiere ejecutar «{}» de la Biblioteca", entry.name);
         self.authorize(rec, &t, action, &title, &command, None).await?;
         self.exec(rec, &t, &sid, &command, sudo, p.timeout_secs, p.max_output_kb, cancel).await
-    }
-
-    /// Ejecuta un comando ya aprobado. Si usa sudo (`sudo`), SSHorus pone la contraseña: la consigue la
-    /// interfaz (igual que en Administración) y va por stdin al envoltorio de `sudo.rs`.
-    #[allow(clippy::too_many_arguments)]
-    async fn exec(
-        &self,
-        rec: &mut Rec,
-        t: &Target,
-        session_id: &str,
-        command: &str,
-        sudo: bool,
-        timeout_secs: Option<u32>,
-        max_output_kb: Option<u32>,
-        cancel: &CancellationToken,
-    ) -> Res<String> {
-        let timeout = timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS).clamp(1, 600);
-        let max = (max_output_kb.unwrap_or(DEFAULT_OUTPUT_KB).clamp(1, MAX_OUTPUT_KB) as usize) * 1024;
-        let password = if sudo { self.sudo_password(rec, t, session_id).await? } else { None };
-        let Some(password) = password else {
-            let r = self.exec_raw(rec, session_id, command, None, timeout, cancel).await?;
-            rec.entry.message = Some(exec_summary(&r));
-            return Ok(format_exec(&r, max));
-        };
-        let wrapped = sudo::wrap(command, &password).map_err(Fail::Error)?;
-        let result = self.exec_raw(rec, session_id, &wrapped.command, Some(&wrapped.stdin), timeout, cancel).await;
-        drop(wrapped); // borra el script y la contraseña del stdin
-        let mut r = result?;
-        sudo::redact(&mut r.stdout, &password);
-        sudo::redact(&mut r.stderr, &password);
-        if let Some(f) = sudo::failure(r.exit_code, &r.stderr) {
-            if f == sudo::SudoFailure::BadPassword {
-                // Igual que la interfaz: se olvida la de memoria y la guardada queda como rechazada.
-                let payload = json!({ "sessionId": session_id, "serverName": t.server.name });
-                if let Err(e) = self.backend.ui_request("sudo-rejected", payload, Duration::from_secs(10)).await {
-                    log::warn!("MCP: no se pudo avisar a la interfaz de la contraseña de sudo rechazada: {e}");
-                }
-            }
-            return Err(Fail::Error(sudo::failure_message(f, &t.server.name)));
-        }
-        rec.entry.message = Some(format!("{} (con sudo)", exec_summary(&r)));
-        Ok(format_exec(&r, max))
-    }
-
-    /// Pide a la interfaz la contraseña de sudo de la conexión (en memoria → guardada → otra pestaña →
-    /// diálogo, según el ajuste del servidor). None = no hace falta (root o sudo sin contraseña).
-    async fn sudo_password(&self, rec: &mut Rec, t: &Target, session_id: &str) -> Res<Option<Zeroizing<String>>> {
-        let secs = self.config.get().approval_timeout_secs.max(MIN_SUDO_ASK_SECS);
-        rec.entry.message = Some("Buscando la contraseña de sudo en SSHorus".into());
-        self.audit.record(rec.entry.clone());
-        rec.entry.message = None;
-        let payload = json!({
-            "sessionId": session_id,
-            "profileId": t.server.id,
-            "serverName": t.server.name,
-            "timeoutSecs": secs,
-            "auto": rec.entry.auto,
-        });
-        let wait = Duration::from_secs(u64::from(secs) + SUDO_ASK_MARGIN_SECS);
-        let answer = self.backend.ui_request("sudo", payload, wait).await;
-        // Si se bloqueó mientras tanto, no se hace nada.
-        if self.backend.vault_locked() {
-            return Err(Fail::Locked);
-        }
-        sudo_answer(answer?)
     }
 
     /// Ejecuta tal cual (con `stdin` si lo hay), con registro y cancelación.
@@ -1391,26 +1300,6 @@ impl Drop for RunningScan<'_> {
 }
 
 // ───────────────────────── Utilidades ─────────────────────────
-
-/// Respuesta de la interfaz a «sudo»: `{ elevate: false }` (no hace falta), `{ elevate: true, password }`
-/// o `{ canceled: true }`. La contraseña se saca sin copiarla y se borra de memoria al soltarla.
-fn sudo_answer(v: Value) -> Res<Option<Zeroizing<String>>> {
-    let Value::Object(mut m) = v else {
-        return Err(Fail::Error("La ventana de SSHorus respondió algo no válido a la petición de sudo.".into()));
-    };
-    if m.get("canceled").and_then(Value::as_bool) == Some(true) {
-        return Err(Fail::Denied(SUDO_CANCELED_MSG.into()));
-    }
-    match m.remove("password") {
-        Some(Value::String(pw)) if !pw.is_empty() => Ok(Some(Zeroizing::new(pw))),
-        Some(Value::String(pw)) => {
-            drop(Zeroizing::new(pw));
-            Err(Fail::Error("La contraseña de sudo está vacía.".into()))
-        }
-        Some(_) => Err(Fail::Error("La ventana de SSHorus respondió algo no válido a la petición de sudo.".into())),
-        None => Ok(None),
-    }
-}
 
 fn parse<T: serde::de::DeserializeOwned>(args: Value) -> Res<T> {
     let args = if args.is_null() { json!({}) } else { args };

@@ -9,6 +9,8 @@
 // - infra: el mapa de infraestructura (features/infra) resumido como grafo.
 // - sudo / sudo-rejected: la contraseña de sudo de un comando del asistente ya aprobado (sudoAsk.ts) y el
 //   aviso de que sudo la rechazó. La contraseña va al motor (que la pasa por stdin), nunca al asistente.
+// - sudo-reveal: la contraseña para `request_sudo_password`, que el usuario ya permitió en su diálogo
+//   (SudoRevealDialog). Esta sí se le da al asistente.
 // Las lecturas se hacen como el usuario conectado (sin sudo).
 import { errorMessage } from "../../api/core";
 import { mcp, type McpUiRequest } from "../../api/mcp";
@@ -140,6 +142,8 @@ async function run(req: McpUiRequest): Promise<unknown> {
       return infra(sessionOf(req.payload));
     case "sudo":
       return sudoForAssistant(req.payload);
+    case "sudo-reveal":
+      return sudoForAssistant(req.payload, "reveal");
     case "sudo-rejected": {
       // Igual que la interfaz: se olvida la de memoria y la guardada queda como rechazada.
       sudoRejectedNotified(sessionOf(req.payload));

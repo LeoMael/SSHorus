@@ -1,6 +1,7 @@
-// Contraseña de sudo para los comandos del asistente (petición `sudo` del motor, ver uiBridge.ts) y cola
-// de diálogos de sudo que no son de un panel (también «Ejecutar en varios servidores» y los comandos con
-// sudo de features/sudoRun: `sudoPasswordForCommand`).
+// Contraseña de sudo para los comandos del asistente (petición `sudo` del motor, ver uiBridge.ts), para
+// `request_sudo_password` ya permitida (petición `sudo-reveal`) y cola de diálogos de sudo que no son de un
+// panel (también «Ejecutar en varios servidores» y los comandos con sudo de features/sudoRun:
+// `sudoPasswordForCommand`).
 // Los diálogos se muestran de uno en uno (SudoAskHost enseña el primero de la cola).
 //
 // Con «Aceptar automáticamente: todo» no se muestra nada si la contraseña ya está en memoria o guardada: el
@@ -21,9 +22,9 @@ import {
 } from "../privileges";
 import { useLock } from "../lock/lockStore";
 import { useTabs } from "../../stores/tabs";
+import { noPasswordWhy, sudoAskReason, type NoPasswordWhy, type SudoPurpose, type SudoReply } from "./sudoReply";
 
-/** Respuesta al motor (core.rs → `sudo_answer`). */
-export type SudoReply = { elevate: false } | { elevate: true; password: string } | { canceled: true };
+export type { SudoReply } from "./sudoReply";
 
 export interface SudoAsk {
   id: string;
@@ -55,7 +56,8 @@ let seq = 0;
  * sesión. Con `signal`, al abortar se quita de la cola (o se cierra si ya se veía) y da false.
  */
 export function askSudoInDialog(a: Omit<SudoAsk, "id">, signal?: AbortSignal): Promise<boolean> {
-  if (signal?.aborted) return Promise.resolve(false);
+  // Bloqueado: nada a la cola (si no, aparecería al desbloquear para algo que el motor ya no espera).
+  if (signal?.aborted || useLock.getState().status?.locked) return Promise.resolve(false);
   const id = `sudo-${++seq}`;
   return new Promise((resolve) => {
     waiting.set(id, resolve);
@@ -82,19 +84,21 @@ export function cancelAllSudoAsks(): void {
 /**
  * Contraseña de sudo para ejecutar un comando fuera de los paneles (asistente, «Ejecutar en varios
  * servidores», comandos con sudo): la que ya hay o, si no, el diálogo en cola. `need: false` si no hace
- * falta (root, sudo sin contraseña; también si el diálogo lo comprobó). null = cancelado.
+ * falta (root, sudo sin contraseña, sin sudo; también si el diálogo lo comprobó). null = cancelado.
  */
 export async function sudoPasswordForCommand(
   a: Omit<SudoAsk, "id" | "user"> & { info: PrivilegeInfo },
   signal?: AbortSignal,
-): Promise<{ password: string } | { need: false } | null> {
+): Promise<{ password: string } | { need: false; why: NoPasswordWhy } | null> {
   const { info, ...ask } = a;
-  if (!sudoPasswordNeeded(info)) return { need: false };
-  const found = await obtainSudoPassword(a.sessionId, a.profileId);
+  if (!sudoPasswordNeeded(info)) return { need: false, why: noPasswordWhy(info) };
+  // Se pide para usarla ya: también se vuelve a mirar la guardada aunque antes no hubiera (como el diálogo).
+  // Así, si está guardada, no se abre el diálogo ni un momento.
+  const found = await obtainSudoPassword(a.sessionId, a.profileId, { fromDialog: true });
   if (signal?.aborted) return null;
   if (!found.ok && !(await askSudoInDialog({ ...ask, user: info.user }, signal))) {
     const now = getPrivilege(a.sessionId);
-    return now && !sudoPasswordNeeded(now) ? { need: false } : null;
+    return now && !sudoPasswordNeeded(now) ? { need: false, why: noPasswordWhy(now) } : null;
   }
   const password = getSudoPassword(a.sessionId);
   return password === undefined ? null : { password };
@@ -104,8 +108,11 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v ? v : null;
 }
 
-/** Petición `sudo` del motor: { sessionId, profileId, serverName, timeoutSecs }. */
-export async function sudoForAssistant(payload: Record<string, unknown>): Promise<SudoReply> {
+/**
+ * Peticiones `sudo` (`purpose` "command") y `sudo-reveal` ("reveal") del motor: { sessionId, profileId,
+ * serverName, timeoutSecs, auto, reason }. Las dos llegan ya permitidas por el usuario.
+ */
+export async function sudoForAssistant(payload: Record<string, unknown>, purpose: SudoPurpose = "command"): Promise<SudoReply> {
   const sessionId = str(payload.sessionId);
   if (!sessionId) throw new Error("Falta la conexión");
   const tab = useTabs.getState().tabs.find((t) => t.sessionId === sessionId && t.status !== "closed");
@@ -114,15 +121,18 @@ export async function sudoForAssistant(payload: Record<string, unknown>): Promis
   const profileId = str(payload.profileId) ?? tab.profileId;
   const info = getPrivilege(sessionId) ?? (await detectPrivilege(sessionId));
   const secs = typeof payload.timeoutSecs === "number" && payload.timeoutSecs > 0 ? payload.timeoutSecs : 120;
+  const serverName = str(payload.serverName) ?? tab.title;
+  const auto = payload.auto === true;
   const got = await sudoPasswordForCommand({
     sessionId,
     profileId,
     info,
-    serverName: str(payload.serverName) ?? tab.title,
-    auto: payload.auto === true,
+    serverName,
+    auto,
+    reason: sudoAskReason({ purpose, serverName, auto, reason: str(payload.reason) ?? undefined }),
     expiresAt: Date.now() + secs * 1000,
   });
   if (useLock.getState().status?.locked) throw new Error("SSHorus está bloqueado");
   if (!got) return { canceled: true };
-  return "need" in got ? { elevate: false } : { elevate: true, password: got.password };
+  return "need" in got ? { elevate: false, why: got.why } : { elevate: true, password: got.password };
 }

@@ -70,6 +70,8 @@ struct Mock {
     local: Mutex<Option<FakeSudo>>,
     /// Se bloquea SSHorus mientras se busca la contraseña de sudo.
     lock_on_sudo: AtomicBool,
+    /// La interfaz tarda 10 s en dar la contraseña de sudo (diálogo abierto).
+    sudo_delay: AtomicBool,
 }
 
 fn server(id: &str, name: &str) -> ServerProfile {
@@ -134,6 +136,7 @@ impl Mock {
             exec_result: Mutex::new(None),
             local: Mutex::new(None),
             lock_on_sudo: AtomicBool::new(false),
+            sudo_delay: AtomicBool::new(false),
         }
     }
 }
@@ -259,9 +262,12 @@ impl Backend for Mock {
         self.ui_payloads.lock().unwrap().push((kind.to_string(), payload));
         match kind {
             "connect" => Ok(json!({ "sessionId": "nueva" })),
-            "sudo" => {
+            "sudo" | "sudo-reveal" => {
                 if self.lock_on_sudo.load(Ordering::SeqCst) {
                     self.locked.store(true, Ordering::SeqCst);
+                }
+                if self.sudo_delay.load(Ordering::SeqCst) {
+                    tokio::time::sleep(Duration::from_secs(10)).await;
                 }
                 Ok(self.sudo_reply.lock().unwrap().clone())
             }
@@ -1139,7 +1145,7 @@ fn vuln_tools_are_announced_as_reads() {
         let t = tools.iter().find(|t| t.name == name).unwrap_or_else(|| panic!("falta {name}"));
         assert_eq!(t.annotations.as_ref().and_then(|a| a.read_only_hint), Some(true), "{name}");
     }
-    assert_eq!(tools.len(), 22);
+    assert_eq!(tools.len(), 23);
 }
 
 // ───────────────────────── Auditoría del servidor ─────────────────────────
@@ -1766,3 +1772,6 @@ async fn auto_accept_in_calls() {
     assert!(out.is_error && out.text == LOCKED_MSG, "{}", out.text);
     assert_eq!(ran(&c).len(), before);
 }
+
+#[path = "tests_sudo.rs"]
+mod sudo_flow;

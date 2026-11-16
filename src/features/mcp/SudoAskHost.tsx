@@ -4,6 +4,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { useLock } from "../lock/lockStore";
 import { cancelAllSudoAsks, finishSudoAsk, useSudoAsks } from "./sudoAsk";
+import { sudoAskReason } from "./sudoReply";
 import "./Mcp.css";
 
 const SudoDialog = lazy(() => import("../../components/Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
@@ -12,9 +13,10 @@ export function SudoAskHost() {
   const first = useSudoAsks((s) => s.asks[0]);
   const locked = useLock((s) => !!s.status?.locked);
 
+  // También lo que llegue a la cola estando bloqueado: no debe aparecer al desbloquear.
   useEffect(() => {
-    if (locked) cancelAllSudoAsks();
-  }, [locked]);
+    if (locked && first) cancelAllSudoAsks();
+  }, [locked, first]);
 
   useEffect(() => {
     if (!first || first.expiresAt === undefined) return;
@@ -32,7 +34,7 @@ export function SudoAskHost() {
           profileId={first.profileId}
           user={first.user}
           cancelLabel={first.cancelLabel}
-          reason={first.reason ?? `El asistente quiere ejecutar un comando con sudo en «${first.serverName}» (${first.auto ? "aceptado automáticamente" : "ya le diste permiso"}). SSHorus le pasa la contraseña a sudo: el asistente no la ve.`}
+          reason={first.reason ?? sudoAskReason({ purpose: "command", serverName: first.serverName, auto: first.auto })}
           onClose={() => finishSudoAsk(first.id)}
         />
       </Suspense>

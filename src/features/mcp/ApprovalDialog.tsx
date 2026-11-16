@@ -3,23 +3,17 @@
 // Si nadie responde a tiempo, el motor lo deniega solo y el diálogo se cierra.
 // También ofrece «Aceptar automáticamente en este servidor…» (ver AutoAccept.tsx): al activarlo, si el
 // modo elegido cubre esta petición, se permite ya.
-import { useEffect, useState } from "react";
+// `request_sudo_password` tiene su propio diálogo (SudoRevealDialog), sin «siempre» ni modo automático.
+import { useState } from "react";
 import { AlertTriangle, Bot, Zap } from "lucide-react";
 import { Modal } from "../../components/ui/Modal";
 import { mcp, type McpApprovalRequest, type McpDecision } from "../../api/mcp";
 import { toast } from "../../stores/toasts";
 import { useMcp } from "./store";
 import { AutoAcceptPicker } from "./AutoAccept";
+import { SUDO_REVEAL_TOOL, SudoRevealDialog } from "./SudoRevealDialog";
+import { useSecondsLeft } from "./useSecondsLeft";
 import "./Mcp.css";
-
-function useSecondsLeft(expiresAt: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 500);
-    return () => window.clearInterval(t);
-  }, []);
-  return Math.max(0, Math.ceil((expiresAt - now) / 1000));
-}
 
 function DiffView({ diff }: { diff: string }) {
   return (
@@ -148,5 +142,6 @@ export function ApprovalDialogHost() {
   const approvals = useMcp((s) => s.approvals);
   const first = approvals[0];
   if (!first) return null;
+  if (first.tool === SUDO_REVEAL_TOOL) return <SudoRevealDialog key={first.id} req={first} total={approvals.length} />;
   return <Request key={first.id} req={first} total={approvals.length} />;
 }
