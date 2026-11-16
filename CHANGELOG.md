@@ -4,6 +4,38 @@ Todos los cambios importantes de SSHorus se anotan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones
 siguen [Versionado Semántico](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Añadido
+- **Terminal local → «Asistente con contexto»**: abre Claude Code, Codex, agy u OpenCode en esa misma
+  terminal, en la carpeta donde estás, con el contexto de SSHorus y el MCP. Al salir del asistente vuelves a
+  la shell tal como estaba. También **«Copiar contexto»** (sin contraseñas, llaves ni tokens).
+- **MCP: la IA puede pedir la contraseña de sudo** (`request_sudo_password`). SSHorus siempre te pregunta,
+  con el motivo y el aviso de que quedará en la conversación; sin «Permitir siempre» y «Aceptar
+  automáticamente» no la salta. Se puede apagar en Ajustes → Asistentes de IA.
+- **Vulnerabilidades → «Arreglar todo lo que tiene solución»**: un solo comando con sudo, salida en vivo,
+  «Cancelar» y al final «Arreglado: N · Siguen: M» con el motivo de lo que sigue. Se separa lo que se
+  arregla ya, lo que solo necesita reiniciar y lo que aún no tiene arreglo, y hay «Volver a comprobar».
+- **Auditoría → «Arreglar»** en cada problema y **«Arreglar todo lo seguro»**. Lo que puede dejarte fuera
+  (quitar la contraseña, prohibir root, cortafuegos) va aparte, con aviso y una comprobación previa. Los
+  problemas salen por importancia y los que no tienen comando dicen qué hacer.
+
+### Cambiado
+- Terminal: Ctrl+C copia si hay texto seleccionado; al copiar no se arrastran espacios al final de las
+  líneas; aviso antes de pegar varias líneas que se ejecutarían.
+
+### Corregido
+- Terminal: los emojis y símbolos ya no descuadran el texto (letras juntas o que saltan de línea), sobre
+  todo con Claude Code y otros asistentes. Vale también para la terminal de los servidores.
+- Vulnerabilidades y auditoría: **lo arreglado desaparece** del informe y del historial. Antes no se volvía
+  a comprobar nada; además los kernels viejos que quedan instalados seguían contando.
+- Auditoría: arreglos que no cambiaban lo que mide la comprobación (actualizaciones retenidas en
+  Debian/Ubuntu, recargar sshd sin systemd, `hidepid` que se perdía al reiniciar, cortafuegos con el puerto
+  real de SSH, fail2ban en Alpine). Si `sshd -t` falla, se recupera la configuración anterior.
+- MCP: si SSHorus se bloquea mientras espera la contraseña de sudo, no se ejecuta nada; la contraseña
+  guardada se usa sin abrir el diálogo; mensajes más claros para la IA (sudo no instalado, root, diálogo
+  cancelado).
+
 ## [1.0.0-beta.1] - 2026-11-14
 
 ### Importante
@@ -399,7 +431,8 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
-[Sin publicar]: https://github.com/LeoMael/SSHorus/compare/v0.5.0...HEAD
+[Sin publicar]: https://github.com/LeoMael/SSHorus/compare/v1.0.0-beta.1...HEAD
+[1.0.0-beta.1]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.1
 [0.5.0]: https://github.com/LeoMael/SSHorus/releases/tag/v0.5.0
 [0.3.0]: https://github.com/LeoMael/SSHorus/releases/tag/v0.3.0
 [0.2.1]: https://github.com/LeoMael/SSHorus/releases/tag/v0.2.1

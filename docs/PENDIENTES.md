@@ -24,6 +24,21 @@ construidos y salen en la **0.5.0**.
 
 Al decir «continúa», empezar por aquí.
 
+**Ronda de pulido del 16/11/2026 (unida a `main`, sin publicar; ver «Sin publicar» en el CHANGELOG).**
+Hecho: terminal (anchos Unicode 11, «Asistente con contexto» en la misma terminal, copiar/pegar), MCP
+(`request_sudo_password` con diálogo siempre; arreglos de bloqueo y contraseña guardada), escáner
+(«Volver a comprobar», «Arreglar todo lo que tiene solución», kernels viejos fuera) y auditoría (vuelve a
+comprobar tras arreglar, «Arreglar todo lo seguro», parejas comprobación → arreglo corregidas). Todo pasa
+`cargo test --lib`, `tsc` y los tests de TS. **Falta probar en la app** (`npm run tauri dev`):
+- Terminal: que la salida de Claude Code ya no se descuadre; «Asistente con contexto» y la vuelta a la shell;
+  aviso al pegar; Ctrl+C con y sin selección; clic central (WebKitGTK).
+- MCP con Claude Code real: diálogo de `request_sudo_password`, ajuste en Ajustes, sudo real con contraseña.
+- Escáner: «Arreglar todo» en Debian y Rocky, «Cancelar» a mitad, reiniciar servicio, aviso tras kernel,
+  reabrir la pestaña. Límite: 600 s por ejecución.
+- Auditoría: arreglar uno, «Arreglar todo lo seguro», cancelar, contraseña de sudo incorrecta, quitar la
+  contraseña sin llave (debe bloquearse), reabrir el informe.
+- Las pruebas de TS no usan vitest (no está instalado): `npx rolldown <test> -p node -f esm -o x.mjs && node x.mjs`.
+
 **Ronda de pruebas del 14/11/2026 (pedido del usuario al abrir la app con `tauri dev`).** Ya hecho por el
 usuario: repo renombrado a `LeoMael/SSHorus`, secretos de firma creados, carpeta local `SSHorus`. La
 versión se publicará cuando esto esté listo (propuesta: **1.0.0-beta.1** para probar el instalador y luego
