@@ -20,6 +20,11 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   (quitar la contraseña, prohibir root, cortafuegos) va aparte, con aviso y una comprobación previa. Los
   problemas salen por importancia y los que no tienen comando dicen qué hacer.
 
+- **Usuarios → «Nuevo usuario con clave» con «Dar sudo»**: le pone una contraseña que solo sirve para sudo
+  (generada o escrita), la muestra una vez con «Copiar» y SSHorus la guarda como sudo «Guardar» del servidor.
+  Sigue entrando solo con su llave: sshd queda «solo llave» para ese usuario (comprobado con `sshd -t`; si falla,
+  se deshace). Sin sudo sin contraseña.
+
 ### Cambiado
 - Terminal: Ctrl+C copia si hay texto seleccionado; al copiar no se arrastran espacios al final de las
   líneas; aviso antes de pegar varias líneas que se ejecutarían.
