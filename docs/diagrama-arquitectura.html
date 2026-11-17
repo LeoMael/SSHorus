@@ -282,14 +282,14 @@ details.det[open] summary::before{transform:rotate(45deg)}
 <script id="spec" type="application/json">
 {
  "titulo": "Arquitectura de SSHorus",
- "subtitulo": "Dónde vive cada pieza y cómo viaja la información, en la versión 1.0.0-beta.1 más lo que está «Sin publicar» en main. Todo corre en tu PC: la ventana solo habla con el motor, y el motor es el único que sale a la red. Lo atenuado es una idea que aún no existe. Pulsa una ficha para ver qué es y qué guarda, o abre el recorrido animado.",
+ "subtitulo": "Dónde vive cada pieza y cómo viaja la información, en la versión 1.0.0-beta.1 más lo que está «Sin publicar» en main. Todo corre en tu PC: la ventana solo habla con el motor, y el motor es el único que sale a la red. Pulsa una ficha para ver qué es y qué guarda, o abre el recorrido animado.",
  "enlaces": [
   {
    "texto": "Documento completo de arquitectura",
    "href": "ARQUITECTURA.md"
   }
  ],
- "descripcion": "Diagrama de la arquitectura de SSHorus. Arriba, tú e Internet (API de IA opcional, OSV.dev y GitHub). En tu PC: la ventana React con las terminales y los paneles, el puente IPC de Tauri, los asistentes de IA locales y el motor Rust con auditoría, IA que explica, escáner, actualizador, terminal local, túneles, terminal SSH, archivos, servidor MCP, exec cancelable y sesiones SSH; abajo, tus datos: ~/.config/sshorus, el llavero o la bóveda y ~/.ssh. A la derecha, tu servidor: sshd, shell con tmux, sudo, paquetes, Podman o Docker, systemd, un servicio interno y, atenuada, la idea de una IA en el servidor.",
+ "descripcion": "Diagrama de la arquitectura de SSHorus. Arriba, tú e Internet (API de IA opcional, OSV.dev y GitHub). En tu PC: la ventana React con las terminales y los paneles, el puente IPC de Tauri, los asistentes de IA locales y el motor Rust con auditoría, IA que explica, escáner, actualizador, terminal local, túneles, terminal SSH, archivos, servidor MCP, exec cancelable y sesiones SSH; abajo, tus datos: ~/.config/sshorus, el llavero o la bóveda y ~/.ssh. A la derecha, tu servidor: sshd, shell con tmux, sudo, paquetes, Podman o Docker, systemd y un servicio interno.",
  "lienzo": {
   "x": 0,
   "y": 0,
@@ -719,22 +719,6 @@ details.det[open] summary::before{transform:rotate(45deg)}
     "Las unidades de los servicios"
    ],
    "tech": "<p>Tras arreglar vulnerabilidades, <code>restart.ts<\/code> mira qué servicios siguen con la versión vieja y si hay que reiniciar el servidor (<code>needrestart<\/code> o <code>needs-restarting<\/code>, si la distro los tiene). La auditoría recarga sshd solo si <code>sshd -t<\/code> da bien; si no, recupera la configuración anterior.<\/p>"
-  },
-  "srvia": {
-   "x": 1180,
-   "y": 240,
-   "ic": "chat",
-   "k": "server",
-   "n": "IA en el servidor",
-   "tag": "idea anotada · sin código",
-   "simple": "Plan para más adelante: instalar Claude Code en el servidor, con un usuario aparte, para usarlo desde el celular. Todavía no existe.",
-   "guarda": [],
-   "tech": "<p>Anotado en <code>docs/PENDIENTES.md<\/code> («Próxima sesión», punto 5, «no programar aún»): un usuario aparte con sudo limitado, sesión oficial (nunca copiar <code>~/.claude<\/code>) y <code>claude remote-control<\/code> como servicio. Ojo: quien tenga root en el servidor podría usar la sesión.<\/p>",
-   "flag": [
-    "prop",
-    "Propuesto"
-   ],
-   "opt": true
   }
  },
  "flechas": {
@@ -1413,21 +1397,6 @@ details.det[open] summary::before{transform:rotate(45deg)}
      310
     ]
    ]
-  },
-  "sysd_srvia": {
-   "a": "sysd",
-   "b": "srvia",
-   "pts": [
-    [
-     1032,
-     240
-    ],
-    [
-     1148,
-     240
-    ]
-   ],
-   "opt": true
   }
  },
  "escenarioArquitectura": 0,
@@ -1440,8 +1409,7 @@ details.det[open] summary::before{transform:rotate(45deg)}
    "<b>Motor → servidor:<\/b> SSH 2 (russh), una conexión por pestaña con canales PTY, SFTP, exec y <code>direct-tcpip<\/code>.",
    "<b>Motor → Internet:<\/b> HTTPS con reqwest + rustls: OSV.dev (solo nombre y versión de paquetes), GitHub (actualizaciones firmadas) y la API de IA si la configuras.",
    "<b>IA local → motor:<\/b> MCP en <code>127.0.0.1:47821<\/code> con token, permisos por servidor y aprobación; sudo por stdin, sin que la IA vea la contraseña.",
-   "<b>Datos:<\/b> JSON en <code>~/.config/sshorus<\/code> (sin contraseñas), secretos en el llavero o en <code>vault.json<\/code> (AES-256-GCM + Argon2id) y <code>~/.ssh<\/code> de siempre.",
-   "<b>Propuesto:<\/b> IA en el servidor para usarla desde el celular (PENDIENTES, punto 5). La app móvil propia queda fuera del dibujo."
+   "<b>Datos:<\/b> JSON en <code>~/.config/sshorus<\/code> (sin contraseñas), secretos en el llavero o en <code>vault.json<\/code> (AES-256-GCM + Argon2id) y <code>~/.ssh<\/code> de siempre."
   ],
   "pista": "Pulsa una ficha para ver su detalle, o abre «Recorrido animado» para seguir un escenario paso a paso."
  },

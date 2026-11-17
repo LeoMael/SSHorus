@@ -240,7 +240,7 @@ Riesgo: muchos pasos con sudo; usar «aceptar automáticamente» con duración y
   3. **APK propia** (punto 6): Tauri 2 compila para Android, así que se podría reutilizar parte del motor Rust y de
      la interfaz. Es un proyecto grande.
 
-**5. Plan (no programar aún): asistente en el servidor, para usarlo desde el celular.** Botón «Asistente en
+**5. ❌ Descartado por el usuario (16/11/2026): la IA va fuera del servidor (ver punto 6).** Texto original: **asistente en el servidor, para usarlo desde el celular.** Botón «Asistente en
 el servidor»: instalar Claude Code en el servidor con un **usuario aparte** (sudo solo para lo que se
 permita); sesión oficial (el enlace de `/login` o un token de `claude setup-token`, nunca copiar
 `~/.claude`); una carpeta con el contexto del servidor (sitios, logs para ver visitas, contenedores, cómo
