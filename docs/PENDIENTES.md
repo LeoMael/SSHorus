@@ -24,7 +24,13 @@ construidos y salen en la **0.5.0**.
 
 Al decir «continúa», empezar por aquí.
 
-**Ronda de pulido del 16/11/2026 (unida a `main`, sin publicar; ver «Sin publicar» en el CHANGELOG).**
+**Versión 1.0.0-beta.2 (16/11/2026):** etiqueta `v1.0.0-beta.2` subida; GitHub Actions deja el Release como
+**borrador** (lo publica el usuario tras probarlo). Incluye la ronda de pulido de abajo, el MCP «Solo lo marcado»
+con usuarios protegidos y varios servidores, y la contraseña solo para sudo en usuarios con clave. El borrador de
+la beta.1 se borró (nunca se publicó; la etiqueta `v1.0.0-beta.1` queda). `bundle.windows.wix.version` = `0.6.0.2`
+(quitar al pasar a 1.0.0).
+
+**Ronda de pulido del 16/11/2026 (unida a `main`; sale en la 1.0.0-beta.2).**
 Hecho: terminal (anchos Unicode 11, «Asistente con contexto» en la misma terminal, copiar/pegar), MCP
 (`request_sudo_password` con diálogo siempre; arreglos de bloqueo y contraseña guardada), escáner
 («Volver a comprobar», «Arreglar todo lo que tiene solución», kernels viejos fuera) y auditoría (vuelve a
