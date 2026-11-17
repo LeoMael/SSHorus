@@ -1,12 +1,10 @@
 // Crear o editar un usuario: formulario → revisión del comando exacto → ejecución.
 import { useMemo, useState } from "react";
-import { Copy, Eye, EyeOff, Sparkles } from "lucide-react";
 import {
   ADMIN_GROUP_NAMES,
   createUserPlan,
   daysToDate,
   editUserPlan,
-  generatePassword,
   isSystemGroup,
   parsePublicKey,
   validateDate,
@@ -17,73 +15,10 @@ import {
   type Plan,
   type UserRow,
 } from "../../features/admin";
-import { clipboard } from "../../lib/clipboard";
-import { toast } from "../../stores/toasts";
 import { useAdmin } from "./context";
 import { AdmModal } from "./AdmModal";
+import { PasswordField } from "./PasswordField";
 import { PlanReview } from "./PlanReview";
-
-async function copyText(text: string) {
-  try {
-    await clipboard.write(text);
-  } catch {
-    await navigator.clipboard.writeText(text);
-  }
-}
-
-/** Campo de contraseña con «Generar segura», mostrar y copiar. */
-function PasswordField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-  const [show, setShow] = useState(false);
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <div className="adm-pass">
-        <input
-          className="input mono"
-          type={show ? "text" : "password"}
-          value={value}
-          autoComplete="new-password"
-          spellCheck={false}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setShow((s) => !s)}
-          title={show ? "Ocultar" : "Mostrar"}
-          aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
-        >
-          {show ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          disabled={!value}
-          onClick={() =>
-            copyText(value).then(
-              () => toast.success("Contraseña copiada"),
-              (e) => toast.error("No se pudo copiar", e),
-            )
-          }
-          title="Copiar"
-          aria-label="Copiar contraseña"
-        >
-          <Copy size={14} />
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => {
-            onChange(generatePassword());
-            setShow(true);
-          }}
-        >
-          <Sparkles size={13} /> Generar segura
-        </button>
-      </div>
-    </label>
-  );
-}
 
 /** Lista de grupos con casillas y filtro. */
 function GroupPicker({ groups, value, onChange }: { groups: string[]; value: Set<string>; onChange: (v: Set<string>) => void }) {

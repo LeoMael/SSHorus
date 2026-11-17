@@ -74,7 +74,7 @@ export function innerScript(plan: Plan): string {
 // ───────── Contraseñas ─────────
 
 /** chpasswd lee «usuario:clave» por stdin (nunca en la línea de comandos). */
-function passwordPart(user: string, password: string): Pick<Plan, "secret" | "secretLabel"> & { step: string } {
+export function passwordPart(user: string, password: string): Pick<Plan, "secret" | "secretLabel"> & { step: string } {
   return { step: "chpasswd", secret: `${user}:${password}\n`, secretLabel: `${user}:${MASK}` };
 }
 

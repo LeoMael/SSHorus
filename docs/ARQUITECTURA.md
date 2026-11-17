@@ -358,6 +358,10 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   base64 + tipo interno), lee `AllowUsers/AllowGroups` con `sshd -T` (o `sshd_config`), arma el plan
   (`useradd` + `usermod -p '*'` + `authorized_keys` 700/600 + linger) y después prueba la conexión con
   `ssh_test_connection`. `AllowUsers` va en un plan aparte (archivo en `sshd_config.d`, `sshd -t`, recarga).
+  Con «Dar sudo» (`keyUserSudo.ts`, `sshdConf.ts`, `KeyUserSudo.tsx`): antes de crear el usuario, archivo
+  `10-sshorus-solo-llave-<u>.conf` con `Match User <u>` + `AuthenticationMethods publickey` (`sshd -t`,
+  `sshd -T -C` para él y para root; si falla se deshace y se para), y luego `chpasswd` por stdin en vez de
+  `'*'`. La contraseña se guarda con el servidor (`sudoMode: "saved"`, `saveServer(…, sudoSecret)`). Sin NOPASSWD.
   El catálogo tiene el mismo cambio como `usuarios.crear-usuario-clave` (script entre comillas simples y
   valores como `$1…$5`), que también usa el MCP.
 - **Lecturas:**

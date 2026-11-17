@@ -11,3 +11,5 @@ export * from "./run";
 export * from "./history";
 export * from "./ports";
 export * from "./web";
+export * from "./sshdConf";
+export * from "./keyUserSudo";

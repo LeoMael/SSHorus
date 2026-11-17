@@ -319,9 +319,11 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
    - **Nuevo usuario con clave…** crea un usuario **sin contraseña** que solo entra con su llave SSH. Pega la
      llave pública, elige una de `~/.ssh` de tu equipo o **genera una nueva** (ed25519; la privada se queda en
      tu equipo, con frase opcional). Si sshd limita el acceso con `AllowGroups`, te ofrece añadir el grupo; si
-     usa `AllowUsers`, te avisa y, al terminar, puedes añadirlo con un cambio aparte. También puedes darle sudo
-     y activar *linger*. No cambia `PasswordAuthentication`. Al acabar prueba la conexión con esa llave y te
-     ofrece **guardar el servidor** en SSHorus con ese usuario.
+     usa `AllowUsers`, te avisa y, al terminar, puedes añadirlo con un cambio aparte. También puedes activar
+     *linger* y **darle sudo**: entonces le pone una contraseña que solo sirve para sudo (generada, o la que
+     escribas), te la muestra una vez con **Copiar** y SSHorus la guarda como contraseña de sudo del servidor.
+     Sigue entrando solo con su llave: sshd no le deja usar la contraseña para entrar. Al acabar prueba la
+     conexión con esa llave y te ofrece **guardar el servidor** en SSHorus con ese usuario.
 3. En **Grupos** pulsa **Crear grupo**, o usa **Miembros**, **Renombrar** o **Eliminar**.
 4. Antes de cada cambio verás el comando exacto. Pulsa **Ejecutar** para aplicarlo.
 5. En **Conectados ahora** ves quién está dentro y puedes **Cerrar sesión**.

@@ -1,8 +1,9 @@
 // «Nuevo usuario con clave»: usuario SIN contraseña que solo entra con su llave SSH.
 // Funciones puras (sin React ni Tauri): validación de la llave pública, lectura de AllowUsers/AllowGroups
 // de sshd, el plan de comandos del asistente y el comando equivalente del catálogo (también para MCP).
-import { addMemberStep, writeKeysSteps, type AdminEnv, type Plan } from "./commands";
+import { addMemberStep, passwordPart, writeKeysSteps, type AdminEnv, type Plan } from "./commands";
 import { parsePublicKey, shQuote } from "./shell";
+import { keyOnlySshdSteps, RELOAD_SSHD_STEP } from "./sshdConf";
 
 const q = shQuote;
 
@@ -145,25 +146,30 @@ export interface KeyUser {
   groups: string[];
   admin: boolean;
   linger: boolean;
+  /** Contraseña solo para sudo (con `admin`): sudo la pide aunque se entre con llave. */
+  sudoPassword?: string;
 }
 
 /**
- * Crea el usuario sin contraseña («*» en /etc/shadow: no puede entrar con contraseña pero la cuenta no
- * queda «bloqueada», que sshd rechaza incluso con llave cuando no usa PAM) y escribe su authorized_keys.
- * No toca sshd_config ni PasswordAuthentication.
+ * Crea el usuario y escribe su authorized_keys. Sin sudo, sin contraseña («*» en /etc/shadow: no puede
+ * entrar con contraseña pero la cuenta no queda «bloqueada», que sshd rechaza incluso con llave cuando no
+ * usa PAM) y sin tocar sshd. Con sudo y `sudoPassword`: primero sshd «solo llave» para él (Match User) y
+ * después la contraseña por stdin (chpasswd), que solo le sirve para sudo. Nunca NOPASSWD.
  */
 export function createKeyUserPlan(env: AdminEnv, u: KeyUser): Plan {
   const groups = [...new Set([...u.groups, ...(u.admin ? [env.adminGroup] : [])])].filter((g) => g && g !== u.name);
-  const steps: string[] = ["# Usuario sin contraseña: solo podrá entrar con su llave SSH"];
+  const pw = u.admin && u.sudoPassword ? passwordPart(u.name, u.sudoPassword) : null;
+  const steps: string[] = pw
+    ? [...keyOnlySshdSteps(u.name), "# Usuario con contraseña solo para sudo: entra únicamente con su llave SSH"]
+    : ["# Usuario sin contraseña: solo podrá entrar con su llave SSH"];
+  const noPassword = env.toolset === "shadow" ? `usermod -p '*' ${q(u.name)}` : `printf '%s:*\\n' ${q(u.name)} | chpasswd -e`;
   if (env.toolset === "shadow") {
     const args = ["useradd", "-m", "-s", q(u.shell)];
     if (groups.length) args.push("-G", q(groups.join(",")));
     args.push(q(u.name));
-    steps.push(args.join(" "));
-    steps.push(`usermod -p '*' ${q(u.name)}`);
+    steps.push(args.join(" "), pw ? pw.step : noPassword);
   } else {
-    steps.push(`adduser -D -s ${q(u.shell)} ${q(u.name)}`);
-    steps.push(`printf '%s:*\\n' ${q(u.name)} | chpasswd -e`);
+    steps.push(`adduser -D -s ${q(u.shell)} ${q(u.name)}`, pw ? pw.step : noPassword);
     for (const g of groups) steps.push(addMemberStep(env, u.name, g));
   }
   steps.push(...writeKeysSteps(u.name, u.publicKey));
@@ -175,7 +181,8 @@ export function createKeyUserPlan(env: AdminEnv, u: KeyUser): Plan {
       )} >&2; fi`,
     );
   }
-  return { action: `Crear usuario «${u.name}» con acceso solo por llave SSH`, steps };
+  const action = `Crear usuario «${u.name}» con acceso solo por llave SSH${pw ? " y contraseña para sudo" : ""}`;
+  return pw ? { action, steps, secret: pw.secret, secretLabel: pw.secretLabel } : { action, steps };
 }
 
 /**
@@ -196,7 +203,7 @@ export function allowUsersPlan(user: string): Plan {
       `if sshd -T 2>/dev/null | grep -qix ${q(`allowusers ${user}`)}; then :; else rm -f ${q(file)}; echo ${q(
         "sshd no aplicó el cambio (¿falta «Include /etc/ssh/sshd_config.d/*.conf»?): se deshizo",
       )} >&2; exit 1; fi`,
-      `systemctl reload sshd 2>/dev/null || systemctl reload ssh`,
+      RELOAD_SSHD_STEP,
     ],
   };
 }

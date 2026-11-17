@@ -1,8 +1,9 @@
-// «Nuevo usuario con clave»: usuario sin contraseña que solo entra con su llave SSH.
+// «Nuevo usuario con clave»: usuario que solo entra con su llave SSH.
 // Formulario → revisión del plan (comandos exactos) → resultado: prueba de conexión con esa llave y
-// opción de guardar el servidor en SSHorus. No toca sshd_config salvo que se pida aparte (AllowUsers).
+// opción de guardar el servidor en SSHorus. Con «Dar sudo», contraseña solo para sudo y sshd «solo llave»
+// para él (KeyUserSudo.tsx). AllowUsers, si hace falta, se pide aparte.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, KeyRound, PlugZap, Save, ShieldAlert, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, PlugZap, ShieldAlert, Sparkles, XCircle } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { localkeys, type LocalPublicKey } from "../../api/localkeys";
 import { ssh } from "../../api/ssh";
@@ -24,9 +25,9 @@ import {
 } from "../../features/admin";
 import { describeTestOk, testServerConnection } from "../../features/serverTest";
 import { useProfiles } from "../../stores/profiles";
-import { useUi } from "../../stores/ui";
 import { useAdmin } from "./context";
 import { AdmModal } from "./AdmModal";
+import { KeyUserPlanNote, KeyUserSudoFields, SaveKeyUserServerButton, SudoPasswordOnce, useSudoPassword } from "./KeyUserSudo";
 import { PlanModal, PlanReview } from "./PlanReview";
 import { Segmented } from "./Segmented";
 
@@ -37,7 +38,6 @@ type TestState = { status: "idle" | "running" } | { status: "ok" | "error"; mess
 export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onCreated?: (name: string) => void }) {
   const { env, read, users, sessionId, profileId, elevation, serverName } = useAdmin();
   const profile = useProfiles((s) => s.servers.find((x) => x.id === profileId) ?? null);
-  const openServerEditor = useUi((s) => s.openServerEditor);
 
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
@@ -55,6 +55,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
   const [extraGroups, setExtraGroups] = useState("");
   const [admin, setAdmin] = useState(false);
   const [linger, setLinger] = useState(false);
+  const sudo = useSudoPassword();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [plan, setPlan] = useState<Plan | null>(null);
   const [keyPath, setKeyPath] = useState("");
@@ -159,10 +160,12 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
       if (ge) errs.groups = `«${g}»: ${ge}`;
       else if (known.size && !known.has(g)) errs.groups = `El grupo «${g}» no existe en el servidor`;
     }
+    const sp = admin ? sudo.choose() : null;
+    if (sp && !sp.ok) errs.sudo = sp.error;
     setErrors(errs);
     if (Object.keys(errs).length) return;
     const groups = [...groupList, ...(allowGroup && addAllowGroup ? [allowGroup] : [])];
-    setPlan(createKeyUserPlan(env, { name, publicKey: line, shell, groups, admin, linger }));
+    setPlan(createKeyUserPlan(env, { name, publicKey: line, shell, groups, admin, linger, sudoPassword: sp?.ok ? sp.password : undefined }));
     if (typeof k !== "string") setKeyPath(k.privatePath);
     setStep("review");
   };
@@ -186,19 +189,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const saveServer = () => {
-    if (!profile) return;
-    openServerEditor({
-      ...profile,
-      id: "",
-      name: `${profile.name} (${name})`,
-      username: name,
-      auth: keyPath ? "key" : "agent",
-      keyPath: keyPath || null,
-      sudoMode: "ask",
-    });
-    onClose();
-  };
+  const sudoPassword = admin ? sudo.chosen : null;
 
   const title = "Nuevo usuario con clave SSH";
   if (!env) return null;
@@ -216,10 +207,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
           }}
           runLabel="Crear usuario"
         >
-          <p className="dialog-message">
-            Se creará <strong>{name}</strong> sin contraseña: solo podrá entrar con su llave SSH. No se cambia
-            PasswordAuthentication ni ninguna otra opción de sshd.
-          </p>
+          <KeyUserPlanNote name={name} sudo={!!sudoPassword} />
         </PlanReview>
       </AdmModal>
     );
@@ -233,6 +221,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
             <CheckCircle2 size={14} className="adm-ok" /> Usuario <strong>{name}</strong> creado con su llave en
             ~/.ssh/authorized_keys.
           </p>
+          {sudoPassword && <SudoPasswordOnce name={name} password={sudoPassword} />}
           {advice?.needAllowUsers && !allowUsersDone && (
             <div className="adm-note adm-note-warn">
               <ShieldAlert size={13} /> sshd solo deja entrar a los usuarios de <span className="mono">AllowUsers</span> (
@@ -273,9 +262,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
           <button className="btn" onClick={onClose}>
             Cerrar
           </button>
-          <button className="btn btn-primary" onClick={saveServer} disabled={!profile}>
-            <Save size={13} /> Guardar servidor en SSHorus…
-          </button>
+          <SaveKeyUserServerButton profile={profile} name={name} keyPath={keyPath} sudoPassword={sudoPassword} onSaved={onClose} />
         </div>
         {allowUsersOpen && (
           <PlanModal
@@ -457,9 +444,9 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
           </label>
           <label className="checkbox adm-check adm-mb">
             <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
-            Dar sudo (grupo <span className="mono">{env.adminGroup}</span>). Sin contraseña, sudo solo funcionará si se
-            configura NOPASSWD.
+            Dar sudo (grupo <span className="mono">{env.adminGroup}</span>)
           </label>
+          {admin && <KeyUserSudoFields sudo={sudo} error={errors.sudo} />}
           <label className="checkbox adm-check">
             <input type="checkbox" checked={linger} onChange={(e) => setLinger(e.target.checked)} />
             Activar linger (sus servicios de usuario y contenedores siguen activos sin sesión abierta)
