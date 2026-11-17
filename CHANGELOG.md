@@ -4,7 +4,12 @@ Todos los cambios importantes de SSHorus se anotan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones
 siguen [Versionado Semántico](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [1.0.0-beta.2] - 2026-11-16
+
+### Importante
+- **Primera versión publicada con el nombre SSHorus.** La 1.0.0-beta.1 no llegó a publicarse: todo lo suyo viene
+  también aquí. **Si vienes de TerView**, lee «Importante» en [1.0.0-beta.1](#100-beta1---2026-11-14): esta vez hay
+  que instalarla a mano (TerView no la ve como actualización) y los servidores, ajustes y contraseñas no se traen.
 
 ### Añadido
 - **Terminal local → «Asistente con contexto»**: abre Claude Code, Codex, agy u OpenCode en esa misma
@@ -20,6 +25,19 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   (quitar la contraseña, prohibir root, cortafuegos) va aparte, con aviso y una comprobación previa. Los
   problemas salen por importancia y los que no tienen comando dicen qué hacer.
 
+- **MCP: permisos por tarea en cada servidor.** Nuevo nivel **«Solo lo marcado»** con casillas: usuarios (crear,
+  editar y borrar por separado), sitios web (Caddy y nginx), contenedores, servicios, paquetes, cortafuegos,
+  archivos (solo en las carpetas que elijas) y comandos libres (apagado por defecto; si lo enciendes, las casillas
+  ya no limitan). La IA usa sudo solo para lo marcado, y «Aceptar automáticamente» también funciona ahí, solo dentro
+  de lo marcado. Plantillas: «Solo usuarios», «Solo web», «Despliegue» y «Todo».
+- **MCP: usuarios protegidos** (por servidor y una lista para todos, por ejemplo `root`): la IA no puede editarlos,
+  borrarlos, escribir en su carpeta ni actuar como ellos. Con comandos libres, si un comando los menciona, SSHorus
+  pregunta siempre y lo avisa.
+- **Ajustes → Asistentes de IA:** resumen de qué puede hacer la IA en cada servidor y «Aplicar a varios servidores»
+  (elegidos o un proyecto entero).
+- **Biblioteca:** añadir o quitar de un grupo, cambiar el shell, bloquear, desbloquear y borrar usuarios; crear,
+  cambiar el puerto, borrar, probar y recargar sitios de Caddy y nginx (si la configuración no valida, se deja como
+  estaba).
 - **Usuarios → «Nuevo usuario con clave» con «Dar sudo»**: le pone una contraseña que solo sirve para sudo
   (generada o escrita), la muestra una vez con «Copiar» y SSHorus la guarda como sudo «Guardar» del servidor.
   Sigue entrando solo con su llave: sshd queda «solo llave» para ese usuario (comprobado con `sshd -t`; si falla,
@@ -436,7 +454,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
-[Sin publicar]: https://github.com/LeoMael/SSHorus/compare/v1.0.0-beta.1...HEAD
+[1.0.0-beta.2]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.1
 [0.5.0]: https://github.com/LeoMael/SSHorus/releases/tag/v0.5.0
 [0.3.0]: https://github.com/LeoMael/SSHorus/releases/tag/v0.3.0
