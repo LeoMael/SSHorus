@@ -9,7 +9,9 @@ use std::sync::{Mutex, MutexGuard};
 
 use serde::{Deserialize, Serialize};
 
+use super::grants::Grants;
 use super::policy::{Access, AutoLevel};
+use super::protect;
 use crate::error::{AppError, AppResult};
 use crate::storage::fsutil;
 
@@ -40,6 +42,12 @@ pub struct McpConfig {
     pub auto_accept: BTreeMap<String, AutoLevel>,
     /// La IA puede pedir la contraseña de sudo con `request_sudo_password` (siempre pregunta).
     pub allow_sudo_password_request: bool,
+    /// Casillas de «Solo lo marcado» por servidor (se conservan aunque se cambie de nivel).
+    pub grants: BTreeMap<String, Grants>,
+    /// Usuarios protegidos por servidor (id → nombres). No hace falta que existan en el servidor.
+    pub protected_users: BTreeMap<String, BTreeSet<String>>,
+    /// Usuarios protegidos en todos los servidores (p. ej. «root»).
+    pub protected_global: BTreeSet<String>,
 }
 
 impl Default for McpConfig {
@@ -52,6 +60,9 @@ impl Default for McpConfig {
             remembered: BTreeMap::new(),
             auto_accept: BTreeMap::new(),
             allow_sudo_password_request: true,
+            grants: BTreeMap::new(),
+            protected_users: BTreeMap::new(),
+            protected_global: BTreeSet::new(),
         }
     }
 }
@@ -65,6 +76,17 @@ impl McpConfig {
         self.remembered.get(server_id).cloned().unwrap_or_default()
     }
 
+    pub fn grants_of(&self, server_id: &str) -> Grants {
+        self.grants.get(server_id).cloned().unwrap_or_default()
+    }
+
+    /// Protegidos de un servidor: los suyos más los globales.
+    pub fn protected_of(&self, server_id: &str) -> BTreeSet<String> {
+        let mut all = self.protected_global.clone();
+        all.extend(self.protected_users.get(server_id).into_iter().flatten().cloned());
+        all
+    }
+
     /// Corrige valores fuera de rango y quita entradas vacías.
     pub fn sanitize(mut self) -> Self {
         if self.port < 1024 {
@@ -74,10 +96,21 @@ impl McpConfig {
         self.approval_timeout_secs = self.approval_timeout_secs.clamp(lo, hi);
         self.access.retain(|k, v| !k.trim().is_empty() && *v != Access::None);
         self.remembered.retain(|k, v| !k.trim().is_empty() && !v.is_empty());
-        // El modo automático solo vale con acceso Completo.
+        // El modo automático solo vale con acceso Completo o Solo lo marcado.
         let access = self.access.clone();
         self.auto_accept
-            .retain(|k, v| *v != AutoLevel::Off && access.get(k).copied() == Some(Access::Full));
+            .retain(|k, v| *v != AutoLevel::Off && access.get(k).is_some_and(|a| a.allows_auto()));
+        self.grants = std::mem::take(&mut self.grants)
+            .into_iter()
+            .map(|(k, g)| (k, g.sanitize()))
+            .filter(|(k, g)| !k.trim().is_empty() && !g.is_empty())
+            .collect();
+        self.protected_users = std::mem::take(&mut self.protected_users)
+            .into_iter()
+            .map(|(k, v)| (k, protect::clean_list(&v)))
+            .filter(|(k, v)| !k.trim().is_empty() && !v.is_empty())
+            .collect();
+        self.protected_global = protect::clean_list(&self.protected_global);
         self
     }
 }

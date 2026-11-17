@@ -81,6 +81,10 @@ impl Backend for Real {
         let s = self.sessions.get(sid).await?;
         self.sftp.write_text(&s, path, content).await
     }
+    async fn realpath(&self, sid: &str, path: &str) -> AppResult<String> {
+        let s = self.sessions.get(sid).await?;
+        self.sftp.realpath(&s, path).await
+    }
     async fn upload(&self, _: &str, _: Vec<String>, _: String) -> AppResult<String> {
         Err(crate::error::AppError::Invalid("no en esta prueba".into()))
     }
@@ -465,3 +469,6 @@ async fn sudo_wrapper_on_real_server() {
 
     let _ = exec::run(&s, &format!("rm -rf {base}"), 10).await;
 }
+
+#[path = "e2e_marked.rs"]
+mod marked;

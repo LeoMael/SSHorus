@@ -1,7 +1,10 @@
 // Catálogo base de la Biblioteca de comandos (fuente: docs/comandos/CATALOGO.md).
 // La categoría Docker se genera a partir de las entradas de Podman.
 import { parseVars } from "./template";
+import type { McpTask } from "../../api/mcp";
 import { KEY_USER_CATALOG_COMMAND } from "../../features/admin/keyUser";
+import { USER_DELETE_ROWS, USER_EDIT_ROWS, type GeneratedRow } from "../../features/admin/catalogUsers";
+import { WEB_SITE_ROWS } from "../../features/admin/webSites";
 
 export type Distro = "rpm" | "deb" | "apk";
 
@@ -29,6 +32,8 @@ export interface CatalogEntry {
   interactive?: boolean;
   distro?: Distro;
   vars?: Record<string, CatalogVar>;
+  /** Tarea de «Solo lo marcado» del asistente (MCP). Sin tarea, el asistente necesita «Comandos libres». */
+  perm?: McpTask;
 }
 
 export const CATEGORIES = [
@@ -76,6 +81,9 @@ const VAR_HINTS: Record<string, CatalogVar> = {
   desde: { options: ["10m", "1h", "6h", "24h"] },
   lineas: { label: "líneas", options: ["50", "100", "200", "500", "1000"] },
   tamaño: { options: ["10M", "100M", "500M", "1G"] },
+  nuevo_shell: { label: "shell nuevo", suggest: "grep '^/' /etc/shells 2>/dev/null | sort -u" },
+  dominio: { label: "dominio (app.ejemplo.com)" },
+  puerto: { label: "puerto local" },
   carpeta: { suggest: "find . -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort | head -50" },
   archivo: { suggest: "find . -maxdepth 1 -type f 2>/dev/null | sort | head -50" },
 };
@@ -89,6 +97,13 @@ interface Section {
   category: string;
   group: string;
   rows: Row[];
+  /** Tarea de «Solo lo marcado» de todas sus filas. */
+  perm?: McpTask;
+}
+
+/** Filas generadas (catalogUsers.ts, webSites.ts) en el formato compacto. */
+function rowsOf(list: GeneratedRow[]): Row[] {
+  return list.map((r): Row => [r.name, r.command, r.description, r.flags, undefined, r.id]);
 }
 
 const PODMAN: Section[] = [
@@ -377,6 +392,7 @@ const OTHERS: Section[] = [
   {
     category: "Red",
     group: "Firewall",
+    perm: "firewall",
     rows: [
       ["Firewall", "sudo firewall-cmd --list-all", "Reglas activas de firewalld.", "rs", "rpm"],
       [
@@ -429,9 +445,14 @@ const OTHERS: Section[] = [
   },
   {
     category: "Usuarios",
-    group: "Usuarios y permisos",
+    group: "Ver",
+    rows: [["Quién soy", "whoami && id", "Tu usuario, grupos e identificadores.", "r"]],
+  },
+  {
+    category: "Usuarios",
+    group: "Crear",
+    perm: "users-create",
     rows: [
-      ["Quién soy", "whoami && id", "Tu usuario, grupos e identificadores.", "r"],
       ["Crear usuario", "sudo useradd -m {{usuario}}", "Crea un usuario con carpeta personal.", "s"],
       [
         "Crear usuario con acceso solo por clave SSH",
@@ -443,12 +464,30 @@ const OTHERS: Section[] = [
         undefined,
         "crear-usuario-clave",
       ],
+    ],
+  },
+  {
+    category: "Usuarios",
+    group: "Editar",
+    perm: "users-edit",
+    rows: [
       ["Cambiar contraseña", "sudo passwd {{usuario}}", "Pide la contraseña nueva del usuario.", "si"],
       ["Dar sudo", "sudo usermod -aG wheel {{usuario}}", "Añade el usuario al grupo wheel.", "sd", "rpm"],
       ["Dar sudo", "sudo usermod -aG sudo {{usuario}}", "Añade el usuario al grupo sudo.", "sd", "deb"],
       ["Dar sudo", "sudo addgroup {{usuario}} wheel", "Añade el usuario al grupo wheel.", "sd", "apk"],
-      ["Cambiar dueño", "sudo chown -R {{usuario}}:{{grupo}} {{ruta}}", "Cambia el dueño de una ruta y todo su contenido.", "sd"],
+      ...rowsOf(USER_EDIT_ROWS),
     ],
+  },
+  {
+    category: "Usuarios",
+    group: "Borrar",
+    perm: "users-delete",
+    rows: rowsOf(USER_DELETE_ROWS),
+  },
+  {
+    category: "Usuarios",
+    group: "Permisos de archivos",
+    rows: [["Cambiar dueño", "sudo chown -R {{usuario}}:{{grupo}} {{ruta}}", "Cambia el dueño de una ruta y todo su contenido.", "sd"]],
   },
   {
     category: "Paquetes",
@@ -506,6 +545,11 @@ const OTHERS: Section[] = [
     ],
   },
   {
+    category: "Web",
+    group: "Sitios (dominio → puerto)",
+    rows: rowsOf(WEB_SITE_ROWS),
+  },
+  {
     category: "Git",
     group: "Repositorio",
     rows: [
@@ -547,6 +591,15 @@ function varsFor(command: string, docker: boolean): Record<string, CatalogVar> |
   return out;
 }
 
+/** Tarea por categoría cuando la sección no dice otra. */
+const CATEGORY_PERM: Partial<Record<string, McpTask>> = {
+  Podman: "containers",
+  Docker: "containers",
+  Servicios: "services",
+  Paquetes: "packages",
+  Web: "web",
+};
+
 function build(sections: Section[], docker = false): CatalogEntry[] {
   const out: CatalogEntry[] = [];
   const ids = new Set<string>();
@@ -568,6 +621,7 @@ function build(sections: Section[], docker = false): CatalogEntry[] {
         interactive: flags.includes("i") || undefined,
         distro,
         vars: varsFor(command, docker),
+        perm: sec.perm ?? CATEGORY_PERM[sec.category],
       });
     }
   }

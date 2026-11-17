@@ -179,6 +179,11 @@ impl SftpStore {
         with_sftp!(self, ssh, |s| ops::canonicalize(&s, ".").await)
     }
 
+    /// Ruta real (el servidor sigue los enlaces simbólicos y «..»).
+    pub async fn realpath(&self, ssh: &Arc<SshSession>, path: &str) -> AppResult<String> {
+        with_sftp!(self, ssh, |s| ops::canonicalize(&s, path).await)
+    }
+
     pub async fn list_dir(&self, ssh: &Arc<SshSession>, path: &str) -> AppResult<Vec<FileEntry>> {
         with_sftp!(self, ssh, |s| ops::list_dir(&s, path).await)
     }

@@ -6,6 +6,8 @@
 //! - `server`: lista de herramientas y paso de cada llamada a `core`.
 //! - `core`: permisos, aprobación, ejecución con límites y registro (sin Tauri: se prueba aparte).
 //! - `policy`: reglas de acceso y comandos peligrosos. `config`: `mcp.json`. `audit`: registro.
+//! - `grants`: casillas de «Solo lo marcado» y plantillas. `protect`: usuarios protegidos.
+//!   `rules`: aplicar permisos a uno o varios servidores.
 //! - `approval` y `ui`: diálogos y peticiones a la interfaz. `backend`: el motor de la app.
 //! - `server_audit`: resumen de las auditorías del servidor (`get_audit_report`, `run_audit`).
 //! - `vuln`: resumen de los informes del escáner de vulnerabilidades para el asistente.
@@ -26,7 +28,10 @@ pub mod config;
 pub mod core;
 pub mod diff;
 pub mod http;
+pub mod grants;
 pub mod policy;
+pub mod protect;
+pub mod rules;
 pub mod server;
 pub mod server_audit;
 pub use crate::snippets::sudo;
@@ -388,8 +393,8 @@ pub async fn mcp_set_access(app: AppHandle, state: State<'_, McpState>, server_i
     state.core.config.update(|c| {
         c.access.insert(server_id.clone(), access);
     })?;
-    // Sin acceso Completo no hay modo automático (lo guardado ya lo quita `sanitize`).
-    if access != Access::Full {
+    // Sin acceso Completo o Solo lo marcado no hay modo automático (lo guardado ya lo quita `sanitize`).
+    if !access.allows_auto() {
         state.core.set_auto_at(&server_id, AutoLevel::Off, AutoDuration::Session, audit::now_ms())?;
         emit_auto(&app, &state);
     }

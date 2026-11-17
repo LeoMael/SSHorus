@@ -2,6 +2,20 @@
 // (dominios, puertos, HTTPS y certificado, a qué sirve cada ruta). Funciones puras, sin React ni Tauri.
 import { shQuote } from "./shell";
 
+/** Deja en `cp` el nginx.conf que usa nginx (el de `nginx -V` o el habitual). */
+export const NGINX_CONF_STEPS = [
+  "cp=$(nginx -V 2>&1 | grep -oE -- '--conf-path=[^ ]+' | head -n1 | cut -d= -f2)",
+  '[ -n "$cp" ] || cp=/etc/nginx/nginx.conf',
+];
+
+/** Deja en `cf` el Caddyfile que usa el servicio (su `--config` o el habitual). */
+export const CADDY_CONF_STEPS = [
+  "cf=$(systemctl cat caddy 2>/dev/null | grep -oE -- '--config[= ][^ ]+' | head -n1 | sed 's/^--config[= ]//')",
+  '[ -n "$cf" ] || cf=/etc/caddy/Caddyfile',
+];
+
+const indent = (lines: string[]) => lines.map((l) => `  ${l}`);
+
 /**
  * Script de lectura. nginx: `nginx -T` (configuración completa, necesita root casi siempre); si falla,
  * se leen los archivos de la carpeta de configuración con el mismo formato. Caddy: configuración en
@@ -17,8 +31,7 @@ export const WEB_SCRIPT = [
   // Solo si existe la unidad (si no, «is-active» diría «inactive» de un servicio que no existe).
   "if command -v systemctl >/dev/null 2>&1; then for s in nginx caddy; do systemctl cat $s >/dev/null 2>&1 && echo \"$s $(systemctl is-active $s 2>/dev/null)\"; done; fi",
   "if command -v nginx >/dev/null 2>&1; then",
-  "  cp=$(nginx -V 2>&1 | grep -oE -- '--conf-path=[^ ]+' | head -n1 | cut -d= -f2)",
-  "  [ -n \"$cp\" ] || cp=/etc/nginx/nginx.conf",
+  ...indent(NGINX_CONF_STEPS),
   "  if out=$(nginx -T 2>/dev/null) && printf '%s\\n' \"$out\" | grep -q '^# configuration file '; then src=dump",
   "  else",
   "    src=files; d=$(dirname \"$cp\")",
@@ -37,8 +50,7 @@ export const WEB_SCRIPT = [
   "  fi",
   "fi",
   "if command -v caddy >/dev/null 2>&1; then",
-  "  cf=$(systemctl cat caddy 2>/dev/null | grep -oE -- '--config[= ][^ ]+' | head -n1 | sed 's/^--config[= ]//')",
-  "  [ -n \"$cf\" ] || cf=/etc/caddy/Caddyfile",
+  ...indent(CADDY_CONF_STEPS),
   "  j=''; src=api",
   "  if command -v curl >/dev/null 2>&1; then j=$(curl -sf --max-time 3 http://127.0.0.1:2019/config/ 2>/dev/null)",
   "  elif command -v wget >/dev/null 2>&1; then j=$(wget -qO- -T 3 http://127.0.0.1:2019/config/ 2>/dev/null); fi",

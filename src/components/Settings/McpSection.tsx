@@ -1,23 +1,22 @@
-// Ajustes → Asistentes de IA (MCP): encender el servidor, puerto, token, permisos por servidor,
-// reglas «Permitir siempre» y la configuración lista para copiar en Claude Code o Claude Desktop.
+// Ajustes → Asistentes de IA (MCP): encender el servidor, puerto, token, permisos por servidor (con «Solo lo
+// marcado» y usuarios protegidos), resumen, aplicar a varios servidores, reglas «Permitir siempre» y la
+// configuración lista para copiar en Claude Code o Claude Desktop.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Activity, Copy, Eye, EyeOff, RefreshCw, Trash2, X } from "lucide-react";
-import { mcp, type McpAccess, type McpClientConfig, type McpConfig } from "../../api/mcp";
+import { Activity, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { mcp, type McpClientConfig, type McpConfig } from "../../api/mcp";
 import { clipboard } from "../../lib/clipboard";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { activeAuto, openActivity, refreshAuto, refreshStatus, useMcp } from "../../features/mcp/store";
-import { AutoAcceptPicker, autoText, useMinuteClock } from "../../features/mcp/AutoAccept";
+import { useMinuteClock } from "../../features/mcp/AutoAccept";
 import { SudoRevealSetting } from "../../features/mcp/SudoRevealSetting";
+import { PROTECTED_NOTE, ProtectedInput } from "../../features/mcp/ProtectedUsers";
+import { McpBulk } from "../../features/mcp/McpBulk";
+import { McpSummary } from "../../features/mcp/McpSummary";
+import { McpServerRow } from "./McpServerRow";
 import "../../features/mcp/Mcp.css";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
-
-const ACCESS: { v: McpAccess; label: string; title: string }[] = [
-  { v: "none", label: "Sin acceso", title: "El asistente ni ve este servidor." },
-  { v: "read", label: "Solo lectura", title: "Listar, leer archivos y comandos 📊 de la Biblioteca." },
-  { v: "full", label: "Completo", title: "También cambios, siempre con tu permiso." },
-];
 
 const TIMEOUTS = [30, 60, 120, 300];
 
@@ -58,12 +57,6 @@ function CopyBlock({ title, hint, text }: { title: string; hint?: ReactNode; tex
   );
 }
 
-/** «run_command\nuptime» → «run_command: uptime». */
-function ruleLabel(key: string): string {
-  const [tool, ...rest] = key.split("\n");
-  return rest.length ? `${tool}: ${rest.join(" · ")}` : tool;
-}
-
 export function McpSection() {
   const status = useMcp((s) => s.status);
   const servers = useProfiles((s) => s.servers);
@@ -72,8 +65,6 @@ export function McpSection() {
   const [showToken, setShowToken] = useState(false);
   const [port, setPort] = useState("");
   const [busy, setBusy] = useState(false);
-  const [openRules, setOpenRules] = useState<string | null>(null);
-  const [openAuto, setOpenAuto] = useState<string | null>(null);
   const now = useMinuteClock();
   const autoList = activeAuto(useMcp((s) => s.auto), now);
   const enabled = !!status?.enabled;
@@ -146,20 +137,13 @@ export function McpSection() {
     }
   };
 
-  const setAccess = async (serverId: string, access: McpAccess) => {
+  const saveGlobalProtected = async (users: string[]) => {
     try {
-      setCfg(await mcp.setAccess(serverId, access));
-      if (access !== "full") void refreshAuto();
+      setCfg(await mcp.setProtectedGlobal(users));
+      return true;
     } catch (e) {
-      toast.error("No se pudo guardar el permiso", e);
-    }
-  };
-
-  const forget = async (serverId: string, key: string | null) => {
-    try {
-      setCfg(await mcp.forgetRule(serverId, key));
-    } catch (e) {
-      toast.error("No se pudo quitar la regla", e);
+      toast.error("No se pudo guardar la lista", e);
+      return false;
     }
   };
 
@@ -256,79 +240,40 @@ export function McpSection() {
       </SettingGroup>
 
       <SettingGroup title="Permisos por servidor" hint="Lo peligroso (rm -rf, sudo, reboot…) se pregunta siempre.">
+        <Row label="Usuarios protegidos en todos los servidores" hint={PROTECTED_NOTE}>
+          <ProtectedInput
+            value={cfg?.protectedGlobal ?? []}
+            onSave={saveGlobalProtected}
+            label="Usuarios protegidos en todos los servidores"
+          />
+        </Row>
         {servers.length === 0 ? (
           <div className="st-block muted">Aún no tienes servidores guardados.</div>
         ) : (
-          servers.map((s) => {
-            const access = cfg?.access[s.id] ?? "none";
-            const rules = cfg?.remembered[s.id] ?? [];
-            const auto = autoList.find((a) => a.serverId === s.id);
-            return (
-              <div key={s.id} className="mcp-server">
-                <div className="mcp-server-row">
-                  <div className="mcp-server-name">
-                    <span>{s.name}</span>
-                    <small className="faint">
-                      {s.username}@{s.host}
-                    </small>
-                    {auto && access === "full" && (
-                      <small className={auto.level === "all" ? "mcp-auto-state all" : "mcp-auto-state"}>
-                        Automático: {autoText(auto, now)}
-                      </small>
-                    )}
-                  </div>
-                  {access === "full" && (
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => setOpenAuto(openAuto === s.id ? null : s.id)}
-                      title="Deja de pedir permiso durante un tiempo (nunca con SSHorus bloqueado). Cada acción queda marcada como «automático»."
-                    >
-                      {auto ? "Automático (activo)" : "Automático…"}
-                    </button>
-                  )}
-                  {rules.length > 0 && (
-                    <button className="btn btn-sm" onClick={() => setOpenRules(openRules === s.id ? null : s.id)}>
-                      {rules.length === 1 ? "1 regla «siempre»" : `${rules.length} reglas «siempre»`}
-                    </button>
-                  )}
-                  <div className="st-segmented" role="radiogroup" aria-label={`Acceso a ${s.name}`}>
-                    {ACCESS.map((o) => (
-                      <button
-                        key={o.v}
-                        role="radio"
-                        aria-checked={access === o.v}
-                        className={access === o.v ? `active mcp-acc-${o.v}` : ""}
-                        title={o.title}
-                        onClick={() => void setAccess(s.id, o.v)}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {openAuto === s.id && access === "full" && (
-                  <AutoAcceptPicker serverId={s.id} serverName={s.name} onApplied={() => setOpenAuto(null)} />
-                )}
-                {openRules === s.id && rules.length > 0 && (
-                  <div className="mcp-rules">
-                    {rules.map((k) => (
-                      <div key={k} className="mcp-rule">
-                        <code title={k}>{ruleLabel(k)}</code>
-                        <button className="icon-btn" onClick={() => void forget(s.id, k)} title="Quitar regla" aria-label="Quitar regla">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    <button className="btn btn-sm" onClick={() => void forget(s.id, null)}>
-                      <Trash2 size={12} /> Quitar todas
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
+          servers.map((s) => (
+            <McpServerRow
+              key={s.id}
+              server={s}
+              cfg={cfg}
+              onChange={setCfg}
+              auto={autoList.find((a) => a.serverId === s.id)}
+              now={now}
+            />
+          ))
         )}
       </SettingGroup>
+
+      {servers.length > 0 && (
+        <SettingGroup title="Resumen" hint="Qué puede hacer el asistente en cada servidor.">
+          <McpSummary cfg={cfg} />
+        </SettingGroup>
+      )}
+
+      {servers.length > 1 && (
+        <SettingGroup title="Aplicar a varios servidores" hint="El mismo nivel, plantilla o usuarios protegidos en los servidores que elijas.">
+          <McpBulk onChange={setCfg} />
+        </SettingGroup>
+      )}
 
       {enabled && client && status && (
         <SettingGroup title="Conectar tu asistente" hint="SSHorus debe estar abierto. Lleva el token: no lo compartas.">

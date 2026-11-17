@@ -2,7 +2,8 @@
 // - Cambios normales: lo que hoy pide permiso y no es peligroso.
 // - Todo: también lo peligroso y sudo (advertencia en rojo y confirmación).
 // Duración: 15 min, 1 h o hasta cerrar SSHorus (solo en memoria) o «siempre» (en mcp.json).
-// Nunca vale con SSHorus bloqueado ni en servidores sin acceso Completo (lo comprueba el motor).
+// Nunca vale con SSHorus bloqueado ni en servidores sin acceso Completo o «Solo lo marcado» (y entonces
+// solo dentro de lo marcado). Lo comprueba el motor.
 import { useEffect, useState } from "react";
 import { AlertTriangle, Zap } from "lucide-react";
 import { mcp, type McpAutoDuration, type McpAutoLevel, type McpAutoState } from "../../api/mcp";

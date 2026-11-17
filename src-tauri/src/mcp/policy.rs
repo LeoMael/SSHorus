@@ -1,12 +1,15 @@
 //! Reglas de permiso del asistente (funciones puras, sin Tauri).
 //!
-//! - Cada servidor tiene un nivel de acceso: Sin acceso (por defecto), Solo lectura o Completo.
+//! - Cada servidor tiene un nivel de acceso: Sin acceso (por defecto), Solo lectura, Solo lo marcado
+//!   (casillas por tarea, ver `grants`) o Completo.
 //! - Cada acción del asistente es de lectura o de cambio. Las lecturas pasan solas; los cambios
 //!   piden permiso en SSHorus, salvo que el usuario haya dicho «Permitir siempre» a esa misma acción
 //!   en ese servidor.
 //! - Lo peligroso (`rm -rf`, `prune`, `sudo`, `reboot`… o un comando ⚠️ del catálogo) pide permiso
 //!   SIEMPRE: no se puede recordar.
-//! - «Aceptar automáticamente» (por servidor, solo con acceso Completo y SSHorus desbloqueado):
+//! - Un comando que menciona un usuario protegido (`protect`) pregunta SIEMPRE, sin modo automático.
+//! - «Aceptar automáticamente» (por servidor, con acceso Completo o Solo lo marcado —y entonces solo dentro
+//!   de lo marcado— y SSHorus desbloqueado):
 //!   `Changes` acepta los cambios normales; `All` también lo peligroso y sudo. Ver `decide_auto`.
 
 use std::collections::BTreeSet;
@@ -14,6 +17,8 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+
+use super::grants::{Grants, Need};
 
 /// Nivel de acceso del asistente a un servidor.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,6 +31,8 @@ pub enum Access {
     Read,
     /// Completo: también cambios, siempre con tu permiso.
     Full,
+    /// Solo lo marcado: lecturas y las tareas marcadas (ver `grants`), siempre con tu permiso.
+    Custom,
 }
 
 impl Access {
@@ -34,7 +41,13 @@ impl Access {
             Access::None => "Sin acceso",
             Access::Read => "Solo lectura",
             Access::Full => "Completo",
+            Access::Custom => "Solo lo marcado",
         }
+    }
+
+    /// Niveles con «Aceptar automáticamente».
+    pub fn allows_auto(self) -> bool {
+        matches!(self, Access::Full | Access::Custom)
     }
 }
 
@@ -57,20 +70,47 @@ pub struct Action {
     pub danger: Vec<String>,
     /// Clave para «Permitir siempre» (herramienta + comando o ruta exactos).
     pub key: String,
+    /// Casilla que hace falta con «Solo lo marcado» (los cambios, por defecto: «Comandos libres»).
+    pub need: Need,
+    /// Usuarios protegidos que menciona: se pregunta siempre (ni «siempre» ni modo automático).
+    pub protected: Vec<String>,
 }
 
 impl Action {
     pub fn read(key: impl Into<String>) -> Self {
-        Action { effect: Effect::Read, allowed_on_read: true, danger: Vec::new(), key: key.into() }
+        Action { need: Need::Nothing, ..Action::change(key) }.with_effect(Effect::Read)
     }
 
     pub fn change(key: impl Into<String>) -> Self {
-        Action { effect: Effect::Change, allowed_on_read: false, danger: Vec::new(), key: key.into() }
+        Action {
+            effect: Effect::Change,
+            allowed_on_read: false,
+            danger: Vec::new(),
+            key: key.into(),
+            need: Need::Free,
+            protected: Vec::new(),
+        }
     }
 
     /// Cambio que también se permite en servidores de solo lectura (con permiso).
     pub fn change_on_read(key: impl Into<String>) -> Self {
-        Action { allowed_on_read: true, ..Action::change(key) }
+        Action { allowed_on_read: true, need: Need::Nothing, ..Action::change(key) }
+    }
+
+    fn with_effect(mut self, effect: Effect) -> Self {
+        self.effect = effect;
+        self.allowed_on_read = true;
+        self
+    }
+
+    pub fn with_need(mut self, need: Need) -> Self {
+        self.need = need;
+        self
+    }
+
+    pub fn with_protected(mut self, names: Vec<String>) -> Self {
+        self.protected = names;
+        self
     }
 
     pub fn with_danger(mut self, reasons: Vec<String>) -> Self {
@@ -108,9 +148,9 @@ impl AutoGrant {
 }
 
 /// Nivel automático que vale ahora: el temporal (si no caducó) manda sobre el guardado («siempre»).
-/// Nunca con SSHorus bloqueado ni en servidores que no tengan acceso Completo.
+/// Nunca con SSHorus bloqueado ni en servidores sin acceso Completo o Solo lo marcado.
 pub fn effective_auto(access: Access, locked: bool, saved: Option<AutoLevel>, temp: Option<AutoGrant>, now: u64) -> AutoLevel {
-    if locked || access != Access::Full {
+    if locked || !access.allows_auto() {
         return AutoLevel::Off;
     }
     match temp {
@@ -157,15 +197,30 @@ pub const AUTO_CHANGE: &str = "automático (modo «aceptar automáticamente»)";
 pub const AUTO_DANGER: &str = "automático (modo «todo», peligroso)";
 
 /// Decide qué pasa con `action` en un servidor con `access` y estas reglas recordadas (sin modo
-/// automático).
+/// automático ni casillas).
+#[cfg(test)]
 pub fn decide(server: &str, access: Access, action: &Action, remembered: &BTreeSet<String>) -> Verdict {
     decide_auto(server, access, action, remembered, AutoLevel::Off)
 }
 
-/// Como `decide`, con el modo automático que vale ahora (ver `effective_auto`, que ya lo apaga con
-/// SSHorus bloqueado o sin acceso Completo). Sin acceso y solo lectura no cambian.
+/// Como `decide`, con el modo automático que vale ahora (sin casillas: «Solo lo marcado» sin nada marcado).
+#[cfg(test)]
 pub fn decide_auto(server: &str, access: Access, action: &Action, remembered: &BTreeSet<String>, auto: AutoLevel) -> Verdict {
-    let auto = if access == Access::Full { auto } else { AutoLevel::Off };
+    decide_rules(server, access, &Grants::default(), action, remembered, auto)
+}
+
+/// La regla completa. `auto` es el modo automático que vale ahora (ver `effective_auto`, que ya lo apaga
+/// con SSHorus bloqueado). Con «Solo lo marcado» primero se mira la casilla (`grants`): fuera de lo
+/// marcado se rechaza, y el modo automático solo actúa sobre lo que sí está marcado.
+pub fn decide_rules(
+    server: &str,
+    access: Access,
+    grants: &Grants,
+    action: &Action,
+    remembered: &BTreeSet<String>,
+    auto: AutoLevel,
+) -> Verdict {
+    let auto = if access.allows_auto() { auto } else { AutoLevel::Off };
     if access == Access::None {
         return Verdict::Deny(no_access_msg(server));
     }
@@ -174,6 +229,14 @@ pub fn decide_auto(server: &str, access: Access, action: &Action, remembered: &B
     }
     if access == Access::Read && !action.allowed_on_read {
         return Verdict::Deny(read_only_msg(server));
+    }
+    if access == Access::Custom
+        && let Err(msg) = grants.check(server, &action.need)
+    {
+        return Verdict::Deny(msg);
+    }
+    if !action.protected.is_empty() {
+        return Verdict::Ask { can_remember: false };
     }
     if !action.danger.is_empty() {
         if auto == AutoLevel::All {

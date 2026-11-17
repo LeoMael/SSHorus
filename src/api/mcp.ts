@@ -14,8 +14,40 @@ export const EV_MCP_AUTO = "mcp://auto";
 /** Payload: `McpUiRequest`. El motor pide algo a la interfaz. */
 export const EV_MCP_UI_REQUEST = "mcp://ui-request";
 
-/** Acceso del asistente a un servidor. */
-export type McpAccess = "none" | "read" | "full";
+/** Acceso del asistente a un servidor. «custom» = Solo lo marcado (casillas por tarea). */
+export type McpAccess = "none" | "read" | "full" | "custom";
+
+/** Casillas de «Solo lo marcado» (el mismo código es el `perm` de los comandos de la Biblioteca). */
+export type McpTask =
+  | "users-create"
+  | "users-edit"
+  | "users-delete"
+  | "web"
+  | "containers"
+  | "services"
+  | "packages"
+  | "firewall"
+  | "files";
+
+export interface McpGrants {
+  tasks: McpTask[];
+  /** Carpetas absolutas donde se puede escribir con «files». */
+  folders: string[];
+  /** run_command y cualquier comando: las casillas ya no limitan. */
+  freeCommands: boolean;
+}
+
+export type McpTemplate = "users" | "web" | "deploy" | "all";
+
+/** Cambios para uno o varios servidores (lo que falta no se toca). */
+export interface McpRules {
+  access?: McpAccess;
+  /** Implica «Solo lo marcado» si no se da `access`. */
+  template?: McpTemplate;
+  grants?: McpGrants;
+  /** Usuarios protegidos del servidor (reemplaza la lista). */
+  protected?: string[];
+}
 
 export interface McpConfig {
   enabled: boolean;
@@ -29,6 +61,12 @@ export interface McpConfig {
   autoAccept: Record<string, McpAutoLevel>;
   /** La IA puede pedir la contraseña de sudo (`request_sudo_password`; siempre pregunta). */
   allowSudoPasswordRequest: boolean;
+  /** id de servidor → casillas de «Solo lo marcado» (puede faltar). */
+  grants?: Record<string, McpGrants>;
+  /** id de servidor → usuarios protegidos. */
+  protectedUsers?: Record<string, string[]>;
+  /** Usuarios protegidos en todos los servidores. */
+  protectedGlobal?: string[];
 }
 
 /** «Aceptar automáticamente»: apagado, cambios normales o todo (también lo peligroso y sudo). */
@@ -120,6 +158,9 @@ export const mcp = {
   config: () => call<McpConfig>("mcp_config"),
   setSudoPasswordRequest: (allow: boolean) => call<McpConfig>("mcp_set_sudo_password_request", { allow }),
   setAccess: (serverId: string, access: McpAccess) => call<McpConfig>("mcp_set_access", { serverId, access }),
+  /** Nivel, casillas, plantilla o protegidos para uno o varios servidores. */
+  applyRules: (serverIds: string[], rules: McpRules) => call<McpConfig>("mcp_apply_rules", { serverIds, rules }),
+  setProtectedGlobal: (users: string[]) => call<McpConfig>("mcp_set_protected_global", { users }),
   /** Borra una regla «Permitir siempre» (o todas las del servidor si `key` es null). */
   forgetRule: (serverId: string, key: string | null) => call<McpConfig>("mcp_forget_rule", { serverId, key }),
   getToken: () => call<string>("mcp_get_token"),

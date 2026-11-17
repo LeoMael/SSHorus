@@ -69,6 +69,7 @@ const ACCESS_LABEL: Record<McpAccess, string> = {
   none: "sin acceso",
   read: "solo lectura",
   full: "completo (con permiso)",
+  custom: "solo lo marcado (ver list_servers)",
 };
 
 const PRIVILEGE_LABEL: Record<string, string> = {

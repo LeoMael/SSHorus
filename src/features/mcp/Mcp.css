@@ -361,3 +361,99 @@
   border-color: var(--red);
   color: var(--red);
 }
+
+/* «Solo lo marcado», protegidos, varios servidores y resumen (Ajustes → Asistentes de IA). */
+.st-segmented button.active.mcp-acc-custom {
+  color: var(--accent);
+}
+.mcp-marked,
+.mcp-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 10px 12px;
+}
+.mcp-marked-templates,
+.mcp-bulk-row,
+.mcp-folders,
+.mcp-protected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.mcp-marked-templates .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.mcp-marked-tasks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 2px 12px;
+}
+.mcp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  cursor: pointer;
+}
+.mcp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.mcp-chip code {
+  font-size: var(--fs-sm);
+}
+.mcp-folder-input {
+  width: 180px;
+}
+.mcp-protected .input {
+  min-width: 200px;
+  flex: 1;
+}
+.mcp-bulk .input {
+  flex: 1;
+  min-width: 160px;
+}
+.mcp-bulk .mcp-bulk-select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
+.mcp-free {
+  font-weight: 500;
+}
+.mcp-warn-line {
+  color: var(--orange);
+}
+.mcp-summary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.mcp-summary th,
+.mcp-summary td {
+  text-align: left;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.mcp-summary tr:last-child td {
+  border-bottom: none;
+}
+.mcp-summary th {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.mcp-summary td.mcp-acc-full {
+  color: var(--orange);
+}
+.mcp-summary td.mcp-acc-custom,
+.mcp-summary td.mcp-acc-read {
+  color: var(--accent);
+}

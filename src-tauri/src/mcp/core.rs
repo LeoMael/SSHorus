@@ -3,9 +3,11 @@
 //! Orden de cada llamada:
 //! 1. ¿MCP encendido? ¿SSHorus desbloqueado? Si no, se rechaza todo con un mensaje claro.
 //! 2. Se busca el servidor y su nivel de acceso (Sin acceso = rechazado).
-//! 3. `policy::decide_auto`: lectura → pasa; cambio → diálogo en SSHorus (o regla «siempre», o el modo
+//! 3. `policy::decide_rules`: lectura → pasa; cambio → diálogo en SSHorus (o regla «siempre», o el modo
 //!    «Aceptar automáticamente» del servidor); peligroso → diálogo (salvo modo automático «todo»);
 //!    solo lectura → los cambios se rechazan. El modo automático nunca vale con SSHorus bloqueado.
+//!    «Solo lo marcado» → fuera de las casillas se rechaza (`grants`, `core/marked.rs`); los usuarios
+//!    protegidos (`protect`) se rechazan o preguntan siempre en cualquier nivel.
 //! 4. Se ejecuta con los límites de tiempo y de salida, y se anota en el registro.
 //!
 //! Las contraseñas y llaves nunca llegan al asistente: usa conexiones ya abiertas en la app. La única que
@@ -16,6 +18,7 @@
 
 mod ask;
 mod elevation;
+mod marked;
 mod sudo_reveal;
 
 #[cfg(test)]
@@ -35,8 +38,9 @@ use super::approval::Decision;
 use super::audit::{now_ms, AuditEntry, AuditLog, AuditStatus};
 use super::backend::Backend;
 use super::config::McpConfigStore;
+use super::grants::Need;
 use super::policy::{self, Access, Action, AutoGrant, AutoLevel, Verdict};
-use super::{diff, template};
+use super::{diff, protect, template};
 use crate::error::{AppError, AppResult};
 use crate::types::{ExecResult, FileEntry, FileKind, ServerProfile, SessionInfo, SnippetScope, TransferJob};
 use crate::vulnscan::scan::ScanOptions;
@@ -256,6 +260,9 @@ pub struct CatalogEntry {
     pub read_only: bool,
     #[serde(default)]
     pub interactive: bool,
+    /// Tarea de «Solo lo marcado» (`grants::Task`, p. ej. «users-create»). None = necesita comandos libres.
+    #[serde(default)]
+    pub perm: Option<String>,
     /// «Mis comandos» limitado a un servidor o proyecto: (alcance, id).
     #[serde(skip)]
     pub scope: Option<(SnippetScope, String)>,
@@ -396,9 +403,9 @@ impl<B: Backend> McpCore<B> {
     /// Activa (o apaga con `AutoLevel::Off`) el modo automático de un servidor. Quita lo que hubiera
     /// antes (temporal y guardado). Solo con acceso Completo.
     pub fn set_auto_at(&self, server_id: &str, level: AutoLevel, duration: AutoDuration, now: u64) -> AppResult<()> {
-        if level != AutoLevel::Off && self.config.get().access_of(server_id) != Access::Full {
+        if level != AutoLevel::Off && !self.config.get().access_of(server_id).allows_auto() {
             return Err(AppError::Invalid(
-                "El modo automático solo se puede usar en servidores con acceso Completo.".into(),
+                "El modo automático solo se puede usar en servidores con acceso Completo o Solo lo marcado.".into(),
             ));
         }
         let sid = server_id.to_string();
@@ -440,7 +447,7 @@ impl<B: Backend> McpCore<B> {
             self.backend.profiles().servers.into_iter().map(|s| (s.id, s.name)).collect();
         let mut out = Vec::new();
         for (id, name) in &names {
-            if cfg.access_of(id) != Access::Full {
+            if !cfg.access_of(id).allows_auto() {
                 continue;
             }
             let (level, until, saved) = match temp.get(id) {
@@ -598,7 +605,8 @@ impl<B: Backend> McpCore<B> {
     async fn authorize(&self, rec: &mut Rec, t: &Target, action: Action, title: &str, shown: &str, diff: Option<String>) -> Res<()> {
         let cfg = self.config.get();
         let auto = self.auto_level_at(&t.server.id, now_ms());
-        match policy::decide_auto(&t.server.name, t.access, &action, &cfg.remembered_of(&t.server.id), auto) {
+        let grants = cfg.grants_of(&t.server.id);
+        match policy::decide_rules(&t.server.name, t.access, &grants, &action, &cfg.remembered_of(&t.server.id), auto) {
             Verdict::Allow(why) => {
                 rec.entry.approved_by = Some(why.to_string());
                 Ok(())
@@ -611,7 +619,11 @@ impl<B: Backend> McpCore<B> {
             }
             Verdict::Deny(msg) => Err(Fail::Denied(msg)),
             Verdict::Ask { can_remember } => {
-                let ask = ask::Ask { title, shown, diff, danger: action.danger.clone(), can_remember };
+                let mut danger = action.danger.clone();
+                if !action.protected.is_empty() {
+                    danger.insert(0, protect::warning(&action.protected));
+                }
+                let ask = ask::Ask { title, shown, diff, danger, can_remember };
                 match self.ask_user(rec, t, ask).await? {
                     Decision::Once => {
                         rec.entry.approved_by = Some("tú: una vez".into());
@@ -641,10 +653,21 @@ impl<B: Backend> McpCore<B> {
         }
     }
 
+    /// Solo el rechazo de las reglas (sin preguntar ni modo automático): para no leer nada si no se permite.
+    fn precheck(&self, t: &Target, action: Action) -> Res<()> {
+        let cfg = self.config.get();
+        let grants = cfg.grants_of(&t.server.id);
+        match policy::decide_rules(&t.server.name, t.access, &grants, &action, &BTreeSet::new(), AutoLevel::Off) {
+            Verdict::Deny(msg) => Err(Fail::Denied(msg)),
+            _ => Ok(()),
+        }
+    }
+
     // ───────────── Herramientas sin servidor ─────────────
 
     async fn list_servers(&self) -> Res<String> {
         let sessions = self.backend.sessions().await;
+        let cfg = self.config.get();
         let list: Vec<Value> = self
             .visible_servers()
             .into_iter()
@@ -660,6 +683,8 @@ impl<B: Backend> McpCore<B> {
                     "accessLabel": a.label(),
                     "connected": !ids.is_empty(),
                     "sessionIds": ids,
+                    "marked": (a == Access::Custom).then(|| cfg.grants_of(&s.id).describe()),
+                    "protectedUsers": cfg.protected_of(&s.id),
                 })
             })
             .collect();
@@ -733,6 +758,7 @@ impl<B: Backend> McpCore<B> {
             sudo: s.sudo,
             read_only: s.read_only,
             interactive: false,
+            perm: None,
             scope: match (s.scope, s.scope_id) {
                 (SnippetScope::Global, _) | (_, None) => None,
                 (scope, Some(id)) => Some((scope, id)),
@@ -781,6 +807,7 @@ impl<B: Backend> McpCore<B> {
                     "readOnly": e.is_read(),
                     "dangerous": e.dangerous,
                     "sudo": e.sudo,
+                    "permission": e.perm,
                 })
             })
             .collect();
@@ -876,7 +903,10 @@ impl<B: Backend> McpCore<B> {
             ));
         }
         let sid = t.session_id()?.to_string();
-        let action = Action::change(format!("run_command\n{command}")).with_danger(policy::danger_reasons(&command));
+        let protected = self.protected_in_command(&t, &command).await?;
+        let action = Action::change(format!("run_command\n{command}"))
+            .with_danger(policy::danger_reasons(&command))
+            .with_protected(protected);
         self.authorize(rec, &t, action, "quiere ejecutar un comando", &command, None).await?;
         let sudo = policy::uses_sudo(&command);
         self.exec(rec, &t, &sid, &command, sudo, p.timeout_secs, p.max_output_kb, cancel).await
@@ -924,7 +954,8 @@ impl<B: Backend> McpCore<B> {
         let action = if entry.is_read() && danger.is_empty() {
             Action::read(format!("catalog\n{command}"))
         } else {
-            Action::change(format!("run_command\n{command}")).with_danger(danger)
+            self.check_catalog_protected(&t, &p.vars, &command).await?;
+            Action::change(format!("run_command\n{command}")).with_danger(danger).with_need(marked::catalog_need(&entry))
         };
         let title = format!("quiere ejecutar «{}» de la Biblioteca", entry.name);
         self.authorize(rec, &t, action, &title, &command, None).await?;
@@ -1032,10 +1063,11 @@ impl<B: Backend> McpCore<B> {
         }
         let sid = t.session_id()?.to_string();
         // El permiso se comprueba antes de leer nada (en solo lectura no hace falta el diff).
-        let action = Action::change(format!("write_file\n{}", p.path.trim()));
-        if let Verdict::Deny(msg) = policy::decide(&t.server.name, t.access, &action, &BTreeSet::new()) {
-            return Err(Fail::Denied(msg));
-        }
+        let key = format!("write_file\n{}", p.path.trim());
+        let path = vec![p.path.trim().to_string()];
+        self.precheck(&t, Action::change(key.clone()).with_need(Need::Write { paths: path.clone(), outside: vec![] }))?;
+        let action = Action::change(key).with_need(self.write_need(&t, &sid, &path).await?);
+        self.precheck(&t, action.clone())?;
         let diff = match self.backend.read_part(&sid, &p.path, 0, MAX_WRITE_BYTES as u64 + 1).await {
             Ok(old) if old.size as usize > MAX_WRITE_BYTES || old.data.contains(&0) => {
                 format!("(el archivo actual ocupa {} bytes y no se puede comparar; se reemplazará entero)", old.size)
@@ -1082,7 +1114,10 @@ impl<B: Backend> McpCore<B> {
         }
         let shown = format!("Subir a {}:\n{}", p.remote_dir, bullet(&p.local_paths));
         let key = format!("upload\n{}\n{}", p.remote_dir, p.local_paths.join("\n"));
-        self.authorize(rec, &t, Action::change(key), "quiere subir archivos al servidor", &shown, None).await?;
+        let dir = vec![p.remote_dir.trim().to_string()];
+        self.precheck(&t, Action::change(key.clone()).with_need(Need::Write { paths: dir.clone(), outside: vec![] }))?;
+        let action = Action::change(key).with_need(self.write_need(&t, &sid, &dir).await?);
+        self.authorize(rec, &t, action, "quiere subir archivos al servidor", &shown, None).await?;
         let batch = self.backend.upload(&sid, p.local_paths, p.remote_dir).await?;
         Ok(format!("Subida en cola (lote {batch}). Mira el progreso con transfer_status."))
     }
@@ -1323,6 +1358,7 @@ fn access_code(a: Access) -> &'static str {
         Access::None => "none",
         Access::Read => "read",
         Access::Full => "full",
+        Access::Custom => "custom",
     }
 }
 

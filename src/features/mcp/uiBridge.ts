@@ -49,6 +49,7 @@ async function catalog() {
     sudo: e.sudo,
     readOnly: e.readOnly,
     interactive: !!e.interactive,
+    perm: e.perm ?? null,
   }));
 }
 

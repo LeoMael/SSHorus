@@ -25,6 +25,10 @@ conexión abierta (connect abre una pestaña en SSHorus). Las lecturas pasan sol
 Prefiere run_catalog_command con comandos de solo lectura (ver list_catalog) para diagnosticar. \
 Para administrar usa run_command con «sudo …» normal: SSHorus pone la contraseña de sudo sin que la veas; \
 request_sudo_password (te la muestra) es solo para cuando de verdad necesitas verla. \
+En servidores con «Solo lo marcado» (access=custom) mira en list_servers qué tareas tienes (marked): \
+los cambios van con run_catalog_command (comandos cuyo «permission» está permitido) y write_file/upload en \
+las carpetas permitidas; run_command solo si freeCommands es true. No intentes lo que no está permitido. \
+Los usuarios de protectedUsers no se pueden tocar. \
 Para revisar la seguridad en general, mira get_audit_report (o run_audit). \
 Para vulnerabilidades, mira primero get_vuln_report (último informe guardado) y usa scan_vulnerabilities \
 solo si no hay informe o es viejo: tarda minutos y pide permiso.";
@@ -43,7 +47,7 @@ fn tool<T: rmcp::schemars::JsonSchema + 'static>(name: &'static str, description
 /// Todas las herramientas que ofrece SSHorus.
 pub fn tools() -> Vec<Tool> {
     vec![
-        tool::<NoParams>("list_servers", "Servidores guardados en SSHorus a los que tienes acceso (sin contraseñas), con su nivel de acceso y conexiones abiertas.", true),
+        tool::<NoParams>("list_servers", "Servidores guardados en SSHorus a los que tienes acceso (sin contraseñas), con su nivel de acceso, las tareas permitidas si es «Solo lo marcado» (marked), los usuarios protegidos y conexiones abiertas.", true),
         tool::<NoParams>("list_projects", "Proyectos de SSHorus y sus servidores (solo los que puedes ver).", true),
         tool::<NoParams>("list_sessions", "Conexiones SSH abiertas ahora en SSHorus (sessionId).", true),
         tool::<ConnectParams>("connect", "Abre una conexión a un servidor guardado (aparece como pestaña en SSHorus). Pide permiso.", false),

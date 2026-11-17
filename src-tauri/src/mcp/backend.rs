@@ -57,6 +57,8 @@ pub trait Backend: Send + Sync + 'static {
         max_bytes: u64,
     ) -> impl Future<Output = AppResult<FilePart>> + Send;
     fn write_text(&self, session_id: &str, path: &str, content: &str) -> impl Future<Output = AppResult<FileEntry>> + Send;
+    /// Ruta real en el servidor (sigue enlaces simbólicos y «..»; relativa = desde la carpeta personal).
+    fn realpath(&self, session_id: &str, path: &str) -> impl Future<Output = AppResult<String>> + Send;
     fn upload(&self, session_id: &str, local_paths: Vec<String>, remote_dir: String) -> impl Future<Output = AppResult<String>> + Send;
     fn download(&self, session_id: &str, remote_paths: Vec<String>, local_dir: String) -> impl Future<Output = AppResult<String>> + Send;
     fn transfers(&self) -> Vec<TransferJob>;
@@ -178,6 +180,11 @@ impl Backend for TauriBackend {
     async fn write_text(&self, session_id: &str, path: &str, content: &str) -> AppResult<FileEntry> {
         let ssh = self.ssh(session_id).await?;
         self.sftp()?.write_text(&ssh, path, content).await
+    }
+
+    async fn realpath(&self, session_id: &str, path: &str) -> AppResult<String> {
+        let ssh = self.ssh(session_id).await?;
+        self.sftp()?.realpath(&ssh, path).await
     }
 
     async fn upload(&self, session_id: &str, local_paths: Vec<String>, remote_dir: String) -> AppResult<String> {

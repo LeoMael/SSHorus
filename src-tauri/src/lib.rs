@@ -215,6 +215,8 @@ pub fn run() {
             mcp::mcp_set_sudo_password_request,
             mcp::mcp_config,
             mcp::mcp_set_access,
+            mcp::rules::mcp_apply_rules,
+            mcp::rules::mcp_set_protected_global,
             mcp::mcp_forget_rule,
             mcp::mcp_auto_list,
             mcp::mcp_set_auto,

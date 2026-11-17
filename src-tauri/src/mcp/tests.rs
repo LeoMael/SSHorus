@@ -72,6 +72,8 @@ struct Mock {
     lock_on_sudo: AtomicBool,
     /// La interfaz tarda 10 s en dar la contraseña de sudo (diálogo abierto).
     sudo_delay: AtomicBool,
+    /// Enlaces simbólicos del servidor simulado (ruta → destino) para `realpath`.
+    links: Mutex<HashMap<String, String>>,
 }
 
 fn server(id: &str, name: &str) -> ServerProfile {
@@ -137,6 +139,7 @@ impl Mock {
             local: Mutex::new(None),
             lock_on_sudo: AtomicBool::new(false),
             sudo_delay: AtomicBool::new(false),
+            links: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -211,6 +214,34 @@ impl Backend for Mock {
     async fn write_text(&self, _sid: &str, path: &str, content: &str) -> AppResult<FileEntry> {
         self.files.lock().unwrap().insert(path.into(), content.into());
         Ok(entry(path, content.len() as u64))
+    }
+    /// Como el servidor: relativa = desde /home/deploy; sigue los enlaces de `links` componente a componente
+    /// (también los que aparecen tras «..»).
+    async fn realpath(&self, _sid: &str, path: &str) -> AppResult<String> {
+        let links = self.links.lock().unwrap().clone();
+        let full = if path.starts_with('/') { path.to_string() } else { format!("/home/deploy/{path}") };
+        let mut todo: Vec<String> = full.split('/').filter(|p| !p.is_empty()).map(str::to_string).rev().collect();
+        let mut cur: Vec<String> = Vec::new();
+        let mut hops = 0;
+        while let Some(part) = todo.pop() {
+            match part.as_str() {
+                "." => {}
+                ".." => {
+                    cur.pop();
+                }
+                _ => {
+                    cur.push(part);
+                    let here = format!("/{}", cur.join("/"));
+                    if let Some(target) = links.get(&here) {
+                        hops += 1;
+                        assert!(hops < 40, "bucle de enlaces");
+                        cur.clear();
+                        todo.extend(target.split('/').filter(|p| !p.is_empty()).map(str::to_string).rev());
+                    }
+                }
+            }
+        }
+        Ok(format!("/{}", cur.join("/")))
     }
     async fn upload(&self, _sid: &str, _l: Vec<String>, _r: String) -> AppResult<String> {
         Ok("lote-1".into())
@@ -311,6 +342,7 @@ fn core_with(mock: Mock, cfg: McpConfig) -> McpCore<Mock> {
             sudo: false,
             read_only: true,
             interactive: false,
+            perm: None,
             scope: None,
         },
         CatalogEntry {
@@ -323,6 +355,7 @@ fn core_with(mock: Mock, cfg: McpConfig) -> McpCore<Mock> {
             sudo: false,
             read_only: true,
             interactive: false,
+            perm: None,
             scope: None,
         },
         CatalogEntry {
@@ -335,6 +368,7 @@ fn core_with(mock: Mock, cfg: McpConfig) -> McpCore<Mock> {
             sudo: false,
             read_only: false,
             interactive: false,
+            perm: None,
             scope: None,
         },
         CatalogEntry {
@@ -347,6 +381,7 @@ fn core_with(mock: Mock, cfg: McpConfig) -> McpCore<Mock> {
             sudo: false,
             read_only: false,
             interactive: false,
+            perm: None,
             scope: None,
         },
     ]);
@@ -1568,6 +1603,7 @@ async fn catalog_command_with_sudo_flag() {
         sudo: true,
         read_only: false,
         interactive: false,
+        perm: None,
         scope: None,
     }]);
     let out = call(
@@ -1598,6 +1634,7 @@ async fn catalog_sudo_flag_always_asks() {
         sudo: true,
         read_only: true,
         interactive: false,
+        perm: None,
         scope: None,
     }]);
     set_answer(&c, Answer::Give(Decision::Always));
@@ -1775,3 +1812,6 @@ async fn auto_accept_in_calls() {
 
 #[path = "tests_sudo.rs"]
 mod sudo_flow;
+
+#[path = "tests_marked.rs"]
+mod marked_flow;
