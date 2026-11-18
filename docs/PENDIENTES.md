@@ -97,11 +97,23 @@ El Mapa de proyecto se queda como está (el usuario está conforme).
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
 Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
 
-Pendiente: **ronda de orden del código** (después de unir esta ronda, antes de la 1.0.0). Partir los archivos
-grandes sin cambiar lo que hace la app: `FileExplorer.tsx` (~1270 líneas), `ServerEditor.tsx` (~990, 30
-estados), `SessionView.tsx` (~990), `Sidebar.tsx`, `ContainersPanel.tsx`, `SettingsDialog.tsx`;
-`transfer/engine.rs` (~1700), `mcp/core.rs` (~1500), `storage/ssh_config.rs`, `ssh/connect.rs`. Añadir ESLint
-(no hay) y revisar duplicados. Reglas de calidad ya en `docs/dev/REGLAS-AGENTES.md` §5.
+**Ronda de orden del código** (antes de la 1.0.0). **Parte 1 ✅ hecha el 18/11/2026** (commit «Orden del código:
+archivos grandes partidos…», sin publicar): `FileExplorer`, `SessionView`, `ServerEditor` (carpeta
+`src/features/serverEditor/`), `SettingsDialog`, `Sidebar`, `ContainersPanel`, `transfer/engine.rs`, `mcp/core.rs`,
+`storage/ssh_config.rs` y `ssh/connect.rs` quedan como entradas finas con módulos de < 300 líneas. Pasa `tsc`,
+`vite build`, todos los tests de TS, `cargo test --lib` (326) y los tests con servidor real salvo 4 que **ya
+fallaban en `main`** (`tunnels::tests::{local_lee_banner_ssh,socks_dominio_e_ipv4,remoto_y_reconexion}` y
+`vulnscan::live_tests::sshd_scan_can_be_canceled`: revisar aparte). Nota: el contenedor `terview-sshd` necesita
+`PerSourcePenalties no` (puesto en `/config/sshd/sshd_config`); si no, OpenSSH 10 corta las conexiones a mitad de los tests.
+**Probar a mano en la app:** barra lateral (doble clic, Ctrl+doble clic, clic central, menús y Shift+F10, flechas,
+añadir servidor a proyecto), Contenedores (cambiar motor/usuario, sudo, refresco), formulario de servidor (cambiar
+autenticación con sudo «La de la conexión», Intro/Escape, «Guardar de todos modos», elegir host), Ajustes (buscador,
+Restablecer), explorador (atrás/adelante, reconectar, arrastrar al sistema y desde él, menú) y sesión (reordenar y
+despegar pestañas, dividir, cerrar el archivo activo).
+**Parte 2 (pendiente):** añadir ESLint (no hay), revisar duplicados entre archivos y partir los que siguen grandes:
+`features/audit/checks.ts` (~850), `vulnscan/analyze.rs` (~840), `tunnels/manager.rs` (~830), `features/admin/web.ts`
+(~740), `Commands/catalog.ts`, `Admin/VulnsTab.tsx`, `infra/graph.ts`, `TransferPanel.tsx`, `vulnscan/osv.rs`,
+`vulnscan/imageUpdate.ts`. Reglas de calidad en `docs/dev/REGLAS-AGENTES.md` §5.
 
 **Estado.** La **0.5.0 está publicada** (13/11/2026). En `main`, sin publicar todavía (ver «Sin publicar» en el
 CHANGELOG): botón «Actualizar imagen» en el escáner, terminal local con Claude Code y Codex, añadir servidor

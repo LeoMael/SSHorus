@@ -11,7 +11,8 @@ use zeroize::Zeroizing;
 
 use super::super::backend::Backend;
 use super::super::sudo;
-use super::{exec_summary, format_exec, Fail, McpCore, Rec, Res, Target, DEFAULT_OUTPUT_KB, DEFAULT_TIMEOUT_SECS, MAX_OUTPUT_KB};
+use super::output::{exec_summary, format_exec};
+use super::{Fail, McpCore, Rec, Res, Target, DEFAULT_OUTPUT_KB, DEFAULT_TIMEOUT_SECS, MAX_OUTPUT_KB};
 use crate::types::ExecResult;
 
 /// Tiempo mínimo para escribir la contraseña de sudo en SSHorus (s) y margen para comprobarla.
