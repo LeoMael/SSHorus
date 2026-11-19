@@ -10,6 +10,8 @@
 //   @@perms «ruta modo dueño grupo» · @@wwetc · @@webperm («@dir», «@group caddy», archivos) · @@cron
 //   @@ctr («@engine motor rootless» + «nombre|privilegiado|usuario|puertos») · @@end
 
+import { REBOOT_PENDING_LINES } from "../reboot/detect";
+
 export const AUDIT_SCRIPT = [
   "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin:/usr/local/bin; export PATH",
   "LC_ALL=C; export LC_ALL",
@@ -64,10 +66,7 @@ export const AUDIT_SCRIPT = [
   "elif command -v apk >/dev/null 2>&1; then echo \"apk|$(apk version -l '<' 2>/dev/null | grep -c '<')|?\"",
   "else echo 'none|?|?'; fi",
   "echo @@reboot",
-  "[ -f /var/run/reboot-required ] && echo required",
-  "if command -v needs-restarting >/dev/null 2>&1; then $TO needs-restarting -r >/dev/null 2>&1; echo \"nr $?\";",
-  "elif command -v dnf >/dev/null 2>&1 && dnf needs-restarting --help >/dev/null 2>&1; then $TO dnf -q needs-restarting -r >/dev/null 2>&1; echo \"nr $?\"; fi",
-  "echo \"kernel $(uname -r)\"; ls /lib/modules 2>/dev/null | sed 's/^/mod /'",
+  ...REBOOT_PENDING_LINES,
   // Servicios caídos (systemd u OpenRC).
   "echo @@failed",
   "if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}'",

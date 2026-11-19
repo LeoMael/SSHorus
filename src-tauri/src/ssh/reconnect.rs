@@ -14,6 +14,9 @@
 //!    `SessionInfo`. Fracaso definitivo → se quita la sesión y se emite `SessionClosed`.
 //! 4. `SessionStore::remove` (p. ej. `ssh_disconnect`) cancela todo sin emitir nada más.
 //!
+//! Si el usuario pidió reiniciar el servidor (`reboot_wait`), la caída es esperada: se reintenta hasta
+//! el plazo del reinicio con esperas más largas, aunque la reconexión automática esté desactivada.
+//!
 //! Contraseña guardada en la bóveda (`Supervised::stored_secret`): no se guarda en memoria con
 //! la sesión; se lee en cada intento. Si SSHorus está bloqueado, el intento espera al desbloqueo
 //! (avisando con `waiting_unlock`) sin gastar intentos.
@@ -27,6 +30,7 @@ use tokio_util::sync::CancellationToken;
 use crate::error::AppError;
 use crate::ssh::connect::{self, Credentials};
 use crate::ssh::handler::{HostKeyPolicy, SharedState};
+use crate::ssh::reboot_wait::{self, Budget};
 use crate::ssh::{disconnect_session, SessionStore, SshSession};
 use crate::types::{AuthMethod, ServerProfile, SessionClosed, SessionInfo, SessionReconnecting, Settings};
 
@@ -77,6 +81,8 @@ pub struct Timing {
     pub watch_interval: Duration,
     /// Espera antes de cada intento; el último valor se repite.
     pub backoff: Vec<Duration>,
+    /// Lo mismo tras un reinicio pedido por el usuario (el servidor tarda en arrancar).
+    pub reboot_backoff: Vec<Duration>,
 }
 
 impl Default for Timing {
@@ -84,19 +90,8 @@ impl Default for Timing {
         Self {
             watch_interval: Duration::from_millis(1500),
             backoff: [1, 2, 5, 10, 30].map(Duration::from_secs).to_vec(),
+            reboot_backoff: [5, 5, 10, 15].map(Duration::from_secs).to_vec(),
         }
-    }
-}
-
-impl Timing {
-    /// Espera antes del intento `attempt` (1-based).
-    pub fn backoff(&self, attempt: u8) -> Duration {
-        let i = usize::from(attempt.max(1) - 1);
-        self.backoff
-            .get(i)
-            .or_else(|| self.backoff.last())
-            .copied()
-            .unwrap_or(Duration::from_secs(1))
     }
 }
 
@@ -175,17 +170,20 @@ pub async fn supervise<E: ReconnectEnv>(env: Arc<E>, mut sup: Supervised, timing
         let reason = disconnect_reason(&sup.shared);
         let settings = env.settings();
         log::info!("sesión {id}: {reason}");
-
-        if !settings.auto_reconnect {
-            close(&*env, &id, reason).await;
-            return;
-        }
+        let budget = match reboot_wait::take(&id) {
+            Some(deadline) => Budget::reboot(deadline, &timing.reboot_backoff),
+            None if settings.auto_reconnect => Budget::normal(settings.attempts, &timing.backoff),
+            None => {
+                close(&*env, &id, reason).await;
+                return;
+            }
+        };
         if !env.sessions().set_reconnecting(&id, true).await {
             return;
         }
         env.release_dropped(&id);
 
-        match reconnect_loop(&*env, &sup, &settings, &timing, &cancel, reason).await {
+        match reconnect_loop(&*env, &sup, &settings, budget, &cancel, reason).await {
             Outcome::Reconnected(session, shared) => {
                 if !env.sessions().replace(&id, session.clone()).await {
                     // La quitaron justo ahora: no avisar de nada.
@@ -226,18 +224,22 @@ async fn reconnect_loop<E: ReconnectEnv>(
     env: &E,
     sup: &Supervised,
     settings: &ReconnectSettings,
-    timing: &Timing,
+    mut budget: Budget,
     cancel: &CancellationToken,
     first_reason: String,
 ) -> Outcome {
     let id = &sup.session.info.id;
-    let max = settings.attempts.clamp(1, 20);
+    let max = budget.max();
     let keepalive = connect::keepalive_interval(settings.keepalive_secs);
-    let mut reason = first_reason;
+    let mut reason = if budget.is_reboot() {
+        "esperando a que el servidor vuelva tras el reinicio".to_string()
+    } else {
+        first_reason
+    };
     let mut last_error = String::new();
 
     for attempt in 1..=max {
-        let wait = timing.backoff(attempt);
+        let wait = budget.wait(attempt);
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
@@ -269,13 +271,21 @@ async fn reconnect_loop<E: ReconnectEnv>(
             }
             Err(e) => {
                 log::info!("sesión {id}: intento de reconexión {attempt}/{max} fallido: {e}");
-                if let Some(msg) = fatal_reason(&e) {
+                if let Some(msg) = fatal_reason(&e).filter(|_| !budget.tolerate(&e)) {
                     return Outcome::GaveUp(format!("No se pudo reconectar: {msg}"));
                 }
                 last_error = e.to_string();
                 reason = format!("Intento {attempt} fallido: {e}");
+                if budget.expired() {
+                    break;
+                }
             }
         }
+    }
+    if budget.is_reboot() {
+        return Outcome::GaveUp(format!(
+            "El servidor no volvió a tiempo tras el reinicio: {last_error}"
+        ));
     }
     Outcome::GaveUp(format!(
         "No se pudo reconectar tras {max} intentos: {last_error}"

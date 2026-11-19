@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Info, Wrench, XCircle } from "lucide-react";
 import type { Check, CheckStatus } from "../../api/audit";
 import { STATUS_TEXT, adviceFor, fixLevel, outcomeText, type Change, type RecheckOutcome } from "../../features/audit";
+import { RebootButton } from "../../features/reboot";
 import { useAdmin } from "./context";
 import { CommandActions } from "./vulnUi";
 
@@ -24,6 +25,7 @@ export function AuditCheckRow({
   fixable,
   onFix,
   onOpenVulns,
+  onRebooted,
 }: {
   check: Check;
   change: Change | null;
@@ -31,6 +33,8 @@ export function AuditCheckRow({
   fixable: FixAvailability;
   onFix: () => void;
   onOpenVulns?: () => void;
+  /** «Reinicio pendiente»: «Reiniciar ahora» en vez de «Arreglar»; se llama al terminar el reinicio. */
+  onRebooted?: () => void;
 }) {
   const { sessionId } = useAdmin();
   const level = fixLevel(check);
@@ -55,7 +59,9 @@ export function AuditCheckRow({
             Analizar
           </button>
         )}
-        {(level === "auto" || level === "confirm") && (
+        {onRebooted && problem ? (
+          <RebootButton sessionId={sessionId} onRebooted={onRebooted} />
+        ) : (level === "auto" || level === "confirm") && (
           <button
             className={level === "confirm" ? "btn btn-sm btn-danger" : "btn btn-sm"}
             onClick={onFix}

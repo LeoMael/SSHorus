@@ -221,6 +221,7 @@ export function AuditTab({ onOpenVulns }: { onOpenVulns: () => void }) {
             onFix={setFixing}
             onFixAll={() => setFixing("all")}
             onOpenVulns={onOpenVulns}
+            onRebooted={() => void start()}
           />
         )}
       </div>

@@ -11,6 +11,7 @@ import { useTabs } from "../../stores/tabs";
 import { openOrFocusServer } from "../connect";
 import { useLock } from "../lock/lockStore";
 import { connectInBackground } from "../multirun/connect";
+import { requestReboot } from "../reboot";
 import { fleetTargets, groupVps, type Vps } from "./group";
 import type { VpsLive } from "./health";
 import { FleetPoller, type PollerDeps } from "./poller";
@@ -90,7 +91,7 @@ export const fleetRetry = (key: string) => poller?.retryNow(key);
  * sigue abierto. Si ya tiene una conexión con ese perfil, la pestaña se queda con ella (no se vuelve
  * a autenticar) y el panel pasa a leer por la pestaña.
  */
-export function openVps(v: Vps, profile?: ServerProfile): void {
+export async function openVps(v: Vps, profile?: ServerProfile): Promise<void> {
   const live = useFleetLive.getState().live[v.key];
   const target = profile ?? v.profiles.find((p) => p.id === live?.profileId) ?? v.profiles[0];
   if (!target) return;
@@ -101,5 +102,19 @@ export function openVps(v: Vps, profile?: ServerProfile): void {
     useTabs.getState().openSession(info, { color: target.color, initialPath: target.defaultPath });
     return;
   }
-  void openOrFocusServer(target);
+  await openOrFocusServer(target);
+}
+
+/**
+ * «Reiniciar ahora» desde el panel: reinicia desde la pestaña conectada de ese VPS (con el perfil que usa
+ * el panel); si no hay, la abre antes.
+ */
+export async function rebootVps(v: Vps): Promise<void> {
+  const live = useFleetLive.getState().live[v.key];
+  const target = v.profiles.find((p) => p.id === live?.profileId) ?? v.profiles[0];
+  if (!target) return;
+  const connected = () => useTabs.getState().tabs.find((t) => t.profileId === target.id && t.status === "connected");
+  if (!connected()) await openVps(v, target);
+  const tab = connected();
+  if (tab) await requestReboot(tab.sessionId);
 }

@@ -46,4 +46,10 @@ export const ssh = {
   cancelTest: (testId: string) => call<void>("ssh_cancel_test", { testId }),
   disconnect: (sessionId: string) => call<void>("ssh_disconnect", { sessionId }),
   listSessions: () => call<SessionInfo[]>("ssh_list_sessions"),
+  /**
+   * Se va a reiniciar el servidor de esa sesión: al caerse, todas sus sesiones (mismo host y puerto)
+   * esperan hasta `waitSecs` (máx. 900) a que vuelva, aunque la reconexión automática esté desactivada.
+   * 0 = ya no. Devuelve cuántas sesiones quedaron avisadas.
+   */
+  expectReboot: (sessionId: string, waitSecs: number) => call<number>("ssh_expect_reboot", { sessionId, waitSecs }),
 };

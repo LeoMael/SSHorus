@@ -3,7 +3,8 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { Plug, RotateCw, ShieldCheck } from "lucide-react";
 import type { Vps } from "../../features/fleet/group";
 import { warnings, worstLevel, type VpsLive } from "../../features/fleet/health";
-import { fleetConnect, fleetRetry, openVps } from "../../features/fleet/runtime";
+import { fleetConnect, fleetRetry, openVps, rebootVps } from "../../features/fleet/runtime";
+import { RebootButtonView, serverKey, useRebootRun } from "../../features/reboot";
 import { VpsMetrics } from "./VpsMetrics";
 
 const STATUS_TEXT: Record<VpsLive["status"], string> = {
@@ -78,6 +79,15 @@ function StateBody({ v, live }: { v: Vps; live: VpsLive }) {
   return <VpsMetrics live={live} />;
 }
 
+function RebootRow({ v }: { v: Vps }) {
+  const run = useRebootRun(serverKey(v));
+  return (
+    <div className="fl-reboot">
+      <RebootButtonView run={run} onClick={() => void rebootVps(v)} title="Reinicia el servidor (abre su pestaña si hace falta), espera a que vuelva y reconecta" />
+    </div>
+  );
+}
+
 export function VpsCard({ v, live }: { v: Vps; live: VpsLive }) {
   const ws = warnings(live);
   const level = live.status === "attention" ? "warn" : worstLevel(ws);
@@ -116,6 +126,7 @@ export function VpsCard({ v, live }: { v: Vps; live: VpsLive }) {
         </div>
       )}
       <StateBody v={v} live={live} />
+      {p?.rebootRequired && live.status === "online" && <RebootRow v={v} />}
       <Users v={v} live={live} />
     </div>
   );

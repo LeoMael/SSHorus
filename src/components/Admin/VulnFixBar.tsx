@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Box, Clock, Hand, Loader2, RefreshCw, RotateCcw, Square, Wrench, type LucideIcon } from "lucide-react";
 import type { Report } from "../../api/vulnscan";
 import { canUpgrade, groupFindings, type FixKind } from "../../features/vulnscan";
-import { CommandActions } from "./vulnUi";
+import { RebootButton } from "../../features/reboot";
 import "./VulnFix.css";
 
 const CHIPS: { kind: FixKind; label: string; icon: LucideIcon; title: string; always?: boolean }[] = [
@@ -18,7 +18,6 @@ const CHIPS: { kind: FixKind; label: string; icon: LucideIcon; title: string; al
 export function VulnFixBar({
   report,
   sessionId,
-  sudoTool,
   filter,
   onFilter,
   onFixAll,
@@ -29,7 +28,6 @@ export function VulnFixBar({
 }: {
   report: Report;
   sessionId: string;
-  sudoTool: string;
   filter: FixKind | null;
   onFilter: (k: FixKind | null) => void;
   onFixAll: () => void;
@@ -83,7 +81,7 @@ export function VulnFixBar({
             Reinicia el servidor para terminar de aplicar las actualizaciones
             {report.host.rebootKernel ? ` (kernel ${report.host.rebootKernel})` : ""}.
           </span>
-          <CommandActions sessionId={sessionId} text={`${sudoTool ? `${sudoTool} ` : ""}reboot`} />
+          <RebootButton sessionId={sessionId} onRebooted={onRecheck} />
         </div>
       )}
     </>

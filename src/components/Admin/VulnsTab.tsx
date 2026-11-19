@@ -483,7 +483,6 @@ export function VulnsTab() {
           <VulnFixBar
             report={report}
             sessionId={sessionId}
-            sudoTool={tool}
             filter={fixFilter}
             onFilter={setFixFilter}
             onFixAll={() => fix.openFix(report.findings)}

@@ -26,7 +26,7 @@ import { toast } from "../../stores/toasts";
 import { AdmModal } from "./AdmModal";
 import { useAdmin } from "./context";
 import { FixResult } from "./FixResult";
-import { SevTag, sudoToolOf } from "./vulnUi";
+import { SevTag } from "./vulnUi";
 import "../Containers/Containers.css";
 import "./VulnFix.css";
 
@@ -42,7 +42,6 @@ export function FixDialog({ report, findings, onClose }: { report: Report; findi
   const [picked, setPicked] = useState<Set<string>>(() => new Set(choices.map((c) => c.name)));
   const chosen = choices.filter((c) => picked.has(c.name));
   const command = upgradeCommand(report, chosen.flatMap((c) => c.binaries));
-  const tool = sudoToolOf(info, elevation);
 
   const [stage, setStage] = useState<Stage>("review");
   const [output, setOutput] = useState("");
@@ -183,7 +182,7 @@ export function FixDialog({ report, findings, onClose }: { report: Report; findi
           </button>
         )}
         {stage === "done" && result && after && (
-          <FixResult sessionId={sessionId} result={result} restart={restart} report={after} el={elevation} sudoTool={tool} />
+          <FixResult sessionId={sessionId} result={result} restart={restart} report={after} el={elevation} />
         )}
       </div>
 

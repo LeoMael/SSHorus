@@ -10,6 +10,7 @@ import { splitSections } from "../admin/parse";
 import { shQuote } from "../admin/shell";
 import type { PortsResult } from "../admin/ports";
 import { certStatus, type WebResult } from "../admin/web";
+import { rebootPending, type RebootPending } from "../reboot/detect";
 import { sshListenPorts } from "./fixSafety";
 
 export interface AuditInput {
@@ -40,6 +41,13 @@ export interface AuditCtx {
 }
 
 const NEEDS_SUDO = "Sin comprobar: necesita sudo";
+
+const REBOOT_CHECK: Record<RebootPending, [CheckStatus, string]> = {
+  required: ["warn", "Hay que reiniciar para usar el núcleo o las bibliotecas nuevas"],
+  "kernel-gone": ["warn", "El núcleo en marcha ya no está instalado: reinicia"],
+  no: ["ok", "No hace falta reiniciar"],
+  unknown: ["skip", "No se pudo saber"],
+};
 
 function lines(ctx: Pick<AuditCtx, "sec">, k: string): string[] {
   return ctx.sec.get(k) ?? [];
@@ -434,20 +442,9 @@ function updateChecks(ctx: AuditCtx, vuln: AuditInput["vuln"], now: number): Che
     out.push(check("updates.pending", "updates", "Actualizaciones pendientes", "ok", mgr === "apt" ? "Al día (según el último «apt update»)" : "Al día", { weight: 3 }));
   }
 
-  const rb = lines(ctx, "reboot");
-  const nr = rb.find((l) => l.startsWith("nr "));
-  const kernel = rb.find((l) => l.startsWith("kernel "))?.slice(7) ?? "";
-  const mods = rb.filter((l) => l.startsWith("mod ")).map((l) => l.slice(4));
+  const [rbStatus, rbDetail] = REBOOT_CHECK[rebootPending(lines(ctx, "reboot")).state];
   const rebootFix = fix("command -v systemctl >/dev/null && systemctl reboot || reboot", { danger: true, note: "El servidor se reinicia ahora: se cortan las conexiones" });
-  if (rb.includes("required") || nr === "nr 1") {
-    out.push(check("updates.reboot", "updates", "Reinicio pendiente", "warn", "Hay que reiniciar para usar el núcleo o las bibliotecas nuevas", { weight: 2, fix: rebootFix }));
-  } else if (nr === "nr 0" || (mods.length > 0 && mods.includes(kernel) && !nr)) {
-    out.push(check("updates.reboot", "updates", "Reinicio pendiente", "ok", "No hace falta reiniciar", { weight: 2 }));
-  } else if (mods.length > 0 && kernel && !mods.includes(kernel)) {
-    out.push(check("updates.reboot", "updates", "Reinicio pendiente", "warn", "El núcleo en marcha ya no está instalado: reinicia", { weight: 2, fix: rebootFix }));
-  } else {
-    out.push(check("updates.reboot", "updates", "Reinicio pendiente", "skip", "No se pudo saber", { weight: 2 }));
-  }
+  out.push(check("updates.reboot", "updates", "Reinicio pendiente", rbStatus, rbDetail, { weight: 2, fix: rbStatus === "warn" ? rebootFix : null }));
 
   if (!vuln) {
     out.push(check("updates.vulns", "updates", "Vulnerabilidades conocidas", "skip", "Sin analizar: usa «Analizar» en Vulnerabilidades", { weight: 3 }));

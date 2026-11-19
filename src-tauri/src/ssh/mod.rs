@@ -9,6 +9,7 @@ pub mod connect;
 pub mod handler;
 pub mod known_hosts;
 pub mod login_secret;
+pub mod reboot_wait;
 pub mod reconnect;
 
 pub use commands::*;
@@ -92,6 +93,7 @@ impl SessionStore {
         let slot = self.sessions.write().await.remove(id)?;
         slot.cancel.cancel();
         login_secret::forget(id);
+        reboot_wait::forget(id);
         Some(slot.session)
     }
 

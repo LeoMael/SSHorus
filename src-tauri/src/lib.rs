@@ -82,6 +82,7 @@ pub fn run() {
             ssh::ssh_cancel_test,
             ssh::ssh_disconnect,
             ssh::ssh_list_sessions,
+            ssh::reboot_wait::ssh_expect_reboot,
             // terminal
             terminal::term_open,
             terminal::term_write,

@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::*;
+use crate::ssh::reboot_wait::pick;
 use crate::ssh::connect::testutil::{test_creds, test_profile};
 
 #[derive(Debug, Clone)]
@@ -140,6 +141,7 @@ fn fast_timing(backoff_ms: u64) -> Timing {
     Timing {
         watch_interval: Duration::from_millis(200),
         backoff: vec![Duration::from_millis(backoff_ms)],
+        reboot_backoff: vec![Duration::from_millis(backoff_ms)],
     }
 }
 
@@ -214,7 +216,7 @@ async fn finish(env: &Arc<TestEnv>, id: &str, task: tokio::task::JoinHandle<()>)
 #[test]
 fn backoff_schedule() {
     let t = Timing::default();
-    let secs: Vec<u64> = (1..=7).map(|a| t.backoff(a).as_secs()).collect();
+    let secs: Vec<u64> = (1..=7).map(|a| pick(&t.backoff, a).as_secs()).collect();
     assert_eq!(secs, vec![1, 2, 5, 10, 30, 30, 30]);
 }
 
@@ -483,3 +485,6 @@ async fn creds_wait_for_unlock_can_be_cancelled() {
     let r = creds_for_attempt(&*env, &test_profile(), &Credentials::default(), true, "s1", 1, 3, &cancel).await;
     assert!(matches!(r, Err(Outcome::Cancelled)));
 }
+
+#[path = "reconnect_reboot_tests.rs"]
+mod reboot;

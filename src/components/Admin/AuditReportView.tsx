@@ -25,9 +25,11 @@ interface Props {
   onFix: (c: Check) => void;
   onFixAll: () => void;
   onOpenVulns: () => void;
+  /** Terminó un «Reiniciar ahora» (desde «Reinicio pendiente»). */
+  onRebooted: () => void;
 }
 
-export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAll, onOpenVulns }: Props) {
+export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAll, onOpenVulns, onRebooted }: Props) {
   const { sessionId } = useAdmin();
   const problems = problemsByImportance(report.checks);
   const safe = safeFixes(problems);
@@ -40,6 +42,7 @@ export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAl
       fixable={fixable}
       onFix={() => onFix(c)}
       onOpenVulns={c.id === "updates.vulns" ? onOpenVulns : undefined}
+      onRebooted={c.id === "updates.reboot" ? onRebooted : undefined}
     />
   );
   return (

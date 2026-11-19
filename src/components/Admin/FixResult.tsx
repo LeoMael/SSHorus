@@ -7,7 +7,7 @@ import { byReason, crossSummary, restartService, STAY_TEXT, type CrossResult, ty
 import type { Elevation } from "../../features/privileges";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
-import { CommandActions } from "./vulnUi";
+import { RebootButton } from "../../features/reboot";
 
 function ServiceRow({ sessionId, unit, el }: { sessionId: string; unit: string; el: Elevation | null }) {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
@@ -51,14 +51,12 @@ export function FixResult({
   restart,
   report,
   el,
-  sudoTool,
 }: {
   sessionId: string;
   result: CrossResult;
   restart: RestartInfo | null;
   report: Report;
   el: Elevation | null;
-  sudoTool: string;
 }) {
   const groups = byReason(result.remaining);
   const reboot = !report.host.inContainer && (restart?.reboot || report.host.rebootRequired);
@@ -93,7 +91,7 @@ export function FixResult({
       {reboot && (
         <div className="vf-reboot-box">
           <RotateCcw size={14} /> Reinicia el servidor para terminar.
-          <CommandActions sessionId={sessionId} text={`${sudoTool ? `${sudoTool} ` : ""}reboot`} />
+          <RebootButton sessionId={sessionId} />
         </div>
       )}
     </div>

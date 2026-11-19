@@ -187,6 +187,10 @@
   background: color-mix(in srgb, var(--yellow) 12%, transparent);
 }
 
+.fl-reboot {
+  display: flex;
+}
+
 .fl-state {
   display: flex;
   flex-direction: column;
