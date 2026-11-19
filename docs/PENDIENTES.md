@@ -94,6 +94,37 @@ recomendada: **llave para entrar + contraseña solo para sudo**. Cambio pendient
 sudo de ese servidor; la entrada por contraseña sigue desactivada en SSH (solo llave). Sin sudo sin contraseña.
 El Mapa de proyecto se queda como está (el usuario está conforme).
 
+**Ronda de pruebas del 18–19/11/2026 (en `main`, sin publicar).** Hecho: terminal sin retraso al escribir (salida
+inmediata tras una pausa y `TCP_NODELAY`), lo insertado se ve al momento, botón de la llave para escribir la
+contraseña de sudo (pide el PIN de SSHorus y solo escribe si la terminal la pide), confirmaciones encima de Ajustes,
+**«Reiniciar ahora»** (reinicia con sudo, espera hasta 5 min, reconecta y comprueba; en escáner, auditoría y Panel
+de VPS), Podman de otros usuarios sin sesión (carpeta propia en `/tmp/sshorus-run-<uid>` y aviso de linger),
+botón «Arreglar» cuando podman usa las carpetas de root, ventana de «aceptar automáticamente» (apagar por servidor,
+«Apagar todo» con confirmación). **Falta probar todo esto en la app.** Ideas que salieron:
+- MCP: herramienta `reboot_server` (reutiliza `ssh_expect_reboot`).
+- Contenedores de `leo_oti` sin arranque automático tras reiniciar (no son servicios): ofrecer «reiniciar siempre» +
+  `podman-restart.service` de usuario, o pasarlos a Quadlet.
+- La terminal dice «volviendo a la sesión tmux» tras un reinicio, aunque abre una nueva.
+- IA de informes con Claude: la app manda siempre `temperature: 0.2` (`src-tauri/src/ai/mod.rs`); si Claude la
+  rechaza, quitarla.
+
+**Idea del usuario (19/11/2026): «Qué pueden ver tus usuarios» (aviso para el administrador).** Caso: alquilas el VPS
+o das acceso a otras personas y no sabes a qué datos llegan. Para quien tiene sudo, una vista en Administración (y un
+apartado en **Auditar servidor**) que explique, por cada usuario sin sudo, qué puede ver o alcanzar, en lenguaje
+simple y con el arreglo de cada punto:
+- **Túneles SSH**: por defecto cualquier usuario que entra por SSH puede abrir túneles (`AllowTcpForwarding yes`) y
+  llegar desde su PC a lo que escucha solo en `127.0.0.1` (bases de datos, webs internas). Arreglo: `Match` en
+  `sshd_config.d` con `AllowTcpForwarding no`, `AllowStreamLocalForwarding no`, `X11Forwarding no`,
+  `PermitTunnel no`, `GatewayPorts no` para quien no es admin. En «Crear usuario solo por clave», casilla
+  «Permitir túneles» apagada por defecto sin sudo.
+- **Servicios internos** a los que llega con su propia shell (`curl`, `psql`) aunque no haya túneles: listar los
+  puertos de `127.0.0.1` y avisar de los que no piden contraseña.
+- **Procesos y configuración ajena**: `/proc` sin `hidepid` (ve los procesos y comandos de todos), `/etc/nginx`,
+  `/etc/caddy`, archivos legibles por todos, otros `HOME` sin `700`, `cron`, logs.
+- **Contenedores de otros** (rootless) y sockets de Docker accesibles.
+- Resultado por usuario: «puede ver / no puede ver», con nota, y botón «Arreglar» que muestra el cambio antes
+  (como el resto de la auditoría). Relacionado con el punto 4 (endurecimiento) y 4b.
+
 Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
 Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
 
