@@ -39,15 +39,39 @@ export interface EngineRun {
   needSudo: boolean;
 }
 
+const LOG_LINE = /^time="[^"]*" level=(\w+) msg="(.*)"$/;
+
+/**
+ * Líneas de log de Podman (`time="…" level=warning msg="…"`) en texto llano: si hay un error, los avisos
+ * sobran (suelen repetir lo mismo); si no, se deja solo el mensaje.
+ */
+export function cleanEngineLog(text: string): string {
+  const lines = text.split("\n");
+  const hasError = lines.some((l) => /^Error: /.test(l) || /^(error|fatal)$/.test(LOG_LINE.exec(l)?.[1] ?? ""));
+  return lines
+    .flatMap((l) => {
+      const m = LOG_LINE.exec(l);
+      if (!m) return [l];
+      if (hasError && !/^(error|fatal)$/.test(m[1])) return [];
+      return [m[2].replace(/\\"/g, '"')];
+    })
+    .join("\n");
+}
+
 /** Traduce los errores habituales de Podman/Docker (deja el original debajo). */
 export function translateError(stderr: string): string {
-  const raw = stderr
+  const raw = cleanEngineLog(stderr)
     .split("\n")
     .filter((l) => !/Executing external compose provider|Please see podman-compose|^\s*$/.test(l))
     .join("\n")
     .trim();
   const e = raw.toLowerCase();
   const rules: [RegExp, string][] = [
+    [
+      /run root path "?\/run\/containers\/storage|runroot is pointing to a path \(\/run\/containers\/storage\)|\/run\/containers\/storage.*permission denied/,
+      "Podman de este usuario intenta usar la carpeta de ejecución de root (/run/containers/storage). " +
+        "Revisa «runroot» en su ~/.config/containers/storage.conf (o bórralo)",
+    ],
     [/permission denied.*docker|docker\.sock.*permission denied|got permission denied/, "Sin permiso para usar Docker: hace falta sudo o estar en el grupo «docker»"],
     [/cannot connect to the docker daemon|is the docker daemon running/, "El servicio Docker no está en marcha"],
     [/no such container/, "El contenedor ya no existe (puede que lo hayan borrado)"],

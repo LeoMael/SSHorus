@@ -14,6 +14,7 @@ import {
   ownerOptions,
   parseMultiOwner,
   perOwner,
+  runtimeFallback,
   validOwnerUser,
   withOwner,
   type CtOwner,
@@ -22,6 +23,7 @@ import {
 } from "./owner";
 import { statsFor } from "./parse";
 import { renderCmd } from "./shell";
+import { shQuote } from "../admin/shell";
 
 // Sin @types/node en el proyecto: se carga a mano lo justo para ejecutar `sh`.
 const CHILD = "node:child_process";
@@ -68,10 +70,10 @@ const bad: OwnerUser = { name: "-x;rm", uid: 1003, home: "/home/x", podman: true
     "sudo runuser -u ana -- env HOME=/home/ana XDG_RUNTIME_DIR=/run/user/1001 podman ps -a --format json",
     "otro usuario con runuser y sesión",
   );
-  // Sin sesión: se quita el XDG_RUNTIME_DIR de quien eleva (Podman usa /tmp/storage-run-<uid>).
+  // Sin sesión: carpeta de ejecución propia (si no, Podman cae al RunRoot de root). Ver ownerRuntime.test.ts.
   eq(
     ownerLine(ps, { kind: "user", user: deploy }, ctx),
-    "sudo runuser -u deploy -- env -u XDG_RUNTIME_DIR HOME='/srv/deploy home' podman ps -a --format json",
+    `sudo runuser -u deploy -- env HOME='/srv/deploy home' sh -c ${shQuote(`${runtimeFallback(1002)}; podman ps -a --format json`)}`,
     "otro usuario sin sesión (HOME citado)",
   );
   eq(

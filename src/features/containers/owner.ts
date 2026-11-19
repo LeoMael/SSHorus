@@ -5,6 +5,7 @@
 // - "root": Podman como root, con sudo.
 // - "u:<usuario>": otro usuario. Se entra como él igual que el escáner (`as_owner_script` en
 //   src-tauri/src/vulnscan/scripts.rs): `runuser -u U -- env HOME=… XDG_RUNTIME_DIR=…` (o `sudo -u U -H`, o `su`).
+//   Sin /run/user/<uid> (sin sesión ni linger), con una carpeta de ejecución propia (`runtimeFallback`).
 //   Docker rootless de otro usuario: su demonio, por su socket (`DOCKER_HOST=unix:///run/user/<uid>/docker.sock`).
 import { shQuote } from "../admin/shell";
 import { displayPrefix, q, renderCmd, type Cmd } from "./shell";
@@ -24,6 +25,8 @@ export interface OwnerUser {
   docker: boolean;
   /** Tiene /run/user/<uid> (sesión abierta o lingering). */
   runtimeDir: boolean;
+  /** Tiene linger (`loginctl enable-linger`). null/sin dato = no se sabe (sin systemd). */
+  linger?: boolean | null;
 }
 
 export type CtOwner = { kind: "self" } | { kind: "root" } | { kind: "user"; user: OwnerUser };
@@ -123,10 +126,31 @@ export interface LineCtx {
   runuser: boolean;
 }
 
-/** Variables con las que se entra como otro usuario (como `run_as` en Rust). */
-function userEnv(u: OwnerUser): string {
-  const home = `HOME=${q(u.home)}`;
-  return u.runtimeDir ? `env ${home} XDG_RUNTIME_DIR=/run/user/${u.uid}` : `env -u XDG_RUNTIME_DIR ${home}`;
+/**
+ * Carpeta de ejecución propia (XDG_RUNTIME_DIR) si el usuario no tiene /run/user/<uid> (sin sesión ni
+ * linger): sin ella, Podman 3.x/4.x cae al RunRoot de root (/run/containers/storage) y falla. Se crea ya
+ * como él, con modo 700, y no se usa si existe y no es suya. Mismo texto que `runtime_fallback` en Rust.
+ */
+export function runtimeFallback(uid: number): string {
+  return (
+    `d="\${TMPDIR:-/tmp}/sshorus-run-${uid}"; mkdir -p -m 700 "$d" 2>/dev/null; ` +
+    `if [ -L "$d" ] || [ "$(stat -c %u:%a "$d" 2>/dev/null)" != ${uid}:700 ]; then ` +
+    `echo "La carpeta $d no es de este usuario o no tiene permisos 700: bórrala o usa otro TMPDIR" >&2; exit 1; fi; ` +
+    `export XDG_RUNTIME_DIR="$d"`
+  );
+}
+
+/** El comando como un solo programa: con carpeta (Compose) el `cd` va dentro, ya como el usuario
+ * (puede que tú no puedas entrar en su HOME). */
+function oneProgram(cmd: Cmd): string {
+  return cmd.cwd ? `sh -c ${shQuote(renderCmd(cmd))}` : renderCmd(cmd);
+}
+
+/** Lo que se ejecuta ya como el otro usuario (como `as_user_script` en Rust): su HOME y su XDG_RUNTIME_DIR. */
+function asUser(u: OwnerUser, cmd: Cmd): string {
+  const env = `env HOME=${q(u.home)}`;
+  if (!u.runtimeDir) return `${env} sh -c ${shQuote(`${runtimeFallback(u.uid)}; ${renderCmd(cmd)}`)}`;
+  return `${env} XDG_RUNTIME_DIR=/run/user/${u.uid} ${oneProgram(cmd)}`;
 }
 
 /**
@@ -138,14 +162,24 @@ export function ownerLine(cmd: Cmd, o: CtOwner, ctx: LineCtx): string {
   if (o.kind === "self") return displayPrefix(ctx.selfPrefix, cmd);
   if (o.kind === "root") return displayPrefix(ctx.elevPrefix, cmd);
   const u = o.user;
-  // Con carpeta (Compose) el `cd` va dentro, ya como el usuario: puede que tú no puedas entrar en su HOME.
-  const body = cmd.cwd ? `sh -c ${shQuote(renderCmd(cmd))}` : renderCmd(cmd);
-  if (ctx.engine === "docker") return `${ctx.elevPrefix}env DOCKER_HOST=unix:///run/user/${u.uid}/docker.sock ${body}`;
+  if (ctx.engine === "docker") return `${ctx.elevPrefix}env DOCKER_HOST=unix:///run/user/${u.uid}/docker.sock ${oneProgram(cmd)}`;
   const name = q(u.name);
-  if (ctx.runuser) return `${ctx.elevPrefix}runuser -u ${name} -- ${userEnv(u)} ${body}`;
-  if (ctx.elevPrefix.startsWith("sudo")) return `sudo -u ${name} -H ${userEnv(u)} ${body}`;
-  if (ctx.elevPrefix.startsWith("doas")) return `doas -u ${name} ${userEnv(u)} ${body}`;
-  return `su -s /bin/sh ${name} -c ${shQuote(`${userEnv(u)} ${body}`)}`;
+  const inner = asUser(u, cmd);
+  if (ctx.runuser) return `${ctx.elevPrefix}runuser -u ${name} -- ${inner}`;
+  if (ctx.elevPrefix.startsWith("sudo")) return `sudo -u ${name} -H ${inner}`;
+  if (ctx.elevPrefix.startsWith("doas")) return `doas -u ${name} ${inner}`;
+  return `su -s /bin/sh ${name} -c ${shQuote(inner)}`;
+}
+
+/** Usuarios (Podman) que se ven y no tienen linger: sus contenedores se paran al cerrar su sesión. */
+export function usersWithoutLinger(owners: CtOwner[], engine: Engine): OwnerUser[] {
+  if (engine !== "podman") return [];
+  return owners.flatMap((o) => (o.kind === "user" && o.user.linger === false ? [o.user] : []));
+}
+
+/** `loginctl enable-linger <usuario>` (como root, no como el usuario). */
+export function enableLingerCmd(name: string): Cmd {
+  return { bin: ["loginctl"], args: ["enable-linger", name] };
 }
 
 // ───────── Varios usuarios en un solo script ─────────

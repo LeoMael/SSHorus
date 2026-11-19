@@ -42,6 +42,9 @@ mod tests;
 #[cfg(test)]
 mod tests_recheck;
 
+#[cfg(all(test, unix))]
+mod tests_runtime;
+
 #[cfg(test)]
 mod live_tests;
 

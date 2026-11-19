@@ -337,10 +337,11 @@ fn detect_and_plan() {
 
 #[test]
 fn users_and_images_listing() {
-    let u = inventory::parse_users("@@users\nana\t1000\t/home/ana\tyes\tno\tno\nbeto\t1001\t/home/beto\tno\tyes\tyes\n@@root\npodman\n@@end\n");
+    let u = inventory::parse_users("@@users\nana\t1000\t/home/ana\tyes\tno\tno\tno\nbeto\t1001\t/home/beto\tno\tyes\tyes\tna\n@@root\npodman\n@@end\n");
     assert_eq!(u.users.len(), 2);
     assert!(u.users[0].podman && !u.users[0].runtime_dir);
     assert!(u.users[1].docker && u.users[1].runtime_dir);
+    assert_eq!((u.users[0].linger, u.users[1].linger), (Some(false), None));
     assert!(u.root_podman && !u.root_docker);
 
     let podman = "@@images\n5e2b554c1c45\tdocker.io/library/alpine:3.18.0\n5e2b554c1c45\tlocalhost/mio:1\n\
@@ -448,7 +449,7 @@ fn scripts_are_valid_sh() {
     let s = scripts::as_owner_script(Engine::Podman, Some(&bad), "podman pull x");
     assert!(!s.contains("podman pull") && s.contains("exit 1"), "{s}");
     let s = scripts::as_owner_script(Engine::Podman, Some(&user), "podman pull x");
-    assert!(s.contains("runuser -u 'ana'") && s.contains("XDG_RUNTIME_DIR=/run/user/1000"), "{s}");
+    assert!(s.contains("runuser -u 'ana'") && s.contains("r=/run/user/1000") && s.contains("sshorus-run-1000"), "{s}");
     assert!(scripts::as_owner_script(Engine::Docker, Some(&user), "docker pull x").contains("DOCKER_HOST=unix://$s"));
 }
 

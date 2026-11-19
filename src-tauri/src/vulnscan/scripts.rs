@@ -75,6 +75,7 @@ pub fn users_script() -> String {
     format!(
         r#"{PATH_LINE}
 echo @@users
+lg=; command -v loginctl >/dev/null 2>&1 && lg=1
 {{ getent passwd 2>/dev/null || cat /etc/passwd; }} | while IFS=: read -r u x uid gid g home sh; do
   case $uid in ''|*[!0-9]*) continue ;; esac
   [ "$uid" -ge 1000 ] || continue
@@ -84,7 +85,8 @@ echo @@users
   [ -d "$home/.local/share/docker" ] && d=yes
   [ -d "/run/user/$uid" ] && r=yes
   [ $p = yes ] || [ $d = yes ] || continue
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$u" "$uid" "$home" "$p" "$d" "$r"
+  l=na; [ -n "$lg" ] && {{ l=no; [ -e "/var/lib/systemd/linger/$u" ] && l=yes; }}
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$u" "$uid" "$home" "$p" "$d" "$r" "$l"
 done
 echo @@root
 if [ -d /var/lib/containers/storage ] && command -v podman >/dev/null 2>&1; then echo podman; fi
@@ -217,32 +219,54 @@ fn valid_user(u: &UserCtx) -> bool {
         && !u.home.contains(['\n', '\0'])
 }
 
+/// Carpeta de ejecución propia (XDG_RUNTIME_DIR) cuando el usuario no tiene /run/user/<uid> (sin sesión
+/// ni linger). Sin ella, Podman 3.x/4.x cae al RunRoot de root (/run/containers/storage) y falla con
+/// «permission denied». Se crea ya como el usuario, con modo 700; si existe y no es suya (otro la creó
+/// antes en /tmp), no se usa. Una sola línea, la misma que muestra la interfaz (`runtimeFallback` en
+/// src/features/containers/owner.ts).
+pub fn runtime_fallback(uid: u32) -> String {
+    format!(
+        r#"d="${{TMPDIR:-/tmp}}/sshorus-run-{uid}"; mkdir -p -m 700 "$d" 2>/dev/null; if [ -L "$d" ] || [ "$(stat -c %u:%a "$d" 2>/dev/null)" != {uid}:700 ]; then echo "La carpeta $d no es de este usuario o no tiene permisos 700: bórrala o usa otro TMPDIR" >&2; exit 1; fi; export XDG_RUNTIME_DIR="$d""#
+    )
+}
+
+/// Lo que se ejecuta ya como el usuario `uid`: elige su XDG_RUNTIME_DIR y luego `prefix` + `inner`.
+pub(crate) fn as_user_script(uid: u32, prefix: &str, inner: &str) -> String {
+    format!(
+        "r=/run/user/{uid}\n\
+         if [ -d \"$r\" ] && [ \"$(stat -c %u \"$r\" 2>/dev/null)\" = {uid} ]; then export XDG_RUNTIME_DIR=\"$r\"\n\
+         else {fallback}; fi\n\
+         {prefix} {inner}",
+        fallback = runtime_fallback(uid),
+        inner = sh_quote(inner),
+    )
+}
+
 /// Ejecuta `inner` (texto de un script) con el shell. Si `user` es otro usuario (estamos como root),
 /// se entra como él con `runuser -u` (util-linux), `sudo -u -H` o `su -s /bin/sh` (busybox), con su
-/// HOME (sin él, Podman busca el almacén en el de root) y su XDG_RUNTIME_DIR si existe y es suyo.
+/// HOME (sin él, Podman busca el almacén en el de root) y su XDG_RUNTIME_DIR: /run/user/<uid> si existe
+/// y es suyo, o una carpeta propia en /tmp (`runtime_fallback`). Ya como él se decide cuál.
 /// `unshare` = envolver en `podman unshare` (para montar imágenes sin ser root).
 fn run_as(user: Option<&UserCtx>, unshare: bool, inner: &str) -> String {
     let prefix = if unshare { "podman unshare sh -c" } else { "sh -c" };
     let Some(u) = user.filter(|u| valid_user(u)) else {
         return format!("TV_INNER={}\n{prefix} \"$TV_INNER\"", sh_quote(inner));
     };
-    let name = sh_quote(&u.name);
-    let home = sh_quote(&u.home);
-    let uid = u.uid;
+    let as_user = as_user_script(u.uid, prefix, inner);
     format!(
-        r#"TV_INNER={inner}
+        r#"TV_INNER={as_user}
 export TV_INNER
-x=
-if [ -d /run/user/{uid} ] && [ "$(stat -c %u /run/user/{uid} 2>/dev/null)" = {uid} ]; then x=XDG_RUNTIME_DIR=/run/user/{uid}; fi
 cd / 2>/dev/null
 if command -v runuser >/dev/null 2>&1; then
-  runuser -u {name} -- env -u XDG_RUNTIME_DIR HOME={home} $x {prefix} "$TV_INNER"
+  runuser -u {name} -- env -u XDG_RUNTIME_DIR HOME={home} sh -c "$TV_INNER"
 elif command -v sudo >/dev/null 2>&1; then
-  sudo -u {name} -H env -u XDG_RUNTIME_DIR HOME={home} $x {prefix} "$TV_INNER"
+  sudo -u {name} -H env -u XDG_RUNTIME_DIR HOME={home} sh -c "$TV_INNER"
 else
-  su -s /bin/sh {name} -c "HOME={home_inner}; export HOME; ${{x:+export $x;}} {prefix} \"\$TV_INNER\""
+  su -s /bin/sh {name} -c "HOME={home_inner}; export HOME; sh -c \"\$TV_INNER\""
 fi"#,
-        inner = sh_quote(inner),
+        as_user = sh_quote(&as_user),
+        name = sh_quote(&u.name),
+        home = sh_quote(&u.home),
         home_inner = u.home.replace(['"', '$', '`', '\\'], ""),
     )
 }

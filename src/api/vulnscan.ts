@@ -92,6 +92,8 @@ export interface StoreUser {
   podman: boolean;
   docker: boolean;
   runtimeDir: boolean;
+  /** Tiene linger (`loginctl enable-linger`); null = sin systemd. */
+  linger: boolean | null;
 }
 
 export interface UsersView {

@@ -11,6 +11,7 @@ import { CtContext, type CtContextValue } from "./context";
 import { NoEngine } from "./NoEngine";
 import { EngineHeader } from "./EngineHeader";
 import { EngineBanner } from "./EngineBanner";
+import { LingerBanner } from "./LingerBanner";
 import { SubTabBar, SubTabBody } from "./PanelSections";
 import { PanelDialogs, usePanelDialogs } from "./PanelDialogs";
 import type { SubTab } from "./panelLogic";
@@ -175,6 +176,7 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
           review={setReview}
           detect={detect}
         />
+        <LingerBanner scope={scope} review={setReview} />
         <SubTabBar tab={tab} setTab={setTab} res={res} />
         <SubTabBody
           tab={tab}

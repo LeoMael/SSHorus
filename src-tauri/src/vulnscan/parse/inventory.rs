@@ -183,6 +183,8 @@ pub struct StoreUser {
     pub docker: bool,
     /// Tiene /run/user/<uid> (sesión o lingering).
     pub runtime_dir: bool,
+    /// Tiene linger (`loginctl enable-linger`): sus contenedores siguen sin sesión. None = sin systemd.
+    pub linger: Option<bool>,
 }
 
 pub fn parse_users(text: &str) -> UsersInfo {
@@ -201,6 +203,11 @@ pub fn parse_users(text: &str) -> UsersInfo {
             podman: f[3].trim() == "yes",
             docker: f[4].trim() == "yes",
             runtime_dir: f[5].trim() == "yes",
+            linger: match f.get(6).map(|x| x.trim()) {
+                Some("yes") => Some(true),
+                Some("no") => Some(false),
+                _ => None,
+            },
         });
     }
     for l in section(&secs, "root").unwrap_or(&[]) {

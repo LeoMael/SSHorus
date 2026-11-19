@@ -160,6 +160,7 @@ export function useOwnerScope({ sessionId, profileId, info, elev, result, active
     reloadUsersIfLoaded,
     needsSudo,
     elevation,
+    otherEl,
     elevPrefix,
     selfPrefix,
     prefix,
