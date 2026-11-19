@@ -26,6 +26,12 @@ export const profiles = {
    */
   sudoPassword: (id: string, sessionId?: string) =>
     call<string | null>("profiles_sudo_password", { id, sessionId: sessionId ?? null }),
+  /**
+   * Como `sudoPassword`, pero para escribirla en la terminal: exige PIN o contraseña de SSHorus y lo
+   * comprueba antes (cuenta como intento). null = el servidor no tiene ninguna guardada.
+   */
+  revealSudoPassword: (id: string, pin: string, sessionId?: string) =>
+    call<string | null>("profiles_reveal_sudo_password", { id, pin, sessionId: sessionId ?? null }),
   /** Copia el servidor (y su secreto guardado). Devuelve la copia. */
   duplicateServer: (id: string) => call<ServerProfile>("profiles_duplicate_server", { id }),
   /** Escribe el bloque de SSHorus en ~/.ssh/config. */

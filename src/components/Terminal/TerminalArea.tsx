@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Copy, InfinityIcon, LayersIcon, Plus, RefreshCw, SquareTerminal, Unlink, Unplug, X } from "lucide-react";
 import { TerminalView } from "./TerminalView";
 import { TmuxSessionsDialog } from "./TmuxSessionsDialog";
+import { SudoPasswordButton } from "./SudoPasswordButton";
 import type { ConnState, TermController, TermStatus, TmuxState } from "./termController";
 import { useTabs } from "../../stores/tabs";
 import { registerTerminalWriter } from "../../stores/terminalBus";
@@ -93,10 +94,14 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
   const blocked = connState !== "connected";
 
   // La terminal activa de la sesión recibe el texto de la Biblioteca de comandos
-  // (mismo camino ordenado que el teclado).
+  // (mismo camino ordenado que el teclado) y se deja a la vista con el foco.
   useEffect(() => {
     if (activeKey === null || disabled) return;
-    return registerTerminalWriter(sessionId, (text) => ctrls.current.get(activeKey)?.sendText(text));
+    return registerTerminalWriter(sessionId, (text) => {
+      const c = ctrls.current.get(activeKey);
+      c?.sendText(text);
+      c?.reveal();
+    });
   }, [sessionId, activeKey, disabled]);
 
   /** Nueva terminal. `tmuxName`: reabrir esa sesión tmux (de «Sesiones en el servidor»). */
@@ -278,6 +283,13 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
           <LayersIcon size={14} />
           {leftovers > 0 && !blocked && <span className="term-sessions-badge">{leftovers}</span>}
         </button>
+        <SudoPasswordButton
+          sessionId={sessionId}
+          profileId={profileId}
+          serverName={serverName}
+          disabled={blocked || activeKey === null}
+          getController={() => (activeKey === null ? undefined : ctrls.current.get(activeKey))}
+        />
       </div>
 
       <div className="term-body">

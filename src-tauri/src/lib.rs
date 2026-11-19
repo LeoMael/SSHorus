@@ -133,6 +133,7 @@ pub fn run() {
             storage::profiles_has_secret,
             storage::profiles_reveal_secret,
             storage::profiles_sudo_password,
+            storage::sudo_secret::profiles_reveal_sudo_password,
             storage::profiles_set_secret,
             storage::settings_load,
             storage::settings_save,

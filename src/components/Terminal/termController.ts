@@ -81,6 +81,9 @@ const EXIT_GRACE_MS = 2500;
  *  al arrastrar el borde de la ventana, el programa redibuja una vez y no en cada píxel. */
 const FIT_DEBOUNCE_MS = 80;
 
+/** Tras escribir desde fuera, durante este tiempo se repinta entera al llegar salida (el eco). */
+const REVEAL_REPAINT_MS = 1500;
+
 const DIM = (s: string) => `\x1b[0m\x1b[2m${s}\x1b[0m`;
 const RED = (s: string) => `\x1b[0m\x1b[31m${s}\x1b[0m`;
 
@@ -115,6 +118,10 @@ export class TermController {
   // Escritura ordenada: un solo `term_write` en vuelo, el resto se agrupa.
   private pending = "";
   private inFlight = false;
+
+  /** Hasta cuándo repintar al llegar salida (ver `reveal`). */
+  private repaintUntil = 0;
+  private repaintQueued = false;
 
   private fitTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly ro: ResizeObserver;
@@ -206,7 +213,7 @@ export class TermController {
     const { cols, rows } = this.term;
     const tmux = this.tmuxName ? { name: this.tmuxName, replay: this.tmuxReplay } : null;
     const onData = (bytes: Uint8Array) => {
-      if (!this.disposed && gen === this.gen) this.term.write(bytes);
+      if (!this.disposed && gen === this.gen) this.writeOutput(bytes);
     };
     try {
       const opened: TermOpenResult = this.backend
@@ -360,6 +367,50 @@ export class TermController {
       return;
     }
     this.handleInput(text);
+  }
+
+  /**
+   * Tras escribir desde fuera (Biblioteca de comandos, escáner…): ajusta, repinta y le da el foco.
+   * Sin foco, el dibujado por GPU no siempre muestra el eco que llega después (se veía al hacer clic):
+   * con el foco xterm redibuja todo y mantiene viva la línea del cursor, y por si acaso se repinta
+   * entera al llegar el eco.
+   */
+  reveal() {
+    if (this.disposed) return;
+    this.repaintUntil = performance.now() + REVEAL_REPAINT_MS;
+    requestAnimationFrame(() => {
+      if (this.disposed) return;
+      this.fitNow();
+      this.term.refresh(0, this.term.rows - 1);
+      this.term.focus();
+    });
+  }
+
+  private writeOutput(bytes: Uint8Array) {
+    if (performance.now() > this.repaintUntil) this.term.write(bytes);
+    else this.term.write(bytes, () => this.queueRepaint());
+  }
+
+  private queueRepaint() {
+    if (this.repaintQueued || this.disposed) return;
+    this.repaintQueued = true;
+    requestAnimationFrame(() => {
+      this.repaintQueued = false;
+      if (!this.disposed) this.term.refresh(0, this.term.rows - 1);
+    });
+  }
+
+  /** Texto de la línea donde está el cursor (con las anteriores si es continuación de ellas). */
+  cursorLineText(): string {
+    if (this.disposed) return "";
+    const buf = this.term.buffer.active;
+    let y = buf.baseY + buf.cursorY;
+    let text = buf.getLine(y)?.translateToString(true) ?? "";
+    while (y > 0 && buf.getLine(y)?.isWrapped) {
+      y--;
+      text = (buf.getLine(y)?.translateToString(false) ?? "") + text;
+    }
+    return text;
   }
 
   private handleKey = (ev: KeyboardEvent): boolean => {

@@ -8,13 +8,10 @@ use russh::{ChannelMsg, Pty};
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 
+use super::batch::OutputBatch;
 use crate::error::{AppError, AppResult};
 use crate::ssh::SshSession;
 
-/// Tiempo máximo que se retiene la salida antes de enviarla a la interfaz.
-const FLUSH_DELAY: Duration = Duration::from_millis(6);
-/// Tamaño a partir del cual se envía la salida sin esperar.
-const FLUSH_BYTES: usize = 64 * 1024;
 /// Si tras pedir el cierre el servidor no responde, se abandona el canal.
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -153,8 +150,7 @@ pub async fn spawn_terminal(
 
     tokio::spawn(async move {
         let _session = session; // mantiene viva la conexión mientras dure la shell
-        let mut buf: Vec<u8> = early;
-        let mut deadline: Option<Instant> = if buf.is_empty() { None } else { Some(Instant::now()) };
+        let mut out = OutputBatch::with_early(early, Instant::now());
         let mut exit_code: Option<u32> = None;
         let mut closing_since: Option<Instant> = None;
         let mut cmds_open = true;
@@ -164,12 +160,8 @@ pub async fn spawn_terminal(
             tokio::select! {
                 msg = channel.wait() => match msg {
                     Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
-                        buf.extend_from_slice(&data);
-                        if buf.len() >= FLUSH_BYTES {
-                            flush(&on_data, &mut buf);
-                            deadline = None;
-                        } else if deadline.is_none() {
-                            deadline = Some(Instant::now() + FLUSH_DELAY);
+                        if let Some(bytes) = out.push(&data, Instant::now()) {
+                            on_data(bytes);
                         }
                     }
                     Some(ChannelMsg::ExitStatus { exit_status }) => exit_code = Some(exit_status),
@@ -199,15 +191,18 @@ pub async fn spawn_terminal(
                         }
                     }
                 },
-                _ = sleep_opt(deadline) => {
-                    flush(&on_data, &mut buf);
-                    deadline = None;
+                _ = sleep_opt(out.deadline()) => {
+                    if let Some(bytes) = out.take(Instant::now()) {
+                        on_data(bytes);
+                    }
                 }
                 _ = sleep_opt(close_deadline) => break,
             }
         }
 
-        flush(&on_data, &mut buf);
+        if let Some(bytes) = out.take(Instant::now()) {
+            on_data(bytes);
+        }
         // Primero se suelta el receptor (is_finished = true) y luego se avisa.
         drop(rx);
         drop(channel);
@@ -215,12 +210,6 @@ pub async fn spawn_terminal(
     });
 
     Ok(TerminalHandle { tx })
-}
-
-fn flush(on_data: &impl Fn(Vec<u8>), buf: &mut Vec<u8>) {
-    if !buf.is_empty() {
-        on_data(std::mem::take(buf));
-    }
 }
 
 async fn sleep_opt(at: Option<Instant>) {

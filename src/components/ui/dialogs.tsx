@@ -58,6 +58,7 @@ export function DialogHost() {
     return (
       <Modal
         open
+        className="ui-dialog"
         title={opts.title}
         onClose={() => done(false)}
         footer={
@@ -99,6 +100,7 @@ function PromptView({ opts, onDone }: { opts: PromptOpts; onDone: (v: string | n
   return (
     <Modal
       open
+      className="ui-dialog"
       title={opts.title}
       onClose={() => onDone(null)}
       footer={

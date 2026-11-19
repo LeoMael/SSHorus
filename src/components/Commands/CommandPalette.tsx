@@ -51,10 +51,11 @@ export function PaletteView({ onClose }: { onClose: () => void }) {
     };
   }, [sessionId]);
 
-  const close = () => {
+  /** `restore`: devolver el foco a donde estaba. No al escribir en la terminal: ella se queda con él. */
+  const close = (restore = true) => {
     onClose();
     const el = restoreFocus.current;
-    if (el instanceof HTMLElement) setTimeout(() => el.focus(), 0);
+    if (restore && el instanceof HTMLElement) setTimeout(() => el.focus(), 0);
   };
 
   const items = useMemo(
@@ -100,7 +101,7 @@ export function PaletteView({ onClose }: { onClose: () => void }) {
       await start(item, cmd);
       return;
     }
-    if (await toTerminal(sessionId, item, cmd, mode === "run")) close();
+    if (await toTerminal(sessionId, item, cmd, mode === "run")) close(false);
   };
 
   const choose = (item: CommandItem, mode: RunMode) => {
@@ -157,7 +158,7 @@ export function PaletteView({ onClose }: { onClose: () => void }) {
                 ? "Abre una conexión para usar la paleta de comandos."
                 : "La conexión de la pestaña activa no está disponible."}
             </div>
-            <button className="btn btn-sm" autoFocus onClick={close}>
+            <button className="btn btn-sm" autoFocus onClick={() => close()}>
               Cerrar
             </button>
           </div>

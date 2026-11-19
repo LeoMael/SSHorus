@@ -4,6 +4,7 @@
 //! enviando `InvokeResponseBody::Raw(bytes)` (llega como ArrayBuffer en JS).
 //! Cuando la shell termina: evento global `EV_TERMINAL_EXIT` con `TerminalExit`.
 
+mod batch;
 pub mod shell;
 pub mod tmux;
 

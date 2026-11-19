@@ -14,6 +14,7 @@ import { TerminalArea } from "../Terminal/TerminalArea";
 import { initEditorWindowsBridge } from "../Editor/editorWindows";
 import { setSessionPath, useEditorDirty } from "./sessionState";
 import { useSessionKeys } from "./useSessionKeys";
+import { useTerminalReveal } from "./useTerminalReveal";
 import { FIXED_IDS, fixedLabel } from "./fixedViews";
 import { ClosedBanner, ReconnectingBanner } from "./SessionBanners";
 import { DetachedButton } from "./DetachedButton";
@@ -51,6 +52,7 @@ export const SessionView = memo(function SessionView({ tab, active }: SessionVie
 
   const mounted = useMountedViews(side);
   const lay = useSessionLayout();
+  useTerminalReveal(sessionId, tab.id, lay.termPanel);
   const dirtyPaths = useEditorDirty((s) => s.dirty[sessionId] ?? EMPTY);
   const onPathChange = useCallback((path: string) => setSessionPath(sessionId, path), [sessionId]);
 

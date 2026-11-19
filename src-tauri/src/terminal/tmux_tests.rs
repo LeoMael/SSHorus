@@ -239,6 +239,8 @@ async fn survives_disconnect_and_reattaches() {
     let (h2, mut rx2) = open_tmux(s2.clone(), &p, &name, true).await;
     let mut out2 = String::new();
     assert!(read_until(&mut rx2, &mut out2, "fila-5\r\n").await, "historial: {out2:?}");
+    // El historial llega antes de que tmux se enganche: un Ctrl+C ahora mataría el `sh` del volcado.
+    tokio::time::sleep(Duration::from_millis(500)).await;
     h2.write(b"\x03".to_vec()).unwrap();
     tokio::time::sleep(Duration::from_millis(300)).await;
     h2.write(b"echo \"valor=$TV_MARK\"\n".to_vec()).unwrap();

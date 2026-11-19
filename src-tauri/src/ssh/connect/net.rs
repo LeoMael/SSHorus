@@ -28,7 +28,14 @@ pub(super) async fn tcp_connect(host: &str, port: u16) -> AppResult<TcpStream> {
         let mut last: Option<std::io::Error> = None;
         for addr in &addrs {
             match TcpStream::connect(addr).await {
-                Ok(s) => return Ok(s),
+                Ok(s) => {
+                    // Sin Nagle: cada tecla sale en el acto en vez de esperar el ACK de la anterior
+                    // (`connect_stream` de russh no aplica `Config::nodelay`).
+                    if let Err(e) = s.set_nodelay(true) {
+                        log::debug!("TCP_NODELAY {host}: {e}");
+                    }
+                    return Ok(s);
+                }
                 Err(e) => last = Some(e),
             }
         }

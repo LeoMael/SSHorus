@@ -647,6 +647,11 @@ button {
   gap: 8px;
   padding: 10px 16px 14px;
 }
+/* confirmDialog / promptDialog: siempre encima de la ventana que los abre (Ajustes, formularios,
+   avisos de conexión a 1010), aunque esa ventana se dibuje después en el árbol. */
+.modal-backdrop:has(> .ui-dialog) {
+  z-index: 1020;
+}
 .dialog-message {
   color: var(--text-muted);
   margin-bottom: 12px;
