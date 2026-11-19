@@ -1,7 +1,7 @@
-// Sub-pestaña «Usuarios»: tabla, filtros y acciones (crear, editar, llaves, bloquear, eliminar).
+// Sub-pestaña «Usuarios»: tabla, filtros y acciones (crear, editar, llaves, contenedores, bloquear, eliminar).
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
-import { Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
-import { accountState, deleteUserPlan, lockUserPlan, todayDays, type AccountState, type UserRow } from "../../features/admin";
+import { Boxes, Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import { accountState, deleteUserPlan, lockUserPlan, todayDays, userContainers, type AccountState, type UserContainers, type UserRow } from "../../features/admin";
 import { protectedReason, useAdmin } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
@@ -11,6 +11,9 @@ import { KeysDialog } from "./KeysDialog";
 import { KeyUserWizard } from "./KeyUserWizard";
 import { ImportUsersDialog } from "./ImportUsersDialog";
 import { AccountTag, accountTitle } from "./AccountTag";
+import { containerColumn } from "./ContainerTags";
+import { ContainerAccessDialog } from "./ContainerAccessDialog";
+import { useContainerAccess } from "./useContainerAccess";
 
 type Dialog =
   | { kind: "create" }
@@ -18,6 +21,7 @@ type Dialog =
   | { kind: "import" }
   | { kind: "edit"; user: UserRow }
   | { kind: "keys"; user: UserRow }
+  | { kind: "containers"; user: UserRow }
   | { kind: "lock"; user: UserRow; lock: boolean }
   | { kind: "delete"; user: UserRow };
 
@@ -28,6 +32,12 @@ export function UsersTab() {
   const [selected, setSelected] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; user: UserRow } | null>(null);
+  const ctInfo = useContainerAccess();
+  // null = no se sabe aún o no hay ni Podman ni Docker: sin columna.
+  const ctAccess = useMemo(
+    () => (ctInfo && (ctInfo.podman || ctInfo.docker) ? new Map<string, UserContainers>(users.map((u) => [u.name, userContainers(ctInfo, u)])) : null),
+    [ctInfo, users],
+  );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -97,8 +107,9 @@ export function UsersTab() {
         render: (u) => (u.isAdmin ? <span className="adm-tag adm-tag-accent">Sí</span> : <span className="faint">No</span>),
         title: (u) => (u.isAdmin ? (u.uid === 0 ? "root" : "Está en wheel/sudo/admin") : ""),
       },
+      ...(ctAccess ? [containerColumn(ctAccess)] : []),
     ],
-    [me, states],
+    [me, states, ctAccess],
   );
 
   const actions = useCallback(
@@ -108,6 +119,9 @@ export function UsersTab() {
       return [
         { label: "Editar…", icon: <Pencil size={14} />, onClick: () => setDialog({ kind: "edit", user: u }), disabled: readOnly, title: roTitle },
         { label: "Llaves SSH…", icon: <KeySquare size={14} />, onClick: () => setDialog({ kind: "keys", user: u }), disabled: readOnly && u.name !== me },
+        ...(ctAccess
+          ? [{ label: "Contenedores…", icon: <Boxes size={14} />, onClick: () => setDialog({ kind: "containers", user: u }), disabled: readOnly, title: roTitle }]
+          : []),
         "sep",
         u.locked
           ? { label: "Desbloquear", icon: <LockOpen size={14} />, onClick: () => setDialog({ kind: "lock", user: u, lock: false }), disabled: readOnly, title: roTitle }
@@ -128,11 +142,12 @@ export function UsersTab() {
         },
       ];
     },
-    [me, readOnly],
+    [me, readOnly, ctAccess],
   );
 
   const onContext = useCallback((e: MouseEvent, u: UserRow) => setMenu({ x: e.clientX, y: e.clientY, user: u }), []);
   const selProt = sel ? protectedReason(sel.name, me) : null;
+  const ctDialog = dialog?.kind === "containers" ? ctAccess?.get(dialog.user.name) : undefined;
 
   return (
     <div className="adm-pane">
@@ -164,6 +179,16 @@ export function UsersTab() {
           >
             <KeySquare size={13} /> Llaves SSH
           </button>
+          {ctAccess && (
+            <button
+              className="btn btn-sm"
+              disabled={!sel || readOnly}
+              title={readOnly ? "Necesitas root o sudo" : "Ver y dar o quitar permiso para usar contenedores (Podman, Docker)"}
+              onClick={() => sel && setDialog({ kind: "containers", user: sel })}
+            >
+              <Boxes size={13} /> Contenedores
+            </button>
+          )}
           <button
             className="btn btn-sm"
             disabled={!sel || readOnly || (!sel.locked && !!selProt)}
@@ -243,6 +268,9 @@ export function UsersTab() {
       {dialog?.kind === "create-key" && <KeyUserWizard onClose={() => setDialog(null)} onCreated={(n) => setSelected(n)} />}
       {dialog?.kind === "edit" && <UserDialog mode="edit" user={dialog.user} onClose={() => setDialog(null)} />}
       {dialog?.kind === "keys" && <KeysDialog user={dialog.user} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "containers" && ctInfo && ctDialog && (
+        <ContainerAccessDialog user={dialog.user} info={ctInfo} access={ctDialog} onClose={() => setDialog(null)} />
+      )}
       {dialog?.kind === "lock" && env && (
         <PlanModal
           title={dialog.lock ? `Bloquear a ${dialog.user.name}` : `Desbloquear a ${dialog.user.name}`}

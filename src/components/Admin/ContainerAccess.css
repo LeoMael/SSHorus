@@ -1,0 +1,41 @@
+/* «¿Puede usar contenedores?»: columna de Usuarios y diálogo «Contenedores…». */
+.cta-tags {
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.cta-tags > span {
+  flex: none;
+}
+.cta-head {
+  padding: 10px 16px 0;
+}
+.cta-status {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-size: var(--fs-sm);
+}
+.cta-status dt {
+  color: var(--text-muted);
+}
+.cta-status dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.cta-danger {
+  background: var(--mix-red-14-surface);
+  border: 1px solid var(--mix-red-40);
+  color: var(--text);
+}
+.cta-danger strong {
+  color: var(--red);
+}
+.cta-alt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
