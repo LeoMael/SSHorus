@@ -1,28 +1,39 @@
 // Botón del asistente en la barra de pestañas (solo con el MCP encendido): abre «Actividad del
 // asistente». Un punto avisa si algo espera tu permiso o se está ejecutando.
-// Al lado, mientras algún servidor esté en «Aceptar automáticamente», un indicador: un clic lo apaga.
+// Al lado, mientras algún servidor esté en «Aceptar automáticamente», un indicador: un clic abre la
+// lista de lo activo para apagarlo por servidor o todo (nunca se apaga a ciegas).
+import { useState } from "react";
 import { Bot, Zap } from "lucide-react";
 import { activeAuto, openActivity, useMcp } from "./store";
-import { autoOffAll, autoText, useMinuteClock } from "./AutoAccept";
+import { autoText, useMinuteClock } from "./AutoAccept";
+import { AutoActivePanel } from "./AutoActivePanel";
 import "./Mcp.css";
 
 function AutoIndicator() {
   const now = useMinuteClock();
   const auto = useMcp((s) => s.auto);
+  const [open, setOpen] = useState(false);
   const list = activeAuto(auto, now);
-  if (list.length === 0) return null;
+  if (list.length === 0 && !open) return null;
   const all = list.some((a) => a.level === "all");
+  const count = list.length === 1 ? "1 servidor" : `${list.length} servidores`;
   const detail = list.map((a) => `${a.serverName}: ${autoText(a, now)}`).join("\n");
-  const title = `Aceptar automáticamente activo\n${detail}\nClic para apagarlo en todos los servidores`;
+  const label = `Aceptar automáticamente activo en ${count}: clic para ver`;
   return (
-    <button
-      className={all ? "btn btn-sm mcp-auto-ind all" : "btn btn-sm mcp-auto-ind"}
-      title={title}
-      aria-label="Aceptar automáticamente activo: clic para apagarlo"
-      onClick={() => void autoOffAll()}
-    >
-      <Zap size={12} /> Automático
-    </button>
+    <>
+      {list.length > 0 && (
+        <button
+          className={all ? "btn btn-sm mcp-auto-ind all" : "btn btn-sm mcp-auto-ind"}
+          title={`${label}\n${detail}`}
+          aria-label={label}
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          <Zap size={12} /> Automático
+        </button>
+      )}
+      {open && <AutoActivePanel list={list} now={now} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 

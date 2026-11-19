@@ -101,6 +101,11 @@ function initApp() {
   });
 }
 
+// Al cargar el módulo, no al renderizar <App>: los init* actualizan stores (p. ej. privilegios) y, si
+// el módulo se vuelve a evaluar en caliente (HMR), hacerlo en el render avisa «Cannot update a
+// component (`ContainersPanel`) while rendering a different component (`App`)».
+initApp();
+
 /** Atajos globales de la ventana (configurables en Ajustes → Atajos de teclado). */
 function useGlobalShortcuts() {
   useEffect(() => {
@@ -278,7 +283,6 @@ function SettingsHost() {
 
 export default function App() {
   const loaded = useSettings((s) => s.loaded);
-  initApp();
   useGlobalShortcuts();
   useWindowTitle();
 

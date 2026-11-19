@@ -5,6 +5,7 @@ import { runScript, ElevationError } from "../admin/run";
 import type { Elevation } from "../privileges";
 import { sudoRejected } from "../privileges/sudo";
 import { PATH_PREFIX } from "./detect";
+import { ROOT_STORAGE_PROBLEM, ROOT_STORAGE_RE } from "./rootStorage";
 import { displayPrefix, renderCmd, type Cmd } from "./shell";
 
 /** Script interior: PATH ampliado + los comandos; `set -e` para pararse en el primero que falle. */
@@ -67,12 +68,9 @@ export function translateError(stderr: string): string {
     .trim();
   const e = raw.toLowerCase();
   const rules: [RegExp, string][] = [
-    [
-      /run root path "?\/run\/containers\/storage|runroot is pointing to a path \(\/run\/containers\/storage\)|\/run\/containers\/storage.*permission denied/,
-      "Podman de este usuario intenta usar la carpeta de ejecución de root (/run/containers/storage). " +
-        "Revisa «runroot» en su ~/.config/containers/storage.conf (o bórralo)",
-    ],
-    [/permission denied.*docker|docker\.sock.*permission denied|got permission denied/, "Sin permiso para usar Docker: hace falta sudo o estar en el grupo «docker»"],
+    [ROOT_STORAGE_RE, ROOT_STORAGE_PROBLEM],
+    // Solo el mensaje del socket de Docker (un error de Podman puede nombrar docker.io).
+    [/permission denied while trying to connect to the docker daemon|docker\.sock.*permission denied/, "Sin permiso para usar Docker: hace falta sudo o estar en el grupo «docker»"],
     [/cannot connect to the docker daemon|is the docker daemon running/, "El servicio Docker no está en marcha"],
     [/no such container/, "El contenedor ya no existe (puede que lo hayan borrado)"],
     [/no such image|image not known|image not found/, "La imagen no existe en el servidor"],

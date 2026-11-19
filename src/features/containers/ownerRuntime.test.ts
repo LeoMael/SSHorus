@@ -118,7 +118,8 @@ eq(
   eq(cleanEngineLog(raw), 'Error: cannot evaluate symlinks on DB run root path "/run/containers/storage": lstat /run/containers/storage: permission denied', "aviso fuera si hay error");
   eq(cleanEngineLog('time="x" level=warning msg="algo \\"raro\\""'), 'algo "raro"', "solo aviso: queda el texto");
   const t = translateError(raw);
-  ok(t.startsWith("Podman de este usuario intenta usar la carpeta de ejecución de root") && t.includes("storage.conf"), t);
+  ok(t.startsWith("Podman de este usuario usa las carpetas de root") && t.includes("storage.conf"), t);
+  ok(!t.includes("grupo «docker»"), "Podman: nada del grupo docker");
   ok(!t.includes("level=warning"), "sin la línea cruda del aviso");
   const m = mergeOwned([
     { owner: "u:leo_oti", label: "leo_oti", data: null, error: t },

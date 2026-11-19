@@ -38,8 +38,9 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri` (con sus target*/) y las copias de los agentes
+      // (`.claude/worktrees/**`): si no, cada cambio allí recarga la app.
+      ignored: ["**/src-tauri/**", "**/.claude/**"],
     },
   },
 }));

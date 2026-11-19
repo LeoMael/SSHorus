@@ -1,6 +1,7 @@
 // Detección de Podman / Docker / Compose en el servidor (script POSIX + parseo). Funciones puras.
 // El script viaja por stdin (ver privileges/elevate.ts: buildExec), así que puede llevar comillas simples.
 import { parseKeyValues } from "../privileges/detect";
+import { ROOT_STORAGE_PROBLEM, usesRootStorage } from "./rootStorage";
 import type { ComposeTool, Engine } from "./types";
 
 /** PATH ampliado: el canal exec no carga el perfil del usuario (Docker de snap, /usr/local/bin…). */
@@ -90,9 +91,14 @@ function empty(engine: Engine): EngineStatus {
 export function engineProblem(engine: Engine, err: string): { problem: string; needsSudo: boolean; serviceDown: boolean } {
   const e = err.toLowerCase();
   const name = engine === "docker" ? "Docker" : "Podman";
+  // Podman no usa ningún grupo ni demonio: un «permission denied» es de sus carpetas, no de sudo.
+  if (engine === "podman" && usesRootStorage(err)) return { problem: ROOT_STORAGE_PROBLEM, needsSudo: false, serviceDown: false };
+  if (engine === "podman" && e.includes("permission denied")) {
+    return { problem: "Podman no tiene permiso sobre sus carpetas de almacenamiento o de ejecución", needsSudo: false, serviceDown: false };
+  }
   if (e.includes("permission denied")) {
     return {
-      problem: `Tu usuario no tiene permiso para usar ${name} (no está en el grupo «docker»): hace falta sudo`,
+      problem: "Tu usuario no tiene permiso para usar Docker (no está en el grupo «docker»): hace falta sudo",
       needsSudo: true,
       serviceDown: false,
     };

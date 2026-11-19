@@ -1,7 +1,7 @@
 // Aviso del panel de Contenedores cuando falta sudo, el motor no es accesible o el servicio Docker
 // está parado, con sus botones (contraseña de sudo, grupo docker, iniciar Docker).
 import { KeyRound, Play, ShieldAlert, Users } from "lucide-react";
-import { dockerGroupCommand, type DetectResult, type EngineStatus } from "../../features/containers";
+import { dockerGroupCommand, usesRootStorage, type DetectResult, type EngineStatus } from "../../features/containers";
 import type { ElevationState, PrivilegeInfo } from "../../features/privileges";
 import type { ReviewRequest } from "./context";
 import { bannerTitle } from "./panelLogic";
@@ -22,7 +22,9 @@ export function EngineBanner({ scope, status, result, info, elev, askSudo, revie
   const { engine, needsSudo, elevation, dockerSelfSudo, isRoot } = scope;
   const canStartService = engine === "docker" && status.serviceDown;
   const sudoMissing = needsSudo && !elevation;
-  if (!(sudoMissing || canStartService || (!status.accessible && !needsSudo))) return null;
+  // Podman con las carpetas de root: lo explica (y lo arregla) RootStorageBanner.
+  const rootStorage = engine === "podman" && usesRootStorage(status.rawError);
+  if (!(sudoMissing || canStartService || (!status.accessible && !needsSudo && !rootStorage))) return null;
 
   const canJoinDockerGroup = result.dockerGroupExists && !result.inDockerGroup;
   return (

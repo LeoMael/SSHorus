@@ -65,6 +65,8 @@ type Args = Pick<OwnerScope, "runnable" | "elevation" | "engineKey" | "engine" |
 export function useResources({ active, tab, askSudo, runnable, elevation, engineKey, engine, runner, activeOwners, label, all, currentKey }: Args) {
   const [res, setRes] = useState<ResourceMap>(emptyMap);
   const [stats, setStats] = useState<ContainerStats[]>([]);
+  /** Último error de cada dueño (para avisos con arreglo, p. ej. Podman con las carpetas de root). */
+  const [ownerErrors, setOwnerErrors] = useState<Record<string, string>>({});
 
   const keyRef = useRef(engineKey);
   useEffect(() => {
@@ -72,6 +74,7 @@ export function useResources({ active, tab, askSudo, runnable, elevation, engine
       keyRef.current = engineKey;
       setRes(emptyMap());
       setStats([]);
+      setOwnerErrors({});
     }
   }, [engineKey]);
 
@@ -103,6 +106,14 @@ export function useResources({ active, tab, askSudo, runnable, elevation, engine
         return { owner: ownerKey(o), label: label(o), data, error: data === null ? (r?.error ?? "No se pudo leer") : null };
       });
       if (needSudo) askSudo();
+      setOwnerErrors((prev) => {
+        const next = { ...prev };
+        for (const p of parts) {
+          if (p.error) next[p.owner] = p.error;
+          else delete next[p.owner];
+        }
+        return next;
+      });
       const m = mergeOwned(parts);
       if (m.data !== null) setOne(k, { data: m.data as never, loading: false, error: m.error, loadedAt: Date.now() });
       else setOne(k, { loading: false, error: m.error ?? "No se pudo leer" });
@@ -166,5 +177,5 @@ export function useResources({ active, tab, askSudo, runnable, elevation, engine
     };
   }, [active, runnable, tab, runningBy, engine, elevation, engineKey, runner, activeOwners]);
 
-  return { res, stats, reload };
+  return { res, stats, reload, ownerErrors };
 }

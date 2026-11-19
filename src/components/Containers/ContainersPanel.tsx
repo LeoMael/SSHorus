@@ -12,6 +12,7 @@ import { NoEngine } from "./NoEngine";
 import { EngineHeader } from "./EngineHeader";
 import { EngineBanner } from "./EngineBanner";
 import { LingerBanner } from "./LingerBanner";
+import { RootStorageBanner } from "./RootStorageBanner";
 import { SubTabBar, SubTabBody } from "./PanelSections";
 import { PanelDialogs, usePanelDialogs } from "./PanelDialogs";
 import type { SubTab } from "./panelLogic";
@@ -43,7 +44,7 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
   const { status, engine, elevation, needsSudo, prefix, activeOwners, all, currentKey, resolve, isRoot } = scope;
 
   const [tab, setTab] = useState<SubTab>("containers");
-  const { res, stats, reload } = useResources({ ...scope, active, tab, askSudo });
+  const { res, stats, reload, ownerErrors } = useResources({ ...scope, active, tab, askSudo });
   const actions = useEngineActions({ ...scope, sessionId, runuser: !!result?.runuser, reload, askSudo });
   const { run, runRawAs, toTerminal, render, ownerLabel } = actions;
   const { setReview, setLogs, setInspectC, setRunForm } = dialogs;
@@ -176,6 +177,7 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
           review={setReview}
           detect={detect}
         />
+        <RootStorageBanner scope={scope} status={status} ownerErrors={ownerErrors} runRawAs={runRawAs} review={setReview} detect={detect} />
         <LingerBanner scope={scope} review={setReview} />
         <SubTabBar tab={tab} setTab={setTab} res={res} />
         <SubTabBody
