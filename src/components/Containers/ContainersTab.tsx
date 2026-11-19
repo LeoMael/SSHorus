@@ -8,6 +8,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Power,
   RefreshCw,
   RotateCw,
   ScrollText,
@@ -42,6 +43,8 @@ import { promptDialog } from "../ui/dialogs";
 import { ContextMenu, type MenuItem } from "../Admin/ContextMenu";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { openPortTunnel } from "./tunnel";
+import { useAutostart } from "./useAutostart";
+import { AutostartBadge, askAutostart, autostartMenuLabel } from "./Autostart";
 
 type Filter = "all" | "running" | "stopped";
 type SortKey = "name" | "owner" | "image" | "state" | "created" | "cpu" | "mem";
@@ -67,6 +70,7 @@ function copy(text: string, what = "Copiado") {
 export function ContainersTab() {
   const ct = useCt();
   const { engine, res, stats } = ct;
+  const auto = useAutostart();
   const list = useMemo(() => res.containers.data ?? [], [res.containers.data]);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -250,12 +254,25 @@ export function ContainersTab() {
     },
     { label: "Inspeccionar", icon: <FileSearch size={13} />, onClick: () => ct.openInspect(c) },
     { label: "Renombrar…", icon: <Pencil size={13} />, onClick: () => void rename(c) },
+    autostartItem(c),
     "sep",
     { label: "Copiar nombre", icon: <Copy size={13} />, onClick: () => copy(c.name, "Nombre copiado") },
     { label: "Copiar ID", icon: <Copy size={13} />, onClick: () => copy(c.id, "ID copiado") },
     "sep",
     { label: "Eliminar…", icon: <Trash2 size={13} />, onClick: () => confirmRemove([c]), danger: true },
   ];
+
+  const autostartItem = (c: Container): MenuItem => {
+    const info = auto.infoOf(c);
+    const { on, label } = autostartMenuLabel(info);
+    return {
+      label,
+      icon: <Power size={13} />,
+      onClick: () => askAutostart(ct, auto, on, [c]),
+      disabled: !info,
+      title: info ? info.why.join("\n") : auto.loading ? "Leyendo si arranca solo…" : "No se pudo saber si arranca solo",
+    };
+  };
 
   const portMenu = (e: MouseEvent, p: PortMapping) => {
     e.stopPropagation();
@@ -370,7 +387,13 @@ export function ContainersTab() {
           )}
         </div>
         <span className="ct-grow" />
-        <button className="icon-btn" onClick={() => void ct.reload("containers")} title="Actualizar" aria-label="Actualizar" disabled={loading}>
+        <button
+          className="icon-btn"
+          onClick={() => {
+            void ct.reload("containers");
+            void auto.reload();
+          }}
+          title="Actualizar" aria-label="Actualizar" disabled={loading}>
           <RefreshCw size={14} className={loading ? "ct-spin" : undefined} />
         </button>
         <button
@@ -400,6 +423,9 @@ export function ContainersTab() {
           </button>
           <button className="btn btn-sm" onClick={() => void direct("unpause", sel.filter((c) => c.state === "paused"))} disabled={!sel.some((c) => c.state === "paused")}>
             <Play size={13} /> Reanudar
+          </button>
+          <button className="btn btn-sm" onClick={() => askAutostart(ct, auto, true, sel)} title="Que arranquen solos al reiniciar el servidor o si se caen">
+            <Power size={13} /> Arranque solo
           </button>
           <button className="btn btn-sm ct-btn-danger" onClick={() => confirmRemove(sel)}>
             <Trash2 size={13} /> Eliminar
@@ -455,6 +481,9 @@ export function ContainersTab() {
                 {th("image", "Imagen", "ct-col-image")}
                 {th("state", "Estado", "ct-col-state")}
                 <th className="ct-col-ports">Puertos</th>
+                <th className="ct-col-auto" title="Si arranca solo al reiniciar el servidor o si se cae">
+                  Arranque
+                </th>
                 {th("created", "Creado", "ct-col-created")}
                 {th("cpu", "CPU", "ct-col-num")}
                 {th("mem", "Memoria", "ct-col-mem")}
@@ -512,6 +541,9 @@ export function ContainersTab() {
                         )}
                       </span>
                     </td>
+                    <td className="ct-col-auto">
+                      <AutostartBadge info={auto.infoOf(c)} loading={auto.loading} />
+                    </td>
                     <td className="ct-col-created faint" title={c.created ? new Date(c.created * 1000).toLocaleString() : ""}>
                       {ago(c.created)}
                     </td>
@@ -560,7 +592,7 @@ export function ContainersTab() {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={ct.allOwners ? 10 : 9} className="ct-norows">
+                  <td colSpan={ct.allOwners ? 11 : 10} className="ct-norows">
                     Ningún contenedor coincide con el filtro
                   </td>
                 </tr>
