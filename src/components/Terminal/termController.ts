@@ -37,6 +37,8 @@ export interface TermOpenResult {
   termId: string;
   /** Sesión tmux en la que quedó (solo SSH). */
   tmux?: string | null;
+  /** True si al reconectar se volvió a la sesión tmux que ya existía (false si se creó una nueva). */
+  tmuxReattached?: boolean;
   tmuxMissing?: boolean;
   tmuxProblem?: string | null;
 }
@@ -198,9 +200,10 @@ export class TermController {
     return !this.disposed && !this.disabled && this.connState === "connected";
   }
 
-  private async start() {
+  private async start(reconnected = false) {
     if (!this.canOpen()) return;
     const gen = ++this.gen;
+    const wasPersistent = this.persistent;
     this.cancelExitMessage();
     this.setStatus("opening");
     try {
@@ -211,9 +214,13 @@ export class TermController {
     if (this.disposed || gen !== this.gen) return;
     this.fitNow();
     const { cols, rows } = this.term;
-    const tmux = this.tmuxName ? { name: this.tmuxName, replay: this.tmuxReplay } : null;
+    const tmux = this.tmuxName ? { name: this.tmuxName, replay: this.tmuxReplay, checkExisting: reconnected } : null;
+    // Al reconectar retenemos los primeros bytes hasta escribir el aviso arriba del nuevo prompt.
+    let preBytes: Uint8Array[] | null = reconnected ? [] : null;
     const onData = (bytes: Uint8Array) => {
-      if (!this.disposed && gen === this.gen) this.writeOutput(bytes);
+      if (this.disposed || gen !== this.gen) return;
+      if (preBytes) preBytes.push(bytes);
+      else this.writeOutput(bytes);
     };
     try {
       const opened: TermOpenResult = this.backend
@@ -229,6 +236,18 @@ export class TermController {
       // El historial ya está en xterm.js: al reabrir (reconexión) no se vuelve a volcar.
       this.tmuxReplay = false;
       this.persistent = (opened.tmux ?? null) !== null;
+      if (reconnected) {
+        const msg =
+          this.persistent && opened.tmuxReattached
+            ? "— reconectado: volviendo a la sesión tmux —"
+            : this.persistent && wasPersistent
+              ? "— reconectado: la sesión tmux anterior terminó, abriendo una nueva —"
+              : "— reconectado —";
+        this.term.write(`\r\n${DIM(msg)}\r\n`);
+        const buffered = preBytes ?? [];
+        preBytes = null;
+        for (const chunk of buffered) this.writeOutput(chunk);
+      }
       if (!this.backend) {
         this.onTmux?.({
           persistent: this.persistent,
@@ -241,6 +260,7 @@ export class TermController {
       if (this.term.cols !== cols || this.term.rows !== rows) this.sendResize();
       if (this.pending) void this.pump();
     } catch (e) {
+      preBytes = null;
       if (this.disposed || gen !== this.gen) return;
       this.pending = "";
       this.lost = true;
@@ -302,9 +322,7 @@ export class TermController {
     if (this.termId) this.api.close(this.termId).catch(() => {});
     this.termId = null;
     this.pending = "";
-    // Con tmux se vuelve a la misma sesión: lo que corría sigue ahí.
-    this.term.write(`\r\n${DIM(this.persistent ? "— reconectado: volviendo a la sesión tmux —" : "— reconectado —")}\r\n`);
-    void this.start();
+    void this.start(true);
   }
 
   setConnState(state: ConnState) {

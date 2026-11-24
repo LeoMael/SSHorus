@@ -107,26 +107,60 @@ fn http_error(status: reqwest::StatusCode, body: &[u8]) -> AppError {
     }
 }
 
-async fn send(req: reqwest::RequestBuilder) -> AppResult<Vec<u8>> {
+enum SendError {
+    Http { status: reqwest::StatusCode, body: Vec<u8> },
+    Other(AppError),
+}
+
+impl SendError {
+    fn into_app_error(self) -> AppError {
+        match self {
+            SendError::Http { status, body } => http_error(status, &body),
+            SendError::Other(e) => e,
+        }
+    }
+}
+
+/// Algunos modelos (Claude con thinking, modelos de razonamiento de OpenAI…) rechazan `temperature`
+/// con 400/422. Como `0.2` siempre está en rango, un rechazo que mencione `temperature` indica que
+/// el modelo no admite el parámetro y conviene reintentar sin él.
+fn is_temperature_rejected(status: reqwest::StatusCode, body: &[u8]) -> bool {
+    if !matches!(status.as_u16(), 400 | 422) {
+        return false;
+    }
+    let msg = serde_json::from_slice::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v.pointer("/error/message").and_then(|m| m.as_str()).map(str::to_string))
+        .unwrap_or_else(|| String::from_utf8_lossy(body).into_owned());
+    msg.to_ascii_lowercase().contains("temperature")
+}
+
+async fn send_raw(req: reqwest::RequestBuilder) -> Result<Vec<u8>, SendError> {
     let resp = req.send().await.map_err(|e| {
-        if e.is_timeout() {
+        SendError::Other(if e.is_timeout() {
             AppError::Network("el servicio de IA no respondió a tiempo".into())
         } else {
             AppError::Network(format!("no se pudo hablar con el servicio de IA: {}", e.without_url()))
-        }
+        })
     })?;
     let status = resp.status();
     if status.is_redirection() {
-        return Err(AppError::Network("el servicio de IA intentó redirigir: revisa la URL base".into()));
+        return Err(SendError::Other(AppError::Network(
+            "el servicio de IA intentó redirigir: revisa la URL base".into(),
+        )));
     }
-    let body = resp.bytes().await.map_err(|e| AppError::Network(e.without_url().to_string()))?;
+    let body = resp.bytes().await.map_err(|e| SendError::Other(AppError::Network(e.without_url().to_string())))?;
     if body.len() > MAX_BODY {
-        return Err(AppError::Network("respuesta de la IA demasiado grande".into()));
+        return Err(SendError::Other(AppError::Network("respuesta de la IA demasiado grande".into())));
     }
     if !status.is_success() {
-        return Err(http_error(status, &body));
+        return Err(SendError::Http { status, body: body.to_vec() });
     }
     Ok(body.to_vec())
+}
+
+async fn send(req: reqwest::RequestBuilder) -> AppResult<Vec<u8>> {
+    send_raw(req).await.map_err(SendError::into_app_error)
 }
 
 fn with_auth(req: reqwest::RequestBuilder, token: Option<&str>) -> AppResult<reqwest::RequestBuilder> {
@@ -207,7 +241,8 @@ pub struct ChatMessage {
 struct ChatReq<'a> {
     model: &'a str,
     messages: &'a [ChatMessage],
-    temperature: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -239,6 +274,23 @@ pub struct ChatAnswer {
     pub text: String,
 }
 
+async fn post_chat(
+    url: &Url,
+    tok: Option<&str>,
+    model: &str,
+    messages: &[ChatMessage],
+    temperature: Option<f32>,
+    cancel: &CancellationToken,
+) -> Result<Vec<u8>, SendError> {
+    let body = ChatReq { model, messages, temperature };
+    let req = client().map_err(SendError::Other)?.post(url.clone()).timeout(CHAT_TIMEOUT).json(&body);
+    let req = with_auth(req, tok).map_err(SendError::Other)?;
+    tokio::select! {
+        () = cancel.cancelled() => Err(SendError::Other(AppError::Canceled)),
+        r = send_raw(req) => r,
+    }
+}
+
 /// Envía `messages` (lo que el usuario vio y confirmó) a `<base>/chat/completions` con los ajustes
 /// guardados. Se cancela con `ai_cancel(request_id)`.
 #[tauri::command]
@@ -258,17 +310,20 @@ pub async fn ai_chat(settings: State<'_, SettingsStore>, messages: Vec<ChatMessa
         return Err(AppError::Invalid("Mensaje no válido".into()));
     }
     let base = check_base_url(&s.base_url)?;
+    let url = endpoint(&base, "chat/completions")?;
     let tok = token().await?;
     let cancel = CancellationToken::new();
     if let Ok(mut m) = running().lock() {
         m.insert(request_id.clone(), cancel.clone());
     }
-    let body = ChatReq { model: &s.model, messages: &messages, temperature: 0.2 };
-    let req = client()?.post(endpoint(&base, "chat/completions")?).timeout(CHAT_TIMEOUT).json(&body);
-    let req = with_auth(req, tok.as_deref())?;
-    let result = tokio::select! {
-        () = cancel.cancelled() => Err(AppError::Canceled),
-        r = send(req) => r,
+    let first = post_chat(&url, tok.as_deref(), &s.model, &messages, Some(0.2), &cancel).await;
+    let result = match first {
+        Err(SendError::Http { status, body }) if is_temperature_rejected(status, &body) => {
+            post_chat(&url, tok.as_deref(), &s.model, &messages, None, &cancel)
+                .await
+                .map_err(SendError::into_app_error)
+        }
+        other => other.map_err(SendError::into_app_error),
     };
     if let Ok(mut m) = running().lock() {
         m.remove(&request_id);
@@ -319,5 +374,27 @@ mod tests {
         let s = AiSettings { enabled: true, base_url: " https://x.y/v1/ ".into(), model: " m ".into() }.sanitized();
         assert_eq!(s.base_url, "https://x.y/v1");
         assert_eq!(s.model, "m");
+    }
+
+    #[test]
+    fn chat_req_omits_temperature_when_none() {
+        let msgs = [ChatMessage { role: "user".into(), content: "hola".into() }];
+        let with = serde_json::to_value(ChatReq { model: "claude", messages: &msgs, temperature: Some(0.2) }).unwrap();
+        assert!(with.get("temperature").is_some());
+        let without = serde_json::to_value(ChatReq { model: "claude", messages: &msgs, temperature: None }).unwrap();
+        assert!(without.get("temperature").is_none());
+    }
+
+    #[test]
+    fn detects_temperature_rejection() {
+        let bad_req = reqwest::StatusCode::BAD_REQUEST;
+        let unproc = reqwest::StatusCode::UNPROCESSABLE_ENTITY;
+        let claude = br#"{"error":{"type":"invalid_request_error","message":"`temperature` may not be set when thinking is enabled"}}"#;
+        let openai = br#"{"error":{"message":"Unsupported parameter: 'temperature' is not supported with this model."}}"#;
+        let other = br#"{"error":{"message":"model not found"}}"#;
+        assert!(is_temperature_rejected(bad_req, claude));
+        assert!(is_temperature_rejected(unproc, openai));
+        assert!(!is_temperature_rejected(bad_req, other));
+        assert!(!is_temperature_rejected(reqwest::StatusCode::UNAUTHORIZED, claude));
     }
 }

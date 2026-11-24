@@ -117,6 +117,9 @@ async fn choose_start(
     }
     match terms.probe_tmux(session_id, session).await {
         Ok(ProbeResult::Found(p)) if p.supported() => {
+            if req.check_existing {
+                opened.tmux_reattached = tmux::has_session(session, &p, &req.name).await;
+            }
             let cmd = tmux::attach_command(&p, &req.name, rows, req.replay)?;
             opened.tmux = Some(req.name);
             Ok(ShellStart::Exec(cmd))
@@ -161,6 +164,7 @@ pub async fn term_open(
     let mut opened = TermOpened {
         term_id: term_id.clone(),
         tmux: None,
+        tmux_reattached: false,
         tmux_missing: false,
         tmux_problem: None,
     };

@@ -74,8 +74,9 @@ fn probe_output() {
 #[test]
 fn scripts_have_no_forbidden_chars() {
     let attach = attach_command(&probe_of("tmux 3.4"), "sshorus-abc", 30, true).unwrap();
+    let has = has_session_command(&probe_of("tmux 3.4"), "sshorus-abc").unwrap();
     let kill = kill_command(&["sshorus-a".into(), "sshorus-b".into()]).unwrap();
-    for cmd in [probe_command(), list_command(), attach, kill] {
+    for cmd in [probe_command(), list_command(), attach, has, kill] {
         let body = inner(&cmd);
         assert!(!body.contains('\''), "comilla simple en: {body}");
         assert!(!body.contains('!'), "«!» en: {body}");
@@ -83,6 +84,15 @@ fn scripts_have_no_forbidden_chars() {
         #[cfg(unix)]
         sh_syntax_ok(body);
     }
+}
+
+#[test]
+fn has_session_parse_and_validate() {
+    assert!(parse_has_session("tv_has=1\n"));
+    assert!(parse_has_session("tv_has=1\r\n"));
+    assert!(!parse_has_session("tv_has=0\n"));
+    assert!(!parse_has_session(""));
+    assert!(has_session_command(&probe_of("tmux 3.4"), "sshorus-a;b").is_err());
 }
 
 #[test]
@@ -229,6 +239,7 @@ async fn survives_disconnect_and_reattaches() {
 
     // Otra conexión: la sesión sigue ahí, con `sleep` en primer plano.
     let s2 = connect_test_server().await;
+    assert!(has_session(&s2, &p, &name).await, "has_session debe ver la sesión viva");
     let l = list(s2.clone()).await.expect("listar");
     let sess = l.sessions.iter().find(|s| s.name == name).expect("la sesión sigue viva");
     assert_eq!(sess.command, "sleep", "{sess:?}");
@@ -252,6 +263,7 @@ async fn survives_disconnect_and_reattaches() {
 
     // Cerrar a propósito: se mata la sesión.
     kill(s2.clone(), std::slice::from_ref(&name)).await.expect("cerrar sesión");
+    assert!(!has_session(&s2, &p, &name).await, "has_session debe devolver false tras cerrarla");
     let l = list(s2.clone()).await.expect("listar");
     assert!(l.sessions.iter().all(|s| s.name != name));
     h2.close();

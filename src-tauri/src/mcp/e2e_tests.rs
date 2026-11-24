@@ -117,6 +117,9 @@ impl Backend for Real {
         }
         Ok(r)
     }
+    async fn expect_reboot(&self, sid: &str, wait_secs: u32) -> AppResult<u32> {
+        crate::ssh::reboot_wait::expect_for_session(&self.sessions, sid, wait_secs).await
+    }
     async fn ui_request(&self, _: &str, _: Value, _: Duration) -> AppResult<Value> {
         Ok(json!([]))
     }

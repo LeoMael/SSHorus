@@ -138,23 +138,18 @@ impl Budget {
     }
 }
 
-/// La interfaz va a reiniciar el servidor de esa sesión: todas las sesiones abiertas con el mismo
-/// servidor (host y puerto) esperarán hasta `wait_secs` a que vuelva. `wait_secs` 0 = ya no
-/// (reinicio cancelado). Devuelve cuántas sesiones quedaron avisadas.
-#[tauri::command]
-pub async fn ssh_expect_reboot(
-    sessions: State<'_, SessionStore>,
-    session_id: String,
-    wait_secs: u32,
-) -> AppResult<u32> {
+/// Avisa que el servidor de esa sesión se va a reiniciar: todas las sesiones abiertas con el mismo
+/// servidor (host y puerto) esperarán hasta `wait_secs` a que vuelva. `wait_secs` 0 = olvidar.
+/// Devuelve cuántas sesiones quedaron avisadas.
+pub async fn expect_for_session(sessions: &SessionStore, session_id: &str, wait_secs: u32) -> AppResult<u32> {
     let all = sessions.list().await;
     let target = match all.iter().find(|s| s.id == session_id) {
         Some(s) => (s.host.to_ascii_lowercase(), s.port),
         None if wait_secs == 0 => {
-            forget(&session_id);
+            forget(session_id);
             return Ok(0);
         }
-        None => return Err(AppError::SessionNotFound(session_id)),
+        None => return Err(AppError::SessionNotFound(session_id.to_string())),
     };
     let wait = Duration::from_secs(u64::from(wait_secs.min(MAX_WAIT_SECS)));
     let mut n = 0;
@@ -170,6 +165,18 @@ pub async fn ssh_expect_reboot(
         n += 1;
     }
     Ok(n)
+}
+
+/// La interfaz va a reiniciar el servidor de esa sesión: todas las sesiones abiertas con el mismo
+/// servidor (host y puerto) esperarán hasta `wait_secs` a que vuelva. `wait_secs` 0 = ya no
+/// (reinicio cancelado). Devuelve cuántas sesiones quedaron avisadas.
+#[tauri::command]
+pub async fn ssh_expect_reboot(
+    sessions: State<'_, SessionStore>,
+    session_id: String,
+    wait_secs: u32,
+) -> AppResult<u32> {
+    expect_for_session(&sessions, &session_id, wait_secs).await
 }
 
 #[cfg(test)]

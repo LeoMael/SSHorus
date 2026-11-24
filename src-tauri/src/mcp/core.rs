@@ -32,6 +32,7 @@ mod listing;
 mod marked;
 mod output;
 mod params;
+mod reboot;
 mod scans;
 mod sudo_reveal;
 
@@ -46,6 +47,7 @@ pub use params::{
     PathParams, ReadFileParams, RunCommandParams, ServerParams, TransferStatusParams, UploadParams, VulnReportParams,
     VulnScanParams, WriteFileParams,
 };
+pub use reboot::RebootServerParams;
 pub use sudo_reveal::SudoPasswordParams;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -248,6 +250,7 @@ impl<B: Backend> McpCore<B> {
             "get_audit_report" => self.audit_report(parse(args)?, rec).await,
             "run_audit" => self.run_audit(parse(args)?, rec).await,
             "request_sudo_password" => self.request_sudo_password(parse(args)?, rec).await,
+            "reboot_server" => self.reboot_server(parse(args)?, rec, cancel).await,
             other => Err(Fail::Error(format!("Herramienta desconocida: {other}"))),
         }
     }

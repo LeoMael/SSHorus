@@ -74,6 +74,8 @@ struct Mock {
     sudo_delay: AtomicBool,
     /// Enlaces simbólicos del servidor simulado (ruta → destino) para `realpath`.
     links: Mutex<HashMap<String, String>>,
+    /// Llamadas a `expect_reboot` (session_id, wait_secs).
+    reboot_expects: Mutex<Vec<(String, u32)>>,
 }
 
 fn server(id: &str, name: &str) -> ServerProfile {
@@ -140,6 +142,7 @@ impl Mock {
             lock_on_sudo: AtomicBool::new(false),
             sudo_delay: AtomicBool::new(false),
             links: Mutex::new(HashMap::new()),
+            reboot_expects: Mutex::new(Vec::new()),
         }
     }
 }
@@ -287,6 +290,10 @@ impl Backend for Mock {
             self.vuln_saved.lock().unwrap().insert(opts.server_id.clone(), r.clone());
         }
         Ok(r)
+    }
+    async fn expect_reboot(&self, sid: &str, wait_secs: u32) -> AppResult<u32> {
+        self.reboot_expects.lock().unwrap().push((sid.to_string(), wait_secs));
+        Ok(if wait_secs == 0 { 0 } else { 1 })
     }
     async fn ui_request(&self, kind: &str, payload: Value, _t: Duration) -> AppResult<Value> {
         self.ui_calls.lock().unwrap().push(kind.to_string());
@@ -1180,7 +1187,10 @@ fn vuln_tools_are_announced_as_reads() {
         let t = tools.iter().find(|t| t.name == name).unwrap_or_else(|| panic!("falta {name}"));
         assert_eq!(t.annotations.as_ref().and_then(|a| a.read_only_hint), Some(true), "{name}");
     }
-    assert_eq!(tools.len(), 23);
+    let reboot = tools.iter().find(|t| t.name == "reboot_server").expect("falta reboot_server");
+    assert_eq!(reboot.annotations.as_ref().and_then(|a| a.read_only_hint), Some(false));
+    assert_eq!(reboot.annotations.as_ref().and_then(|a| a.destructive_hint), Some(true));
+    assert_eq!(tools.len(), 24);
 }
 
 // ───────────────────────── Auditoría del servidor ─────────────────────────
@@ -1815,3 +1825,6 @@ mod sudo_flow;
 
 #[path = "tests_marked.rs"]
 mod marked_flow;
+
+#[path = "tests_reboot.rs"]
+mod reboot_flow;

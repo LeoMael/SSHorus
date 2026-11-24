@@ -80,6 +80,9 @@ pub trait Backend: Send + Sync + 'static {
         exec_id: &str,
         cancel: &CancellationToken,
     ) -> impl Future<Output = AppResult<Report>> + Send;
+    /// Avisa al vigilante SSH de que el servidor de `session_id` se va a reiniciar (esperar hasta
+    /// `wait_secs` en todas las sesiones de ese servidor; 0 = olvidar el aviso).
+    fn expect_reboot(&self, session_id: &str, wait_secs: u32) -> impl Future<Output = AppResult<u32>> + Send;
     /// Pide algo a la interfaz (abrir una pestaña, el catálogo, puertos…). Ver `ui.rs`.
     fn ui_request(&self, kind: &str, payload: Value, timeout: Duration) -> impl Future<Output = AppResult<Value>> + Send;
     /// Muestra el diálogo de permiso y espera la respuesta (el tiempo límite lo pone quien llama).
@@ -239,6 +242,11 @@ impl Backend for TauriBackend {
         let ticket = registry.register(exec_id)?;
         let session = self.ssh(session_id).await?;
         scan_with_stop(&session, &opts, cancel, &ticket.token).await
+    }
+
+    async fn expect_reboot(&self, session_id: &str, wait_secs: u32) -> AppResult<u32> {
+        let store = self.sessions_store()?;
+        crate::ssh::reboot_wait::expect_for_session(store, session_id, wait_secs).await
     }
 
     async fn ui_request(&self, kind: &str, payload: Value, timeout: Duration) -> AppResult<Value> {

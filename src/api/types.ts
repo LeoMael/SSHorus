@@ -160,12 +160,16 @@ export interface TmuxOpen {
   name: string;
   /** Volcar el historial de la sesión antes de engancharse (terminal recién creada). */
   replay: boolean;
+  /** Comprobar si la sesión ya existía antes de engancharse (p. ej. tras reconectar). */
+  checkExisting?: boolean;
 }
 
 export interface TermOpened {
   termId: string;
   /** Nombre de la sesión tmux si la terminal es persistente; null = shell normal. */
   tmux: string | null;
+  /** True si `checkExisting` era true y se volvió a una sesión tmux que ya existía. */
+  tmuxReattached?: boolean;
   /** Se pidió tmux pero no está instalado. */
   tmuxMissing: boolean;
   /** Se pidió tmux y no se pudo usar: motivo. */

@@ -231,6 +231,23 @@ pub fn attach_command(probe: &TmuxProbe, name: &str, rows: u32, replay: bool) ->
     Ok(format!("sh -c '{script}'"))
 }
 
+/// Script que comprueba si la sesión `name` sigue viva en el servidor tmux de SSHorus.
+pub fn has_session_command(probe: &TmuxProbe, name: &str) -> AppResult<String> {
+    check_name(name)?;
+    if !safe_path(&probe.path) {
+        return Err(AppError::Invalid("ruta de tmux no válida".into()));
+    }
+    let t = &probe.path;
+    Ok(format!(
+        "sh -c 't=\"{t}\"; s=\"{name}\"; if \"$t\" -L {SOCKET} has-session -t \"$s\" 2>/dev/null; then echo tv_has=1; else echo tv_has=0; fi'"
+    ))
+}
+
+/// Interpreta la salida de [`has_session_command`].
+pub fn parse_has_session(stdout: &str) -> bool {
+    kv(stdout, "tv_has").as_deref() == Some("1")
+}
+
 /// Script que lista las sesiones de SSHorus.
 pub fn list_command() -> String {
     format!(
@@ -297,6 +314,16 @@ pub async fn probe(session: &SshSession) -> AppResult<ProbeResult> {
     }
     // Sin el formato esperado (p. ej. un servidor Windows sin `sh`): para SSHorus no hay tmux.
     Ok(parse_probe(&r.stdout).unwrap_or(ProbeResult::NotInstalled))
+}
+
+/// ¿Sigue viva la sesión `name` en el servidor? (En caso de error o timeout, false.)
+pub async fn has_session(session: &SshSession, probe: &TmuxProbe, name: &str) -> bool {
+    let Ok(cmd) = has_session_command(probe, name) else {
+        return false;
+    };
+    exec::run(session, &cmd, PROBE_TIMEOUT_SECS)
+        .await
+        .is_ok_and(|r| !r.timed_out && parse_has_session(&r.stdout))
 }
 
 /// Sesiones de SSHorus vivas en el servidor.

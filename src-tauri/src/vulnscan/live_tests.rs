@@ -253,11 +253,13 @@ async fn sshd_scan_can_be_canceled() {
     opts.save = false;
     let cancel = CancellationToken::new();
     let c2 = cancel.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-        c2.cancel();
-    });
-    let p = quiet();
+    // Cancela al entrar en el inventario (tras completar la fase de detección real por SSH):
+    // evita carreras cuando el contenedor y la caché de OSV responden muy rápido.
+    let p = move |phase: &str, _: usize, _: usize, _: &str| {
+        if phase == "inventory" {
+            c2.cancel();
+        }
+    };
     let r = scan_session(&s, &opts, &cancel, &p).await;
     assert!(matches!(r, Err(crate::error::AppError::Canceled)), "{:?}", r.map(|r| r.findings.len()));
 }

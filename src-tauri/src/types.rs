@@ -251,6 +251,9 @@ pub struct TmuxOpen {
     /// Antes de engancharse, volcar el historial de la sesión (terminal recién creada en la interfaz).
     #[serde(default)]
     pub replay: bool,
+    /// Comprobar si la sesión ya existía antes de engancharse (para informar bien al reconectar).
+    #[serde(default)]
+    pub check_existing: bool,
 }
 
 /// Resultado de `term_open`.
@@ -260,6 +263,9 @@ pub struct TermOpened {
     pub term_id: String,
     /// Nombre de la sesión tmux si la terminal es persistente; None = shell normal.
     pub tmux: Option<String>,
+    /// True si `check_existing` estaba activo y la sesión tmux ya existía (se volvió a ella).
+    #[serde(default)]
+    pub tmux_reattached: bool,
     /// Se pidió tmux pero no está instalado en el servidor.
     pub tmux_missing: bool,
     /// Se pidió tmux y no se pudo usar: motivo en español (no instalado, versión antigua, error).
