@@ -35,11 +35,14 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ### Cambiado
 - **MCP → «Aceptar automáticamente»**: el indicador de la barra de pestañas abre una ventana con el detalle por
   servidor, botón «Apagar» por fila y «Apagar todo» con confirmación.
-- **Orden del código (partes 1 y 2) y ESLint**: añadida configuración de **ESLint** (`npm run lint`, 0 errores) y
-  divididos en módulos pequeños `FileExplorer`, `SessionView`, `ServerEditor`, `SettingsDialog`, `Sidebar`,
-  `ContainersPanel`, `TransferPanel`, `VulnsTab`, `Commands/catalog.ts`, `audit/checks.ts`, `admin/web.ts`,
-  `infra/graph.ts`, `vulnscan/imageUpdate.ts`, `transfer/engine.rs`, `mcp/core.rs`, `storage/ssh_config.rs`,
-  `ssh/connect.rs`, `tunnels/manager.rs`, `vulnscan/analyze.rs` y `vulnscan/osv.rs`.
+- **Orden del código (partes 1, 2 y 3) y ESLint**: añadida configuración de **ESLint** (`npm run lint`, **0 errores y 0 warnings**),
+  `cargo clippy` con **0 warnings**, `src/features/` organizado 100 % en subcarpetas por dominio (sin archivos sueltos en
+  raíz) y divididos todos los archivos > 500 líneas en módulos pequeños y cohesivos (TS/TSX: `FileExplorer`, `SessionView`,
+  `ServerEditor`, `SettingsDialog`, `Sidebar`, `ContainersPanel`, `ContainersTab`, `ComposeTab`, `containers/parse.ts`,
+  `TransferPanel`, `VulnsTab`, `AdminPanel`, `WebTab`, `CommandsPanel`, `Commands/catalog.ts`, `ResultsView`,
+  `termController.ts`, `SyncSection`, `audit/checks.ts`, `admin/web.ts`, `admin/userVisibility.ts`, `infra/graph.ts`,
+  `vulnscan/imageUpdate.ts`; Rust: `transfer/{engine,copy}.rs`, `mcp/{core,mod}.rs`, `storage/{ssh_config,mod}.rs`,
+  `ssh/{connect,known_hosts}.rs`, `tunnels/manager.rs`, `github/{api,mod}.rs`, `vulnscan/{analyze,osv}.rs`).
 
 ### Corregido
 - **Terminal**: escritura sin retraso (`TCP_NODELAY` y envío inmediato tras pausa), texto insertado visible al momento,

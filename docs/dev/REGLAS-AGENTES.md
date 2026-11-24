@@ -25,9 +25,9 @@ El usuario habla español: **todo texto visible en la app va en español**. Cali
 
 ```bash
 source ~/.cargo/env
-cd src-tauri && cargo check --message-format short 2>&1 | grep -E 'src/(TU_MODULO)'   # motor
-cd src-tauri && cargo test --lib TU_MODULO -- --ignored --test-threads=1           # tests con servidor real
-npx tsc --noEmit 2>&1 | grep 'src/components/TU_CARPETA'                            # interfaz (desde la raíz)
+cd src-tauri && cargo clippy --lib -- -W clippy::all                                  # motor (0 warnings)
+cd src-tauri && cargo test --lib TU_MODULO -- --ignored --test-threads=1              # tests con servidor real
+npm run lint && npx tsc --noEmit                                                      # interfaz (0 errores y 0 warnings)
 ```
 - Esperar el candado de cargo ("Blocking waiting for file lock") es normal.
 - **No** ejecutes `npm run tauri dev`, `tauri build`, `cargo build --release` ni abras ventanas.
@@ -77,8 +77,14 @@ npx tsc --noEmit 2>&1 | grep 'src/components/TU_CARPETA'                        
   reglas) va aparte de la interfaz y de los comandos Tauri, y lleva pruebas.
 - **Datos en vez de `if` repetidos**: si hay varias variantes (asistentes, tipos de llave, modos), descríbelas en
   una tabla y recórrela.
+- **Organización de carpetas**:
+  - Controles genéricos sin lógica de dominio van en `src/components/ui/`.
+  - No dejes archivos sueltos en la raíz de `src/features/`: cada dominio tiene su carpeta (`src/features/<dominio>/`).
+  - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*`.
+  - En Rust, separa el estado/lógica de los comandos `#[tauri::command]` (`commands.rs`) cuando un módulo supera ~350 líneas.
 - **Sin duplicar**: antes de escribir algo, busca si ya existe (diálogos, selectores, llamadas a sudo) y reutilízalo.
 - Nombres claros, sin código muerto ni comentarios que repiten el código; comentarios solo para el «por qué».
+- Mantén `npm run lint` (0 errores, 0 warnings) y `cargo clippy --lib -- -W clippy::all` (0 warnings) siempre en verde.
 
 ## 6. Informe final (máx. ~300 palabras)
 

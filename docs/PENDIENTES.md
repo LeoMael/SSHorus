@@ -1,4 +1,52 @@
-# SSHorus — Pendientes y próximas funciones
+# SSHorus — Pendientes, estado actual e ideas futuras
+
+## Resumen al día (24/11/2026)
+
+Última versión etiquetada: **1.0.0-beta.2** (16/11/2026, borrador en GitHub Releases). En `main` hay trabajo nuevo
+listo para **1.0.0** (o `1.0.0-beta.3`), verificado con `npm run lint` (0 errores, 0 warnings), `npm run build`,
+51/51 suites TS, `cargo clippy --lib -- -W clippy::all` (0 warnings) y 350/350 tests Rust.
+
+### 1. Hecho en `main` (sin publicar todavía)
+- **Administración → «Qué pueden ver»** + categoría `isolation` en **Auditar servidor** + casilla **«Permitir túneles SSH»** en «Nuevo usuario con clave» (apagada por defecto sin sudo).
+- **Contenedores → «Al reiniciar»** siempre visible (y en Inspeccionar), linger inmediato, soporte de unidades como `podman-compose@*.service`, Podman de otros usuarios en `/tmp/sshorus-run-<uid>` y gestión de permisos en Usuarios → Contenedores.
+- **Sitios web → «Tráfico»**: monitor bajo demanda para Caddy y nginx (`nice`/`ionice`, límite de 8 MB) con activación segura de log dedicado y rotación.
+- **«Reiniciar ahora»** (escáner, auditoría, Panel de VPS), **MCP `reboot_server`**, **terminal tras reinicio** (distingue tmux reenganchado vs nuevo), **IA de informes** con reintento sin `temperature`, escritura sin retraso (`TCP_NODELAY`), botón de llave sudo en terminal y ventana de «Aceptar automáticamente».
+- **Mapa de infraestructura**: zoom con rueda del ratón, pellizco táctil y `Ctrl +` / `−` / `0`.
+- **Orden del código (Partes 1, 2 y 3)**: ESLint con 0 errores y 0 warnings, `cargo clippy` con 0 warnings, todos los archivos > 500 líneas divididos en módulos cohesivos (TS/TSX y Rust) y `src/features/` organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz).
+
+### 2. Pendiente inmediato (antes de publicar `1.0.0`)
+- **Probar a mano en la app real (`npm run tauri dev`) contra VPS reales**:
+  - «Qué pueden ver» + arreglos automáticos + categoría `isolation` en Auditoría + crear usuario sin túneles.
+  - Contenedores («Al reiniciar», linger, `podman-compose@*.service`) y Sitios web → «Tráfico» (Caddy y nginx con/sin log).
+  - MCP `reboot_server` y `request_sudo_password` con Claude Code / Claude Desktop reales.
+  - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
+- **Checklist de publicación (`v1.0.0`)**:
+  - `git push` de los commits locales en `main`.
+  - Subir versión a `1.0.0` en `package.json`, `src-tauri/Cargo.toml` y `src-tauri/tauri.conf.json`.
+  - **Quitar `bundle.windows.wix.version`** (`0.6.0.2`) en `src-tauri/tauri.conf.json`.
+  - Cerrar «Sin publicar» en `CHANGELOG.md`, crear etiqueta `v1.0.0` y verificar que la CI publique `.rpm` + `latest.json` + firmas `.sig` (y que el actualizador de una versión previa detecte la 1.0.0).
+
+### 3. Pendiente técnico y de distribución (sin fecha fija)
+- **Firmar el instalador de Windows** (para evitar el aviso de SmartScreen).
+- **Pruebas en entornos reales pendientes**: Windows real (y agente SSH de Windows: OpenSSH pipe / Pageant), servidor con **2FA** real, **agente SSH** real, **arrastre de archivos al escritorio** en Linux/Windows/macOS (macOS sin compilar localmente) y **medir rendimiento** en la app real con el panel de diagnóstico.
+- **Pruebas automáticas de interfaz (E2E)** con la app real abierta.
+- **Escáner de vulnerabilidades** ([10.14](#1014-sin-verificar-y-riesgos)): Docker real, SLES/RHEL, otros usuarios con systemd.
+- **Limpieza opcional adicional** (no bloquea 1.0.0): archivos de 400–500 líneas restantes (`ImageUpdateDialog.tsx`, `KeyUserWizard.tsx`, `TabBar.tsx`, `VulnsTab.tsx`, `snippets/exec.rs`, `storage/secrets.rs`, `vulnscan/{model,scripts}.rs`, `types.rs`) y dividir los 4 CSS grandes (`Containers.css`, `Commands.css`, `MultiRun.css`, `Admin.css`).
+
+### 4. Ideas y funciones futuras anotadas
+
+| # | Idea / función | Estado | Resumen y siguiente paso |
+|---|----------------|--------|--------------------------|
+| **5a** | **Claude Code en la terminal del VPS con cuenta del PC** | Aprobada (16/11), sin empezar | Botón en terminal SSH con las dos opciones: «Copiar mi sesión» (estilo `copysse`) y «Llave de acceso» (`claude setup-token`), explicando la diferencia en una línea. Ver [5a](#próxima-sesión-anotado-el-13112026) (línea ~265). |
+| **5b** | **Despliegue asistido por IA vía MCP** | En diseño, sin empezar | Añadir `server_status` (CPU/RAM/disco reutilizando Panel de VPS), herramientas MCP de alto nivel (crear usuario, crear sitio Caddy/nginx, desplegar contenedor/servicio) y receta de despliegue (compilación local opcional). |
+| **4c** | **Auditoría extendida** | Anotada | «Auditar proyecto» (varios servidores a la vez) y auditar contenedores rootless de otros usuarios. |
+| **6** | **App móvil propia (APK aparte)** | Decidida (16/11), en prueba de viabilidad | Proyecto separado en Tauri 2 Android con Linux mínimo (`proot` + Debian por defecto / Alpine opcional) para correr Claude Code, Codex, agy y OpenCode con MCP local de SSHorus Móvil (SSH directo celular → VPS, sin PC en medio). Prototipo en `docs/movil/prototipo.html`. Siguiente paso: probar `proot-distro install debian` + instalador oficial en Termux. |
+| **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |
+| **5** | **Asistente corriendo dentro del VPS (`remote-control`)** | ❌ Descartado (16/11) | Sustituido por el punto 6 (la IA corre fuera del VPS para no gastar RAM ni exponer sesiones a root del VPS). |
+
+---
+
+> **Histórico de sesiones y notas de diseño (11/11 → 24/11/2026).** Se conserva debajo todo el detalle técnico y las decisiones de cada ronda para referencia.
 
 Estado al 13/11/2026: versión publicada **0.5.0**. La 0.4.0
 no llegó a publicarse: lo marcado **v0.4.0** en este documento salió en la 0.5.0 (en el
@@ -146,8 +194,16 @@ despegar pestañas, dividir, cerrar el archivo activo).
 (`catalogContainers.ts`, `catalogSystem.ts`), `Admin/VulnsTab.tsx` (`VulnsTable.tsx`), `infra/graph.ts`
 (`graphTypes.ts`, `graphLinks.ts`), `TransferPanel.tsx` (`TransferHelpers.tsx`, `TransferJobs.tsx`),
 `vulnscan/imageUpdate.ts` (`imageUpdateRead.ts`, `imageUpdateForm.ts`), `vulnscan/analyze.rs` (`analyze_merge.rs`),
-`vulnscan/osv.rs` (`osv_model.rs`) y `tunnels/manager.rs` (`forward.rs`). Verificado: `npm run lint`, `npm run build`,
-51/51 suites TS y 350/350 tests Rust. Reglas de calidad en `docs/dev/REGLAS-AGENTES.md` §5.
+`vulnscan/osv.rs` (`osv_model.rs`) y `tunnels/manager.rs` (`forward.rs`).
+**Parte 3 ✅ hecha el 24/11/2026** (en `main`, sin publicar): eliminados los 15 warnings de ESLint (**0 errores, 0 warnings**),
+divididos los 17 archivos restantes > 500 líneas en TS/TSX (`termController.ts`, `ContainersTab.tsx`, `CommandsPanel.tsx`,
+`ResultsView.tsx`, `containers/parse.ts`, `AdminPanel.tsx`, `WebTab.tsx`, `ComposeTab.tsx`, `userVisibility.ts`,
+`SyncSection.tsx`) y Rust (`tunnels/manager.rs` → `watcher.rs`, `mcp/mod.rs` → `commands.rs`, `storage/mod.rs` → `commands.rs`,
+`github/api.rs` → `api_gists.rs`, `github/mod.rs` → `sync_cmds.rs`, `ssh/known_hosts.rs` → `known_hosts_match.rs`,
+`transfer/copy.rs` → `download.rs`), y eliminados todos los archivos sueltos de la raíz de `src/features/`
+(reubicados en `src/features/connect/`, `src/features/profiles/`, `src/features/serverEditor/` y `src/components/ui/`).
+Verificado: `npm run lint` (0 errores/0 warnings), `npm run build`, 51/51 suites TS, `cargo clippy --lib -- -W clippy::all`
+(0 warnings) y 350/350 tests Rust. Reglas de calidad en `docs/dev/REGLAS-AGENTES.md` §5.
 
 **Estado.** La **0.5.0 está publicada** (13/11/2026). En `main`, sin publicar todavía (ver «Sin publicar» en el
 CHANGELOG): botón «Actualizar imagen» en el escáner, terminal local con Claude Code y Codex, añadir servidor

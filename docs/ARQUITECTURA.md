@@ -8,9 +8,9 @@ contraseñas guardadas y bloquea la app.
 
 **Tecnología:** Tauri 2 + Rust (motor, `src-tauri/`) · React 19 + TypeScript + zustand (interfaz, `src/`).
 
-**Estado que describe este documento:** el código de la versión **1.0.0-beta.1** (antes TerView). Algunas
-secciones todavía hablan de la 0.5.0; lo que está en `main` sin publicar se ve en el
-[diagrama interactivo](diagrama-arquitectura.html) y en el [CHANGELOG](../CHANGELOG.md).
+**Estado que describe este documento:** el código de **1.0.0-beta.2** y los cambios en `main` al **24/11/2026** (antes TerView). Algunas
+secciones históricas todavía mencionan la 0.5.0; el estado al día, los pendientes y las ideas futuras están en
+[PENDIENTES.md](PENDIENTES.md), el [diagrama interactivo](diagrama-arquitectura.html) y el [CHANGELOG](../CHANGELOG.md).
 
 ---
 
@@ -223,31 +223,33 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | Lo que ves: `Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Settings`, `Diagnostics`, `Welcome`, `About`, `ui` |
-| `features/` | La lógica de cada función: scripts que se envían al servidor, lectura de sus salidas y estado. `admin`, `containers`, `monitor`, `multirun`, `privileges`, `tunnels`, `github`, `updater`, `lock` (pantalla de bloqueo y PIN), `tmux`, `connect.ts` |
+| `components/` | Vistas y pantallas por dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles reutilizables en `components/ui/` (`Modal`, `dialogs`, `ColorPicker`, etc.) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `connect`, `containers`, `fleet`, `github`, `infra`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui` |
-| `api/` | La única puerta al motor: un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
+| `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte |
-| `lib/` | Utilidades: rutas, formato, plataforma, carga diferida |
+| `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida |
 
-**Motor (`src-tauri/src/`):**
+**Motor (`src-tauri/src/`):** cada módulo grande separa estado/lógica de sus comandos Tauri (`commands.rs` / `sync_cmds.rs`) y submódulos temáticos:
 
 | Módulo | Qué hace |
 |--------|----------|
 | `lib.rs`, `main.rs` | Arranque: registra plugins, estado global y todos los comandos |
 | `error.rs`, `types.rs` | Errores traducidos a mensajes claros y tipos compartidos con la interfaz |
 | `platform.rs` | Ajustes de WebKitGTK antes de crear la ventana (problemas con NVIDIA) |
-| `ssh/` | Conectar y autenticar (`connect`), huellas (`known_hosts`, `handler`), reconexión (`reconnect`) |
-| `terminal/` | Shell con PTY sobre un canal SSH (`shell`) y sesiones persistentes (`tmux`) |
+| `ssh/` | Conectar y autenticar (`connect/`), huellas (`known_hosts.rs`, `known_hosts_match.rs`, `handler.rs`), reconexión (`reconnect.rs`, `reboot_wait.rs`) y comandos (`commands.rs`) |
+| `terminal/` | Shell con PTY sobre un canal SSH (`shell.rs`) y sesiones persistentes (`tmux.rs`) |
+| `localterm/` | Terminal local (PTY del PC) y lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto |
 | `sftp/` | Explorador y editor: listar, crear, renombrar, permisos, leer y guardar |
-| `transfer/` | Cola, trabajadores, reserva de canales, copia encadenada, conflictos |
-| `snippets/` | "Mis comandos" y ejecución aparte por canal exec, con cancelación |
-| `tunnels/` | Túneles local, remoto y SOCKS, con vigilante |
+| `transfer/` | Cola y planificador (`engine/`), reserva de canales (`pool.rs`), subida (`copy.rs`) y bajada (`download.rs`) encadenadas, conflictos (`policy.rs`) |
+| `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec.rs`) y envoltorio sudo (`sudo.rs`) |
+| `tunnels/` | Túneles local, remoto y SOCKS (`manager.rs`, `forward.rs`, `watcher.rs`, `socks.rs`, `remote.rs`, `store.rs`) |
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
-| `github/` | Cuenta, API, llaves públicas locales, cifrado del Gist, compartir comandos |
-| `storage/` | Perfiles, ajustes, llavero (`secrets`), bóveda con PIN (`vault`, `cipher`), bloqueo e inactividad (`lock`), `~/.ssh/config` |
-| `localfs.rs`, `diagnostics.rs` | Archivos de texto que eliges (exportar/importar) y datos del sistema para el diagnóstico |
-| `localkeys.rs` | Llaves SSH de `~/.ssh` del equipo: listar las `.pub` y generar una ed25519 (privada 0600, nunca sale del equipo) |
+| `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), llaves locales, cifrado del Gist (`crypto.rs`), compartir comandos |
+| `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
+| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `server.rs`, `core/`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`, `bridge.rs`) |
+| `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
+| `localfs.rs`, `diagnostics.rs`, `sshkeys/` | Archivos locales (exportar/importar), diagnóstico del sistema y generación/lectura de llaves SSH en `~/.ssh` |
 
 Librerías clave del motor: `tauri`, `tokio`, `russh`, `russh-sftp`, `keyring`, `serde`, `reqwest`
 (con rustls), `aes-gcm` + `argon2` (bóveda y Gist cifrado), `zeroize` (borrar secretos de la memoria), `gtk` (arrastre en Linux), `windows` (arrastre en
