@@ -1,21 +1,6 @@
 // Pestaña "Comandos" dentro de cada conexión (mockup docs/arquitectura/07-biblioteca-comandos.png).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  ClipboardCopy,
-  ClipboardPaste,
-  Copy,
-  CopyPlus,
-  Download,
-  Network,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  WifiOff,
-  X,
-} from "lucide-react";
+import { Activity, ClipboardCopy, Copy, CopyPlus, Network, Pencil, Plus, Search, Trash2, WifiOff, X } from "lucide-react";
 import { Group, Panel, Separator, type Layout, type LayoutChangedMeta } from "react-resizable-panels";
 import { useSettings } from "../../stores/settings";
 import { errorMessage } from "../../api/core";
@@ -31,9 +16,9 @@ import { AnalysisReport, type AnalysisState } from "./AnalysisReport";
 import { CATEGORIES, type Distro } from "./catalog";
 import { CommandDetail } from "./CommandDetail";
 import { CommandMenu, type CommandMenuItem } from "./CommandMenu";
+import { CommandsList, type CommandGroup } from "./CommandsList";
 import { ImportSnippetsDialog } from "./ImportSnippetsDialog";
 import { multiRunBlockedReason, runOnManyServers } from "./multi";
-import { CommandTags, HighlightedCommand } from "./parts";
 import { SnippetDialog, emptySnippet } from "./SnippetDialog";
 import {
   MY_CATEGORY,
@@ -45,7 +30,7 @@ import {
   type CommandItem,
   type SessionInfoCache,
 } from "./state";
-import { exportSnippets, exportSnippetsToFile, pickImportFile, planImport, type ImportPlan } from "./transfer";
+import { pickImportFile, planImport, type ImportPlan } from "./transfer";
 import "./Commands.css";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 
@@ -115,7 +100,7 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
 
   // Grupos (en búsqueda: "Categoría · grupo" en orden de relevancia del primer elemento).
   const groups = useMemo(() => {
-    const out: { key: string; label: string; items: CommandItem[] }[] = [];
+    const out: CommandGroup[] = [];
     const idx = new Map<string, number>();
     for (const it of visible) {
       const label = searching ? `${it.category === MY_CATEGORY ? "Mis comandos" : it.category} · ${it.group}` : it.group;
@@ -133,7 +118,6 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
 
   const selected = flat.find((i) => i.id === selectedId) ?? null;
 
-  // Selección por defecto: el primero visible.
   useEffect(() => {
     if (!selected && flat.length) setSelectedId(flat[0].id);
   }, [selected, flat]);
@@ -245,7 +229,7 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
 
   const menuItems = (it: CommandItem): CommandMenuItem[] => {
     const multi = multiRunBlockedReason(it);
-    const items: CommandMenuItem[] = [
+    const out: CommandMenuItem[] = [
       {
         label: "Ejecutar en varios servidores…",
         icon: <Network size={14} />,
@@ -255,15 +239,15 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
       { label: "Copiar comando", icon: <ClipboardCopy size={14} />, onSelect: () => void copyCommand(it) },
     ];
     if (it.custom) {
-      items.push(
+      out.push(
         { label: "Editar…", icon: <Pencil size={14} />, sepBefore: true, onSelect: () => editItem(it) },
         { label: "Duplicar…", icon: <CopyPlus size={14} />, onSelect: () => duplicateItem(it) },
         { label: "Eliminar", icon: <Trash2 size={14} />, danger: true, onSelect: () => void deleteItem(it) },
       );
     } else {
-      items.push({ label: "Copiar a Mis comandos…", icon: <Copy size={14} />, sepBefore: true, onSelect: () => copyToMine(it) });
+      out.push({ label: "Copiar a Mis comandos…", icon: <Copy size={14} />, sepBefore: true, onSelect: () => copyToMine(it) });
     }
-    return items;
+    return out;
   };
   const closeMenu = useCallback(() => setMenu(null), []);
 
@@ -339,160 +323,77 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
 
       <Group orientation="horizontal" className="cmd-body" defaultLayout={outerLayout} onLayoutChanged={saveOuter}>
         <Panel id="cats" minSize="130px" maxSize="40%" className="cmd-col">
-        <nav className="cmd-cats" aria-label="Categorías">
-          <div className="section-label cmd-cats-title">Categorías</div>
-          {ALL_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              className={`cmd-cat${c === MY_CATEGORY ? " mine" : ""}${!searching && !showReport && c === category ? " active" : ""}`}
-              onClick={() => {
-                setCategory(c);
-                setQuery("");
-                setShowReport(false);
-                setSelectedId(null);
-              }}
-            >
-              <span>{c}</span>
-              <span className="cmd-count">{counts[c] ?? 0}</span>
-            </button>
-          ))}
-          {analysis?.report && !showReport && (
-            <button className="cmd-cat cmd-cat-report" onClick={() => setShowReport(true)}>
-              <span>
-                <Activity size={13} /> Último informe
-              </span>
-            </button>
-          )}
-        </nav>
+          <nav className="cmd-cats" aria-label="Categorías">
+            <div className="section-label cmd-cats-title">Categorías</div>
+            {ALL_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                className={`cmd-cat${c === MY_CATEGORY ? " mine" : ""}${!searching && !showReport && c === category ? " active" : ""}`}
+                onClick={() => {
+                  setCategory(c);
+                  setQuery("");
+                  setShowReport(false);
+                  setSelectedId(null);
+                }}
+              >
+                <span>{c}</span>
+                <span className="cmd-count">{counts[c] ?? 0}</span>
+              </button>
+            ))}
+            {analysis?.report && !showReport && (
+              <button className="cmd-cat cmd-cat-report" onClick={() => setShowReport(true)}>
+                <span>
+                  <Activity size={13} /> Último informe
+                </span>
+              </button>
+            )}
+          </nav>
         </Panel>
         <ColSep />
         <Panel id="content" minSize="40%" className="cmd-col">
-        {showReport && analysis ? (
-          <AnalysisReport state={analysis} onRerun={runAnalysis} onClose={() => setShowReport(false)} disabled={disabled} />
-        ) : (
-          <Group orientation="horizontal" className="cmd-inner" defaultLayout={innerLayout} onLayoutChanged={saveInner}>
-            <Panel id="list" minSize="200px" className="cmd-col">
-            <div
-              className="cmd-list"
-              ref={listRef}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  move(1);
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  move(-1);
-                }
-              }}
-            >
-              {showingMine && (
-                <div className="cmd-mine-bar">
-                  <button className="btn btn-sm" onClick={() => void importFromFile()} title="Importar desde un archivo .json (con vista previa)">
-                    <Upload size={13} /> Importar desde archivo…
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => void importFromClipboard()}
-                    title="Importar el JSON copiado en el portapapeles (con vista previa)"
-                  >
-                    <ClipboardPaste size={13} /> Pegar JSON
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    disabled={mine.length === 0}
-                    onClick={() => void exportSnippetsToFile(mine)}
-                    title="Guarda todos tus comandos en un archivo .json"
-                  >
-                    <Download size={13} /> Exportar a archivo…
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    disabled={mine.length === 0}
-                    onClick={() => void exportSnippets(mine)}
-                    title="Copia todos tus comandos como JSON al portapapeles"
-                  >
-                    <ClipboardCopy size={13} /> Copiar JSON
-                  </button>
-                </div>
-              )}
-              {groups.length === 0 && (
-                <div className="cmd-empty">
-                  {searching ? (
-                    <>No hay comandos que coincidan con «{query}».</>
-                  ) : showingMine ? (
-                    <>
-                      <p>Aún no tienes comandos propios para este servidor.</p>
-                      <button className="btn btn-primary btn-sm" onClick={() => setDialog(emptySnippet())}>
-                        <Plus size={13} /> Crear comando
-                      </button>
-                    </>
+          {showReport && analysis ? (
+            <AnalysisReport state={analysis} onRerun={runAnalysis} onClose={() => setShowReport(false)} disabled={disabled} />
+          ) : (
+            <Group orientation="horizontal" className="cmd-inner" defaultLayout={innerLayout} onLayoutChanged={saveInner}>
+              <Panel id="list" minSize="200px" className="cmd-col">
+                <CommandsList
+                  listRef={listRef}
+                  groups={groups}
+                  selectedId={selectedId}
+                  showingMine={showingMine}
+                  searching={searching}
+                  query={query}
+                  mine={mine}
+                  onMove={move}
+                  onSelect={setSelectedId}
+                  onOpenMenu={(x, y, item) => setMenu({ x, y, item })}
+                  onCreateNew={() => setDialog(emptySnippet())}
+                  onImportFile={() => void importFromFile()}
+                  onImportClipboard={() => void importFromClipboard()}
+                />
+              </Panel>
+              <ColSep />
+              <Panel id="detail" minSize="280px" className="cmd-col">
+                <div className="cmd-detail-wrap">
+                  {selected ? (
+                    <CommandDetail
+                      key={selected.id}
+                      item={selected}
+                      sessionId={sessionId}
+                      profileId={profileId}
+                      disabled={disabled}
+                      onEdit={() => editItem(selected)}
+                      onDuplicate={() => duplicateItem(selected)}
+                      onDelete={() => deleteItem(selected)}
+                      onCopyToMine={() => copyToMine(selected)}
+                    />
                   ) : (
-                    <>Sin comandos en esta categoría.</>
+                    <div className="empty-state">Elige un comando de la lista</div>
                   )}
                 </div>
-              )}
-              {groups.map((g) => (
-                <div key={g.key} className="cmd-group">
-                  <div className="cmd-group-title">{g.label}</div>
-                  {g.items.map((it) => (
-                    <button
-                      key={it.id}
-                      data-id={it.id}
-                      className={`cmd-item${it.id === selectedId ? " selected" : ""}${it.dangerous ? " danger" : ""}`}
-                      onClick={() => setSelectedId(it.id)}
-                      onDoubleClick={() => setSelectedId(it.id)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setSelectedId(it.id);
-                        setMenu({ x: e.clientX, y: e.clientY, item: it });
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
-                          e.preventDefault();
-                          const r = e.currentTarget.getBoundingClientRect();
-                          setSelectedId(it.id);
-                          setMenu({ x: r.left + 24, y: r.bottom, item: it });
-                        }
-                      }}
-                    >
-                      <span className="cmd-item-top">
-                        <span className="cmd-item-name">{it.name}</span>
-                        <CommandTags item={it} />
-                      </span>
-                      <span className="cmd-item-cmd mono">
-                        <HighlightedCommand text={it.command.split("\n")[0]} />
-                        {it.command.includes("\n") && " …"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            </Panel>
-            <ColSep />
-            <Panel id="detail" minSize="280px" className="cmd-col">
-            <div className="cmd-detail-wrap">
-              {selected ? (
-                <CommandDetail
-                  key={selected.id}
-                  item={selected}
-                  sessionId={sessionId}
-                  profileId={profileId}
-                  disabled={disabled}
-                  onEdit={() => editItem(selected)}
-                  onDuplicate={() => duplicateItem(selected)}
-                  onDelete={() => deleteItem(selected)}
-                  onCopyToMine={() => copyToMine(selected)}
-                />
-              ) : (
-                <div className="empty-state">Elige un comando de la lista</div>
-              )}
-            </div>
-            </Panel>
-          </Group>
-        )}
+              </Panel>
+            </Group>
+          )}
         </Panel>
       </Group>
 
@@ -519,8 +420,6 @@ export function CommandsPanel({ sessionId, profileId, active, disabled }: Comman
   );
 }
 
-// ───────── Tamaños de columnas (ajustables y guardados) ─────────
-
 const OUTER_IDS = ["cats", "content"];
 const INNER_IDS = ["list", "detail"];
 
@@ -538,8 +437,7 @@ function useLayoutSaver(key: string, ids: string[]) {
       const l = meta.requestedLayout ?? layout;
       setLayout(key, ids.map((id) => l[id] ?? 0));
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key, setLayout],
+    [key, ids, setLayout],
   );
 }
 

@@ -3,12 +3,12 @@
 // lee del llavero.
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { errorMessage, isApiError } from "../api/core";
-import { profiles, type SecretKind } from "../api/profiles";
-import { vault } from "../api/vault";
-import { applyVaultStatus, useLock } from "./lock/lockStore";
-import { PinField } from "./lock/PinField";
-import { secretWords } from "./lock/secretKind";
+import { errorMessage, isApiError } from "../../api/core";
+import { profiles, type SecretKind } from "../../api/profiles";
+import { vault } from "../../api/vault";
+import { applyVaultStatus, useLock } from "../lock/lockStore";
+import { PinField } from "../lock/PinField";
+import { secretWords } from "../lock/secretKind";
 
 export function SecretInput({
   profileId,

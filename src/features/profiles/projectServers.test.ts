@@ -1,6 +1,6 @@
 // Pruebas de la relación proyecto ↔ servidor (funciones puras).
-// Ejecutar: npx rolldown src/features/projectServers.test.ts -p node -f esm -o /tmp/ps.mjs && node /tmp/ps.mjs
-import type { Project, ServerProfile } from "../api/types";
+// Ejecutar: npx rolldown src/features/profiles/projectServers.test.ts -p node -f esm -o /tmp/ps.mjs && node /tmp/ps.mjs
+import type { Project, ServerProfile } from "../../api/types";
 import { initialProjectFor, projectChanges, serversNotInProject } from "./projectServers";
 
 let passed = 0;

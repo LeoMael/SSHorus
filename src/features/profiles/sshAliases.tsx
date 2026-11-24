@@ -2,10 +2,10 @@
 //   if (!(await checkSshAliasesBeforeExport())) return;   // antes de profiles.exportSshConfig()
 //   <SshAliasMatches matches={…} />                       // lista compacta de coincidencias
 import { useState } from "react";
-import { sshAliases, type SshAliasConflict, type SshHostMatch } from "../api/profiles";
-import { confirmDialog } from "../components/ui/dialogs";
-import { toast } from "../stores/toasts";
-import { SSH_CONFIG_LABEL } from "../lib/platform";
+import { sshAliases, type SshAliasConflict, type SshHostMatch } from "../../api/profiles";
+import { confirmDialog } from "../../components/ui/dialogs";
+import { toast } from "../../stores/toasts";
+import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import "./sshAliases.css";
 
 /** Explica una coincidencia en una frase corta. */

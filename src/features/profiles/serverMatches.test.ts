@@ -1,6 +1,6 @@
 // Pruebas de las sugerencias de host y el aviso de servidor repetido (funciones puras).
-// Ejecutar: npx rolldown src/features/serverMatches.test.ts -p node -f esm -o /tmp/sm.mjs && node /tmp/sm.mjs
-import type { ServerProfile } from "../api/types";
+// Ejecutar: npx rolldown src/features/profiles/serverMatches.test.ts -p node -f esm -o /tmp/sm.mjs && node /tmp/sm.mjs
+import type { ServerProfile } from "../../api/types";
 import { findMatches, hostSuggestions, serverAddress } from "./serverMatches";
 
 let passed = 0;

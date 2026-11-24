@@ -1,9 +1,9 @@
 // «Probar conexión» del editor de servidor: prueba los datos escritos (sin guardarlos) y traduce el
 // resultado a lenguaje simple. La huella nueva o cambiada se confirma con el diálogo de siempre.
-import { ssh, type ConnectionTest } from "../api/ssh";
-import { isApiError, errorMessage } from "../api/core";
-import type { AuthMethod, ServerProfile } from "../api/types";
-import { newExecId } from "../api/snippets";
+import { ssh, type ConnectionTest } from "../../api/ssh";
+import { isApiError, errorMessage } from "../../api/core";
+import type { AuthMethod, ServerProfile } from "../../api/types";
+import { newExecId } from "../../api/snippets";
 import { confirmHostKey } from "./ConnectDialogs";
 
 export type TestOutcome =

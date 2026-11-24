@@ -1,6 +1,6 @@
 // Autenticación del servidor: método, contraseña o llave (con su frase) y si se guardan.
 import type { AuthMethod } from "../../api/types";
-import { SecretInput } from "../SecretInput";
+import { SecretInput } from "./SecretInput";
 import { KeyPicker } from "../sshkeys/KeyPicker";
 import { SegmentedRadio } from "./SegmentedRadio";
 import { pickAuth, SAVED_SECRET_PLACEHOLDER, type FormErrors, type ServerFormFields } from "./serverForm";

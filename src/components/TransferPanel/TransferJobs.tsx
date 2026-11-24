@@ -14,24 +14,26 @@ const ORDER: Record<TransferStatus, number> = { running: 0, error: 1, paused: 2,
 
 type Filter = "all" | "pending" | "skipped" | "error";
 
+function listBatchJobs(batch: BatchSummary, filter: Filter): TransferJob[] {
+  const jobs = useTransfers.getState().jobs;
+  const out: TransferJob[] = [];
+  for (const id of batchJobIds(batch.id)) {
+    const j = jobs[id];
+    if (!j) continue;
+    if (filter === "error" && j.status !== "error") continue;
+    if (filter === "skipped" && j.status !== "skipped") continue;
+    if (filter === "pending" && (j.status === "done" || j.status === "canceled" || j.status === "skipped")) continue;
+    out.push(j);
+  }
+  out.sort((a, b) => ORDER[a.status] - ORDER[b.status]);
+  return out;
+}
+
 export function JobList({ batch }: { batch: BatchSummary }) {
   const [filter, setFilter] = useState<Filter>(batch.error > 0 && !isActiveStatus(batch.status) ? "error" : "all");
   const [scrollTop, setScrollTop] = useState(0);
 
-  const rows = useMemo(() => {
-    const jobs = useTransfers.getState().jobs;
-    const out: TransferJob[] = [];
-    for (const id of batchJobIds(batch.id)) {
-      const j = jobs[id];
-      if (!j) continue;
-      if (filter === "error" && j.status !== "error") continue;
-      if (filter === "skipped" && j.status !== "skipped") continue;
-      if (filter === "pending" && (j.status === "done" || j.status === "canceled" || j.status === "skipped")) continue;
-      out.push(j);
-    }
-    out.sort((a, b) => ORDER[a.status] - ORDER[b.status]);
-    return out;
-  }, [batch.id, batch.version, filter]);
+  const rows = useMemo(() => listBatchJobs(batch, filter), [batch, filter]);
 
   const height = Math.max(1, Math.min(rows.length, MAX_ROWS)) * ROW_H;
   const first = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);

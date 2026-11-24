@@ -1,7 +1,7 @@
 // Filas del árbol de la barra lateral: servidor y marcador.
 import { Folder } from "lucide-react";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
-import { serverAddress } from "../../features/serverMatches";
+import { serverAddress } from "../../features/profiles/serverMatches";
 import { isMac, isModKey } from "../../lib/platform";
 import { connectNew, openOrFocus } from "./sidebarActions";
 import { bookmarkRowKey, serverRowKey, type TabState } from "./sidebarLogic";

@@ -82,14 +82,27 @@ export function useRowHandlers({
         setMenu({ x: e.clientX, y: e.clientY, onEntry: true });
       },
     }),
-    [notePress, openEntry, selectOnly, selectRange, sessionId],
+    [
+      anchorRef,
+      deferSelectRef,
+      notePress,
+      openEntry,
+      rootRef,
+      selectedRef,
+      selectOnly,
+      selectRange,
+      sessionId,
+      setCursor,
+      setMenu,
+      setSelected,
+    ],
   );
 
   const onEmptyMouseDown = useCallback(() => {
     setSelected(new Set());
     setCursor(null);
     anchorRef.current = null;
-  }, []);
+  }, [anchorRef, setCursor, setSelected]);
 
   const onEmptyContextMenu = useCallback(
     (e: ReactMouseEvent) => {
@@ -99,7 +112,7 @@ export function useRowHandlers({
       rootRef.current?.focus({ preventScroll: true });
       setMenu({ x: e.clientX, y: e.clientY, onEntry: false });
     },
-    [onEmptyMouseDown, sessionId],
+    [onEmptyMouseDown, rootRef, sessionId, setMenu],
   );
 
   return { handlers, onEmptyMouseDown, onEmptyContextMenu };

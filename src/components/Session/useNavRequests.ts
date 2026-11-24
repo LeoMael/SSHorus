@@ -38,5 +38,5 @@ export function useNavRequests({ sessionId, showFixed, showFile, setFiles }: Nav
     if (reveal.sessionId !== sessionId) return;
     setFiles((f) => (f.includes(reveal.path) ? f : [...f, reveal.path]));
     showFile(reveal.path);
-  },[reveal, sessionId, showFile]);
+  }, [reveal, sessionId, setFiles, showFile]);
 }

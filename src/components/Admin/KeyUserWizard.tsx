@@ -23,7 +23,7 @@ import {
   type Plan,
   type SshdAccess,
 } from "../../features/admin";
-import { describeTestOk, testServerConnection } from "../../features/serverTest";
+import { describeTestOk, testServerConnection } from "../../features/connect/serverTest";
 import { useProfiles } from "../../stores/profiles";
 import { useAdmin } from "./context";
 import { AdmModal } from "./AdmModal";

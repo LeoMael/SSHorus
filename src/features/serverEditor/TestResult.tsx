@@ -1,6 +1,6 @@
 import { CircleCheck, CircleX } from "lucide-react";
 import type { AuthMethod } from "../../api/types";
-import { describeTestOk, type TestOutcome } from "../serverTest";
+import { describeTestOk, type TestOutcome } from "../connect/serverTest";
 import type { TestReason } from "./useConnectionTest";
 
 /** Resultado de «Probar conexión» dentro del formulario. */

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ssh } from "../../api/ssh";
 import type { ServerProfile } from "../../api/types";
-import { testServerConnection, type TestOutcome, type TestSecrets } from "../serverTest";
+import { testServerConnection, type TestOutcome, type TestSecrets } from "../connect/serverTest";
 
 /** «manual» (botón) o «save» (al guardar). */
 export type TestReason = "manual" | "save";

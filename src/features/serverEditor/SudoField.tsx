@@ -1,7 +1,7 @@
 // «Contraseña de sudo» del servidor: de dónde sale y, con «Guardar», la contraseña.
 import { AlertTriangle } from "lucide-react";
 import type { SudoMode } from "../../api/types";
-import { SecretInput } from "../SecretInput";
+import { SecretInput } from "./SecretInput";
 import { sudoFormHint, sudoModesFor, type SudoFormState } from "../privileges/sudoFormHint";
 import { SegmentedRadio } from "./SegmentedRadio";
 import { SAVED_SECRET_PLACEHOLDER, type ServerFormFields } from "./serverForm";

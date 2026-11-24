@@ -21,13 +21,13 @@ import {
   Waypoints,
 } from "lucide-react";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
-import { connectToMany } from "../../features/connect";
+import { connectToMany } from "../../features/connect/connect";
 import { openFleet } from "../../features/fleet/tabs";
 import { openProjectMap } from "../../features/infra/store";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
 import { ASSISTANTS } from "../../features/localterm/logic";
 import { openMultiRun } from "../../features/multirun/store";
-import { serversNotInProject } from "../../features/projectServers";
+import { serversNotInProject } from "../../features/profiles/projectServers";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import { useProfiles } from "../../stores/profiles";
 import { useUi } from "../../stores/ui";

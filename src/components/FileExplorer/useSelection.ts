@@ -47,7 +47,7 @@ export function useSelectionOps(
       if (el.scrollTop > top) el.scrollTop = top;
       else if (el.scrollTop < minTop) el.scrollTop = minTop;
     },
-    [],
+    [listRef],
   );
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export function useSelectionOps(
       scrollToRef.current = null;
       requestAnimationFrame(() => scrollToIndex(i));
     }
-  }, [indexOf, scrollToIndex]);
+  }, [indexOf, scrollToIndex, scrollToRef]);
 
   const selectOnly = useCallback(
     (path: string) => {
@@ -66,7 +66,7 @@ export function useSelectionOps(
       setCursor(path);
       anchorRef.current = path;
     },
-    [],
+    [anchorRef, setCursor, setSelected],
   );
 
   const selectRange = useEvent((to: string, additive: boolean) => {

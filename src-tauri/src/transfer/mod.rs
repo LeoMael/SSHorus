@@ -16,6 +16,7 @@
 //! bloque, canceladas o pausadas) se avisan con `EV_TRANSFER_CONFLICT_DONE` (ids de trabajo).
 
 mod copy;
+mod download;
 mod engine;
 mod paths;
 mod policy;

@@ -1,12 +1,12 @@
 // Flujo de conexión interactivo. DUEÑO: agente Almacenamiento/Sidebar.
-import { ssh } from "../api/ssh";
-import { isApiError } from "../api/core";
-import type { ServerProfile } from "../api/types";
-import { useProfiles } from "../stores/profiles";
-import { useTabs, type SessionTab } from "../stores/tabs";
-import { toast } from "../stores/toasts";
+import { ssh } from "../../api/ssh";
+import { isApiError } from "../../api/core";
+import type { ServerProfile } from "../../api/types";
+import { useProfiles } from "../../stores/profiles";
+import { useTabs, type SessionTab } from "../../stores/tabs";
+import { toast } from "../../stores/toasts";
 import { askOtp, askPassphrase, askPassword, confirmHostKey } from "./ConnectDialogs";
-import { reconnectTab } from "../components/Session/sessionState";
+import { reconnectTab } from "../../components/Session/sessionState";
 
 /** Límite de vueltas para no quedar en bucle si el motor repite siempre el mismo error. */
 const MAX_STEPS = 12;

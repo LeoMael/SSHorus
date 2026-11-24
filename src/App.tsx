@@ -6,7 +6,7 @@ import { DialogHost } from "./components/ui/dialogs";
 import { Toaster } from "./components/ui/Toaster";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { TransferPanel } from "./components/TransferPanel/TransferPanel";
-import { ConnectDialogHost, ProjectEditorHost, ServerEditorHost } from "./features/ConnectDialogs";
+import { ConnectDialogHost, ProjectEditorHost, ServerEditorHost } from "./features/connect/ConnectDialogs";
 import { PaletteHost, PaletteView } from "./components/Commands/PaletteHost";
 import { MultiRunHost } from "./components/MultiRun/MultiRunHost";
 import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";

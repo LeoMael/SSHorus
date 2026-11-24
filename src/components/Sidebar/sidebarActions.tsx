@@ -1,9 +1,9 @@
 // Acciones de la barra lateral que no dependen de su estado: conectar, borrar, marcadores y exportar.
 import type { Project, ServerProfile } from "../../api/types";
 import { profiles as profilesApi } from "../../api/profiles";
-import { connectToServer, openOrFocusServer } from "../../features/connect";
-import { serverAddress } from "../../features/serverMatches";
-import { checkSshAliasesBeforeExport } from "../../features/sshAliases";
+import { connectToServer, openOrFocusServer } from "../../features/connect/connect";
+import { serverAddress } from "../../features/profiles/serverMatches";
+import { checkSshAliasesBeforeExport } from "../../features/profiles/sshAliases";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";

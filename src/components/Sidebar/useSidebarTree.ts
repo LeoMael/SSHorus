@@ -10,7 +10,7 @@ export interface MenuState {
   items: MenuItem[];
 }
 
-export function useSidebarTree() {
+export function useSidebarTree(listVersion?: unknown) {
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   /** Fila que hay que mostrar (desplazar y enfocar) en cuanto aparezca, p. ej. un servidor recién añadido. */
@@ -22,11 +22,11 @@ export function useSidebarTree() {
     const row = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-sb-key]") ?? []).find(
       (el) => el.dataset.sbKey === reveal,
     );
-    if (!row) return; // aún no está en la lista: se reintenta en el siguiente render
+    if (!row) return; // aún no está en la lista: se reintenta cuando cambie listVersion
     row.scrollIntoView({ block: "nearest" });
     row.focus();
     setReveal(null);
-  });
+  }, [reveal, listVersion]);
 
   const closeMenu = useCallback(() => setMenu(null), []);
 

@@ -1,6 +1,6 @@
 import { AlertTriangle, Info } from "lucide-react";
 import type { ServerProfile } from "../../api/types";
-import { serverAddress, type ServerMatches } from "../serverMatches";
+import { serverAddress, type ServerMatches } from "../profiles/serverMatches";
 
 /** Aviso de servidor repetido (mismo host, puerto y usuario) o del mismo host con otro usuario. */
 export function MatchNote({

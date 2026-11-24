@@ -5,7 +5,7 @@ import { SettingGroup, SettingRow as Row, Switch as Toggle } from "../ui/Setting
 import { profiles } from "../../api/profiles";
 import { toast } from "../../stores/toasts";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
-import { checkSshAliasesBeforeExport } from "../../features/sshAliases";
+import { checkSshAliasesBeforeExport } from "../../features/profiles/sshAliases";
 import { useSetting } from "./useSetting";
 
 export function ServersSection() {

@@ -1,41 +1,22 @@
-// Compose: proyectos detectados (por las etiquetas de los contenedores) y carpetas recordadas.
-// Levantar, bajar, reiniciar, actualizar (pull + up) y ver logs, sin escribir comandos.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDownToLine, FileText, FolderPlus, Layers, Play, RotateCw, ScrollText, Square, X } from "lucide-react";
+// Compose: lista de proyectos detectados y carpetas recordadas, con selección y alta de carpeta.
+import { useEffect, useMemo, useState } from "react";
+import { FolderPlus, Layers, X } from "lucide-react";
 import {
   COMPOSE_FILES,
-  composeCmd,
   composeFor,
-  containerAction,
   forgetComposeFolder,
   loadComposeFolders,
   rememberComposeFolder,
-  stateText,
-  stateTone,
   validateServerPath,
-  withOwner,
   ownerKey,
   OWNER_SELF,
   q,
-  type Cmd,
   type ComposeFolder,
   type ComposeTool,
-  type Container,
 } from "../../features/containers";
 import { toast } from "../../stores/toasts";
 import { PICK_OWNER_HINT, useCt } from "./context";
-
-interface Project {
-  key: string;
-  name: string;
-  dir: string;
-  /** Archivo compose (ruta absoluta o relativa a `dir`); "" = el que encuentre compose. */
-  file: string;
-  saved: boolean;
-  containers: Container[];
-  /** Usuario dueño (clave de `owner.ts`). */
-  owner: string;
-}
+import { ComposeProjectView, type ComposeProject } from "./ComposeProjectView";
 
 function basename(p: string): string {
   return p.replace(/\/+$/, "").split("/").pop() ?? p;
@@ -68,11 +49,10 @@ export function ComposeTab() {
     setTool(composeFor(engine, composeTools) ?? composeTools[0] ?? null);
   }, [engine, composeTools]);
 
-  // Proyectos por dueño: con «Todos», dos usuarios pueden tener un proyecto con el mismo nombre.
   const ownerKeys = useMemo(() => new Set(ct.owners.map(ownerKey)), [ct.owners]);
   const fallbackOwner = ct.newOwner ?? OWNER_SELF;
   const projects = useMemo(() => {
-    const map = new Map<string, Project>();
+    const map = new Map<string, ComposeProject>();
     for (const c of containers) {
       if (!c.composeProject) continue;
       const owner = c.owner ?? fallbackOwner;
@@ -86,9 +66,7 @@ export function ComposeTab() {
       p.containers.push(c);
     }
     for (const f of saved) {
-      // Las guardadas antes de haber usuarios (sin dueño) se ven como antes, con el usuario elegido.
       const owner = f.owner ?? (ct.allOwners ? OWNER_SELF : fallbackOwner);
-      // Las carpetas guardadas se muestran con su usuario (si se está viendo).
       if (!ownerKeys.has(owner)) continue;
       const k = `${owner}|${f.dir}`;
       const p = map.get(k) ?? [...map.values()].find((x) => x.owner === owner && !x.dir && x.name === defaultProjectName(f.dir));
@@ -98,7 +76,9 @@ export function ComposeTab() {
         if (!p.file) p.file = f.file;
       } else map.set(k, { key: k, name: defaultProjectName(f.dir) || basename(f.dir), dir: f.dir, file: f.file, saved: true, containers: [], owner });
     }
-    return [...map.values()].sort((a, b) => Number(b.containers.some((c) => c.state === "running")) - Number(a.containers.some((c) => c.state === "running")) || a.name.localeCompare(b.name));
+    return [...map.values()].sort(
+      (a, b) => Number(b.containers.some((c) => c.state === "running")) - Number(a.containers.some((c) => c.state === "running")) || a.name.localeCompare(b.name),
+    );
   }, [containers, saved, ownerKeys, fallbackOwner, ct.allOwners]);
 
   const sel = projects.find((p) => p.key === selKey) ?? projects[0] ?? null;
@@ -120,7 +100,6 @@ export function ComposeTab() {
       `  for f in ${COMPOSE_FILES.join(" ")}; do if [ -f "$f" ]; then echo "file=$f"; fi; done`,
       "else echo nodir=1; fi",
     ].join("\n");
-    // Se comprueba como el usuario con el que se va a usar (su HOME, sus permisos).
     const r = await ct.runRawAs(owner, script, 15);
     setAdding(false);
     const out = r.result?.stdout ?? "";
@@ -228,7 +207,14 @@ export function ComposeTab() {
       </aside>
       <section className="ct-compose-detail">
         {sel ? (
-          <ProjectView key={sel.key} p={sel} tool={tool} tools={composeTools} setTool={setTool} onUsed={(dir, file) => setSaved(rememberComposeFolder(profileId, dir, file, sel.owner))} />
+          <ComposeProjectView
+            key={sel.key}
+            p={sel}
+            tool={tool}
+            tools={composeTools}
+            setTool={setTool}
+            onUsed={(dir, file) => setSaved(rememberComposeFolder(profileId, dir, file, sel.owner))}
+          />
         ) : (
           <div className="empty-state">
             <Layers size={26} />
@@ -236,288 +222,6 @@ export function ComposeTab() {
           </div>
         )}
       </section>
-    </div>
-  );
-}
-
-function ProjectView({
-  p,
-  tool,
-  tools,
-  setTool,
-  onUsed,
-}: {
-  p: Project;
-  tool: ComposeTool;
-  tools: ComposeTool[];
-  setTool: (t: ComposeTool) => void;
-  onUsed: (dir: string, file: string) => void;
-}) {
-  const ct = useCt();
-  const [services, setServices] = useState<string[] | null>(null);
-  const [svcError, setSvcError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [output, setOutput] = useState<{ title: string; text: string; ok: boolean } | null>(null);
-  const started = useRef(0);
-  const canRun = !!p.dir;
-  const fileLabel = !p.dir ? "carpeta desconocida" : p.file ? (p.file.startsWith("/") ? p.file : `${p.dir}/${p.file}`) : `${p.dir}/compose.yml`;
-  const ids = p.containers.map((c) => c.name || c.id);
-  const anyUp = p.containers.some((c) => c.state === "running" || c.state === "paused" || c.state === "restarting");
-  const anyDown = p.containers.some((c) => c.state !== "running" && c.state !== "paused" && c.state !== "restarting");
-
-  const cmd = useCallback(
-    (action: Parameters<typeof composeCmd>[3], opts: { volumes?: boolean; tail?: number } = {}): Cmd =>
-      withOwner(composeCmd(tool, p.dir, p.file, action, opts), p.owner),
-    [tool, p.dir, p.file, p.owner],
-  );
-
-  const loadServices = useCallback(async () => {
-    if (!canRun) return;
-    setSvcError(null);
-    const r = await ct.run([cmd("services")], 30);
-    if (r.ok && r.result) setServices(r.result.stdout.split("\n").map((s) => s.trim()).filter((s) => s && !/^>>>>|^\s*$/.test(s) && /^[a-zA-Z0-9._-]+$/.test(s)));
-    else {
-      setServices(null);
-      setSvcError(r.error ?? "No se pudo leer el archivo compose");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cmd, canRun, ct.run]);
-
-  useEffect(() => {
-    void loadServices();
-  }, [loadServices]);
-
-  useEffect(() => {
-    if (!busy) return;
-    const t = window.setInterval(() => setElapsed(Math.floor((Date.now() - started.current) / 1000)), 500);
-    return () => window.clearInterval(t);
-  }, [busy]);
-
-  const exec = async (label: string, cmds: Cmd[], success: string) => {
-    setBusy(label);
-    started.current = Date.now();
-    setElapsed(0);
-    setOutput(null);
-    const r = await ct.run(
-      cmds.map((c) => ({ ...c, mergeStderr: true })),
-      600,
-    );
-    setBusy(null);
-    const text = (r.result?.stdout ?? "")
-      .split("\n")
-      .filter((l) => !/Executing external compose provider|Please see podman-compose/.test(l))
-      .join("\n")
-      .trim();
-    setOutput({ title: label, text: r.ok ? text : (r.error ?? text), ok: r.ok });
-    if (r.ok) {
-      toast.success(success, p.name);
-      if (p.file) onUsed(p.dir, p.file);
-    } else toast.error(`${label}: falló`, r.error?.split("\n")[0]);
-    void ct.reload("containers");
-    void loadServices();
-  };
-
-  const review = (title: string, message: string, build: (o: Record<string, boolean>) => Cmd[], success: string, options?: { key: string; label: string }[], danger = false) =>
-    ct.review({
-      title: `${title} «${p.name}»`,
-      message,
-      options,
-      build,
-      danger,
-      runLabel: title,
-      timeoutSecs: 600,
-      success,
-      reload: ["containers"],
-      onDone: () => void loadServices(),
-    });
-
-  const svcRows = useMemo(() => {
-    const names = new Set([...(services ?? []), ...p.containers.map((c) => c.composeService ?? "").filter(Boolean)]);
-    const rows = [...names].sort().map((s) => ({ name: s, containers: p.containers.filter((c) => c.composeService === s) }));
-    // Contenedores sin etiqueta de servicio (proyectos creados por otras herramientas).
-    for (const c of p.containers) if (!c.composeService) rows.push({ name: c.name, containers: [c] });
-    return rows;
-  }, [services, p.containers]);
-
-  return (
-    <div className="ct-project">
-      <div className="ct-project-head">
-        <div>
-          <h3>
-            {p.name}
-            {ct.allOwners && <span className="ct-tag">{ct.ownerLabel(p.owner)}</span>}
-          </h3>
-          <div className="faint mono ct-small">{fileLabel}</div>
-        </div>
-        <span className="ct-grow" />
-        {tools.length > 1 && (
-          <select className="select ct-select-sm" value={tool} onChange={(e) => setTool(e.target.value as ComposeTool)} aria-label="Herramienta de Compose">
-            {tools.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-      {!canRun && <div className="ct-warn">No se sabe en qué carpeta está este proyecto. Añádela a mano en la lista de la izquierda.</div>}
-      <div className="ct-toolbar">
-        <button className="btn btn-sm btn-primary" disabled={!canRun || !!busy} onClick={() => void exec("Levantar", [cmd("up")], "Proyecto levantado")}>
-          {busy === "Levantar" ? <span className="spinner ct-spinner-sm" /> : <Play size={13} />} Levantar
-        </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun || !!busy}
-          onClick={() =>
-            review("Actualizar", "Descarga las versiones nuevas de las imágenes y vuelve a crear los contenedores que cambien (cortes de unos segundos).", () => [cmd("pull"), cmd("up")], "Proyecto actualizado")
-          }
-        >
-          <ArrowDownToLine size={13} /> Actualizar
-        </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun || !!busy}
-          onClick={() => review("Reiniciar", "Reinicia todos los servicios del proyecto.", () => [cmd("restart")], "Proyecto reiniciado")}
-        >
-          <RotateCw size={13} /> Reiniciar
-        </button>
-        <button
-          className="btn btn-sm ct-btn-danger"
-          disabled={!canRun || !!busy}
-          onClick={() =>
-            review(
-              "Bajar",
-              "Para y elimina los contenedores y redes del proyecto. Los volúmenes con nombre se conservan salvo que marques la opción.",
-              (o) => [cmd("down", { volumes: !!o.volumes })],
-              "Proyecto bajado",
-              [{ key: "volumes", label: "Borrar también los volúmenes del proyecto (-v): se pierden sus datos" }],
-              true,
-            )
-          }
-        >
-          <Square size={13} /> Bajar
-        </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun}
-          onClick={() =>
-            ct.openLogs({
-              title: `Logs de «${p.name}»`,
-              build: (tail) => cmd("logs", { tail }),
-              follow: (tail) => {
-                const c = cmd("logs", { tail });
-                return { ...c, args: [...c.args, "-f"], mergeStderr: false };
-              },
-            })
-          }
-        >
-          <ScrollText size={13} /> Logs
-        </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun || !!busy}
-          onClick={async () => {
-            const r = await ct.run([{ bin: ["cat"], args: ["--", p.file || "compose.yml"], cwd: p.dir, owner: p.owner }], 20);
-            setOutput({ title: fileLabel, text: r.ok ? (r.result?.stdout ?? "") : (r.error ?? ""), ok: r.ok });
-          }}
-        >
-          <FileText size={13} /> Ver archivo
-        </button>
-        {p.containers.length > 0 && (
-          <>
-            <span className="ct-sep" />
-            <button
-              className="btn btn-sm"
-              disabled={!anyDown || !!busy}
-              title="Arranca los contenedores ya creados (sin Compose)"
-              onClick={() => void exec("Iniciar contenedores", [withOwner(containerAction(ct.engine, "start", ids), p.owner)], "Contenedores iniciados")}
-            >
-              <Play size={13} /> Iniciar todos
-            </button>
-            <button
-              className="btn btn-sm"
-              disabled={!anyUp || !!busy}
-              onClick={() =>
-                review("Parar", "Para los contenedores del proyecto sin borrarlos.", () => [withOwner(containerAction(ct.engine, "stop", ids), p.owner)], "Contenedores parados")
-              }
-            >
-              <Square size={13} /> Parar todos
-            </button>
-          </>
-        )}
-        {busy && (
-          <span className="faint ct-small">
-            {busy}… {elapsed} s
-          </span>
-        )}
-      </div>
-
-      <h4 className="section-label">Servicios</h4>
-      {svcError && (
-        <div className="ct-error ct-error-inline" role="alert">
-          <AlertTriangle size={14} />
-          <pre>{svcError}</pre>
-        </div>
-      )}
-      <table className="ct-table ct-table-auto">
-        <thead>
-          <tr>
-            <th>Servicio</th>
-            <th>Contenedor</th>
-            <th>Estado</th>
-            <th>Imagen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {svcRows.map((s) =>
-            s.containers.length === 0 ? (
-              <tr key={s.name}>
-                <td className="ct-strong">{s.name}</td>
-                <td className="faint">—</td>
-                <td className="faint">
-                  <span className="ct-cell-flex">
-                    <span className="ct-dot ct-off" /> Sin crear
-                  </span>
-                </td>
-                <td />
-              </tr>
-            ) : (
-              s.containers.map((c) => (
-                <tr key={c.id}>
-                  <td className="ct-strong">{s.name}</td>
-                  <td className="mono">{c.name}</td>
-                  <td title={c.status}>
-                    <span className="ct-cell-flex">
-                      <span className={`ct-dot ct-${stateTone(c.state)}`} /> {stateText(c)}
-                    </span>
-                  </td>
-                  <td className="mono faint ct-ellipsis">{c.image}</td>
-                </tr>
-              ))
-            ),
-          )}
-          {svcRows.length === 0 && (
-            <tr>
-              <td colSpan={4} className="ct-norows">
-                {services === null && !svcError && canRun ? "Leyendo servicios…" : "Sin servicios"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {output && (
-        <div className="ct-outbox">
-          <div className="ct-outbox-head">
-            <span className={output.ok ? "" : "ct-bad-text"}>{output.title}</span>
-            <button className="icon-btn" onClick={() => setOutput(null)} aria-label="Cerrar salida">
-              <X size={13} />
-            </button>
-          </div>
-          <pre className="ct-output">{output.text || "(sin salida)"}</pre>
-        </div>
-      )}
     </div>
   );
 }

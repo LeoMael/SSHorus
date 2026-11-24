@@ -1,6 +1,6 @@
 // Relación proyecto ↔ servidor (funciones puras). El proyecto guarda la lista `serverIds`;
 // un servidor puede estar en varios proyectos o en ninguno.
-import type { Project, ServerProfile } from "../api/types";
+import type { Project, ServerProfile } from "../../api/types";
 
 /** Servidores guardados que aún no están en el proyecto (mismo orden que la lista). */
 export function serversNotInProject(servers: readonly ServerProfile[], project: Project): ServerProfile[] {

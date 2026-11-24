@@ -2,8 +2,8 @@
 // historial de cambios.
 // Lee como usuario normal; los cambios se ejecutan como root (directo, sudo -n/doas -n o sudo -S con la
 // contraseña por stdin, guardada solo en memoria). Antes de cada cambio se muestra el comando exacto.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Bug, ClipboardCheck, Eye, Globe, History, KeyRound, LogOut, MonitorDot, Network, RefreshCw, ShieldAlert, ShieldCheck, Unplug, Users, UsersRound, Waypoints } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RefreshCw, ShieldAlert } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
 import { useTabs } from "../../stores/tabs";
@@ -30,7 +30,6 @@ import {
   type WebResult,
 } from "../../features/admin";
 import {
-  forgetSudoByUser,
   refreshPrivilege,
   sudoRejected,
   useElevation,
@@ -40,6 +39,7 @@ import {
   type Elevation,
 } from "../../features/privileges";
 import { AdminContext, type AdminContextValue, type PortsFilter, type RunOutcome, type ScanState } from "./context";
+import { AdminBanners, AdminHeader, NEEDS_READ, type SubTab } from "./AdminChrome";
 import { SudoDialog } from "./SudoDialog";
 import { UsersTab } from "./UsersTab";
 import { GroupsTab } from "./GroupsTab";
@@ -57,21 +57,6 @@ import "./Admin.css";
 
 const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
 
-type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "visibility" | "history";
-
-const TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
-  { id: "users", label: "Usuarios", icon: <Users size={14} /> },
-  { id: "groups", label: "Grupos", icon: <UsersRound size={14} /> },
-  { id: "sessions", label: "Conectados ahora", icon: <MonitorDot size={14} /> },
-  { id: "ports", label: "Puertos", icon: <Network size={14} /> },
-  { id: "web", label: "Sitios web", icon: <Globe size={14} /> },
-  { id: "map", label: "Mapa", icon: <Waypoints size={14} /> },
-  { id: "vulns", label: "Vulnerabilidades", icon: <Bug size={14} /> },
-  { id: "audit", label: "Auditoría", icon: <ClipboardCheck size={14} /> },
-  { id: "visibility", label: "Qué pueden ver", icon: <Eye size={14} /> },
-  { id: "history", label: "Historial", icon: <History size={14} /> },
-];
-
 function elevationNote(el: Elevation): string {
   switch (el.kind) {
     case "root":
@@ -85,15 +70,9 @@ function elevationNote(el: Elevation): string {
   }
 }
 
-/** Sub-pestañas que necesitan la lectura de usuarios y grupos. */
-const NEEDS_READ: SubTab[] = ["users", "groups", "sessions"];
-
 const EMPTY_SCAN = { data: null, loading: false, error: null, elevated: false, elevationError: null };
 
-/**
- * Lectura que se hace como root si hay elevación (si sudo falla, se repite sin elevar). Guarda el último
- * resultado aunque se cambie de sub-pestaña.
- */
+/** Lectura elevada con fallback sin root; conserva el último resultado entre sub-pestañas. */
 function useElevatedScan<T>(
   sessionId: string,
   elevation: Elevation | null,
@@ -148,14 +127,12 @@ export function AdminPanel({
   const info = usePrivilege(sessionId);
   const elev = useElevation(sessionId, info);
   const elevation = elev.elevation;
-  // Contraseña de sudo guardada (o la de la conexión), si el servidor lo tiene así configurado.
   useStoredSudo(sessionId, profileId, info, active && !disabled);
   const serverName = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.title ?? "servidor");
   const addHistory = useAdminHistory((s) => s.add);
   const ensureHistory = useAdminHistory((s) => s.ensure);
 
   const [tab, setTab] = useState<SubTab>("users");
-  // «Ver vulnerabilidades» desde Contenedores → Imágenes.
   const vulnNav = useVulnNav((s) => s.request);
   useEffect(() => {
     if (vulnNav?.sessionId === sessionId) setTab("vulns");
@@ -167,7 +144,6 @@ export function AdminPanel({
   const [shadowError, setShadowError] = useState<string | null>(null);
   const [sudoOpen, setSudoOpen] = useState<null | "ask" | "change">(null);
   const [stale, setStale] = useState(true);
-  // La contraseña guardada (o la de la conexión) no sirvió para sudo: pedirla de nuevo.
   const storedSudo = useStoredSudoState(sessionId);
   useEffect(() => {
     if (storedSudo === "failed" && active && !disabled) setSudoOpen((o) => o ?? "ask");
@@ -214,7 +190,6 @@ export function AdminPanel({
     }
   }, [sessionId, elevation]);
 
-  // Recargar al cambiar la elevación (p. ej. tras confirmar sudo) o al reconectar.
   const elevKey = elevation ? elevation.kind : "none";
   const prevElevKey = useRef(elevKey);
   useEffect(() => {
@@ -236,7 +211,6 @@ export function AdminPanel({
       void load();
     }
   }, [active, disabled, stale, load]);
-  // Puertos: al abrir «Puertos», «Sitios web» o «Qué pueden ver» (los tres los usan). Sitios web: solo en su pestaña.
   useEffect(() => {
     if (!active || disabled) return;
     const needPorts = (tab === "ports" || tab === "web" || tab === "visibility") && scanStale.ports;
@@ -295,7 +269,6 @@ export function AdminPanel({
   }, []);
   const openFile = onOpenFile ?? null;
 
-  // «Ver en Puertos / Sitios web» desde un nodo del mapa.
   const infraNav = useInfraNav((s) => s.request);
   useEffect(() => {
     if (!infraNav || infraNav.sessionId !== sessionId || infraNav.target.kind === "containers") return;
@@ -304,7 +277,6 @@ export function AdminPanel({
     useInfraNav.getState().done(infraNav.seq);
   }, [infraNav, sessionId, goToPort]);
 
-  /** El botón de recargar de la cabecera relee lo que muestra la sub-pestaña actual. */
   const refreshCurrent = () => {
     if (tab === "map") return;
     if (tab === "ports") reloadPorts();
@@ -343,144 +315,38 @@ export function AdminPanel({
       openFile,
     }),
     [
-      sessionId,
-      profileId,
-      serverName,
-      disabled,
-      info,
-      elev,
-      elevation,
-      env,
-      read,
-      shadow,
-      users,
-      me,
-      refresh,
-      runPlan,
-      askSudo,
-      ports,
-      reloadPorts,
-      web,
-      reloadWeb,
-      portsFilter,
-      goToPort,
-      openFile,
+      sessionId, profileId, serverName, disabled, info, elev, elevation, env, read, shadow,
+      users, me, refresh, runPlan, askSudo, ports, reloadPorts, web, reloadWeb, portsFilter, goToPort, openFile,
     ],
   );
 
-  const onTabKey = (e: KeyboardEvent) => {
-    const i = TABS.findIndex((t) => t.id === tab);
-    let n: number;
-    if (e.key === "ArrowRight") n = (i + 1) % TABS.length;
-    else if (e.key === "ArrowLeft") n = (i - 1 + TABS.length) % TABS.length;
-    else if (e.key === "Home") n = 0;
-    else if (e.key === "End") n = TABS.length - 1;
-    else return;
-    e.preventDefault();
-    setTab(TABS[n].id);
-    document.getElementById(`adm-tab-${sessionId}-${TABS[n].id}`)?.focus();
-  };
-
   if (!active) return null;
-
-  const modeClass =
-    elevation?.kind === "root" ? "root" : elevation ? "sudo" : info?.level === "unknown" ? "unknown" : "ro";
 
   return (
     <AdminContext.Provider value={ctx}>
       <div className="adm-root">
-        <div className="adm-header">
-          <div className="adm-tabs" role="tablist" aria-label="Secciones de administración" onKeyDown={onTabKey}>
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                id={`adm-tab-${sessionId}-${t.id}`}
-                role="tab"
-                aria-selected={tab === t.id}
-                aria-controls={`adm-panel-${sessionId}`}
-                tabIndex={tab === t.id ? 0 : -1}
-                className={`adm-tab${tab === t.id ? " active" : ""}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.icon}
-                {t.label}
-                {t.id === "sessions" && read && read.who.length > 0 && <span className="adm-count">{read.who.length}</span>}
-              </button>
-            ))}
-          </div>
-          <div className="adm-header-right">
-            <span className={`adm-mode adm-mode-${modeClass}`} title={elev.readOnlyReason ?? `Los cambios se hacen como root (${elev.label})`}>
-              {elevation ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
-              {elevation ? elev.label : "Solo lectura"}
-            </span>
-            {info?.hasSudo && info.level !== "root" && info.level !== "sudo-nopasswd" && (
-              <button
-                className="btn btn-sm"
-                onClick={() => setSudoOpen("change")}
-                disabled={disabled}
-                title="Escribe la contraseña de sudo y guárdala para este servidor"
-              >
-                <KeyRound size={13} /> Cambiar contraseña de sudo…
-              </button>
-            )}
-            {elev.hasPassword && (
-              <button
-                className="icon-btn"
-                onClick={() => {
-                  forgetSudoByUser(sessionId);
-                  toast.info("Contraseña de sudo olvidada");
-                }}
-                title="Olvidar la contraseña de sudo de esta conexión (la guardada no se borra)"
-                aria-label="Olvidar la contraseña de sudo de esta conexión"
-              >
-                <LogOut size={14} />
-              </button>
-            )}
-            <button
-              className="icon-btn"
-              onClick={refreshCurrent}
-              disabled={disabled || busy}
-              title="Recargar"
-              aria-label="Recargar"
-            >
-              <RefreshCw size={14} className={busy ? "adm-spin" : undefined} />
-            </button>
-          </div>
-        </div>
-
-        {disabled && (
-          <div className="adm-banner adm-banner-off" role="status">
-            <Unplug size={14} /> Sin conexión: lo que ves puede estar desactualizado y no se pueden hacer cambios.
-          </div>
-        )}
-        {!disabled && !elevation && storedSudo === "loading" && (
-          <div className="adm-banner" role="status">
-            <span className="spinner adm-spinner-btn" />
-            <span className="adm-banner-text">Comprobando la contraseña de sudo guardada…</span>
-          </div>
-        )}
-        {!disabled && !elevation && elev.readOnlyReason && storedSudo !== "loading" && (
-          <div className="adm-banner" role="status">
-            <ShieldAlert size={14} />
-            <span className="adm-banner-text">{elev.readOnlyReason}</span>
-            {elev.canAskSudo && (
-              <button className="btn btn-sm btn-primary" onClick={askSudo}>
-                <KeyRound size={13} /> Tengo sudo: introducir contraseña
-              </button>
-            )}
-          </div>
-        )}
-        {!disabled && elevation && shadowError && NEEDS_READ.includes(tab) && (
-          <div className="adm-banner adm-banner-warn" role="status">
-            <ShieldAlert size={14} />
-            <span className="adm-banner-text">No se pudo leer el estado de las contraseñas: {shadowError}</span>
-            {elev.canAskSudo && (
-              <button className="btn btn-sm" onClick={askSudo}>
-                <KeyRound size={13} /> Introducir contraseña de sudo
-              </button>
-            )}
-          </div>
-        )}
+        <AdminHeader
+          sessionId={sessionId}
+          tab={tab}
+          setTab={setTab}
+          read={read}
+          info={info}
+          elev={elev}
+          elevation={elevation}
+          disabled={disabled}
+          busy={busy}
+          onChangeSudo={() => setSudoOpen("change")}
+          onRefresh={refreshCurrent}
+        />
+        <AdminBanners
+          disabled={disabled}
+          elevation={elevation}
+          elev={elev}
+          storedSudo={storedSudo}
+          shadowError={shadowError}
+          tab={tab}
+          onAskSudo={askSudo}
+        />
 
         <div className="adm-body" id={`adm-panel-${sessionId}`} role="tabpanel" aria-labelledby={`adm-tab-${sessionId}-${tab}`}>
           {tab === "map" ? (

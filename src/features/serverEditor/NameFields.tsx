@@ -2,7 +2,7 @@
 import type { Ref } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
-import { SshAliasMatches, describeMatch } from "../sshAliases";
+import { SshAliasMatches, describeMatch } from "../profiles/sshAliases";
 import type { AliasState } from "./useSshAlias";
 
 export function NameFields({

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { ServerProfile } from "../../api/types";
-import { hostSuggestions, serverAddress } from "../serverMatches";
+import { hostSuggestions, serverAddress } from "../profiles/serverMatches";
 
 export function HostCombo({
   value,

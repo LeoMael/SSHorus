@@ -2,7 +2,7 @@
 // Funciones puras (sin React ni Tauri): lectura como root (llaves autorizadas, sudo, estado de la contraseña
 // SIN hashes), lista de candidatos, perfil nuevo por usuario y plan para instalar llaves públicas.
 import type { AuthMethod, ServerProfile } from "../../api/types";
-import { normHost } from "../serverMatches";
+import { normHost } from "../profiles/serverMatches";
 import { appendKeySteps, type Plan } from "./commands";
 import { checkPublicKey } from "./keyUser";
 import { accountState, isLoginShell, parseAccounts, ACCOUNTS_SCRIPT, type AccountState } from "./accounts";

@@ -1,7 +1,7 @@
 // Campos de arriba de la barra lateral: conexión rápida (usuario@host:puerto) y búsqueda.
 import { useState } from "react";
 import { Search, X, Zap } from "lucide-react";
-import { openOrFocusServer } from "../../features/connect";
+import { openOrFocusServer } from "../../features/connect/connect";
 import { useProfiles } from "../../stores/profiles";
 import { parseQuickConnect } from "./quickConnect";
 

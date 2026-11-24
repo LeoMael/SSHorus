@@ -1,18 +1,11 @@
-//! Túneles en marcha por sesión + vigilante (cierre de la sesión, reconexión y arranque automático).
-//!
-//! - Local / SOCKS: cada conexión entrante pide la sesión ACTUAL al `SessionStore`, así que tras
-//!   una reconexión (mismo sessionId, conexión nueva) siguen funcionando sin reabrir el puerto.
-//! - Remoto: el puerto vive en el servidor; tras reconectar hay que pedirlo otra vez (`rebind`).
-//! - El vigilante (`tick`, cada segundo): para los túneles de sesiones cerradas, marca "esperando"
-//!   durante la reconexión, reabre los remotos, arranca los `autoStart` de las sesiones nuevas y
-//!   emite los contadores que cambiaron (como mucho una vez por segundo).
+//! Túneles en marcha por sesión: abrir, parar, reiniciar y consultar estado.
+//! El vigilante periódico (`tick` y `rebind`) vive en `watcher.rs`.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use futures::future::join_all;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio_util::sync::CancellationToken;
 
@@ -20,16 +13,11 @@ use crate::error::{AppError, AppResult};
 use crate::ssh::{SessionStore, SshSession};
 use crate::tunnels::forward::{close_remote, open_listener, open_remote, RemoteBinding};
 use crate::tunnels::io::Stats;
-use crate::tunnels::remote;
 use crate::tunnels::store::DefStore;
 use crate::tunnels::types::{EV_TUNNEL_STATUS, TunnelDef, TunnelKind, TunnelState, TunnelStatus};
 
 /// Cada cuánto mira el vigilante.
 pub const TICK: Duration = Duration::from_secs(1);
-/// Intentos (uno por segundo) de reabrir un túnel remoto tras reconectar.
-const MAX_REBIND: u32 = 30;
-
-const MSG_WAITING: &str = "Esperando a que vuelva la conexión…";
 
 /// De dónde salen las sesiones y a dónde van los avisos.
 #[derive(Clone)]
@@ -40,7 +28,7 @@ pub enum Sessions {
 }
 
 impl Sessions {
-    fn store(&self) -> AppResult<&SessionStore> {
+    pub(super) fn store(&self) -> AppResult<&SessionStore> {
         match self {
             Sessions::App(app) => app
                 .try_state::<SessionStore>()
@@ -55,7 +43,7 @@ impl Sessions {
         self.store()?.get(id).await
     }
 
-    fn emit(&self, st: &TunnelStatus) {
+    pub(super) fn emit(&self, st: &TunnelStatus) {
         match self {
             Sessions::App(app) => {
                 let _ = app.emit(EV_TUNNEL_STATUS, st);
@@ -66,25 +54,25 @@ impl Sessions {
     }
 }
 
-type RunKey = (String, String);
+pub(super) type RunKey = (String, String);
 
-struct Running {
-    epoch: u64,
-    def: TunnelDef,
-    state: TunnelState,
-    message: Option<String>,
-    stats: Arc<Stats>,
-    cancel: CancellationToken,
-    bound_port: Option<u16>,
-    started_at: u64,
-    remote: Option<RemoteBinding>,
+pub(super) struct Running {
+    pub(super) epoch: u64,
+    pub(super) def: TunnelDef,
+    pub(super) state: TunnelState,
+    pub(super) message: Option<String>,
+    pub(super) stats: Arc<Stats>,
+    pub(super) cancel: CancellationToken,
+    pub(super) bound_port: Option<u16>,
+    pub(super) started_at: u64,
+    pub(super) remote: Option<RemoteBinding>,
     /// Reapertura remota en curso.
-    busy: bool,
-    retries: u32,
+    pub(super) busy: bool,
+    pub(super) retries: u32,
 }
 
 impl Running {
-    fn status(&self, key: &RunKey) -> TunnelStatus {
+    pub(super) fn status(&self, key: &RunKey) -> TunnelStatus {
         TunnelStatus {
             session_id: key.0.clone(),
             tunnel_id: key.1.clone(),
@@ -148,11 +136,11 @@ impl TunnelManager {
         }
     }
 
-    fn lock(&self) -> MutexGuard<'_, HashMap<RunKey, Running>> {
+    pub(super) fn lock(&self) -> MutexGuard<'_, HashMap<RunKey, Running>> {
         self.running.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    fn seen_lock(&self) -> MutexGuard<'_, HashSet<String>> {
+    pub(super) fn seen_lock(&self) -> MutexGuard<'_, HashSet<String>> {
         self.seen.lock().unwrap_or_else(|p| p.into_inner())
     }
 
@@ -284,7 +272,6 @@ impl TunnelManager {
                 env.emit(&st);
                 Ok(st)
             }
-            // Lo pararon mientras arrancaba: deshacer.
             Ok(Err(rb)) => {
                 cancel.cancel();
                 if let Some(rb) = rb {
@@ -305,7 +292,7 @@ impl TunnelManager {
         self.stop_key(env, &key, None).await;
     }
 
-    async fn stop_key(&self, env: &Sessions, key: &RunKey, message: Option<String>) {
+    pub(super) async fn stop_key(&self, env: &Sessions, key: &RunKey, message: Option<String>) {
         let removed = self.lock().remove(key);
         if let Some(r) = removed {
             log::info!("túnel «{}» parado en la sesión {}", r.def.name, key.0);
@@ -356,198 +343,22 @@ impl TunnelManager {
         }
     }
 
-    fn running_anywhere(&self, tunnel_id: &str) -> bool {
+    pub(super) fn running_anywhere(&self, tunnel_id: &str) -> bool {
         self.lock()
             .iter()
             .any(|(k, r)| k.1 == tunnel_id && r.state != TunnelState::Error)
     }
 
-    fn set(&self, key: &RunKey, epoch: u64, f: impl FnOnce(&mut Running)) -> Option<TunnelStatus> {
+    pub(super) fn set(
+        &self,
+        key: &RunKey,
+        epoch: u64,
+        f: impl FnOnce(&mut Running),
+    ) -> Option<TunnelStatus> {
         let mut map = self.lock();
         let r = map.get_mut(key).filter(|r| r.epoch == epoch)?;
         f(r);
         Some(r.status(key))
-    }
-
-    /// Una vuelta del vigilante.
-    pub async fn tick(&self, env: &Sessions) {
-        let Ok(store) = env.store() else { return };
-
-        // 1. Túneles en marcha frente al estado de su sesión.
-        // Puntero de la sesión como número: solo se compara (y así el futuro es `Send`).
-        type Snap = (RunKey, u64, TunnelKind, TunnelState, Option<usize>, bool);
-        let snapshot: Vec<Snap> = self
-            .lock()
-            .iter()
-            .map(|(k, r)| {
-                let ptr = r.remote.as_ref().map(|b| b.session.as_ptr() as usize);
-                (k.clone(), r.epoch, r.def.kind, r.state, ptr, r.busy)
-            })
-            .collect();
-        let mut rebinds = Vec::new();
-        for (key, epoch, kind, state, bound, busy) in snapshot {
-            let alive = store
-                .cancel_token(&key.0)
-                .await
-                .is_some_and(|c| !c.is_cancelled());
-            if !alive {
-                self.stop_key(env, &key, Some("La conexión se cerró".into()))
-                    .await;
-                continue;
-            }
-            match store.get(&key.0).await {
-                Ok(sess) => match kind {
-                    TunnelKind::Local | TunnelKind::Socks => {
-                        if state == TunnelState::Waiting
-                            && let Some(st) = self.set(&key, epoch, |r| {
-                                r.state = TunnelState::Active;
-                                r.message = None;
-                            })
-                        {
-                            env.emit(&st);
-                        }
-                    }
-                    TunnelKind::Remote => {
-                        let moved = bound != Some(Arc::as_ptr(&sess) as usize);
-                        if matches!(state, TunnelState::Active | TunnelState::Waiting)
-                            && !busy
-                            && moved
-                        {
-                            self.set(&key, epoch, |r| r.busy = true);
-                            rebinds.push((key, epoch, sess));
-                        }
-                    }
-                },
-                Err(_) => {
-                    if state == TunnelState::Active
-                        && let Some(st) = self.set(&key, epoch, |r| {
-                            r.state = TunnelState::Waiting;
-                            r.message = Some(MSG_WAITING.into());
-                        })
-                    {
-                        env.emit(&st);
-                    }
-                }
-            }
-        }
-        join_all(
-            rebinds
-                .into_iter()
-                .map(|(k, g, s)| self.rebind(env, k, g, s)),
-        )
-        .await;
-
-        // 2. Arranque automático en las sesiones nuevas.
-        let infos = store.list().await;
-        let fresh: Vec<_> = {
-            let mut seen = self.seen_lock();
-            infos
-                .into_iter()
-                .filter(|i| seen.insert(i.id.clone()))
-                .collect()
-        };
-        let mut starts = Vec::new();
-        for info in &fresh {
-            for def in self
-                .defs
-                .list(&info.profile_id)
-                .into_iter()
-                .filter(|d| d.auto_start)
-            {
-                if self.running_anywhere(&def.id) {
-                    continue;
-                }
-                let sid = info.id.clone();
-                starts.push(async move {
-                    if let Err(e) = self.start(env, &sid, &def.id).await {
-                        log::info!("túnel «{}»: arranque automático fallido: {e}", def.name);
-                    }
-                });
-            }
-        }
-        join_all(starts).await;
-        let seen_ids: Vec<String> = self.seen_lock().iter().cloned().collect();
-        for id in seen_ids {
-            if store.cancel_token(&id).await.is_none() {
-                self.seen_lock().remove(&id);
-            }
-        }
-
-        // 3. Contadores que cambiaron.
-        let changed: Vec<TunnelStatus> = self
-            .lock()
-            .iter()
-            .filter(|(_, r)| r.stats.dirty.swap(false, Ordering::Relaxed))
-            .map(|(k, r)| r.status(k))
-            .collect();
-        for st in &changed {
-            env.emit(st);
-        }
-    }
-
-    /// Reabre un túnel remoto en la conexión nueva (tras reconectar).
-    async fn rebind(&self, env: &Sessions, key: RunKey, epoch: u64, sess: Arc<SshSession>) {
-        let taken = {
-            let mut map = self.lock();
-            map.get_mut(&key).filter(|r| r.epoch == epoch).map(|r| {
-                (
-                    r.def.clone(),
-                    r.stats.clone(),
-                    r.cancel.clone(),
-                    r.remote.take(),
-                    r.bound_port,
-                )
-            })
-        };
-        let Some((def, stats, cancel, old, port)) = taken else {
-            return;
-        };
-        if let Some(old) = old {
-            // La conexión vieja murió: basta con olvidar la ruta.
-            remote::unregister(&old.key);
-        }
-        let want = port.map(u32::from).unwrap_or(u32::from(def.bind_port));
-        let res = open_remote(&sess, &def, want, stats, cancel).await;
-        let mut leftover = None;
-        let st = {
-            let mut map = self.lock();
-            match map.get_mut(&key).filter(|r| r.epoch == epoch) {
-                Some(r) => {
-                    r.busy = false;
-                    match res {
-                        Ok((p, rb)) => {
-                            r.state = TunnelState::Active;
-                            r.message = None;
-                            r.bound_port = Some(p);
-                            r.remote = Some(rb);
-                            r.retries = 0;
-                        }
-                        Err(e) => {
-                            r.retries += 1;
-                            if r.retries >= MAX_REBIND {
-                                r.state = TunnelState::Error;
-                                r.message = Some(e.to_string());
-                            } else {
-                                r.state = TunnelState::Waiting;
-                                r.message =
-                                    Some(format!("Reabriendo el puerto en el servidor… ({e})"));
-                            }
-                        }
-                    }
-                    Some(r.status(&key))
-                }
-                None => {
-                    leftover = res.ok().map(|(_, rb)| rb);
-                    None
-                }
-            }
-        };
-        if let Some(rb) = leftover {
-            close_remote(rb).await;
-        }
-        if let Some(st) = st {
-            env.emit(&st);
-        }
     }
 }
 

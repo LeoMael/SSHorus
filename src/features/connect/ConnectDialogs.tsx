@@ -3,11 +3,11 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { KeyRound, Lock, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
-import { Modal } from "../components/ui/Modal";
-import type { HostKeyInfo, ServerProfile } from "../api/types";
-import { useProfiles } from "../stores/profiles";
-import { useUi } from "../stores/ui";
-import { preloadable } from "../lib/lazy";
+import { Modal } from "../../components/ui/Modal";
+import type { HostKeyInfo, ServerProfile } from "../../api/types";
+import { useProfiles } from "../../stores/profiles";
+import { useUi } from "../../stores/ui";
+import { preloadable } from "../../lib/lazy";
 import "./ConnectDialogs.css";
 
 export interface SecretAnswer {
@@ -35,8 +35,8 @@ type Pending =
   | { kind: "hostkey"; changed: boolean; seq: number; hostKey: HostKeyInfo; resolve: (trust: boolean) => void };
 
 // Los editores de servidor/proyecto se cargan al abrirse (no hacen falta para la primera pantalla).
-export const ServerEditorHost = preloadable(() => import("./ServerEditor").then((m) => m.ServerEditorHost));
-export const ProjectEditorHost = preloadable(() => import("./ProjectEditor").then((m) => m.ProjectEditorHost));
+export const ServerEditorHost = preloadable(() => import("../serverEditor/ServerEditorHost").then((m) => m.ServerEditorHost));
+export const ProjectEditorHost = preloadable(() => import("../profiles/ProjectEditor").then((m) => m.ProjectEditorHost));
 
 /** Cola de diálogos: si varias conexiones preguntan a la vez, se muestran de uno en uno. */
 const useConnectDialogs = create<{ queue: Pending[] }>(() => ({ queue: [] }));

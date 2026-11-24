@@ -4,7 +4,7 @@ import { ssh } from "../../api/ssh";
 import { isApiError } from "../../api/core";
 import type { ServerProfile } from "../../api/types";
 import { toast } from "../../stores/toasts";
-import { askOtp, askPassphrase, askPassword, confirmHostKey } from "../ConnectDialogs";
+import { askOtp, askPassphrase, askPassword, confirmHostKey } from "../connect/ConnectDialogs";
 
 const MAX_STEPS = 12;
 

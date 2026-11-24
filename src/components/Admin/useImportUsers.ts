@@ -21,7 +21,7 @@ import {
   type UserRow,
 } from "../../features/admin";
 import { refreshPrivilege, type Elevation } from "../../features/privileges";
-import { describeTestOk, testServerConnection } from "../../features/serverTest";
+import { describeTestOk, testServerConnection } from "../../features/connect/serverTest";
 import { useLocalKeys } from "../../features/sshkeys/store";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";

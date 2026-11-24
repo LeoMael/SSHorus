@@ -4,7 +4,7 @@ import { useTabs } from "../../stores/tabs";
 import { ssh } from "../../api/ssh";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
-import { connectToServer } from "../../features/connect";
+import { connectToServer } from "../../features/connect/connect";
 import { confirmDialog } from "../ui/dialogs";
 import { basename } from "../../lib/paths";
 import { killTmuxSessions, openTmuxNames } from "../../features/tmux";

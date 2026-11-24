@@ -91,6 +91,8 @@ export function AreaChart({
   const y = (v: number) => padTop + (1 - Math.min(1, Math.max(0, v / yMax))) * (h - padTop - 1);
 
   const paths = useMemo(() => {
+    const pxAt = (t: number) => ((t - start) / windowMs) * w;
+    const pyAt = (v: number) => padTop + (1 - Math.min(1, Math.max(0, v / yMax))) * (h - padTop - 1);
     return series.map((s) => {
       let line = "";
       let area = "";
@@ -107,14 +109,13 @@ export function AreaChart({
       for (const p of visible) {
         const v = p[s.key];
         if (v === null || p.t - lastT > GAP_MS) flush();
-        if (v !== null) seg.push([x(p.t), y(v)]);
+        if (v !== null) seg.push([pxAt(p.t), pyAt(v)]);
         lastT = p.t;
       }
       flush();
       return { key: s.key, color: s.color, line, area };
     });
-    // x/y dependen de w, start, yMax y h.
-  }, [visible, series, w, start, yMax, h]);
+  }, [visible, series, w, start, windowMs, yMax, h, padTop]);
 
   const hp = hover !== null ? visible[hover] : null;
 

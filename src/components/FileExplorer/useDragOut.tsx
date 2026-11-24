@@ -140,7 +140,7 @@ export function useDragOut({ sessionId, rows, selectedRef, selectOnly, focusRoot
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
     };
-  }, [rows, beginDragOut, selectOnly]);
+  }, [rows, beginDragOut, selectOnly, selectedRef]);
 
   return { dragPrep, notePress, cancelDragPrep, deferSelectRef };
 }

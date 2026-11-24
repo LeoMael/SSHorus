@@ -13,6 +13,7 @@ mod remote;
 mod socks;
 mod store;
 pub mod types;
+mod watcher;
 
 #[cfg(test)]
 mod tests;

@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState, type KeyboardEvent, type MouseEvent } f
 import {
   Copy,
   FileSearch,
-  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -19,15 +18,11 @@ import {
   X,
 } from "lucide-react";
 import {
-  ago,
   containerAction,
   execShellCmd,
   logsCmd,
-  percent,
-  portLabel,
   removeContainers,
   renameContainer,
-  stateText,
   stateTone,
   statsFor,
   validateObjName,
@@ -36,17 +31,22 @@ import {
   type ContainerAction,
   type PortMapping,
 } from "../../features/containers";
-import { formatBytes } from "../../lib/format";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { promptDialog } from "../ui/dialogs";
 import { ContextMenu, type MenuItem } from "../Admin/ContextMenu";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { openPortTunnel } from "./tunnel";
-import { AutostartBadge, askAutostart, autostartMenuLabel } from "./Autostart";
-
-type Filter = "all" | "running" | "stopped";
-type SortKey = "name" | "owner" | "image" | "state" | "autostart" | "created" | "cpu" | "mem";
+import { askAutostart, autostartMenuLabel } from "./Autostart";
+import {
+  ContainerRow,
+  ContainersBatchBar,
+  containerRowKey,
+  filterAndSortContainers,
+  isContainerUp,
+  type ContainerFilter,
+  type ContainerSortKey,
+} from "./ContainersTable";
 
 const ACTION_TEXT: Record<ContainerAction, { done: string; verb: string }> = {
   start: { done: "Contenedor iniciado", verb: "Iniciar" },
@@ -55,9 +55,6 @@ const ACTION_TEXT: Record<ContainerAction, { done: string; verb: string }> = {
   pause: { done: "Contenedor en pausa", verb: "Pausar" },
   unpause: { done: "Contenedor reanudado", verb: "Reanudar" },
 };
-
-/** Clave única de la fila (con «Todos», dos usuarios podrían repetir id o nombre). */
-const rowKey = (c: Container) => `${c.owner ?? ""}/${c.id}`;
 
 function copy(text: string, what = "Copiado") {
   clipboard.write(text).then(
@@ -70,9 +67,9 @@ export function ContainersTab() {
   const ct = useCt();
   const { engine, res, stats, autostart: auto } = ct;
   const list = useMemo(() => res.containers.data ?? [], [res.containers.data]);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<ContainerFilter>("all");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "state", dir: 1 });
+  const [sort, setSort] = useState<{ key: ContainerSortKey; dir: 1 | -1 }>({ key: "state", dir: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [menu, setMenu] = useState<{ x: number; y: number; items: (MenuItem | "sep")[] } | null>(null);
@@ -80,61 +77,28 @@ export function ContainersTab() {
   const counts = useMemo(
     () => ({
       all: list.length,
-      running: list.filter((c) => c.state === "running" || c.state === "restarting").length,
-      stopped: list.filter((c) => c.state !== "running" && c.state !== "restarting").length,
+      running: list.filter(isContainerUp).length,
+      stopped: list.filter((c) => !isContainerUp(c)).length,
     }),
     [list],
   );
 
-  const rows = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    const out = list.filter((c) => {
-      if (filter === "running" && c.state !== "running" && c.state !== "restarting") return false;
-      if (filter === "stopped" && (c.state === "running" || c.state === "restarting")) return false;
-      if (!s) return true;
-      return (
-        (ct.allOwners && ct.ownerLabel(c.owner).toLowerCase().includes(s)) ||
-        c.name.toLowerCase().includes(s) ||
-        c.image.toLowerCase().includes(s) ||
-        c.shortId.includes(s) ||
-        (c.composeProject ?? "").toLowerCase().includes(s) ||
-        c.ports.some((p) => String(p.hostPort ?? p.containerPort).includes(s))
-      );
-    });
-    const val = (c: Container): string | number => {
-      const st = statsFor(stats, c);
-      switch (sort.key) {
-        case "name":
-          return c.name.toLowerCase();
-        case "owner":
-          return `${ct.ownerLabel(c.owner)} ${c.name.toLowerCase()}`;
-        case "image":
-          return c.image.toLowerCase();
-        case "state":
-          return `${c.state === "running" ? 0 : 1}${c.name.toLowerCase()}`;
-        case "autostart": {
-          const v = auto.infoOf(c)?.verdict;
-          const rank = v === "yes" ? 0 : v === "no" ? 1 : 2;
-          return `${rank}${c.name.toLowerCase()}`;
-        }
-        case "created":
-          return c.created ?? 0;
-        case "cpu":
-          return st?.cpuPercent ?? -1;
-        case "mem":
-          return st?.memUsage ?? -1;
-      }
-    };
-    return out.sort((a, b) => {
-      const x = val(a);
-      const y = val(b);
-      return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, filter, search, sort, stats, ct.allOwners, ct.ownerLabel, auto.infoOf]);
+  const rows = useMemo(
+    () =>
+      filterAndSortContainers(list, {
+        filter,
+        search,
+        sort,
+        stats,
+        allOwners: ct.allOwners,
+        ownerLabel: ct.ownerLabel,
+        autostartVerdict: (c) => auto.infoOf(c)?.verdict,
+      }),
+    [list, filter, search, sort, stats, ct.allOwners, ct.ownerLabel, auto],
+  );
 
-  const visibleIds = new Set(rows.map(rowKey));
-  const sel = list.filter((c) => selected.has(rowKey(c)) && visibleIds.has(rowKey(c)));
+  const visibleIds = new Set(rows.map(containerRowKey));
+  const sel = list.filter((c) => selected.has(containerRowKey(c)) && visibleIds.has(containerRowKey(c)));
 
   const setBusyIds = (ids: string[], on: boolean) =>
     setBusy((s) => {
@@ -146,25 +110,28 @@ export function ContainersTab() {
       return n;
     });
 
-  // ───────── Acciones ─────────
+  const { run, reload, perOwner } = ct;
   const direct = useCallback(
     async (action: ContainerAction, cs: Container[]) => {
-      const ids = cs.map(rowKey);
+      const ids = cs.map(containerRowKey);
       setBusyIds(ids, true);
-      const r = await ct.run(ct.perOwner(cs, (g) => containerAction(engine, action, g.map((c) => c.name || c.id))), 120);
+      const r = await run(perOwner(cs, (g) => containerAction(engine, action, g.map((c) => c.name || c.id))), 120);
       setBusyIds(ids, false);
-      if (r.ok) toast.success(cs.length > 1 ? `${ACTION_TEXT[action].verb}: ${cs.length} contenedores` : ACTION_TEXT[action].done, cs.length === 1 ? cs[0].name : undefined);
+      if (r.ok)
+        toast.success(
+          cs.length > 1 ? `${ACTION_TEXT[action].verb}: ${cs.length} contenedores` : ACTION_TEXT[action].done,
+          cs.length === 1 ? cs[0].name : undefined,
+        );
       else toast.error(`No se pudo ${ACTION_TEXT[action].verb.toLowerCase()}`, r.error ?? undefined);
-      await ct.reload("containers");
+      await reload("containers");
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ct.run, ct.reload, ct.perOwner, engine],
+    [run, reload, perOwner, engine],
   );
 
   const names = (cs: Container[]) => (
     <ul className="ct-list">
       {cs.slice(0, 12).map((c) => (
-        <li key={rowKey(c)}>
+        <li key={containerRowKey(c)}>
           <span className={`ct-dot ct-${stateTone(c.state)}`} /> <strong>{c.name}</strong> <span className="faint">{c.image}</span>
           {ct.allOwners && <span className="ct-tag">{ct.ownerLabel(c.owner)}</span>}
         </li>
@@ -190,18 +157,13 @@ export function ContainersTab() {
   };
 
   const confirmRemove = (cs: Container[]) => {
-    const anyRunning = cs.some((c) => c.state === "running" || c.state === "paused" || c.state === "restarting");
+    const anyRunning = cs.some((c) => isContainerUp(c) || c.state === "paused");
     ct.review({
       title: cs.length > 1 ? `Eliminar ${cs.length} contenedores` : `Eliminar «${cs[0].name}»`,
       message: "Se borra el contenedor y todo lo que tenga dentro que no esté en un volumen o carpeta montada. No se puede deshacer.",
       details: () => names(cs),
       options: [
-        {
-          key: "force",
-          label: "Forzar (parar si está en marcha)",
-          hint: anyRunning ? "Hay contenedores en marcha" : undefined,
-          initial: anyRunning,
-        },
+        { key: "force", label: "Forzar (parar si está en marcha)", hint: anyRunning ? "Hay contenedores en marcha" : undefined, initial: anyRunning },
         { key: "volumes", label: "Borrar también sus volúmenes anónimos (-v)" },
       ],
       build: (o) => ct.perOwner(cs, (g) => removeContainers(engine, g.map((c) => c.name || c.id), { force: !!o.force, volumes: !!o.volumes })),
@@ -222,9 +184,9 @@ export function ContainersTab() {
       validate: (v) => validateObjName(v.trim()) ?? (v.trim() === c.name ? "Es el mismo nombre" : null),
     });
     if (!name) return;
-    setBusyIds([rowKey(c)], true);
+    setBusyIds([containerRowKey(c)], true);
     const r = await ct.run([withOwner(renameContainer(engine, c.id, name.trim()), c.owner)], 30);
-    setBusyIds([rowKey(c)], false);
+    setBusyIds([containerRowKey(c)], false);
     if (r.ok) toast.success("Contenedor renombrado", `${c.name} → ${name.trim()}`);
     else toast.error("No se pudo renombrar", r.error ?? undefined);
     await ct.reload("containers");
@@ -237,13 +199,23 @@ export function ContainersTab() {
       follow: (tail) => withOwner(logsCmd(engine, c.name || c.id, tail, { follow: true }), c.owner),
     });
 
-  const isUp = (c: Container) => c.state === "running" || c.state === "restarting";
+  const autostartItem = (c: Container): MenuItem => {
+    const info = auto.infoOf(c);
+    const { on, label } = autostartMenuLabel(info);
+    return {
+      label,
+      icon: <Power size={13} />,
+      onClick: () => askAutostart(ct, auto, on, [c]),
+      disabled: !info,
+      title: info ? info.why.join("\n") : auto.loading ? "Leyendo si arranca solo…" : "No se pudo saber si arranca solo",
+    };
+  };
 
   const rowMenu = (c: Container): (MenuItem | "sep")[] => [
-    isUp(c)
+    isContainerUp(c)
       ? { label: "Parar", icon: <Square size={13} />, onClick: () => confirmAction("stop", [c]) }
       : { label: "Iniciar", icon: <Play size={13} />, onClick: () => void direct(c.state === "paused" ? "unpause" : "start", [c]) },
-    { label: "Reiniciar", icon: <RotateCw size={13} />, onClick: () => confirmAction("restart", [c]), disabled: !isUp(c) && c.state !== "paused" },
+    { label: "Reiniciar", icon: <RotateCw size={13} />, onClick: () => confirmAction("restart", [c]), disabled: !isContainerUp(c) && c.state !== "paused" },
     c.state === "paused"
       ? { label: "Reanudar", icon: <Play size={13} />, onClick: () => void direct("unpause", [c]) }
       : { label: "Pausar", icon: <Pause size={13} />, onClick: () => void direct("pause", [c]), disabled: c.state !== "running" },
@@ -264,18 +236,6 @@ export function ContainersTab() {
     "sep",
     { label: "Eliminar…", icon: <Trash2 size={13} />, onClick: () => confirmRemove([c]), danger: true },
   ];
-
-  const autostartItem = (c: Container): MenuItem => {
-    const info = auto.infoOf(c);
-    const { on, label } = autostartMenuLabel(info);
-    return {
-      label,
-      icon: <Power size={13} />,
-      onClick: () => askAutostart(ct, auto, on, [c]),
-      disabled: !info,
-      title: info ? info.why.join("\n") : auto.loading ? "Leyendo si arranca solo…" : "No se pudo saber si arranca solo",
-    };
-  };
 
   const portMenu = (e: MouseEvent, p: PortMapping) => {
     e.stopPropagation();
@@ -301,17 +261,13 @@ export function ContainersTab() {
 
   const openRowMenu = (e: MouseEvent | KeyboardEvent, c: Container) => {
     e.preventDefault();
-    let x: number;
-    let y: number;
-    if ("clientX" in e && e.clientX) {
-      x = e.clientX;
-      y = e.clientY;
-    } else {
-      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      x = r.right - 200;
-      y = r.bottom;
-    }
-    setMenu({ x, y, items: rowMenu(c) });
+    const pos = "clientX" in e && e.clientX
+      ? { x: e.clientX, y: e.clientY }
+      : (() => {
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          return { x: r.right - 200, y: r.bottom };
+        })();
+    setMenu({ ...pos, items: rowMenu(c) });
   };
 
   const toggle = (id: string) =>
@@ -333,7 +289,7 @@ export function ContainersTab() {
       (tr.previousElementSibling as HTMLElement | null)?.focus();
     } else if (e.key === " ") {
       e.preventDefault();
-      toggle(rowKey(c));
+      toggle(containerRowKey(c));
     } else if (e.key === "Enter") {
       e.preventDefault();
       openLogs(c);
@@ -345,9 +301,10 @@ export function ContainersTab() {
     }
   };
 
-  const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key ? ((-s.dir) as 1 | -1) : key === "created" || key === "cpu" || key === "mem" ? -1 : 1 }));
-  const th = (key: SortKey, label: string, cls?: string) => (
-    <th className={cls} aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
+  const sortBy = (key: ContainerSortKey) =>
+    setSort((s) => ({ key, dir: s.key === key ? ((-s.dir) as 1 | -1) : key === "created" || key === "cpu" || key === "mem" ? -1 : 1 }));
+  const th = (key: ContainerSortKey, label: string, cls?: string, title?: string) => (
+    <th className={cls} aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"} title={title}>
       <button className="ct-th" onClick={() => sortBy(key)}>
         {label}
         {sort.key === key && <span className="ct-sort">{sort.dir === 1 ? "▲" : "▼"}</span>}
@@ -355,7 +312,7 @@ export function ContainersTab() {
     </th>
   );
 
-  const allChecked = rows.length > 0 && rows.every((r) => selected.has(rowKey(r)));
+  const allChecked = rows.length > 0 && rows.every((r) => selected.has(containerRowKey(r)));
   const loading = res.containers.loading;
 
   return (
@@ -367,7 +324,7 @@ export function ContainersTab() {
               ["all", "Todos"],
               ["running", "En marcha"],
               ["stopped", "Parados"],
-            ] as [Filter, string][]
+            ] as [ContainerFilter, string][]
           ).map(([f, label]) => (
             <button key={f} role="radio" aria-checked={filter === f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
               {label} <span className="ct-count">{counts[f]}</span>
@@ -396,7 +353,10 @@ export function ContainersTab() {
             void ct.reload("containers");
             void auto.reload();
           }}
-          title="Actualizar" aria-label="Actualizar" disabled={loading}>
+          title="Actualizar"
+          aria-label="Actualizar"
+          disabled={loading}
+        >
           <RefreshCw size={14} className={loading ? "ct-spin" : undefined} />
         </button>
         <button
@@ -410,34 +370,15 @@ export function ContainersTab() {
       </div>
 
       {sel.length > 0 && (
-        <div className="ct-batch" role="toolbar" aria-label="Acciones sobre la selección">
-          <strong>{sel.length} seleccionados</strong>
-          <button className="btn btn-sm" onClick={() => void direct("start", sel.filter((c) => !isUp(c) && c.state !== "paused"))} disabled={!sel.some((c) => !isUp(c) && c.state !== "paused")}>
-            <Play size={13} /> Iniciar
-          </button>
-          <button className="btn btn-sm" onClick={() => confirmAction("stop", sel.filter(isUp))} disabled={!sel.some(isUp)}>
-            <Square size={13} /> Parar
-          </button>
-          <button className="btn btn-sm" onClick={() => confirmAction("restart", sel)}>
-            <RotateCw size={13} /> Reiniciar
-          </button>
-          <button className="btn btn-sm" onClick={() => void direct("pause", sel.filter((c) => c.state === "running"))} disabled={!sel.some((c) => c.state === "running")}>
-            <Pause size={13} /> Pausar
-          </button>
-          <button className="btn btn-sm" onClick={() => void direct("unpause", sel.filter((c) => c.state === "paused"))} disabled={!sel.some((c) => c.state === "paused")}>
-            <Play size={13} /> Reanudar
-          </button>
-          <button className="btn btn-sm" onClick={() => askAutostart(ct, auto, true, sel)} title="Que arranquen solos al reiniciar el servidor o si se caen">
-            <Power size={13} /> Arranque solo
-          </button>
-          <button className="btn btn-sm ct-btn-danger" onClick={() => confirmRemove(sel)}>
-            <Trash2 size={13} /> Eliminar
-          </button>
-          <span className="ct-grow" />
-          <button className="icon-btn" onClick={() => setSelected(new Set())} title="Quitar selección" aria-label="Quitar selección">
-            <X size={14} />
-          </button>
-        </div>
+        <ContainersBatchBar
+          sel={sel}
+          ct={ct}
+          auto={auto}
+          onDirect={(a, cs) => void direct(a, cs)}
+          onConfirm={confirmAction}
+          onRemove={confirmRemove}
+          onClear={() => setSelected(new Set())}
+        />
       )}
 
       {res.containers.error && (
@@ -476,7 +417,7 @@ export function ContainersTab() {
                     type="checkbox"
                     aria-label="Seleccionar todos"
                     checked={allChecked}
-                    onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map(rowKey)))}
+                    onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map(containerRowKey)))}
                   />
                 </th>
                 {th("name", "Nombre", "ct-col-name")}
@@ -484,16 +425,7 @@ export function ContainersTab() {
                 {th("image", "Imagen", "ct-col-image")}
                 {th("state", "Estado", "ct-col-state")}
                 <th className="ct-col-ports">Puertos</th>
-                <th
-                  className="ct-col-auto"
-                  aria-sort={sort.key === "autostart" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-                  title="Si el contenedor está activado para levantarse solo tras reiniciar el servidor"
-                >
-                  <button className="ct-th" onClick={() => sortBy("autostart")}>
-                    Al reiniciar
-                    {sort.key === "autostart" && <span className="ct-sort">{sort.dir === 1 ? "▲" : "▼"}</span>}
-                  </button>
-                </th>
+                {th("autostart", "Al reiniciar", "ct-col-auto", "Si el contenedor está activado para levantarse solo tras reiniciar el servidor")}
                 {th("created", "Creado", "ct-col-created")}
                 {th("cpu", "CPU", "ct-col-num")}
                 {th("mem", "Memoria", "ct-col-mem")}
@@ -504,100 +436,25 @@ export function ContainersTab() {
             </thead>
             <tbody>
               {rows.map((c) => {
-                const st = c.state === "running" ? statsFor(stats, c) : undefined;
-                const k = rowKey(c);
-                const isBusy = busy.has(k);
+                const k = containerRowKey(c);
                 return (
-                  <tr
+                  <ContainerRow
                     key={k}
-                    tabIndex={0}
-                    className={selected.has(k) ? "sel" : undefined}
+                    c={c}
+                    ct={ct}
+                    auto={auto}
+                    st={c.state === "running" ? statsFor(stats, c) : undefined}
+                    selected={selected.has(k)}
+                    isBusy={busy.has(k)}
+                    onToggle={() => toggle(k)}
                     onKeyDown={(e) => onRowKey(e, c)}
                     onContextMenu={(e) => openRowMenu(e, c)}
-                    onDoubleClick={() => openLogs(c)}
-                    aria-selected={selected.has(k)}
-                  >
-                    <td className="ct-col-chk">
-                      <input type="checkbox" checked={selected.has(k)} onChange={() => toggle(k)} aria-label={`Seleccionar ${c.name}`} tabIndex={-1} />
-                    </td>
-                    <td className="ct-col-name" title={`${c.name}\n${c.id}`}>
-                      <span className="ct-cell-flex">
-                        {isBusy ? <span className="spinner ct-spinner-xs" /> : <span className={`ct-dot ct-${stateTone(c.state)}`} />}
-                        <span className="ct-ellipsis ct-strong">{c.name}</span>
-                        {c.composeProject && (
-                          <span className="ct-tag" title={`Proyecto Compose: ${c.composeProject}${c.composeService ? ` · servicio ${c.composeService}` : ""}`}>
-                            {c.composeProject}
-                          </span>
-                        )}
-                        {c.pod && <span className="ct-tag" title="Pod">pod {c.pod}</span>}
-                      </span>
-                    </td>
-                    {ct.allOwners && <td className="ct-col-owner ct-ellipsis">{ct.ownerLabel(c.owner)}</td>}
-                    <td className="ct-col-image ct-ellipsis mono" title={c.image}>
-                      {c.image}
-                    </td>
-                    <td className="ct-col-state ct-ellipsis" title={c.status}>
-                      {stateText(c)}
-                    </td>
-                    <td className="ct-col-ports">
-                      <span className="ct-ports">
-                        {c.ports.filter((p) => p.hostPort !== null).slice(0, 4).map((p, i) => (
-                          <button key={i} className="ct-port" onClick={(e) => portMenu(e, p)} title="Copiar dirección o abrir túnel" tabIndex={-1}>
-                            {portLabel(p)}
-                          </button>
-                        ))}
-                        {c.ports.filter((p) => p.hostPort !== null).length > 4 && (
-                          <span className="faint">+{c.ports.filter((p) => p.hostPort !== null).length - 4}</span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="ct-col-auto">
-                      <AutostartBadge info={auto.infoOf(c)} loading={auto.loading} />
-                    </td>
-                    <td className="ct-col-created faint" title={c.created ? new Date(c.created * 1000).toLocaleString() : ""}>
-                      {ago(c.created)}
-                    </td>
-                    <td className="ct-col-num mono">{st ? percent(st.cpuPercent) : ""}</td>
-                    <td className="ct-col-mem mono" title={st?.memLimit ? `Límite: ${formatBytes(st.memLimit)}` : undefined}>
-                      {st?.memUsage !== null && st?.memUsage !== undefined ? formatBytes(st.memUsage) : ""}
-                    </td>
-                    <td className="ct-col-actions">
-                      <span className="ct-actions">
-                        {isUp(c) ? (
-                          <button className="icon-btn" title="Parar" aria-label={`Parar ${c.name}`} onClick={() => confirmAction("stop", [c])} disabled={isBusy} tabIndex={-1}>
-                            <Square size={13} />
-                          </button>
-                        ) : (
-                          <button
-                            className="icon-btn ct-go"
-                            title={c.state === "paused" ? "Reanudar" : "Iniciar"}
-                            aria-label={`Iniciar ${c.name}`}
-                            onClick={() => void direct(c.state === "paused" ? "unpause" : "start", [c])}
-                            disabled={isBusy}
-                            tabIndex={-1}
-                          >
-                            <Play size={13} />
-                          </button>
-                        )}
-                        <button className="icon-btn" title="Logs" aria-label={`Logs de ${c.name}`} onClick={() => openLogs(c)} tabIndex={-1}>
-                          <ScrollText size={13} />
-                        </button>
-                        <button
-                          className="icon-btn"
-                          title="Terminal dentro del contenedor"
-                          aria-label={`Terminal en ${c.name}`}
-                          onClick={() => ct.toTerminal(withOwner(execShellCmd(engine, c.name || c.id), c.owner), true)}
-                          disabled={c.state !== "running"}
-                          tabIndex={-1}
-                        >
-                          <TerminalSquare size={13} />
-                        </button>
-                        <button className="icon-btn" title="Más acciones" aria-label={`Más acciones de ${c.name}`} onClick={(e) => openRowMenu(e, c)} tabIndex={-1}>
-                          <MoreHorizontal size={14} />
-                        </button>
-                      </span>
-                    </td>
-                  </tr>
+                    onLogs={() => openLogs(c)}
+                    onPortMenu={portMenu}
+                    onStop={() => confirmAction("stop", [c])}
+                    onStart={() => void direct(c.state === "paused" ? "unpause" : "start", [c])}
+                    onMore={(e) => openRowMenu(e, c)}
+                  />
                 );
               })}
               {rows.length === 0 && (

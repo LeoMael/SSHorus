@@ -8,9 +8,9 @@ import { useProfiles } from "../../stores/profiles";
 import { useUi, type ServerEditorOptions } from "../../stores/ui";
 import { toast } from "../../stores/toasts";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
-import { initialProjectFor, projectChanges } from "../projectServers";
-import { findMatches } from "../serverMatches";
-import type { TestOutcome } from "../serverTest";
+import { initialProjectFor, projectChanges } from "../profiles/projectServers";
+import { findMatches } from "../profiles/serverMatches";
+import type { TestOutcome } from "../connect/serverTest";
 import {
   buildServerProfile,
   connectionChanged,

@@ -1,21 +1,14 @@
 //! Lectura/escritura de ~/.ssh/known_hosts.
-//! DUEÑO: agente SSH.
-//!
-//! Implementación propia (en vez de `russh::keys::known_hosts`) porque la de russh
-//! no tolera tabuladores, marcadores (`@cert-authority`, `@revoked`), comodines
-//! ni negaciones, y falla entera si una línea que coincide trae una llave rara.
-//! Compatible con el formato de OpenSSH:
-//! - `host`, `host1,host2`, `[host]:puerto` (puertos ≠ 22), comodines `*`/`?`, `!negación`.
-//! - Entradas cifradas `|1|sal|hmac` (HashKnownHosts yes) → HMAC-SHA1.
-//! - `@revoked` → se trata como llave cambiada (no se confía). `@cert-authority` → se ignora.
+//! La coincidencia de comodines, negaciones y entradas cifradas (`|1|…`) vive en `known_hosts_match.rs`.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use russh::keys::PublicKey;
-use russh::keys::ssh_encoding::base64::{Base64, Encoding};
 
 use crate::error::{AppError, AppResult};
+
+use super::known_hosts_match::{exact_match, matches_host_list};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HostKeyStatus {
@@ -52,7 +45,6 @@ pub fn host_field(host: &str, port: u16) -> String {
     }
 }
 
-/// Una línea de known_hosts ya separada en campos.
 struct Entry<'a> {
     marker: Option<&'a str>,
     hosts: &'a str,
@@ -83,7 +75,6 @@ fn parse_line(line: &str) -> Option<Entry<'_>> {
 }
 
 /// Comprueba la llave `key` del servidor `host:port` contra el archivo `path`.
-/// Un archivo inexistente equivale a "host desconocido".
 pub fn check(
     path: &Path,
     host: &str,
@@ -145,79 +136,6 @@ fn check_content(content: &str, host: &str, port: u16, key: &PublicKey) -> HostK
     }
 }
 
-/// `hosts` es la lista separada por comas del primer campo. Una negación que coincide
-/// anula toda la línea (como OpenSSH).
-fn matches_host_list(target: &str, hosts: &str) -> bool {
-    let mut positive = false;
-    for pat in hosts.split(',') {
-        if pat.is_empty() {
-            continue;
-        }
-        if let Some(neg) = pat.strip_prefix('!') {
-            if glob_match(&neg.to_ascii_lowercase(), target) {
-                return false;
-            }
-        } else if pat.starts_with("|1|") {
-            if hashed_match(pat, target) {
-                positive = true;
-            }
-        } else if glob_match(&pat.to_ascii_lowercase(), target) {
-            positive = true;
-        }
-    }
-    positive
-}
-
-/// Coincidencia exacta (sin comodines) — para decidir qué borrar al confiar.
-fn exact_match(pat: &str, target: &str) -> bool {
-    if pat.starts_with("|1|") {
-        hashed_match(pat, target)
-    } else {
-        pat.eq_ignore_ascii_case(target)
-    }
-}
-
-fn hashed_match(entry: &str, target: &str) -> bool {
-    let mut parts = entry.split('|').skip(2);
-    let (Some(salt), Some(hash)) = (parts.next(), parts.next()) else {
-        return false;
-    };
-    let (Ok(salt), Ok(hash)) = (Base64::decode_vec(salt), Base64::decode_vec(hash)) else {
-        return false;
-    };
-    hmac_sha1(&salt, target.as_bytes()).as_slice() == hash.as_slice()
-}
-
-/// Glob de OpenSSH: `*` (cualquier secuencia) y `?` (un carácter).
-fn glob_match(pat: &str, s: &str) -> bool {
-    let p: Vec<char> = pat.chars().collect();
-    let t: Vec<char> = s.chars().collect();
-    let (mut pi, mut ti) = (0usize, 0usize);
-    let (mut star, mut mark) = (None::<usize>, 0usize);
-    while ti < t.len() {
-        if pi < p.len() && (p[pi] == '?' || p[pi] == t[ti]) {
-            pi += 1;
-            ti += 1;
-        } else if pi < p.len() && p[pi] == '*' {
-            star = Some(pi);
-            mark = ti;
-            pi += 1;
-        } else if let Some(sp) = star {
-            pi = sp + 1;
-            mark += 1;
-            ti = mark;
-        } else {
-            return false;
-        }
-    }
-    while pi < p.len() && p[pi] == '*' {
-        pi += 1;
-    }
-    pi == p.len()
-}
-
-// ───────────────────────── Escritura ─────────────────────────
-
 /// Normaliza la llave recibida de la interfaz a `algoritmo base64` (sin comentario).
 pub fn parse_key_openssh(key_openssh: &str) -> AppResult<PublicKey> {
     PublicKey::from_openssh(key_openssh.trim())
@@ -236,8 +154,6 @@ fn key_line(key: &PublicKey) -> AppResult<String> {
 }
 
 /// Quita del contenido todas las entradas exactas de `host:port` (planas o cifradas).
-/// En líneas con varios nombres (`host,ip`) solo quita ese nombre. No toca comentarios,
-/// marcadores ni líneas con comodines. Devuelve (nuevo contenido, entradas quitadas).
 fn remove_host_from_content(content: &str, host: &str, port: u16) -> (String, usize) {
     let target = host_field(host, port).to_ascii_lowercase();
     let mut out = String::with_capacity(content.len());
@@ -252,7 +168,6 @@ fn remove_host_from_content(content: &str, host: &str, port: u16) -> (String, us
             out.push_str(line);
             continue;
         }
-        // La línea contiene el host: reconstruirla sin ese nombre.
         let trimmed_start = line.trim_start();
         let hosts_end = trimmed_start
             .find(char::is_whitespace)
@@ -294,8 +209,6 @@ fn write_atomic(path: &Path, content: &str) -> AppResult<()> {
         f.write_all(content.as_bytes())?;
         f.sync_all()?;
         drop(f);
-        // Si el archivo original tenía otros permisos, se respetan (en Unix; en Windows
-        // copiar el «solo lectura» impediría reemplazarlo).
         #[cfg(unix)]
         if let Ok(meta) = std::fs::metadata(path) {
             std::fs::set_permissions(&tmp, meta.permissions())?;
@@ -329,8 +242,7 @@ fn ensure_parent_dir(path: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Confía en `key_openssh` para `host:port`: borra las entradas previas de ese host
-/// (p. ej. una llave cambiada que el usuario ya aceptó reemplazar) y añade la nueva.
+/// Confía en `key_openssh` para `host:port`: borra las entradas previas y añade la nueva.
 pub fn trust(path: &Path, host: &str, port: u16, key_openssh: &str) -> AppResult<()> {
     let host = host.trim();
     if host.is_empty() || host.contains(char::is_whitespace) || host.contains(',') {
@@ -360,77 +272,9 @@ pub fn trust(path: &Path, host: &str, port: u16, key_openssh: &str) -> AppResult
     write_atomic(path, &new_content)
 }
 
-// ───────────────────────── SHA-1 / HMAC-SHA1 (para entradas cifradas) ─────────────────────────
-
-fn sha1(data: &[u8]) -> [u8; 20] {
-    let mut h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
-    let mut msg = data.to_vec();
-    let bit_len = (data.len() as u64).wrapping_mul(8);
-    msg.push(0x80);
-    while msg.len() % 64 != 56 {
-        msg.push(0);
-    }
-    msg.extend_from_slice(&bit_len.to_be_bytes());
-    for chunk in msg.as_chunks::<64>().0 {
-        let mut w = [0u32; 80];
-        for (i, word) in chunk.as_chunks::<4>().0.iter().enumerate() {
-            w[i] = u32::from_be_bytes([word[0], word[1], word[2], word[3]]);
-        }
-        for i in 16..80 {
-            w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1);
-        }
-        let [mut a, mut b, mut c, mut d, mut e] = h;
-        for (i, wi) in w.iter().enumerate() {
-            let (f, k) = match i {
-                0..=19 => ((b & c) | (!b & d), 0x5A827999),
-                20..=39 => (b ^ c ^ d, 0x6ED9EBA1),
-                40..=59 => ((b & c) | (b & d) | (c & d), 0x8F1BBCDC),
-                _ => (b ^ c ^ d, 0xCA62C1D6),
-            };
-            let temp = a
-                .rotate_left(5)
-                .wrapping_add(f)
-                .wrapping_add(e)
-                .wrapping_add(k)
-                .wrapping_add(*wi);
-            e = d;
-            d = c;
-            c = b.rotate_left(30);
-            b = a;
-            a = temp;
-        }
-        h[0] = h[0].wrapping_add(a);
-        h[1] = h[1].wrapping_add(b);
-        h[2] = h[2].wrapping_add(c);
-        h[3] = h[3].wrapping_add(d);
-        h[4] = h[4].wrapping_add(e);
-    }
-    let mut out = [0u8; 20];
-    for (i, v) in h.iter().enumerate() {
-        out[i * 4..i * 4 + 4].copy_from_slice(&v.to_be_bytes());
-    }
-    out
-}
-
-fn hmac_sha1(key: &[u8], msg: &[u8]) -> [u8; 20] {
-    let mut k = [0u8; 64];
-    if key.len() > 64 {
-        k[..20].copy_from_slice(&sha1(key));
-    } else {
-        k[..key.len()].copy_from_slice(key);
-    }
-    let mut inner = Vec::with_capacity(64 + msg.len());
-    inner.extend(k.iter().map(|b| b ^ 0x36));
-    inner.extend_from_slice(msg);
-    let ih = sha1(&inner);
-    let mut outer = Vec::with_capacity(84);
-    outer.extend(k.iter().map(|b| b ^ 0x5c));
-    outer.extend_from_slice(&ih);
-    sha1(&outer)
-}
-
 #[cfg(test)]
 mod tests {
+    use super::super::known_hosts_match::{hmac_sha1, sha1};
     use super::*;
 
     const K1: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJdD7y3aLq454yWBdwLWbieU1ebz9/cu7/QEXn9OIeZJ";
@@ -465,11 +309,10 @@ mod tests {
 
     #[test]
     fn check_hashed_wildcard_revoked() {
-        // Entrada cifrada de pruebas de russh: corresponde a "example.com".
         let c = format!(
             "|1|O33ESRMWPVkMYIwJ1Uw+n877jTo=|nuuC5vEqXlEZ/8BXQR7m619W6Ak= {K2}\n*.lan,!bad.lan {K1}\n@revoked * {K2}\n"
         );
-        assert_eq!(check_content(&c, "example.com", 22, &key(K2)), HostKeyStatus::Changed); // revocada
+        assert_eq!(check_content(&c, "example.com", 22, &key(K2)), HostKeyStatus::Changed);
         let c2 = format!("|1|O33ESRMWPVkMYIwJ1Uw+n877jTo=|nuuC5vEqXlEZ/8BXQR7m619W6Ak= {K2}\n*.lan,!bad.lan {K1}\n");
         assert_eq!(check_content(&c2, "example.com", 22, &key(K2)), HostKeyStatus::Match);
         assert_eq!(check_content(&c2, "example.com", 22, &key(K1)), HostKeyStatus::Changed);

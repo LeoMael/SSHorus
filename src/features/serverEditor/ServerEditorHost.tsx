@@ -1,6 +1,6 @@
 // Diálogo «Nuevo servidor / Editar servidor», ligado a useUi().serverEditor. El formulario está en serverEditor/.
-import { useUi } from "../stores/ui";
-import { ServerEditor } from "./serverEditor/ServerEditor";
+import { useUi } from "../../stores/ui";
+import { ServerEditor } from "./ServerEditor";
 
 export function ServerEditorHost() {
   const editor = useUi((s) => s.serverEditor);

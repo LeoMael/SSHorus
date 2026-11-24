@@ -8,6 +8,7 @@ pub mod commands;
 pub mod connect;
 pub mod handler;
 pub mod known_hosts;
+mod known_hosts_match;
 pub mod login_secret;
 pub mod reboot_wait;
 pub mod reconnect;

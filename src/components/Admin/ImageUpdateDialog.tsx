@@ -218,7 +218,6 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     } finally {
       setStage("done");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [el, sessionId, report, target, tag, engine, user, settings.useOsv, settings.useTrivy]);
 
   /** Prepara el formulario del contenedor «run» número `i` (o pasa a volver a analizar). */

@@ -1,6 +1,6 @@
 // Hosts ya guardados en el editor de servidor (funciones puras): sugerencias para el campo Host
 // y aviso de servidor repetido.
-import type { ServerProfile } from "../api/types";
+import type { ServerProfile } from "../../api/types";
 
 /** Host comparable: sin espacios y en minúsculas (los nombres de host no distinguen mayúsculas). */
 export function normHost(h: string): string {

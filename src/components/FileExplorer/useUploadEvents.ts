@@ -80,7 +80,7 @@ export function useDropUpload({ active, sessionId, rootRef, cwdRef, startUpload 
       unlisten?.();
       setDropState(false, null);
     };
-  }, [active, sessionId, setDropState, startUpload]);
+  }, [active, cwdRef, rootRef, sessionId, setDropState, startUpload]);
 
   return drop;
 }
@@ -114,5 +114,5 @@ export function useUploadRefresh(sessionId: string, cwdRef: RefObject<string | n
       clearTimeout(timer);
       unlisten?.();
     };
-  }, [sessionId, load]);
+  }, [cwdRef, sessionId, load]);
 }

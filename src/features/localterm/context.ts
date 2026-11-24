@@ -61,7 +61,6 @@ function isoDate(d: Date): string {
 
 /** Quita saltos de línea y caracteres de control de un dato del usuario (no puede romper el formato). */
 function one(s: string): string {
-  // eslint-disable-next-line no-control-regex
   return s.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
 }
 

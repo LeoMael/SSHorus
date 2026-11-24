@@ -1,7 +1,7 @@
 // Opciones del final del formulario: carpeta inicial, tmux, color y (si no va arriba) proyecto.
 import type { Project, TmuxMode } from "../../api/types";
 import { useSettings } from "../../stores/settings";
-import { ColorPicker } from "../ColorPicker";
+import { ColorPicker } from "../../components/ui/ColorPicker";
 import { TMUX_MODE_HINTS, TMUX_MODE_LABELS } from "../tmux/logic";
 import { ProjectSelect } from "./ProjectFields";
 import type { ServerFormFields } from "./serverForm";

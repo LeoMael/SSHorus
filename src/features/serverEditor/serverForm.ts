@@ -1,7 +1,7 @@
 // Reglas puras del formulario de servidor: valores iniciales, validación, armado del perfil y qué hacer
 // con los secretos al guardar. Sin React ni motor, para poder probarlas (serverForm.test.ts).
 import type { AuthMethod, ServerProfile, SudoMode, TmuxMode } from "../../api/types";
-import type { TestSecrets } from "../serverTest";
+import type { TestSecrets } from "../connect/serverTest";
 import { shownSudoMode, sudoModeToSave, type SudoFormState } from "../privileges/sudoFormHint";
 
 export interface ServerFormFields {

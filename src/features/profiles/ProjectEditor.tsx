@@ -1,11 +1,11 @@
 // Diálogo «Nuevo proyecto / Editar proyecto», ligado a useUi().projectEditor.
 import { useEffect, useRef, useState } from "react";
 import { Folder, Plus, Trash2 } from "lucide-react";
-import { Modal } from "../components/ui/Modal";
-import type { Bookmark, Project } from "../api/types";
-import { useProfiles } from "../stores/profiles";
-import { useUi } from "../stores/ui";
-import { ColorPicker } from "./ColorPicker";
+import { Modal } from "../../components/ui/Modal";
+import type { Bookmark, Project } from "../../api/types";
+import { useProfiles } from "../../stores/profiles";
+import { useUi } from "../../stores/ui";
+import { ColorPicker } from "../../components/ui/ColorPicker";
 
 export function ProjectEditorHost() {
   const editor = useUi((s) => s.projectEditor);
