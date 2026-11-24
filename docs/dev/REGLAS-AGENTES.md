@@ -54,7 +54,9 @@ npm run lint && npx tsc --noEmit                                                
 
 ## 4. Interfaz (React)
 
-- Llama al motor SOLO por `src/api/*` (`ssh`, `terminal`, `sftp`, `transfers`, `profiles`, `settingsApi`).
+- Llama al motor SOLO por `src/api/*`: hay un archivo por módulo del motor (`ssh.ts`, `terminal.ts`, `sftp.ts`,
+  `transfers.ts`, `profiles.ts`, `mcp.ts`, `vulnscan.ts`, `audit.ts`…), más `core.ts` (llamada y errores),
+  `types.ts` (espejo de `types.rs`) e `index.ts`.
   Los errores llegan como `ApiError` con `.kind` (ver `isApiError`).
 - Estado: `zustand`. Compartidos: `useTabs` (pestañas), `useSettings` (ajustes), `toast` (avisos), `useUi` (diálogos globales).
 - Diálogos: `confirmDialog()` / `promptDialog()` (`src/components/ui/dialogs.tsx`), `Modal`.
@@ -70,14 +72,15 @@ npm run lint && npx tsc --noEmit                                                
 
 ## 5. Calidad del código (pedido del usuario: nada de código ni archivos espagueti)
 
-- **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400). Si un archivo ya es grande
-  (p. ej. `FileExplorer.tsx`, `ServerEditor.tsx`, `SessionView.tsx`, `transfer/engine.rs`, `mcp/core.rs`),
-  **no le añadas lógica**: crea un componente, hook o módulo nuevo y engánchalo con lo mínimo.
+- **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400). Hoy ningún archivo de código pasa
+  de 500 líneas, pero hay unos 25 entre 400 y 500 y varios CSS de más de 500 (lista en `docs/PENDIENTES.md`,
+  «Orden del código parte 4»). Si un archivo ya pasa de ~400 líneas, **no le añadas lógica**: crea un componente,
+  hook o módulo nuevo y engánchalo con lo mínimo.
 - **Una responsabilidad por función/componente**. La lógica pura (cálculos, análisis de salidas de comandos,
   reglas) va aparte de la interfaz y de los comandos Tauri, y lleva pruebas.
 - **Datos en vez de `if` repetidos**: si hay varias variantes (asistentes, tipos de llave, modos), descríbelas en
   una tabla y recórrela.
-- **Organización de carpetas**:
+- **Organización de carpetas** (la regla completa de dónde va cada archivo está en `docs/ARQUITECTURA.md` §5):
   - Controles genéricos sin lógica de dominio van en `src/components/ui/`.
   - No dejes archivos sueltos en la raíz de `src/features/`: cada dominio tiene su carpeta (`src/features/<dominio>/`).
   - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*`.

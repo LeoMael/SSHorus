@@ -1,6 +1,6 @@
 # Marca: SSHorus
 
-Desde la versión que sigue a la 0.5.0, la app (antes TerView) se llama **SSHorus** (SSH + Horus, el dios
+Desde la 1.0.0-beta.1 (la versión que sigue a la 0.5.0), la app (antes TerView) se llama **SSHorus** (SSH + Horus, el dios
 halcón egipcio cuyo ojo todo lo ve y protege). El logo elegido es el **ojo de Horus dentro de un anillo con
 cuatro nodos y la terminal `>_` debajo del ojo**: es el **modelo 6 de
 [`modelos_isotipos_v2.png`](modelos_isotipos_v2.png)** (abajo a la derecha), redibujado en vectores planos,

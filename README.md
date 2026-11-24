@@ -127,7 +127,8 @@ Si da un error de **FUSE**, instala `fuse-libs` (Fedora) o `libfuse2` (Ubuntu 22
 
 ### macOS
 
-Todavía no hay instalador publicado. Se puede [compilar desde el código](#desarrollo).
+Cada versión trae un `….dmg` universal (Intel y Apple Silicon), pero todavía **sin firmar y sin probar en un
+Mac**. También se puede [compilar desde el código](#desarrollo).
 
 ## Primeros pasos
 
@@ -396,8 +397,8 @@ Los instaladores los genera GitHub Actions. Sube la versión en `package.json`,
 [`CHANGELOG.md`](CHANGELOG.md) y crea una etiqueta:
 
 ```bash
-git tag v0.5.0
-git push origin v0.5.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 GitHub compila para Linux, Windows y macOS y crea un *release* en borrador con los instaladores. Revísalo y publícalo.
@@ -431,28 +432,39 @@ npx rolldown src/features/vulnscan/vulnscan.test.ts -p node -f esm -o /tmp/vt.mj
 
 ```
 src/              Interfaz (React + TypeScript)
-  api/            Única puerta hacia el motor
-  components/     Barra lateral, pestañas, explorador, terminal, editor, comandos, transferencias
-  stores/         Estado (zustand)
+  api/            Única puerta hacia el motor (un archivo por módulo del motor)
+  components/     Pantallas por función (explorador, terminal, Admin, Contenedores…) y ui/ con controles comunes
+  features/       Lógica de cada función, una carpeta por tema (connect, admin, audit, mcp, vulnscan…)
+  stores/         Estado global (zustand)
+  lib/            Utilidades puras (rutas, formato, plataforma)
+  windows/        Ventana de editor aparte
 src-tauri/src/    Motor (Rust)
   ssh/            Conexión, autenticación, huellas, reconexión
-  terminal/       Shells remotas
-  localterm/      Terminal local (PTY del PC) y lanzar asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto
+  terminal/       Shells remotas y tmux
+  localterm/      Terminal local y asistentes de IA (Claude Code, Codex, agy, OpenCode)
   sftp/           Explorador y edición remota
   transfer/       Cola de transferencias en paralelo
-  storage/        Servidores, ajustes, llavero, ~/.ssh/config
-  snippets/       Mis comandos y ejecución con captura
+  tunnels/        Túneles local, remoto y SOCKS
+  dragout/        Arrastrar archivos al escritorio
+  storage/        Servidores, ajustes, llavero, bóveda con PIN, ~/.ssh/config
+  snippets/       Mis comandos, ejecución aparte y sudo
+  github/         Cuenta de GitHub y copia cifrada en Gist
+  sshkeys/        Detectar las llaves SSH de este PC (crearlas: localkeys.rs)
   mcp/            Servidor MCP para asistentes de IA (permisos, aprobación, registro)
-  vulnscan/       Escáner de vulnerabilidades (scripts, OSV.dev, herramientas de la distro, historial)
-  ai/             IA opcional que solo explica los informes del escáner
+  vulnscan/       Escáner de vulnerabilidades
+  audit/          Historial de «Auditar servidor»
+  ai/             IA opcional que explica los informes
   bin/            sshorus-mcp: puente stdio hacia la app abierta
-docs/             Arquitectura, diagramas, pendientes y catálogo de comandos
+docs/             Manual, arquitectura, diagramas, pendientes y catálogo de comandos
 ```
+
+Detalle de cada carpeta en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md#5-estructura-del-código-diagrama-5).
 
 ## Hoja de ruta
 
-Lo que queda (detalle en [`docs/PENDIENTES.md`](docs/PENDIENTES.md)):
+Lo que queda (lista completa e ideas en [`docs/PENDIENTES.md`](docs/PENDIENTES.md)):
 
+- Probar en la app real lo nuevo de `main` y publicar la **1.0.0**.
 - Probar el MCP con Claude Code y Claude Desktop, y el escáner de vulnerabilidades en servidores reales.
 - Probar la terminal local y los asistentes en la app, en Windows y en macOS.
 - Firmar el instalador de Windows (para que SmartScreen no avise).

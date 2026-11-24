@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1430" viewBox="0 0 1600 1430">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2052" viewBox="0 0 1600 2052">
   <defs>
     <marker id="mp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/></marker>
     <marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#38bdf8"/></marker>
@@ -20,18 +20,16 @@
     .pi{fill:#1e293b;stroke:#2c4a66;stroke-width:1.5}
     .po{fill:#1e293b;stroke:#5a3a20;stroke-width:1.5}
   </style>
-  <rect width="1600" height="1430" fill="#0f172a"/>
+  <rect width="1600" height="2052" fill="#0f172a"/>
   <text x="60" y="62" class="t">Estructura del código</text>
-  <text x="60" y="94" class="st">Carpetas reales de src/ y src-tauri/src/. Cada archivo de api/ habla con su módulo del motor.</text>
-
-  <rect x="60" y="130" width="600" height="1225" rx="18" fill="#10243a" stroke="#38bdf8" stroke-width="2.5"/>
+  <text x="60" y="94" class="st">Carpetas reales de src/ y src-tauri/src/ (24/11/2026). Cada archivo de api/ habla con su módulo del motor.</text>
+  <rect x="60" y="130" width="600" height="1858" rx="18" fill="#10243a" stroke="#38bdf8" stroke-width="2.5"/>
   <use href="#i-window" x="84" y="146" width="34" height="34" style="color:#38bdf8"/>
   <text x="130" y="172" class="h" style="fill:#38bdf8">INTERFAZ</text><text x="254" y="172" class="mono" style="font-size:16px;fill:#94a3b8">src/</text>
-  <rect x="940" y="130" width="600" height="1225" rx="18" fill="#2a1a10" stroke="#f97316" stroke-width="2.5"/>
+  <rect x="940" y="130" width="600" height="1858" rx="18" fill="#2a1a10" stroke="#f97316" stroke-width="2.5"/>
   <use href="#i-gear" x="964" y="146" width="34" height="34" style="color:#f97316"/>
   <text x="1010" y="172" class="h" style="fill:#f97316">MOTOR</text><text x="1106" y="172" class="mono" style="font-size:16px;fill:#94a3b8">src-tauri/src/</text>
-
-  <text x="85" y="210" class="lb" style="fill:#7dd3fc">components/ · LO QUE VES</text>
+  <text x="85" y="210" class="lb" style="fill:#7dd3fc">components/ · LO QUE VES (ui/: controles comunes)</text>
   <rect x="85" y="222" width="128" height="34" rx="8" class="pi"/>
   <text x="149.0" y="244.0" text-anchor="middle" class="b" style="">Sidebar</text>
   <rect x="221" y="222" width="128" height="34" rx="8" class="pi"/>
@@ -61,58 +59,101 @@
   <rect x="221" y="348" width="128" height="34" rx="8" class="pi"/>
   <text x="285.0" y="370.0" text-anchor="middle" class="b" style="">GitHub</text>
   <rect x="357" y="348" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="370.0" text-anchor="middle" class="b" style="">Settings</text>
+  <text x="421.0" y="370.0" text-anchor="middle" class="b" style="">Fleet</text>
   <rect x="493" y="348" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="370.0" text-anchor="middle" class="b" style="">Diagnostics</text>
+  <text x="557.0" y="370.0" text-anchor="middle" class="b" style="">InfraMap</text>
   <rect x="85" y="390" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="412.0" text-anchor="middle" class="b" style="">Welcome</text>
+  <text x="149.0" y="412.0" text-anchor="middle" class="b" style="">McpActivity</text>
   <rect x="221" y="390" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="412.0" text-anchor="middle" class="b" style="">About</text>
+  <text x="285.0" y="412.0" text-anchor="middle" class="b" style="">Settings</text>
   <rect x="357" y="390" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="412.0" text-anchor="middle" class="b" style="">ui</text>
+  <text x="421.0" y="412.0" text-anchor="middle" class="b" style="">Diagnostics</text>
   <rect x="493" y="390" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="412.0" text-anchor="middle" class="b" style="">windows/ *</text>
-  <line x1="360" y1="428" x2="360" y2="452" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#mb)"/>
-  <text x="85" y="474" class="lb" style="fill:#7dd3fc">features/ · LÓGICA DE CADA FUNCIÓN</text>
-  <rect x="85" y="486" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="508.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">admin</text>
-  <rect x="221" y="486" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="508.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">containers</text>
-  <rect x="357" y="486" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="508.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">monitor</text>
-  <rect x="493" y="486" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="508.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">multirun</text>
-  <rect x="85" y="528" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="550.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">privileges</text>
-  <rect x="221" y="528" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="550.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tunnels</text>
-  <rect x="357" y="528" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="550.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">github</text>
-  <rect x="493" y="528" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="550.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
-  <rect x="85" y="570" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="592.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lock</text>
-  <rect x="221" y="570" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="592.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tmux</text>
-  <rect x="357" y="570" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="592.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">connect.ts</text>
-  <text x="85" y="636" class="lb" style="fill:#7dd3fc">stores/ · LO QUE RECUERDA (zustand)</text>
-  <rect x="85" y="648" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="670.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
-  <rect x="221" y="648" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="670.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">settings</text>
-  <rect x="357" y="648" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="670.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tabs</text>
-  <rect x="493" y="648" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="670.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">transfers</text>
-  <rect x="85" y="690" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="712.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">terminalBus</text>
-  <rect x="221" y="690" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="712.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">toasts</text>
-  <rect x="357" y="690" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="712.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">ui</text>
-  <text x="85" y="752" class="lb" style="fill:#7dd3fc">api/ · ÚNICA PUERTA AL MOTOR</text>
-  <text x="85" y="774" class="xs">core.ts: call() y errores · types.ts: espejo de types.rs</text>
+  <text x="557.0" y="412.0" text-anchor="middle" class="b" style="">Welcome</text>
+  <rect x="85" y="432" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="454.0" text-anchor="middle" class="b" style="">About</text>
+  <rect x="221" y="432" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="454.0" text-anchor="middle" class="b" style="">ui</text>
+  <line x1="360" y1="472" x2="360" y2="502" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#mb)"/>
+  <text x="85" y="524" class="lb" style="fill:#7dd3fc">features/ · LÓGICA DE CADA FUNCIÓN (una carpeta por tema)</text>
+  <rect x="85" y="536" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">admin</text>
+  <rect x="221" y="536" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">audit</text>
+  <rect x="357" y="536" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">connect</text>
+  <rect x="493" y="536" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">containers</text>
+  <rect x="85" y="578" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">fleet</text>
+  <rect x="221" y="578" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">github</text>
+  <rect x="357" y="578" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">infra</text>
+  <rect x="493" y="578" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">localterm</text>
+  <rect x="85" y="620" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lock</text>
+  <rect x="221" y="620" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">mcp</text>
+  <rect x="357" y="620" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">monitor</text>
+  <rect x="493" y="620" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">multirun</text>
+  <rect x="85" y="662" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">privileges</text>
+  <rect x="221" y="662" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
+  <rect x="357" y="662" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">reboot</text>
+  <rect x="493" y="662" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">serverEditor</text>
+  <rect x="85" y="704" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">shortcuts</text>
+  <rect x="221" y="704" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sshkeys</text>
+  <rect x="357" y="704" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sudoRun</text>
+  <rect x="493" y="704" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tabbar</text>
+  <rect x="85" y="746" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tmux</text>
+  <rect x="221" y="746" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tunnels</text>
+  <rect x="357" y="746" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
+  <rect x="493" y="746" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">vulnscan</text>
+  <rect x="85" y="788" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="810.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">whatsNew</text>
+  <text x="85" y="862" class="lb" style="fill:#7dd3fc">stores/ · LO QUE RECUERDA (zustand)</text>
+  <rect x="85" y="874" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="896.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
+  <rect x="221" y="874" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="896.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">settings</text>
+  <rect x="357" y="874" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="896.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tabs</text>
+  <rect x="493" y="874" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="896.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">transfers</text>
+  <rect x="85" y="916" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">terminalBus</text>
+  <rect x="221" y="916" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">toasts</text>
+  <rect x="357" y="916" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">ui</text>
+  <text x="85" y="990" class="lb" style="fill:#7dd3fc">lib/ · UTILIDADES PURAS   ·   windows/ · EDITOR APARTE</text>
+  <rect x="85" y="1002" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">paths</text>
+  <rect x="221" y="1002" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">format</text>
+  <rect x="357" y="1002" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">platform</text>
+  <rect x="493" y="1002" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">clipboard</text>
+  <rect x="85" y="1044" width="128" height="34" rx="8" class="pi"/>
+  <text x="149.0" y="1066.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lazy</text>
+  <text x="85" y="1124" class="lb" style="fill:#7dd3fc">api/ · ÚNICA PUERTA AL MOTOR</text>
+  <text x="85" y="1146" class="xs">core.ts: call() y errores · types.ts: espejo de types.rs · index.ts</text>
   <text x="965" y="210" class="lb" style="fill:#fdba74">ARRANQUE Y BASE</text>
   <rect x="965" y="222" width="176" height="48" rx="8" class="po"/>
   <text x="1053" y="243" text-anchor="middle" class="mono" style="font-size:14px">main.rs</text>
@@ -132,123 +173,168 @@
   <rect x="1337" y="278" width="176" height="48" rx="8" class="po"/>
   <text x="1425" y="299" text-anchor="middle" class="mono" style="font-size:14px">diagnostics.rs</text>
   <text x="1425" y="317" text-anchor="middle" class="xs">datos del sistema</text>
-  <text x="965" y="364" class="lb" style="fill:#fdba74">ESTADO GLOBAL (lo que vive mientras la app está abierta)</text>
-  <rect x="965" y="376" width="550" height="162" rx="10" class="po"/>
-  <text x="985" y="404"><tspan class="mono" style="font-size:13px">SessionStore</tspan><tspan class="xs" dx="8">sesiones SSH</tspan></text>
-  <text x="1255" y="404"><tspan class="mono" style="font-size:13px">TerminalStore</tspan><tspan class="xs" dx="8">terminales abiertas</tspan></text>
-  <text x="985" y="434"><tspan class="mono" style="font-size:13px">SftpStore</tspan><tspan class="xs" dx="8">canal del explorador</tspan></text>
-  <text x="1255" y="434"><tspan class="mono" style="font-size:13px">TransferManager</tspan><tspan class="xs" dx="8">cola y progreso</tspan></text>
-  <text x="985" y="464"><tspan class="mono" style="font-size:13px">ExecRegistry</tspan><tspan class="xs" dx="8">ejecuciones cancelables</tspan></text>
-  <text x="1255" y="464"><tspan class="mono" style="font-size:13px">TunnelManager</tspan><tspan class="xs" dx="8">túneles + vigilante</tspan></text>
-  <text x="985" y="494"><tspan class="mono" style="font-size:13px">ProfileStore</tspan><tspan class="xs" dx="8">servidores, proyectos</tspan></text>
-  <text x="1255" y="494"><tspan class="mono" style="font-size:13px">SettingsStore</tspan><tspan class="xs" dx="8">ajustes</tspan></text>
-  <text x="985" y="524"><tspan class="mono" style="font-size:13px">SnippetStore</tspan><tspan class="xs" dx="8">mis comandos</tspan></text>
-  <text x="1255" y="524"><tspan class="mono" style="font-size:13px">LockState</tspan><tspan class="xs" dx="8">inactividad</tspan></text>
-  <text x="965" y="572" class="lb" style="fill:#fdba74">PLUGINS DE TAURI</text>
-  <rect x="965" y="584" width="176" height="30" rx="8" class="po"/>
-  <text x="1053.0" y="604.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">window-state</text>
-  <rect x="1152" y="584" width="176" height="30" rx="8" class="po"/>
-  <text x="1240.0" y="604.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">opener</text>
-  <rect x="1339" y="584" width="176" height="30" rx="8" class="po"/>
-  <text x="1427.0" y="604.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">dialog</text>
-  <rect x="965" y="622" width="176" height="30" rx="8" class="po"/>
-  <text x="1053.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">clipboard</text>
-  <rect x="1152" y="622" width="176" height="30" rx="8" class="po"/>
-  <text x="1240.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
-  <rect x="1339" y="622" width="176" height="30" rx="8" class="po"/>
-  <text x="1427.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">process</text>
-  <line x1="1240" y1="686" x2="1240" y2="726" stroke="#f97316" stroke-width="2.5" marker-end="url(#mo)"/>
-  <text x="965" y="752" class="lb" style="fill:#fdba74">MÓDULOS · EL TRABAJO REAL</text>
-  <text x="965" y="774" class="xs">un comando de Tauri por acción (#[tauri::command])</text>
-  <text x="800" y="752" text-anchor="middle" class="lb" style="fill:#a78bfa">COMANDOS IPC</text>
-  <text x="800" y="774" text-anchor="middle" class="xs">ejemplos</text>
-  <rect x="85" y="790" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="818" class="mono" style="font-size:15px">ssh.ts</text>
-  <text x="240" y="818" class="s">conectar, huella</text>
-  <rect x="965" y="790" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="818" class="mono" style="font-size:15px">ssh/</text>
-  <text x="1100" y="818" class="mono" style="font-size:12.5px;fill:#94a3b8">connect · handler · known_hosts · reconnect</text>
-  <line x1="641" y1="818" x2="959" y2="818" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="810" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">ssh_connect · ssh_trust_host</text>
-  <rect x="85" y="840" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="868" class="mono" style="font-size:15px">terminal.ts</text>
-  <text x="240" y="868" class="s">shell, teclas, tmux</text>
-  <rect x="965" y="840" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="868" class="mono" style="font-size:15px">terminal/</text>
-  <text x="1100" y="868" class="mono" style="font-size:12.5px;fill:#94a3b8">shell · tmux</text>
-  <line x1="641" y1="868" x2="959" y2="868" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="860" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">term_open · term_tmux_list</text>
-  <rect x="85" y="890" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="918" class="mono" style="font-size:15px">sftp.ts</text>
-  <text x="240" y="918" class="s">listar, leer, guardar</text>
-  <rect x="965" y="890" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="918" class="mono" style="font-size:15px">sftp/</text>
-  <text x="1100" y="918" class="mono" style="font-size:12.5px;fill:#94a3b8">ops · util</text>
-  <line x1="641" y1="918" x2="959" y2="918" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="910" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">sftp_list_dir · sftp_write_text</text>
-  <rect x="85" y="940" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="968" class="mono" style="font-size:15px">transfers.ts</text>
-  <text x="240" y="968" class="s">subir, bajar, conflictos</text>
-  <rect x="965" y="940" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="968" class="mono" style="font-size:15px">transfer/</text>
-  <text x="1100" y="968" class="mono" style="font-size:12.5px;fill:#94a3b8">engine · copy · pool · policy · paths</text>
-  <line x1="641" y1="968" x2="959" y2="968" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="960" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">transfer_upload · transfer_cancel</text>
-  <rect x="85" y="990" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1018" class="mono" style="font-size:15px">dragout.ts</text>
-  <text x="240" y="1018" class="s">arrastrar al sistema</text>
-  <rect x="965" y="990" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1018" class="mono" style="font-size:15px">dragout/</text>
-  <text x="1100" y="1018" class="mono" style="font-size:12.5px;fill:#94a3b8">linux · win · macos</text>
-  <line x1="641" y1="1018" x2="959" y2="1018" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1010" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">drag_out_dir · drag_out_start</text>
-  <rect x="85" y="1040" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1068" class="mono" style="font-size:15px">snippets.ts</text>
-  <text x="240" y="1068" class="s">comandos y exec</text>
-  <rect x="965" y="1040" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1068" class="mono" style="font-size:15px">snippets/</text>
-  <text x="1100" y="1068" class="mono" style="font-size:12.5px;fill:#94a3b8">exec · store</text>
-  <line x1="641" y1="1068" x2="959" y2="1068" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1060" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">exec_capture_stdin · exec_cancel</text>
-  <rect x="85" y="1090" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1118" class="mono" style="font-size:15px">tunnels.ts</text>
-  <text x="240" y="1118" class="s">túneles y estado</text>
-  <rect x="965" y="1090" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1118" class="mono" style="font-size:15px">tunnels/</text>
-  <text x="1100" y="1118" class="mono" style="font-size:12.5px;fill:#94a3b8">manager · remote · socks · io · store</text>
-  <line x1="641" y1="1118" x2="959" y2="1118" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1110" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">tunnel_start · tunnels_save</text>
-  <rect x="85" y="1140" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1168" class="mono" style="font-size:15px">github.ts</text>
-  <text x="240" y="1168" class="s">cuenta, repos, Gist</text>
-  <rect x="965" y="1140" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1168" class="mono" style="font-size:15px">github/</text>
-  <text x="1100" y="1168" class="mono" style="font-size:12.5px;fill:#94a3b8">api · http · crypto · share · config</text>
-  <line x1="641" y1="1168" x2="959" y2="1168" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1160" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">gh_repos · gh_sync_push</text>
-  <rect x="85" y="1190" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1218" class="mono" style="font-size:15px">profiles.ts</text>
-  <text x="240" y="1218" class="s">servidores, ajustes</text>
-  <rect x="965" y="1190" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1218" class="mono" style="font-size:15px">storage/</text>
-  <text x="1100" y="1218" class="mono" style="font-size:12.5px;fill:#94a3b8">secrets · ssh_config · fsutil</text>
-  <line x1="641" y1="1218" x2="959" y2="1218" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1210" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">profiles_save_server · settings_save</text>
-  <rect x="85" y="1240" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1268" class="mono" style="font-size:15px">vault.ts</text>
-  <text x="240" y="1268" class="s">PIN y bloqueo</text>
-  <rect x="965" y="1240" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1268" class="mono" style="font-size:15px">storage/</text>
-  <text x="1100" y="1268" class="mono" style="font-size:12.5px;fill:#94a3b8">vault · lock · cipher</text>
-  <line x1="641" y1="1268" x2="959" y2="1268" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1260" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">vault_unlock · vault_lock</text>
-  <rect x="85" y="1290" width="550" height="44" rx="9" class="pi"/>
-  <text x="103" y="1318" class="mono" style="font-size:15px">localfs.ts</text>
-  <text x="240" y="1318" class="s">exportar / importar</text>
-  <rect x="965" y="1290" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1318" class="mono" style="font-size:15px">localfs.rs</text>
-  <text x="1100" y="1318" class="mono" style="font-size:12.5px;fill:#94a3b8">archivos de texto que eliges</text>
-  <line x1="641" y1="1318" x2="959" y2="1318" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
-  <text x="800" y="1310" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">local_write_text · local_read_text</text>
-  <text x="60" y="1400" style="font-size:17px;fill:#94a3b8">* windows/ es la ventana de editor aparte. features/ guarda la lógica de cada función (scripts, lectura de salidas, estado).</text>
+  <rect x="965" y="334" width="176" height="48" rx="8" class="po"/>
+  <text x="1053" y="355" text-anchor="middle" class="mono" style="font-size:14px">pinch.rs</text>
+  <text x="1053" y="373" text-anchor="middle" class="xs">pellizco del touchpad</text>
+  <text x="965" y="420" class="lb" style="fill:#fdba74">ESTADO GLOBAL (lo que vive mientras la app está abierta)</text>
+  <rect x="965" y="432" width="550" height="202" rx="10" class="po"/>
+  <text x="985" y="460"><tspan class="mono" style="font-size:13px">SessionStore</tspan><tspan class="xs" dx="8">sesiones SSH</tspan></text>
+  <text x="1255" y="460"><tspan class="mono" style="font-size:13px">TerminalStore</tspan><tspan class="xs" dx="8">terminales remotas</tspan></text>
+  <text x="985" y="490"><tspan class="mono" style="font-size:13px">LocalTermStore</tspan><tspan class="xs" dx="8">terminales del PC</tspan></text>
+  <text x="1255" y="490"><tspan class="mono" style="font-size:13px">SftpStore</tspan><tspan class="xs" dx="8">canal del explorador</tspan></text>
+  <text x="985" y="520"><tspan class="mono" style="font-size:13px">TransferManager</tspan><tspan class="xs" dx="8">cola y progreso</tspan></text>
+  <text x="1255" y="520"><tspan class="mono" style="font-size:13px">ExecRegistry</tspan><tspan class="xs" dx="8">ejecuciones cancelables</tspan></text>
+  <text x="985" y="550"><tspan class="mono" style="font-size:13px">TunnelManager</tspan><tspan class="xs" dx="8">túneles + vigilante</tspan></text>
+  <text x="1255" y="550"><tspan class="mono" style="font-size:13px">McpState</tspan><tspan class="xs" dx="8">servidor MCP</tspan></text>
+  <text x="985" y="580"><tspan class="mono" style="font-size:13px">ProfileStore</tspan><tspan class="xs" dx="8">servidores, proyectos</tspan></text>
+  <text x="1255" y="580"><tspan class="mono" style="font-size:13px">SettingsStore</tspan><tspan class="xs" dx="8">ajustes</tspan></text>
+  <text x="985" y="610"><tspan class="mono" style="font-size:13px">SnippetStore</tspan><tspan class="xs" dx="8">mis comandos</tspan></text>
+  <text x="1255" y="610"><tspan class="mono" style="font-size:13px">LockState</tspan><tspan class="xs" dx="8">PIN e inactividad</tspan></text>
+  <text x="965" y="670" class="lb" style="fill:#fdba74">PLUGINS DE TAURI (+ pinch, propio)</text>
+  <rect x="965" y="682" width="176" height="30" rx="8" class="po"/>
+  <text x="1053.0" y="702.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">window-state</text>
+  <rect x="1152" y="682" width="176" height="30" rx="8" class="po"/>
+  <text x="1240.0" y="702.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">opener</text>
+  <rect x="1339" y="682" width="176" height="30" rx="8" class="po"/>
+  <text x="1427.0" y="702.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">dialog</text>
+  <rect x="965" y="720" width="176" height="30" rx="8" class="po"/>
+  <text x="1053.0" y="740.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">clipboard</text>
+  <rect x="1152" y="720" width="176" height="30" rx="8" class="po"/>
+  <text x="1240.0" y="740.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
+  <rect x="1339" y="720" width="176" height="30" rx="8" class="po"/>
+  <text x="1427.0" y="740.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">process</text>
+  <line x1="1240" y1="766" x2="1240" y2="1098" stroke="#f97316" stroke-width="2.5" marker-end="url(#mo)"/>
+  <text x="965" y="1124" class="lb" style="fill:#fdba74">MÓDULOS · EL TRABAJO REAL</text>
+  <text x="965" y="1146" class="xs">un comando de Tauri por acción (#[tauri::command])</text>
+  <text x="800" y="1124" text-anchor="middle" class="lb" style="fill:#a78bfa">COMANDOS IPC</text>
+  <text x="800" y="1146" text-anchor="middle" class="xs">ejemplos</text>
+  <rect x="85" y="1162" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1190" class="mono" style="font-size:15px">ssh.ts</text>
+  <text x="240" y="1190" class="s">conectar, huella, probar</text>
+  <rect x="965" y="1162" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1190" class="mono" style="font-size:15px">ssh/</text>
+  <text x="1100" y="1190" class="mono" style="font-size:12.5px;fill:#94a3b8">connect · handler · known_hosts · reconnect</text>
+  <line x1="641" y1="1190" x2="959" y2="1190" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1182" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">ssh_connect · ssh_trust_host</text>
+  <rect x="85" y="1212" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1240" class="mono" style="font-size:15px">terminal.ts</text>
+  <text x="240" y="1240" class="s">shell, teclas, tmux</text>
+  <rect x="965" y="1212" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1240" class="mono" style="font-size:15px">terminal/</text>
+  <text x="1100" y="1240" class="mono" style="font-size:12.5px;fill:#94a3b8">shell · tmux · batch</text>
+  <line x1="641" y1="1240" x2="959" y2="1240" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1232" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">term_open · term_tmux_list</text>
+  <rect x="85" y="1262" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1290" class="mono" style="font-size:15px">localterm.ts</text>
+  <text x="240" y="1290" class="s">terminal del PC e IA</text>
+  <rect x="965" y="1262" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1290" class="mono" style="font-size:15px">localterm/</text>
+  <text x="1100" y="1290" class="mono" style="font-size:12.5px;fill:#94a3b8">pty · launch · aicli · tools</text>
+  <line x1="641" y1="1290" x2="959" y2="1290" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1282" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">local_term_open · local_ai_detect</text>
+  <rect x="85" y="1312" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1340" class="mono" style="font-size:15px">sftp.ts</text>
+  <text x="240" y="1340" class="s">listar, leer, guardar</text>
+  <rect x="965" y="1312" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1340" class="mono" style="font-size:15px">sftp/</text>
+  <text x="1100" y="1340" class="mono" style="font-size:12.5px;fill:#94a3b8">ops · util</text>
+  <line x1="641" y1="1340" x2="959" y2="1340" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1332" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">sftp_list_dir · sftp_write_text</text>
+  <rect x="85" y="1362" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1390" class="mono" style="font-size:15px">transfers.ts</text>
+  <text x="240" y="1390" class="s">subir, bajar, conflictos</text>
+  <rect x="965" y="1362" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1390" class="mono" style="font-size:15px">transfer/</text>
+  <text x="1100" y="1390" class="mono" style="font-size:12.5px;fill:#94a3b8">engine · copy · download · pool · policy</text>
+  <line x1="641" y1="1390" x2="959" y2="1390" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1382" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">transfer_upload · transfer_cancel</text>
+  <rect x="85" y="1412" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1440" class="mono" style="font-size:15px">dragout.ts</text>
+  <text x="240" y="1440" class="s">arrastrar al sistema</text>
+  <rect x="965" y="1412" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1440" class="mono" style="font-size:15px">dragout/</text>
+  <text x="1100" y="1440" class="mono" style="font-size:12.5px;fill:#94a3b8">linux · win · macos</text>
+  <line x1="641" y1="1440" x2="959" y2="1440" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1432" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">drag_out_dir · drag_out_start</text>
+  <rect x="85" y="1462" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1490" class="mono" style="font-size:15px">snippets.ts</text>
+  <text x="240" y="1490" class="s">comandos, exec y sudo</text>
+  <rect x="965" y="1462" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1490" class="mono" style="font-size:15px">snippets/</text>
+  <text x="1100" y="1490" class="mono" style="font-size:12.5px;fill:#94a3b8">exec · store · sudo</text>
+  <line x1="641" y1="1490" x2="959" y2="1490" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1482" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">exec_capture_sudo · exec_cancel</text>
+  <rect x="85" y="1512" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1540" class="mono" style="font-size:15px">tunnels.ts</text>
+  <text x="240" y="1540" class="s">túneles y estado</text>
+  <rect x="965" y="1512" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1540" class="mono" style="font-size:15px">tunnels/</text>
+  <text x="1100" y="1540" class="mono" style="font-size:12.5px;fill:#94a3b8">manager · forward · watcher · socks · remote</text>
+  <line x1="641" y1="1540" x2="959" y2="1540" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1532" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">tunnel_start · tunnels_save</text>
+  <rect x="85" y="1562" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1590" class="mono" style="font-size:15px">github.ts</text>
+  <text x="240" y="1590" class="s">cuenta, repos, Gist</text>
+  <rect x="965" y="1562" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1590" class="mono" style="font-size:15px">github/</text>
+  <text x="1100" y="1590" class="mono" style="font-size:12.5px;fill:#94a3b8">api · api_gists · sync_cmds · crypto · share</text>
+  <line x1="641" y1="1590" x2="959" y2="1590" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1582" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">gh_repos · gh_sync_push</text>
+  <rect x="85" y="1612" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1640" class="mono" style="font-size:15px">profiles.ts</text>
+  <text x="240" y="1640" class="s">servidores, ajustes</text>
+  <rect x="965" y="1612" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1640" class="mono" style="font-size:15px">storage/</text>
+  <text x="1100" y="1640" class="mono" style="font-size:12.5px;fill:#94a3b8">commands · secrets · ssh_config · sudo_secret</text>
+  <line x1="641" y1="1640" x2="959" y2="1640" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1632" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">profiles_save_server · settings_save</text>
+  <rect x="85" y="1662" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1690" class="mono" style="font-size:15px">vault.ts</text>
+  <text x="240" y="1690" class="s">PIN y bloqueo</text>
+  <rect x="965" y="1662" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1690" class="mono" style="font-size:15px">storage/</text>
+  <text x="1100" y="1690" class="mono" style="font-size:12.5px;fill:#94a3b8">vault · lock · cipher</text>
+  <line x1="641" y1="1690" x2="959" y2="1690" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1682" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">vault_unlock · vault_lock</text>
+  <rect x="85" y="1712" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1740" class="mono" style="font-size:15px">mcp.ts</text>
+  <text x="240" y="1740" class="s">asistentes de IA</text>
+  <rect x="965" y="1712" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1740" class="mono" style="font-size:15px">mcp/</text>
+  <text x="1100" y="1740" class="mono" style="font-size:12.5px;fill:#94a3b8">server · http · core/ · policy · bridge</text>
+  <line x1="641" y1="1740" x2="959" y2="1740" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1732" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">mcp_config · mcp_approval_reply</text>
+  <rect x="85" y="1762" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1790" class="mono" style="font-size:15px">vulnscan.ts</text>
+  <text x="240" y="1790" class="s">escáner e IA</text>
+  <rect x="965" y="1762" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1790" class="mono" style="font-size:13px">vulnscan/ · ai/</text>
+  <text x="1190" y="1790" class="mono" style="font-size:12.5px;fill:#94a3b8">analyze · osv · scripts · store</text>
+  <line x1="641" y1="1790" x2="959" y2="1790" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1782" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">vulnscan_analyze · ai_chat</text>
+  <rect x="85" y="1812" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1840" class="mono" style="font-size:15px">audit.ts</text>
+  <text x="240" y="1840" class="s">auditorías guardadas</text>
+  <rect x="965" y="1812" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1840" class="mono" style="font-size:15px">audit/</text>
+  <text x="1100" y="1840" class="mono" style="font-size:12.5px;fill:#94a3b8">model · store</text>
+  <line x1="641" y1="1840" x2="959" y2="1840" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1832" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">audit_save · audit_latest</text>
+  <rect x="85" y="1862" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1890" class="mono" style="font-size:15px">localkeys.ts</text>
+  <text x="240" y="1890" class="s">llaves SSH del PC</text>
+  <rect x="965" y="1862" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1890" class="mono" style="font-size:13px">localkeys.rs · sshkeys/</text>
+  <text x="1190" y="1890" class="mono" style="font-size:12.5px;fill:#94a3b8">crear · detectar privadas</text>
+  <line x1="641" y1="1890" x2="959" y2="1890" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1882" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">local_ssh_generate_key</text>
+  <rect x="85" y="1912" width="550" height="44" rx="9" class="pi"/>
+  <text x="103" y="1940" class="mono" style="font-size:15px">localfs.ts</text>
+  <text x="240" y="1940" class="s">exportar / importar</text>
+  <rect x="965" y="1912" width="550" height="44" rx="9" class="po"/>
+  <text x="983" y="1940" class="mono" style="font-size:15px">localfs.rs</text>
+  <text x="1100" y="1940" class="mono" style="font-size:12.5px;fill:#94a3b8">archivos de texto que eliges</text>
+  <line x1="641" y1="1940" x2="959" y2="1940" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
+  <text x="800" y="1932" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">local_write_text · local_read_text</text>
+  <text x="60" y="2022" style="font-size:17px;fill:#94a3b8">features/ guarda la lógica de cada función (scripts, lectura de salidas, estado); components/ solo lo que se ve.</text>
 </svg>

@@ -237,6 +237,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | `lib.rs`, `main.rs` | Arranque: registra plugins, estado global y todos los comandos |
 | `error.rs`, `types.rs` | Errores traducidos a mensajes claros y tipos compartidos con la interfaz |
 | `platform.rs` | Ajustes de WebKitGTK antes de crear la ventana (problemas con NVIDIA) |
+| `pinch.rs` | Plugin propio: el pellizco del touchpad no agranda la app; se reenvía a la interfaz como evento `pinch-zoom` (lo usa el mapa de infraestructura) |
 | `ssh/` | Conectar y autenticar (`connect/`), huellas (`known_hosts.rs`, `known_hosts_match.rs`, `handler.rs`), reconexión (`reconnect.rs`, `reboot_wait.rs`) y comandos (`commands.rs`) |
 | `terminal/` | Shell con PTY sobre un canal SSH (`shell.rs`) y sesiones persistentes (`tmux.rs`) |
 | `localterm/` | Terminal local (PTY del PC) y lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto |
@@ -249,7 +250,8 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `server.rs`, `core/`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`, `bridge.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
-| `localfs.rs`, `diagnostics.rs`, `sshkeys/` | Archivos locales (exportar/importar), diagnóstico del sistema y generación/lectura de llaves SSH en `~/.ssh` |
+| `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
+| `localkeys.rs`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys.rs` lista las públicas (`*.pub`) y **genera** llaves ed25519 nuevas; `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
 
 Librerías clave del motor: `tauri`, `tokio`, `russh`, `russh-sftp`, `keyring`, `serde`, `reqwest`
 (con rustls), `aes-gcm` + `argon2` (bóveda y Gist cifrado), `zeroize` (borrar secretos de la memoria), `gtk` (arrastre en Linux), `windows` (arrastre en
@@ -265,7 +267,7 @@ Librerías clave de la interfaz: `react`, `@xterm/xterm` (con WebGL), `@monaco-e
 
 ![Flujo de conexión](arquitectura/06-flujo-conexion.png)
 
-- La interfaz (`features/connect.ts`) llama a `ssh_connect`. Si no le diste la contraseña o la frase,
+- La interfaz (`features/connect/connect.ts`) llama a `ssh_connect`. Si no le diste la contraseña o la frase,
   el motor la busca en la bóveda (si hay PIN) o en el llavero; solo vive en memoria. Si SSHorus está
   bloqueado, responde `Locked`.
 - `ssh/connect.rs` abre TCP, negocia el cifrado y compara la huella con `~/.ssh/known_hosts`.
@@ -275,11 +277,11 @@ Librerías clave de la interfaz: `react`, `@xterm/xterm` (con WebGL), `@monaco-e
 - La autenticación puede encadenar llave, contraseña, agente y código 2FA. Si falta un dato, el
   motor lo dice (`NeedsPassword`, `NeedsPassphrase`, `NeedsOtp`), la interfaz lo pide y repite.
   Con "Recordar", el secreto se guarda en el llavero solo si la conexión funcionó. El código 2FA nunca se guarda.
-- **Probar conexión** (editor de servidor, `features/serverTest.ts`): `ssh_test_connection` recibe el
+- **Probar conexión** (editor de servidor, `features/connect/serverTest.ts`): `ssh_test_connection` recibe el
   perfil y el secreto aún sin guardar (solo en memoria, nunca en disco ni en el registro), usa el mismo
   `connect_full` (huella incluida), desconecta enseguida y no crea sesión. Tiempo límite 10 s;
   `ssh_cancel_test` la corta. Si falta la contraseña o la frase, solo prueba red y huella (`skipped`).
-  Las sugerencias de host y el aviso de servidor repetido salen de `features/serverMatches.ts`.
+  Las sugerencias de host y el aviso de servidor repetido salen de `features/profiles/serverMatches.ts`.
 - El motor arranca el vigilante (`ssh/reconnect.rs`): señal de vida cada 10 s, caída tras 3 sin
   respuesta y reconexión automática en la misma pestaña (5 intentos por defecto).
 - Después, en segundo plano: la terminal abre su canal PTY, el explorador su canal SFTP al primer
@@ -296,7 +298,7 @@ Panel "Comandos" de cada conexión: catálogo por categorías, variables con sug
 servidor, vista previa exacta, "Insertar en terminal", "Ejecutar" y "Ejecutar y ver resultado"
 (este último por el canal exec, y se puede cancelar de verdad), análisis del servidor y "Mis
 comandos" (exportar, importar y compartir por Gist). Los comandos con `sudo` se mandan a la terminal
-para que escribas la contraseña ahí. Detalle en [PENDIENTES.md](PENDIENTES.md#1-biblioteca-de-comandos).
+para que escribas la contraseña ahí. Detalle en el [historial de pendientes](historial/PENDIENTES-historial.md#1-biblioteca-de-comandos).
 
 ---
 
@@ -517,7 +519,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   En el editor del servidor se elige «Contraseña de sudo»: **Pedir cada vez** (`ask`), **La de la
   conexión** (`login`) o **Guardar** (`saved`). Sin bóveda, la de sudo guardada va al llavero con el
   mismo id `<id>:sudo`.
-- **Ver una contraseña guardada:** el botón de ojo de los campos de contraseña (`features/SecretInput.tsx`)
+- **Ver una contraseña guardada:** el botón de ojo de los campos de contraseña (`features/serverEditor/SecretInput.tsx`)
   llama a `profiles_reveal_secret`, que con bóveda pide y comprueba el PIN en el motor antes de devolverla.
 - **Candado en la barra de pestañas** (`components/Tabs/LockButton.tsx`): bloquear ahora, cambiar el
   PIN y abrir Ajustes → Seguridad.
@@ -597,7 +599,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 Construido para la v0.5.0. Un asistente de IA (Claude Code, Claude Desktop u otro cliente MCP) trabaja con tus
 servidores a través de SSHorus: usa las conexiones abiertas en la app y **nunca ve contraseñas ni llaves**.
 Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas y límites en
-[PENDIENTES.md](PENDIENTES.md#3-servidor-mcp-conectar-asistentes-de-ia).
+[el historial de pendientes](historial/PENDIENTES-historial.md#3-servidor-mcp-conectar-asistentes-de-ia).
 
 **Camino de una petición**
 
@@ -679,7 +681,7 @@ después de que lo apruebes (se pregunta siempre, salvo con «Aceptar automátic
 | `request_sudo_password` (pide autorización explícita para entregar la contraseña de sudo si está habilitado en Ajustes), `reboot_server` (`mcp/core/reboot.rs`: avisa a `ssh/reboot_wait.rs` y reinicia con sudo) | Pregunta siempre (sin «Permitir siempre» en `reboot_server`); en Solo lectura, rechazado |
 
 Lo peligroso pregunta siempre, sin «Permitir siempre». Detalle y límites de cada una en
-[PENDIENTES.md](PENDIENTES.md#herramientas).
+[el historial de pendientes](historial/PENDIENTES-historial.md#herramientas).
 
 ## 16b. Escáner de vulnerabilidades (v0.5.0 · diagrama 17)
 
@@ -689,7 +691,7 @@ Sub-pestaña **«Vulnerabilidades»** en Administración. Dice qué hay instalad
 OpenSSH, nginx, Caddy, Podman, Docker, Node, Python, PHP, Java e imágenes de contenedores) y qué avisos
 de seguridad le afectan, con gravedad, si tiene arreglo y el comando para actualizar (solo para copiar o
 insertar en la terminal sin Enter). Detalle, pruebas y cambios respecto al diseño:
-[PENDIENTES.md, sección 10](PENDIENTES.md#10-escáner-de-vulnerabilidades--hecho-v050).
+[el historial de pendientes, sección 10](historial/PENDIENTES-historial.md#10-escáner-de-vulnerabilidades--hecho-v050).
 
 **Cómo va un análisis:**
 
@@ -801,21 +803,21 @@ un servidor con problemas) y `src-tauri/src/audit/tests.rs`.
 | Fase | Qué se construye | Estado |
 |------|------------------|--------|
 | 0–8 | Proyecto, SSH con huellas, terminal, explorador, transferencias masivas, servidores y proyectos, editor, temas y ajustes, reconexión | Hecho |
-| 9 | Biblioteca de comandos ([detalle](PENDIENTES.md#1-biblioteca-de-comandos)) | Hecho |
-| 9b | Exportar e importar con `~/.ssh/config` ([detalle](PENDIENTES.md#5-exportar-servidores-a-sshconfig)) | Hecho |
-| 10 | Servidor MCP para asistentes de IA ([detalle](PENDIENTES.md#3-servidor-mcp-conectar-asistentes-de-ia)) | Hecho (v0.5.0); falta probar con Claude Code y Claude Desktop reales |
-| 11 | Optimización y rendimiento, panel de diagnóstico ([detalle](PENDIENTES.md#81-optimización--rendimiento)) | Hecho; falta medir en la app real |
-| 12 | Administración: usuarios, grupos, sesiones, puertos y sitios web ([detalle](PENDIENTES.md#82-gestión-del-servidor-usuarios-y-grupos)) | Hecho; servicios, firewall y paquetes pendientes |
-| 13 | Monitor en vivo con alertas ([detalle](PENDIENTES.md#83-monitoreo-en-vivo)) | Hecho |
-| 14 | Túneles local, remoto y SOCKS ([detalle](PENDIENTES.md#84-túneles-port-forwarding)) | Hecho |
-| 15 | Versiones, actualizaciones automáticas e instaladores para Linux, Windows y macOS ([detalle](PENDIENTES.md#85-versiones-y-actualizaciones)) | Hecho |
-| 16 | Ejecutar en varios servidores a la vez ([detalle](PENDIENTES.md#86-ejecutar-en-varios-servidores-a-la-vez)) | Hecho |
-| 17 | GitHub: Actions y cuenta en la app ([detalle](PENDIENTES.md#9-github)) | Hecho |
+| 9 | Biblioteca de comandos ([detalle](historial/PENDIENTES-historial.md#1-biblioteca-de-comandos)) | Hecho |
+| 9b | Exportar e importar con `~/.ssh/config` ([detalle](historial/PENDIENTES-historial.md#5-exportar-servidores-a-sshconfig)) | Hecho |
+| 10 | Servidor MCP para asistentes de IA ([detalle](historial/PENDIENTES-historial.md#3-servidor-mcp-conectar-asistentes-de-ia)) | Hecho (v0.5.0); falta probar con Claude Code y Claude Desktop reales |
+| 11 | Optimización y rendimiento, panel de diagnóstico ([detalle](historial/PENDIENTES-historial.md#81-optimización--rendimiento)) | Hecho; falta medir en la app real |
+| 12 | Administración: usuarios, grupos, sesiones, puertos y sitios web ([detalle](historial/PENDIENTES-historial.md#82-gestión-del-servidor-usuarios-y-grupos)) | Hecho; servicios, firewall y paquetes pendientes |
+| 13 | Monitor en vivo con alertas ([detalle](historial/PENDIENTES-historial.md#83-monitoreo-en-vivo)) | Hecho |
+| 14 | Túneles local, remoto y SOCKS ([detalle](historial/PENDIENTES-historial.md#84-túneles-port-forwarding)) | Hecho |
+| 15 | Versiones, actualizaciones automáticas e instaladores para Linux, Windows y macOS ([detalle](historial/PENDIENTES-historial.md#85-versiones-y-actualizaciones)) | Hecho |
+| 16 | Ejecutar en varios servidores a la vez ([detalle](historial/PENDIENTES-historial.md#86-ejecutar-en-varios-servidores-a-la-vez)) | Hecho |
+| 17 | GitHub: Actions y cuenta en la app ([detalle](historial/PENDIENTES-historial.md#9-github)) | Hecho |
 | 18 | Contenedores Podman / Docker | Hecho |
 | 19 | Arrastrar al escritorio | Hecho; falta probar en Windows real y compilar en macOS |
 | 20 | Terminales persistentes con tmux (ver sección 15) | Hecho |
 | 21 | PIN, bóveda de contraseñas y bloqueo (ver sección 14) | Hecho |
-| 22 | Escáner de vulnerabilidades (ver sección 16b, [detalle](PENDIENTES.md#10-escáner-de-vulnerabilidades--hecho-v050)) | Hecho (v0.5.0); falta probar Docker real y otros usuarios con systemd |
+| 22 | Escáner de vulnerabilidades (ver sección 16b, [detalle](historial/PENDIENTES-historial.md#10-escáner-de-vulnerabilidades--hecho-v050)) | Hecho (v0.5.0); falta probar Docker real y otros usuarios con systemd |
 
 ---
 

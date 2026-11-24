@@ -1,3 +1,6 @@
+> **Histórico (11/11/2026, v0.2).** Describe los stubs de una ronda ya terminada; no sirve para el código de hoy.
+> Las reglas vigentes están en [`dev/REGLAS-AGENTES.md`](../dev/REGLAS-AGENTES.md).
+
 # Ronda 2 — cambios en la BASE (léelo junto con REGLAS-AGENTES.md)
 
 Todo lo de la ronda 1 está terminado e integrado (43/43 tests). Esta ronda implementa `docs/PENDIENTES.md`
