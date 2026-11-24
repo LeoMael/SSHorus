@@ -321,8 +321,8 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 1. Abre la pestaña **Administración**. Arriba ves si tienes permisos (**root**, **sudo**) o **Solo lectura**.
 2. En **Usuarios** pulsa **Crear usuario**, o selecciona uno y usa **Editar**, **Llaves SSH**, **Contenedores** (ver y dar/quitar acceso a Podman, *linger* y Docker), **Bloquear** o **Eliminar**.
    - **Nuevo usuario con clave…** crea un usuario **sin contraseña** que solo entra con su llave SSH. Pega la
-     llave pública, elige una de `~/.ssh` de tu equipo o **genera una nueva** (ed25519; la privada se queda en
-     tu equipo, con frase opcional). Si sshd limita el acceso con `AllowGroups`, te ofrece añadir el grupo; si
+     llave pública, elige una de `~/.ssh` de tu equipo (solo aparecen las `.pub` válidas) o **genera una
+     nueva** (ed25519; la privada se queda en tu equipo, con frase opcional). Si sshd limita el acceso con `AllowGroups`, te ofrece añadir el grupo; si
      usa `AllowUsers`, te avisa y, al terminar, puedes añadirlo con un cambio aparte. También puedes activar
      *linger* y **darle sudo**: entonces le pone una contraseña que solo sirve para sudo (generada, o la que
      escribas), te la muestra una vez con **Copiar** y SSHorus la guarda como contraseña de sudo del servidor.

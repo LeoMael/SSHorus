@@ -1,7 +1,7 @@
 # Catálogo de comandos (base de la Biblioteca de comandos)
 
 Los comandos de la Biblioteca de SSHorus, por categoría.
-Este archivo fue la base del catálogo de la app, que vive en `src/components/Commands/catalog.ts` (con `catalogContainers.ts` y `catalogSystem.ts`).
+Este archivo fue la base del catálogo de la app, que vive en `src/features/commands/catalog.ts` (con `catalogContainers.ts` y `catalogSystem.ts`).
 
 **Leyenda:**
 `{{nombre}}` = variable que la app pide (con sugerencias del servidor) ·

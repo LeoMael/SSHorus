@@ -42,8 +42,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   (`request_sudo_password`) ahora viene **apagado** y, apagado, la herramienta ni se anuncia. Si lo tenías encendido
   sin haberlo tocado (antes venía así), queda apagado: puedes volver a encenderlo en Ajustes → Asistentes de IA.
 - **MCP: más protección de contraseñas**: si la salida de un comando o un archivo muestra una contraseña guardada del
-  servidor, se tapa; y `upload` no deja subir llaves privadas SSH (`~/.ssh`, la llave de cada servidor) ni la carpeta
-  de configuración de SSHorus.
+  servidor (de 6 caracteres o más), se tapa; y `upload` no deja subir llaves privadas SSH (`~/.ssh`, la llave de cada
+  servidor) ni la carpeta de configuración de SSHorus.
 - **MCP → «Aceptar automáticamente»**: el indicador de la barra de pestañas abre una ventana con el detalle por
   servidor, botón «Apagar» por fila y «Apagar todo» con confirmación.
 - **Orden del código (partes 1, 2 y 3) y ESLint**: añadida configuración de **ESLint** (`npm run lint`, **0 errores y 0 warnings**),
@@ -54,6 +54,14 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   `termController.ts`, `SyncSection`, `audit/checks.ts`, `admin/web.ts`, `admin/userVisibility.ts`, `infra/graph.ts`,
   `vulnscan/imageUpdate.ts`; Rust: `transfer/{engine,copy}.rs`, `mcp/{core,mod}.rs`, `storage/{ssh_config,mod}.rs`,
   `ssh/{connect,known_hosts}.rs`, `tunnels/manager.rs`, `github/{api,mod}.rs`, `vulnscan/{analyze,osv}.rs`).
+- **«Nuevo usuario con clave»**: la lista de llaves de `~/.ssh` solo muestra llaves públicas `.pub` válidas (el
+  asistente y GitHub leen ahora las llaves con el mismo código).
+- **Orden del código (parte 4)**: funciones compartidas sin copias (`src/lib/remote/`, ejecución con elevación en
+  `features/privileges/run.ts`) y un criterio fijo de carpetas: la lógica de Comandos, del explorador y del panel de
+  Contenedores pasa a `src/features/`, los controles comunes a `components/ui/` y el estado de las sesiones a
+  `stores/`. Detalle en `docs/ARQUITECTURA.md` §5.
+- **Pruebas**: nuevo `npm test` (todas las pruebas de la interfaz, o `npm test -- <filtro>`); la CI ejecuta además
+  ESLint (0 avisos) y `npm test` en Linux y en Windows.
 
 ### Corregido
 - **Terminal**: escritura sin retraso (`TCP_NODELAY` y envío inmediato tras pausa), texto insertado visible al momento,
@@ -64,6 +72,11 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - **IA para explicar informes**: si el modelo o proveedor (p. ej. Claude con thinking o modelos de razonamiento)
   rechaza el parámetro `temperature`, se reintenta automáticamente sin él.
 - **Confirmaciones**: los diálogos ya quedan siempre encima de Ajustes.
+- **Sitios web → «Comprobar configuración»** ya no se repite sola al escribir la contraseña de sudo: se ejecuta una
+  vez al abrir.
+- **Transferencias**: la lista de un lote grande va más fluida (ya no se vuelve a filtrar cada segundo).
+- **Barra lateral → «Mostrar servidor»**: funciona también al mover un servidor a un proyecto (espera a que la fila
+  aparezca) y, si no llega a aparecer, deja de buscarla en vez de robar el foco más tarde.
 
 ## [1.0.0-beta.2] - 2026-11-16
 

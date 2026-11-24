@@ -81,51 +81,55 @@
   <rect x="221" y="536" width="128" height="34" rx="8" class="pi"/>
   <text x="285.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">audit</text>
   <rect x="357" y="536" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">connect</text>
+  <text x="421.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">commands</text>
   <rect x="493" y="536" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">containers</text>
+  <text x="557.0" y="558.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">connect</text>
   <rect x="85" y="578" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">fleet</text>
+  <text x="149.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">containers</text>
   <rect x="221" y="578" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">github</text>
+  <text x="285.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">fileExplorer</text>
   <rect x="357" y="578" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">infra</text>
+  <text x="421.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">fleet</text>
   <rect x="493" y="578" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">localterm</text>
+  <text x="557.0" y="600.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">github</text>
   <rect x="85" y="620" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lock</text>
+  <text x="149.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">infra</text>
   <rect x="221" y="620" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">mcp</text>
+  <text x="285.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">localterm</text>
   <rect x="357" y="620" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">monitor</text>
+  <text x="421.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lock</text>
   <rect x="493" y="620" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">multirun</text>
+  <text x="557.0" y="642.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">mcp</text>
   <rect x="85" y="662" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">privileges</text>
+  <text x="149.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">monitor</text>
   <rect x="221" y="662" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
+  <text x="285.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">multirun</text>
   <rect x="357" y="662" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">reboot</text>
+  <text x="421.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">privileges</text>
   <rect x="493" y="662" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">serverEditor</text>
+  <text x="557.0" y="684.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
   <rect x="85" y="704" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">shortcuts</text>
+  <text x="149.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">reboot</text>
   <rect x="221" y="704" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sshkeys</text>
+  <text x="285.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">serverEditor</text>
   <rect x="357" y="704" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sudoRun</text>
+  <text x="421.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">shortcuts</text>
   <rect x="493" y="704" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tabbar</text>
+  <text x="557.0" y="726.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sshkeys</text>
   <rect x="85" y="746" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tmux</text>
+  <text x="149.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sudoRun</text>
   <rect x="221" y="746" width="128" height="34" rx="8" class="pi"/>
-  <text x="285.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tunnels</text>
+  <text x="285.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tabbar</text>
   <rect x="357" y="746" width="128" height="34" rx="8" class="pi"/>
-  <text x="421.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
+  <text x="421.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tmux</text>
   <rect x="493" y="746" width="128" height="34" rx="8" class="pi"/>
-  <text x="557.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">vulnscan</text>
+  <text x="557.0" y="768.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">tunnels</text>
   <rect x="85" y="788" width="128" height="34" rx="8" class="pi"/>
-  <text x="149.0" y="810.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">whatsNew</text>
+  <text x="149.0" y="810.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">updater</text>
+  <rect x="221" y="788" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="810.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">vulnscan</text>
+  <rect x="357" y="788" width="128" height="34" rx="8" class="pi"/>
+  <text x="421.0" y="810.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">whatsNew</text>
   <text x="85" y="862" class="lb" style="fill:#7dd3fc">stores/ · LO QUE RECUERDA (zustand)</text>
   <rect x="85" y="874" width="128" height="34" rx="8" class="pi"/>
   <text x="149.0" y="896.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">profiles</text>
@@ -141,6 +145,8 @@
   <text x="285.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">toasts</text>
   <rect x="357" y="916" width="128" height="34" rx="8" class="pi"/>
   <text x="421.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">ui</text>
+  <rect x="493" y="916" width="128" height="34" rx="8" class="pi"/>
+  <text x="557.0" y="938.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">sessionState</text>
   <text x="85" y="990" class="lb" style="fill:#7dd3fc">lib/ · UTILIDADES PURAS   ·   windows/ · EDITOR APARTE</text>
   <rect x="85" y="1002" width="128" height="34" rx="8" class="pi"/>
   <text x="149.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">paths</text>
@@ -152,6 +158,8 @@
   <text x="557.0" y="1024.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">clipboard</text>
   <rect x="85" y="1044" width="128" height="34" rx="8" class="pi"/>
   <text x="149.0" y="1066.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">lazy</text>
+  <rect x="221" y="1044" width="128" height="34" rx="8" class="pi"/>
+  <text x="285.0" y="1066.0" text-anchor="middle" class="mono b" style="font-size:13px;font-weight:400;">remote</text>
   <text x="85" y="1124" class="lb" style="fill:#7dd3fc">api/ · ÚNICA PUERTA AL MOTOR</text>
   <text x="85" y="1146" class="xs">core.ts: call() y errores · types.ts: espejo de types.rs · index.ts</text>
   <text x="965" y="210" class="lb" style="fill:#fdba74">ARRANQUE Y BASE</text>
@@ -324,8 +332,8 @@
   <text x="103" y="1890" class="mono" style="font-size:15px">localkeys.ts</text>
   <text x="240" y="1890" class="s">llaves SSH del PC</text>
   <rect x="965" y="1862" width="550" height="44" rx="9" class="po"/>
-  <text x="983" y="1890" class="mono" style="font-size:13px">localkeys.rs · sshkeys/</text>
-  <text x="1190" y="1890" class="mono" style="font-size:12.5px;fill:#94a3b8">crear · detectar privadas</text>
+  <text x="983" y="1890" class="mono" style="font-size:13px">localkeys/ · sshkeys/</text>
+  <text x="1190" y="1890" class="mono" style="font-size:12.5px;fill:#94a3b8">.pub, crear · privadas</text>
   <line x1="641" y1="1890" x2="959" y2="1890" stroke="#a78bfa" stroke-width="2.5" marker-start="url(#mp)" marker-end="url(#mp)"/>
   <text x="800" y="1882" text-anchor="middle" class="mono" style="font-size:12px;fill:#c4b5fd">local_ssh_generate_key</text>
   <rect x="85" y="1912" width="550" height="44" rx="9" class="pi"/>

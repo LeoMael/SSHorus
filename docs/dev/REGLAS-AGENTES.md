@@ -28,11 +28,25 @@ source ~/.cargo/env
 cd src-tauri && cargo clippy --lib -- -W clippy::all                                  # motor (0 warnings)
 cd src-tauri && cargo test --lib TU_MODULO -- --ignored --test-threads=1              # tests con servidor real
 npm run lint && npx tsc --noEmit                                                      # interfaz (0 errores y 0 warnings)
+npm test                                                                              # pruebas de la interfaz (src/**/*.test.ts)
+npm test -- TU_FILTRO                                                                 # solo las que tengan TU_FILTRO en la ruta
 ```
+- No empaquetes pruebas a mano con `npx rolldown … && node …`: usa `npm test` (borra sus archivos temporales).
+- La CI ejecuta en Linux y en Windows `tsc`, ESLint (0 avisos), `npm test`, `vite build`, `cargo clippy` y
+  `cargo test --lib`: lo que pasa en tu equipo tiene que pasar también ahí.
 - Esperar el candado de cargo ("Blocking waiting for file lock") es normal.
+- **La máquina es justa (15 GB de RAM, disco casi lleno): no dejes nada abierto ni ocupando espacio.**
+  - Compila siempre con `CARGO_BUILD_JOBS=3 CARGO_INCREMENTAL=0` y, si estás en un worktree,
+    `CARGO_TARGET_DIR=/home/mael/LEO/Projects/SSHorus/src-tauri/target` (nunca otra carpeta `target/` propia).
+  - Ejecuta clippy, tests y build **de uno en uno**, nunca a la vez ni varios en segundo plano.
+  - Antes de tu informe final, cierra todo lo que abriste: procesos `cargo`/`rustc`/`node`/`vite` en segundo
+    plano, el contenedor `terview-sshd` si lo arrancaste tú (`podman stop terview-sshd`), carpetas temporales y
+    enlaces a `node_modules`. Comprueba con `pgrep -af 'cargo|rustc|vite'` que no queda nada tuyo.
+  - Si el disco baja de ~10 GB libres, avisa en tu informe en vez de seguir compilando.
 - **No** ejecutes `npm run tauri dev`, `tauri build`, `cargo build --release` ni abras ventanas.
 - **Servidor SSH de pruebas**: `127.0.0.1:2222`, usuario `test`, contraseña `test123` (contenedor podman
-  `terview-sshd`, OpenSSH 10.3, home `/config`). Usa SOLO este servidor. Trabaja dentro de `/config/tmp-<algo>`
+  `terview-sshd`, OpenSSH 10.3, home `/config`, con `AllowTcpForwarding yes` para los túneles; cómo prepararlo
+  en el README, «Pruebas»). Usa SOLO este servidor. Trabaja dentro de `/config/tmp-<algo>`
   y bórralo al final.
 - En tests: `crate::ssh::connect::testutil::connect_test_server().await` devuelve un `Arc<SshSession>` listo
   (lo implementa el agente SSH primero; si aún da `unimplemented!`, sigue con otra cosa y reintenta luego).
@@ -74,14 +88,17 @@ npm run lint && npx tsc --noEmit                                                
 
 - **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400). Hoy ningún archivo de código pasa
   de 500 líneas, pero hay unos 25 entre 400 y 500 y varios CSS de más de 500 (lista en `docs/PENDIENTES.md`,
-  «Orden del código parte 4»). Si un archivo ya pasa de ~400 líneas, **no le añadas lógica**: crea un componente,
+  «Deuda técnica»). Si un archivo ya pasa de ~400 líneas, **no le añadas lógica**: crea un componente,
   hook o módulo nuevo y engánchalo con lo mínimo.
 - **Una responsabilidad por función/componente**. La lógica pura (cálculos, análisis de salidas de comandos,
   reglas) va aparte de la interfaz y de los comandos Tauri, y lleva pruebas.
 - **Datos en vez de `if` repetidos**: si hay varias variantes (asistentes, tipos de llave, modos), descríbelas en
   una tabla y recórrela.
-- **Organización de carpetas** (la regla completa de dónde va cada archivo está en `docs/ARQUITECTURA.md` §5):
-  - Controles genéricos sin lógica de dominio van en `src/components/ui/`.
+- **Organización de carpetas** (la regla completa de dónde va cada archivo está en `docs/ARQUITECTURA.md` §5,
+  «Dónde va cada archivo»): `components/<X>/` = interfaz React de un dominio; `features/<x>/` = lógica sin React y
+  stores de esa función; `components/ui/` = controles genéricos de más de un dominio; `stores/` = estado de toda
+  la app; `lib/` = utilidades puras sin dominio (`lib/remote/` para scripts remotos); ejecutar con elevación:
+  `features/privileges/run.ts`.
   - No dejes archivos sueltos en la raíz de `src/features/`: cada dominio tiene su carpeta (`src/features/<dominio>/`).
   - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*`.
   - En Rust, separa el estado/lógica de los comandos `#[tauri::command]` (`commands.rs`) cuando un módulo supera ~350 líneas.

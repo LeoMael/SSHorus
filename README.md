@@ -418,25 +418,28 @@ podman exec terview-sshd sh -c 'sed -i "s/^AllowTcpForwarding no/AllowTcpForward
 
 cd src-tauri
 cargo test --lib -- --include-ignored --test-threads=1
-cd .. && npx tsc --noEmit && npm run lint -- --quiet
+cd .. && npx tsc --noEmit && npm run lint -- --quiet && npm test
 ```
 
-Pruebas de funciones puras de la interfaz (sin la app):
+Pruebas de funciones puras de la interfaz (sin la app ni servidor):
 
 ```bash
-npx rolldown src/features/localterm/localterm.test.ts -p node -f esm -o /tmp/lt.mjs && node /tmp/lt.mjs
-npx rolldown src/features/vulnscan/vulnscan.test.ts -p node -f esm -o /tmp/vt.mjs && node /tmp/vt.mjs
+npm test               # todas (src/**/*.test.ts)
+npm test -- vulnscan   # solo las que tengan «vulnscan» en la ruta
 ```
+
+La CI (GitHub Actions) ejecuta en cada push, en Linux y en Windows: `tsc`, ESLint (0 avisos), `npm test`,
+`vite build`, `cargo clippy` y `cargo test --lib` (sin las pruebas que necesitan servidor SSH).
 
 ### Estructura
 
 ```
 src/              Interfaz (React + TypeScript)
   api/            Única puerta hacia el motor (un archivo por módulo del motor)
-  components/     Pantallas por función (explorador, terminal, Admin, Contenedores…) y ui/ con controles comunes
-  features/       Lógica de cada función, una carpeta por tema (connect, admin, audit, mcp, vulnscan…)
-  stores/         Estado global (zustand)
-  lib/            Utilidades puras (rutas, formato, plataforma)
+  components/     Interfaz React de cada función (explorador, terminal, Admin, Contenedores…) y ui/ con controles comunes
+  features/       Lógica sin React de cada función, una carpeta por tema (connect, admin, commands, mcp, vulnscan…)
+  stores/         Estado de toda la app (zustand)
+  lib/            Utilidades puras sin dominio (rutas, formato, plataforma; remote/: lo común a los scripts remotos)
   windows/        Ventana de editor aparte
 src-tauri/src/    Motor (Rust)
   ssh/            Conexión, autenticación, huellas, reconexión
@@ -449,7 +452,8 @@ src-tauri/src/    Motor (Rust)
   storage/        Servidores, ajustes, llavero, bóveda con PIN, ~/.ssh/config
   snippets/       Mis comandos, ejecución aparte y sudo
   github/         Cuenta de GitHub y copia cifrada en Gist
-  sshkeys/        Detectar las llaves SSH de este PC (crearlas: localkeys.rs)
+  localkeys/      Llaves públicas (.pub) de este PC y crear llaves nuevas
+  sshkeys/        Detectar las llaves SSH privadas de este PC
   mcp/            Servidor MCP para asistentes de IA (permisos, aprobación, registro)
   vulnscan/       Escáner de vulnerabilidades
   audit/          Historial de «Auditar servidor»
@@ -458,13 +462,13 @@ src-tauri/src/    Motor (Rust)
 docs/             Manual, arquitectura, diagramas, pendientes y catálogo de comandos
 ```
 
-Detalle de cada carpeta en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md#5-estructura-del-código-diagrama-5).
+Detalle de cada carpeta y el criterio de dónde va cada archivo en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md#5-estructura-del-código-diagrama-5).
 
 ## Hoja de ruta
 
 Lo que queda (lista completa e ideas en [`docs/PENDIENTES.md`](docs/PENDIENTES.md)):
 
-- Probar en la app real lo nuevo de `main` y publicar la **1.0.0**.
+- Probar en la app real lo nuevo de `main`, publicar la **1.0.0-beta.3** y después la **1.0.0**.
 - Probar el MCP con Claude Code y Claude Desktop, y el escáner de vulnerabilidades en servidores reales.
 - Probar la terminal local y los asistentes en la app, en Windows y en macOS.
 - Firmar el instalador de Windows (para que SmartScreen no avise).

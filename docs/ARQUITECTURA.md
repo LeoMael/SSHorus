@@ -89,7 +89,7 @@ La app tiene dos mitades dentro del mismo programa:
 | **Estado de la ventana** | Tamaño, posición y si estaba maximizada (solo la ventana principal). | JSON | Linux `~/.config/com.sshorus.app/.window-state.json` · Windows `%APPDATA%\com.sshorus.app\` · macOS `~/Library/Application Support/com.sshorus.app/` | No | Plugin `tauri-plugin-window-state` |
 | **`~/.ssh/known_hosts`** | Huellas de los servidores en los que confías (el mismo archivo que usa `ssh`). | Texto OpenSSH | `~/.ssh/known_hosts` (Windows: `C:\Users\<tú>\.ssh\known_hosts`) | No | Motor: `ssh/known_hosts.rs` (lee, añade o reemplaza; escritura atómica) |
 | **`~/.ssh/config`** | Opcional: bloque marcado con tus servidores, para usar `ssh <alias>` en la terminal. La primera vez se guarda `config.bak-sshorus`. También se puede importar desde ahí. | Texto OpenSSH | `~/.ssh/config` | No | Motor: `storage/ssh_config.rs` |
-| **Tus llaves SSH** | Llaves privadas para conectar (las de siempre) y públicas (`*.pub`) para GitHub. | OpenSSH | `~/.ssh/` | La frase, si la tiene | Motor: `ssh/connect.rs` (privadas, solo lectura) · `github/localkey.rs` (solo `*.pub`) |
+| **Tus llaves SSH** | Llaves privadas para conectar (las de siempre) y públicas (`*.pub`) para GitHub. | OpenSSH | `~/.ssh/` | La frase, si la tiene | Motor: `ssh/connect.rs` (privadas, solo lectura) · `localkeys/pubkeys.rs` (solo `*.pub`) |
 | **`localStorage`** | Historial de Administración (`sshorus.admin.history.v1.<perfil>`, 300 entradas), alertas del Monitor (`sshorus.monitor.alerts.<perfil>`), preferencias del Monitor, de Contenedores, de Ejecutar en varios servidores, servidores recientes, búsqueda de actualizaciones, editor en pestaña o ventana, GPU de la terminal, proyectos plegados. | Clave → texto (JSON) | Lo gestiona el motor web. Linux: `~/.local/share/com.sshorus.app/localstorage/` · Windows: `%LOCALAPPDATA%\com.sshorus.app\EBWebView\` | No | Interfaz (con try/catch: si falla, todo funciona igual y solo se pierde la preferencia) |
 | **Caché de arrastre** | Copias descargadas para arrastrar al escritorio. Se borran al abrir la app si tienen más de un día. | Archivos | Linux `~/.cache/com.sshorus.app/arrastre/` · Windows `%LOCALAPPDATA%\com.sshorus.app\arrastre\` · macOS `~/Library/Caches/com.sshorus.app/arrastre/` | No | Motor: `dragout/` y `transfer/` |
 | **Tus carpetas** | Lo que subes y bajas, y los archivos de exportar o importar comandos. Tú eliges dónde. | Archivos | Donde elijas | No | Motor: `transfer/`, `localfs.rs` |
@@ -223,12 +223,30 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | Vistas y pantallas por dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles reutilizables en `components/ui/` (`Modal`, `dialogs`, `ColorPicker`, etc.) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `connect`, `containers`, `fleet`, `github`, `infra`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
-| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui` |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `fileExplorer`, `fleet`, `github`, `infra`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
+| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui` y `sessionState` (estado de cada sesión abierta) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte |
-| `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida |
+| `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida y `lib/remote/` (lo común a los scripts remotos) |
+
+### Dónde va cada archivo (criterio de carpetas)
+
+Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
+
+| Carpeta | Qué va ahí | Ejemplo |
+|---------|-----------|---------|
+| `components/<X>/` | La **interfaz React** de un dominio: pantallas, diálogos, hooks de pantalla y su CSS. | `components/Admin/UserDialog.tsx` |
+| `features/<x>/` | La **lógica sin React** de una función (scripts remotos, parseadores, reglas, cálculos) y los **stores propios** de esa función. Lleva pruebas. | `features/commands/catalog.ts`, `features/fileExplorer/explorerLogic.ts`, `features/reboot/store.ts` |
+| `components/ui/` | **Controles genéricos** que usa más de un dominio, sin lógica de ninguno. | `ui/AdmModal.tsx`, `ui/PopupMenu.tsx`, `ui/ContextMenu.tsx`, `ui/Segmented.tsx` |
+| `stores/` | **Estado de toda la app** (lo que comparten varios dominios). | `stores/tabs.ts`, `stores/sessionState.ts` |
+| `lib/` | **Utilidades puras sin dominio**. En `lib/remote/`: citas de shell (`shQuote`, `shJoin`, `shQuoteMinimal`), salida por secciones `@@` (`splitSections`), lectura de `/etc/os-release` (`parseOsRelease`) e «ip:puerto» (`parseAddr`). | `lib/paths.ts`, `lib/remote/shell.ts` |
+
+- **Ejecutar con elevación** (`runScript`, `readElevated`, `ElevationError`, `succeeded`, `failureText`) vive en
+  `features/privileges/run.ts`: lo usan Administración, Contenedores, Auditoría, el escáner y el resto.
+- Si un archivo solo lo usa un dominio, va en la carpeta de ese dominio aunque parezca genérico. Cuando lo use un
+  segundo dominio, se mueve a `components/ui/` o a `lib/`.
+- En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
 
 **Motor (`src-tauri/src/`):** cada módulo grande separa estado/lógica de sus comandos Tauri (`commands.rs` / `sync_cmds.rs`) y submódulos temáticos:
 
@@ -246,12 +264,12 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec.rs`) y envoltorio sudo (`sudo.rs`) |
 | `tunnels/` | Túneles local, remoto y SOCKS (`manager.rs`, `forward.rs`, `watcher.rs`, `socks.rs`, `remote.rs`, `store.rs`) |
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
-| `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), llaves locales, cifrado del Gist (`crypto.rs`), compartir comandos |
+| `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), cifrado del Gist (`crypto.rs`), compartir comandos |
 | `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `server.rs`, `core/`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`, `bridge.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
 | `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
-| `localkeys.rs`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys.rs` lista las públicas (`*.pub`) y **genera** llaves ed25519 nuevas; `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
+| `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
 
 Librerías clave del motor: `tauri`, `tokio`, `russh`, `russh-sftp`, `keyring`, `serde`, `reqwest`
 (con rustls), `aes-gcm` + `argon2` (bóveda y Gist cifrado), `zeroize` (borrar secretos de la memoria), `gtk` (arrastre en Linux), `windows` (arrastre en
@@ -332,7 +350,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   Solo sale por `profiles_sudo_password(id, sessionId)` con el modo `login` (primero la de esa sesión, luego la
   guardada); nunca a registros ni al servidor MCP. Si la contraseña venía de la bóveda no se copia (ya se lee
   de allí).
-- **Contraseña rechazada:** `runScript` (`features/admin/run.ts`) llama a `sudoRejected`: olvida la de memoria
+- **Contraseña rechazada:** `runScript` (`features/privileges/run.ts`) llama a `sudoRejected`: olvida la de memoria
   y, si era la guardada (o la de la conexión), queda «failed». Administración abre el diálogo con el aviso
   («La contraseña guardada no funcionó») y pasa a «rejected»; el escáner muestra el mismo aviso con **Escribir
   otra contraseña**, sigue sin sudo y no la vuelve a probar en ese análisis (cada intento fallido cuenta para sudo).
@@ -410,7 +428,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   - `layout.ts` (puro): columnas por capa, una caja por servidor y una banda por usuario; filas por
     baricentro y regresión isotónica (`spreadRows`). SVG propio sin dependencias: exportar a SVG/PNG es
     serializar el mismo dibujo con los colores del tema ya resueltos (`local_write_bytes` para el PNG).
-  - Pruebas: `src/features/infra/infra.test.ts` (rolldown + node); escena `mapa` en la vista previa.
+  - Pruebas: `src/features/infra/infra.test.ts` (`npm test -- infra`); escena `mapa` en la vista previa.
 
 ---
 
@@ -827,6 +845,9 @@ un servidor con problemas) y `src-tauri/src/audit/tests.rs`.
 ```bash
 npm run tauri dev      # Abrir la app en modo desarrollo (se recarga sola)
 npm run tauri build    # Generar instaladores en src-tauri/target/release/bundle/
+npm test               # Pruebas de la interfaz (todas las src/**/*.test.ts)
+npm test -- sidebar    # Solo las que tengan «sidebar» en la ruta
+npm run lint           # ESLint (0 errores y 0 avisos)
 ```
 
 ### Editar los diagramas
