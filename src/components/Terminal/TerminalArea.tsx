@@ -11,7 +11,7 @@ import { toast } from "../../stores/toasts";
 import { terminal } from "../../api/terminal";
 import { clipboard } from "../../lib/clipboard";
 import { sendToAi } from "../../features/localterm/launch";
-import { ContextMenu, type MenuItem } from "../FileExplorer/ContextMenu";
+import { ContextMenu, type MenuItem } from "../ui/ContextMenu";
 import {
   allOpenTmuxNames,
   detachedLeftovers,

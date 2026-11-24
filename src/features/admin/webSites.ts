@@ -7,7 +7,7 @@
 // se deja todo como estaba. Editar y borrar solo tocan archivos con la marca.
 import { failIf, ifElse, runtime, sudoCatalogCommand } from "./catalogScript";
 import type { GeneratedRow } from "./catalogUsers";
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 import { CADDY_CONF_STEPS, checkScript, NGINX_CONF_STEPS, reloadSteps, type WebServer } from "./web";
 
 export const SITE_MARK = "# Creado por SSHorus";

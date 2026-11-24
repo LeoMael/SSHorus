@@ -5,7 +5,7 @@ import { errorMessage, isApiError } from "../../api/core";
 import { newExecId, snippets } from "../../api/snippets";
 import type { ExecResult } from "../../api/types";
 import { vulnscan, type Engine, type ImageRaw, type Report, type Target, type UserCtx } from "../../api/vulnscan";
-import { runScript } from "../admin/run";
+import { runScript } from "../privileges";
 import type { Elevation } from "../privileges";
 import { imageKey, type Owner } from "./imageUpdate";
 import { loadStoreUsers, useVulnScan } from "./run";

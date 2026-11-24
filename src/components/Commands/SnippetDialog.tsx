@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import type { Snippet, SnippetScope } from "../../api/types";
 import { Modal } from "../ui/Modal";
 import { useProfiles } from "../../stores/profiles";
-import { useSnippets } from "./state";
-import { parseVars } from "./template";
+import { useSnippets } from "../../features/commands/state";
+import { parseVars } from "../../features/commands/template";
 
 interface Props {
   /** Snippet a editar (id "" = nuevo). */

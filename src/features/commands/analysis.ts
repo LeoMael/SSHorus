@@ -1,8 +1,8 @@
 // "Analizar servidor": un único script de solo lectura con marcadores de sección, y su análisis.
 // Pensado para degradar bien: busybox/Alpine, contenedores sin systemd, sin ss, sin podman…
-import { distroFromOs, parseOsRelease } from "./state";
+import { parseOsRelease, shQuoteMinimal, splitSections } from "../../lib/remote";
+import { distroFromOs } from "./state";
 import type { Distro } from "./catalog";
-import { shellQuote } from "./template";
 
 const SCRIPT = String.raw`
 export LC_ALL=C
@@ -37,7 +37,7 @@ m end
 `;
 
 /** Comando final (envuelto en sh para no depender de la shell del usuario). */
-export const ANALYSIS_COMMAND = `sh -c ${shellQuote(SCRIPT.trim())}`;
+export const ANALYSIS_COMMAND = `sh -c ${shQuoteMinimal(SCRIPT.trim())}`;
 export const ANALYSIS_TIMEOUT_SECS = 60;
 
 // ───────── Tipos del informe ─────────
@@ -97,22 +97,6 @@ export interface Report {
 }
 
 // ───────── Análisis ─────────
-
-function splitSections(out: string): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const line of out.split("\n")) {
-    const m = /^@@TV:([a-z]+)@@$/.exec(line.trim());
-    if (m) {
-      cur = [];
-      map.set(m[1], cur);
-    } else if (cur) {
-      cur.push(line.replace(/\r$/, ""));
-    }
-  }
-  for (const v of map.values()) while (v.length && !v[v.length - 1].trim()) v.pop();
-  return map;
-}
 
 const num = (s: string | undefined) => {
   const n = Number(s);
@@ -254,7 +238,8 @@ function parseContainers(lines: string[]): Report["containers"] {
 }
 
 export function parseReport(stdout: string, incomplete: boolean): Report {
-  const s = splitSections(stdout);
+  // El script vuelca archivos enteros: marca propia (@@TV:…@@) y se conservan las líneas vacías.
+  const s = splitSections(stdout, { header: "tv", blank: "trimEnd" });
   const get = (k: string) => s.get(k) ?? [];
   const first = (k: string) => get(k).find((l) => l.trim())?.trim() ?? null;
 

@@ -1,10 +1,6 @@
 // Comandos de shell para el servidor (funciones puras). Todo se ejecuta con `sh -c '…'` para no
 // depender del shell del usuario (fish, zsh…), y cada valor va citado.
-
-/** Cita un argumento para un shell POSIX. */
-export function shQuote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
-}
+import { shQuote } from "../../lib/remote";
 
 /** Envuelve un script para ejecutarlo con sh. */
 export function wrapSh(script: string): string {

@@ -8,19 +8,15 @@ import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
 import { useTabs } from "../../stores/tabs";
 import {
-  ElevationError,
   buildUserRows,
   detectEnv,
-  failureText,
   parsePorts,
   parseWeb,
-  readElevated,
   readServer,
   readShadow,
   PORTS_SCRIPT,
   WEB_SCRIPT,
   runPlan as execPlan,
-  succeeded,
   useAdminHistory,
   MASK,
   type Plan,
@@ -30,7 +26,11 @@ import {
   type WebResult,
 } from "../../features/admin";
 import {
+  ElevationError,
+  failureText,
+  readElevated,
   refreshPrivilege,
+  succeeded,
   sudoRejected,
   useElevation,
   usePrivilege,

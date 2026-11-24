@@ -15,7 +15,7 @@ import {
 } from "../../features/containers";
 import { formatBytes } from "../../lib/format";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "../Admin/AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { useVulnNav } from "../../features/vulnscan/nav";
 

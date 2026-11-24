@@ -8,14 +8,13 @@ import {
   analyzeUserVisibility,
   buildVisibilityFixPlan,
   disableAllNonAdminTunnelsPlan,
-  readElevated,
   USER_VISIBILITY_SCRIPT,
   type Plan,
   type UserVisibilityReport,
   type VisibilityCheck,
   type VisibilityReport,
 } from "../../features/admin";
-import { refreshPrivilege, sudoRejected } from "../../features/privileges";
+import { refreshPrivilege, sudoRejected, readElevated } from "../../features/privileges";
 import { gradeClass } from "./AuditReportView";
 import { useAdmin } from "./context";
 import { PlanModal } from "./PlanReview";

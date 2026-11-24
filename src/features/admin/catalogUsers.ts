@@ -3,7 +3,7 @@
 // Funciones puras, sin React ni Tauri.
 import { addMemberStep, deleteUserPlan, detectEnv, editUserPlan, lockUserPlan, removeMemberStep, type AdminEnv } from "./commands";
 import { failIf, ifElse, runtime, sudoCatalogCommand } from "./catalogScript";
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 
 /** Una fila de la Biblioteca generada aquí. `flags` como en catalog.ts (r, d, s, i). */
 export interface GeneratedRow {

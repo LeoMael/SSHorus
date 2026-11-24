@@ -4,8 +4,8 @@
 import { create } from "zustand";
 import { audit, type AuditReport, type Check } from "../../api/audit";
 import { vulnscan } from "../../api/vulnscan";
-import { parsePorts, parseWeb, readElevated, PORTS_SCRIPT, WEB_SCRIPT, type ElevationError, type PortsResult, type WebResult } from "../admin";
-import { refreshPrivilege, sudoRejected, type Elevation } from "../privileges";
+import { parsePorts, parseWeb, PORTS_SCRIPT, WEB_SCRIPT, type PortsResult, type WebResult } from "../admin";
+import { refreshPrivilege, sudoRejected, type Elevation, readElevated, type ElevationError } from "../privileges";
 import { runChecks, type AuditInput } from "./checks";
 import { mergeRecheck, recheckCategories, recheckOutcome, type RecheckOutcome } from "./recheck";
 import { AUDIT_SCRIPT } from "./script";

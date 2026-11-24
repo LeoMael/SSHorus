@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Bot, ChevronDown, ClipboardCopy } from "lucide-react";
-import { PopupMenu } from "../../components/Tabs/PopupMenu";
+import { PopupMenu } from "../../components/ui/PopupMenu";
 import { copyContextHere, launchHere } from "./inplace";
 import { ASSISTANTS, assistantNames } from "./logic";
 import type { LocalTab } from "./store";

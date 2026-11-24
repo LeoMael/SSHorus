@@ -1,17 +1,5 @@
-// Utilidades de shell para la administración del servidor (funciones puras, sin React ni Tauri).
-
-/**
- * Cita un argumento para un shell POSIX (sh, dash, ash, bash): `'…'` con las comillas simples internas
- * como `'\''`. Siempre cita, aunque no haga falta: el resultado es un único argumento literal.
- */
-export function shQuote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
-}
-
-/** Une argumentos citándolos todos. */
-export function shJoin(args: string[]): string {
-  return args.map(shQuote).join(" ");
-}
+// Validaciones y utilidades de la administración del servidor (funciones puras, sin React ni Tauri).
+// Las citas de shell (shQuote, shJoin) están en lib/remote.
 
 /** Nombres de usuario y de grupo aceptados (los mismos que recomienda shadow-utils). */
 export const NAME_RE = /^[a-z_][a-z0-9_-]*$/;

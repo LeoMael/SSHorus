@@ -5,8 +5,7 @@ import type { FileEntry } from "../../api/types";
 import { basename, dirname, joinPath } from "../../lib/paths";
 import { toast } from "../../stores/toasts";
 import { sessionOnline } from "./connection";
-import { stepHistory, type History } from "./explorerLogic";
-import { isDirLike } from "./icons";
+import { stepHistory, type History, isDirLike } from "../../features/fileExplorer/explorerLogic";
 import { useEvent } from "./useEvent";
 import type { SelectionState } from "./useSelection";
 

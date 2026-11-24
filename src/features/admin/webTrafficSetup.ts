@@ -2,7 +2,7 @@
 // Siempre muestran el comando exacto antes de ejecutarse, guardan copia de respaldo, validan la
 // configuración y restauran el archivo original si algo falla. Funciones puras.
 import type { Plan } from "./commands";
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 import { reloadSteps, type ServerInfo, type Site } from "./web";
 
 export const TRAFFIC_LOG_MARK = "# sshorus-traffic-log";

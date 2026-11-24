@@ -1,15 +1,15 @@
 // Estado compartido de las sesiones: archivos con cambios sin guardar y cierre/reconexión de pestañas.
 import { create } from "zustand";
-import { useTabs } from "../../stores/tabs";
-import { ssh } from "../../api/ssh";
-import { useProfiles } from "../../stores/profiles";
-import { toast } from "../../stores/toasts";
-import { connectToServer } from "../../features/connect/connect";
-import { confirmDialog } from "../ui/dialogs";
-import { basename } from "../../lib/paths";
-import { killTmuxSessions, openTmuxNames } from "../../features/tmux";
-import { useTransfers } from "../../stores/transfers";
-import { closeWarning } from "./closeConfirm";
+import { useTabs } from "./tabs";
+import { ssh } from "../api/ssh";
+import { useProfiles } from "./profiles";
+import { toast } from "./toasts";
+import { connectToServer } from "../features/connect/connect";
+import { confirmDialog } from "../components/ui/dialogs";
+import { basename } from "../lib/paths";
+import { killTmuxSessions, openTmuxNames } from "../features/tmux";
+import { useTransfers } from "./transfers";
+import { closeWarning } from "../features/connect/closeConfirm";
 
 interface DirtyState {
   /** sessionId → rutas con cambios sin guardar */

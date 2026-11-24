@@ -4,7 +4,7 @@
 import type { AuthMethod } from "../../api/types";
 import type { Check } from "../../api/audit";
 import type { PortsResult } from "../admin/ports";
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 
 /** auto = entra en «Arreglar todo lo seguro» · confirm = uno a uno, con aviso · manual = solo explicación. */
 export type FixLevel = "auto" | "confirm" | "manual";

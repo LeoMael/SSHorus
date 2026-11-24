@@ -7,16 +7,16 @@ import {
   checkScript,
   findListener,
   isLocalHost,
-  readElevated,
   uniqueListens,
   type ListenPort,
   type ServerInfo,
   type Site,
   type SiteRoute,
 } from "../../features/admin";
+import { readElevated } from "../../features/privileges/run";
 import { useProfiles } from "../../stores/profiles";
 import { useAdmin } from "./context";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 
 export const SERVER_NAME: Record<ServerInfo["server"], string> = { nginx: "nginx", caddy: "Caddy" };
 

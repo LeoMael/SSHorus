@@ -2,7 +2,7 @@
 // (rootless, sudo, compose) y «Volver a detectar».
 import { RefreshCw, Users } from "lucide-react";
 import { OWNER_ALL, composeFor, ownerKey, type EngineStatus } from "../../features/containers";
-import { engineLabel, ownerOptionLabel } from "./panelLogic";
+import { engineLabel, ownerOptionLabel } from "../../features/containers/panelLogic";
 import type { OwnerScope } from "./useOwnerScope";
 
 interface Props {

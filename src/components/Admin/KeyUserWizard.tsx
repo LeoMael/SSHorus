@@ -14,11 +14,8 @@ import {
   checkPublicKey,
   createKeyUserPlan,
   parseSshdAccess,
-  readElevated,
-  splitSections,
   SSHD_ACCESS_SCRIPT,
   suggestKeyName,
-  validateKeyName,
   validateName,
   type Plan,
   type SshdAccess,
@@ -26,10 +23,13 @@ import {
 import { describeTestOk, testServerConnection } from "../../features/connect/serverTest";
 import { useProfiles } from "../../stores/profiles";
 import { useAdmin } from "./context";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { KeyUserPlanNote, KeyUserSudoFields, SaveKeyUserServerButton, SudoPasswordOnce, useSudoPassword } from "./KeyUserSudo";
 import { PlanModal, PlanReview } from "./PlanReview";
-import { Segmented } from "./Segmented";
+import { Segmented } from "../ui/Segmented";
+import { readElevated } from "../../features/privileges";
+import { splitSections } from "../../lib/remote";
+import { validateKeyName } from "../../features/sshkeys/keys";
 
 type Source = "paste" | "local" | "generate";
 type Step = "form" | "review" | "done";

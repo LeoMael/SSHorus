@@ -1,7 +1,7 @@
 // Dar o quitar permiso para usar contenedores (Podman sin root, grupo docker, linger). Funciones puras.
 import { addMemberStep, removeMemberStep, type AdminEnv, type Plan } from "./commands";
 import { rangeText, type ContainerAccessInfo, type SubidRange, type UserContainers } from "./containerAccess";
-import { shQuote as q } from "./shell";
+import { shQuote as q } from "../../lib/remote";
 
 export interface PodmanTarget {
   name: string;

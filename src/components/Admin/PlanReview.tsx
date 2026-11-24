@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronLeft, KeyRound, Play } from "lucide-react";
 import { MASK, type Plan } from "../../features/admin";
 import { wrapScript, type Elevation } from "../../features/privileges";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
 
 export function elevationText(el: Elevation | null): string {

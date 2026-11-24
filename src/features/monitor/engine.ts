@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
-import { ElevationError, runScript } from "../admin/run";
+import { ElevationError, runScript } from "../privileges";
 import type { Elevation } from "../privileges";
 import { useTabs } from "../../stores/tabs";
 import { buildSampleCommand, parseSample, SAMPLE_TIMEOUT_SECS, type CpuTicks, type RawSample, type SampleInfo } from "./sample";

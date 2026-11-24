@@ -5,8 +5,8 @@ import { ownerKey, ownerLine, readOwners, runOwned, type Cmd, type EngineRun } f
 import type { Elevation } from "../../features/privileges";
 import { hasTerminal, sendToTerminal } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
-import type { ResourceKind, ReviewRequest } from "./context";
-import { combineElevation, otherOwnersText } from "./panelLogic";
+import type { ReviewRequest } from "./context";
+import { combineElevation, otherOwnersText, type ResourceKind } from "../../features/containers/panelLogic";
 import type { OwnerScope } from "./useOwnerScope";
 
 type Args = Pick<OwnerScope, "runner" | "resolve" | "currentKey" | "engine" | "elevPrefix" | "selfPrefix" | "label"> & {

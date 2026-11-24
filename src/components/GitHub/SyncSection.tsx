@@ -6,7 +6,7 @@ import type { Snippet } from "../../api/types";
 import { confirmDialog } from "../ui/dialogs";
 import { toast } from "../../stores/toasts";
 import { useProfiles } from "../../stores/profiles";
-import { useSnippets } from "../Commands/state";
+import { useSnippets } from "../../features/commands/state";
 import { useGitHub } from "../../features/github/store";
 import {
   buildPayload,

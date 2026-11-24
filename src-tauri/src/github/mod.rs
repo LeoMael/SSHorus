@@ -7,7 +7,6 @@ pub mod config;
 pub mod crypto;
 pub mod device;
 pub mod http;
-pub mod localkey;
 pub mod share;
 pub mod sync_cmds;
 #[cfg(test)]
@@ -22,10 +21,10 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::error::{AppError, AppResult};
+use crate::localkeys::{self, LocalPublicKey};
 use crate::storage::secrets;
 use api::{GhAccount, GhDeployKey, GhRepo, GhRun, GhSshKey, GhWorkflow};
 use config::{DeployRecipe, GhConfig};
-use localkey::LocalPubKey;
 
 // ───────── Token (llavero + caché en memoria) ─────────
 
@@ -179,18 +178,19 @@ pub async fn gh_user_keys(login: String) -> AppResult<Vec<GhSshKey>> {
 /// Sube una llave pública a tu cuenta de GitHub.
 #[tauri::command]
 pub async fn gh_add_key(title: String, key: String) -> AppResult<GhSshKey> {
-    let (line, _, _) = localkey::parse_public_key_line(&key)?;
+    let (line, _, _) = localkeys::parse_public_key_line(&key)?;
     let title = title.trim();
     let title = if title.is_empty() { "SSHorus" } else { title };
     api::add_key(&token().await?, title, &line).await
 }
 
-/// Llaves públicas válidas de `~/.ssh/*.pub`.
+/// Llaves públicas válidas de `~/.ssh/*.pub` (las mismas que `local_ssh_public_keys`; sin carpeta
+/// personal, lista vacía).
 #[tauri::command]
-pub async fn gh_local_pubkeys() -> AppResult<Vec<LocalPubKey>> {
+pub async fn gh_local_pubkeys() -> AppResult<Vec<LocalPublicKey>> {
     blocking(|| {
-        Ok(localkey::ssh_dir()
-            .map(|d| localkey::list_pub(&d))
+        Ok(localkeys::ssh_dir()
+            .map(|d| localkeys::list_public_keys(&d))
             .unwrap_or_default())
     })
     .await
@@ -198,8 +198,8 @@ pub async fn gh_local_pubkeys() -> AppResult<Vec<LocalPubKey>> {
 
 /// Lee UNA llave pública elegida por el usuario (solo archivos `.pub`).
 #[tauri::command]
-pub async fn gh_read_pubkey(path: String) -> AppResult<LocalPubKey> {
-    blocking(move || localkey::read_pub(&PathBuf::from(path))).await
+pub async fn gh_read_pubkey(path: String) -> AppResult<LocalPublicKey> {
+    blocking(move || localkeys::read_pub(&PathBuf::from(path))).await
 }
 
 // ───────── Repositorios ─────────
@@ -222,7 +222,7 @@ pub async fn gh_add_deploy_key(
     title: String,
     key: String,
 ) -> AppResult<GhDeployKey> {
-    let (line, _, _) = localkey::parse_public_key_line(&key)?;
+    let (line, _, _) = localkeys::parse_public_key_line(&key)?;
     let title = title.trim();
     let title = if title.is_empty() { "SSHorus" } else { title };
     api::add_deploy_key(&token().await?, &owner, &repo, title, &line, true).await

@@ -8,7 +8,7 @@ import { newExecId } from "../../api/snippets";
 import { ai, vulnscan, type Report } from "../../api/vulnscan";
 import { buildAiMessages, buildAiPayload, DEFAULT_AI_OPTIONS, type AiPayloadOptions } from "../../features/vulnscan";
 import { useSettings } from "../../stores/settings";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { MiniMarkdown } from "./MiniMarkdown";
 import { CommandActions } from "./vulnUi";
 

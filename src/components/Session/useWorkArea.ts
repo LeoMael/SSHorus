@@ -8,7 +8,7 @@ import { getEditorOpenMode } from "../Editor/openPref";
 import { focusEditorWindow, openInWindow, useDetachedEditors, type WindowAt } from "../Editor/editorWindows";
 import { confirmDialog } from "../ui/dialogs";
 import type { FixedTab } from "./fixedViews";
-import { useEditorDirty } from "./sessionState";
+import { useEditorDirty } from "../../stores/sessionState";
 import { currentFile, neighborAfterClose, workMode } from "./workArea";
 
 const EMPTY: string[] = [];

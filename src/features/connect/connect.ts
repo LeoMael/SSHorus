@@ -6,7 +6,7 @@ import { useProfiles } from "../../stores/profiles";
 import { useTabs, type SessionTab } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";
 import { askOtp, askPassphrase, askPassword, confirmHostKey } from "./ConnectDialogs";
-import { reconnectTab } from "../../components/Session/sessionState";
+import { reconnectTab } from "../../stores/sessionState";
 
 /** Límite de vueltas para no quedar en bucle si el motor repite siempre el mismo error. */
 const MAX_STEPS = 12;

@@ -1,8 +1,8 @@
 // Pruebas de los comandos de la Biblioteca para «Solo lo marcado» (usuarios y sitios web): etiquetas de
 // tarea y los scripts ejecutados de verdad con `sh`, con caddy, nginx, systemctl, sudo y gpasswd simulados.
 // Ejecutar: npx rolldown src/features/admin/catalogTasks.test.ts -p node -f esm -o /tmp/ct.mjs && node /tmp/ct.mjs
-import { CATALOG } from "../../components/Commands/catalog";
-import { renderTemplate } from "../../components/Commands/template";
+import { CATALOG } from "../commands/catalog";
+import { renderTemplate } from "../commands/template";
 import { bindRuntime, runtime } from "./catalogScript";
 import { SITE_MARK } from "./webSites";
 

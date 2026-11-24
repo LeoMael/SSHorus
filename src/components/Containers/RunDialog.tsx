@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Rocket, TerminalSquare } from "lucide-react";
 import { OWNER_SELF, TEMPLATES, emptyRunForm, ownedBy, runCmd, validateRunForm, withOwner, type RunForm } from "../../features/containers";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "../Admin/AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useCt } from "./context";
 import { RunFormFields } from "./RunFormFields";
 

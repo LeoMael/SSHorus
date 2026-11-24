@@ -3,17 +3,12 @@ import { memo, useEffect, useState, type MouseEvent as ReactMouseEvent, type Rea
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { FileEntry } from "../../api/types";
 import { formatBytes, formatDate } from "../../lib/format";
-import { EntryIcon, isDirLike } from "./icons";
+import { EntryIcon } from "./icons";
+import { isDirLike, type SortKey, type SortState } from "../../features/fileExplorer/explorerLogic";
 
 export const ROW_H = 28;
 export const HEADER_H = 28;
 const OVERSCAN = 12;
-
-export type SortKey = "name" | "size" | "modified" | "permissions";
-export interface SortState {
-  key: SortKey;
-  dir: 1 | -1;
-}
 
 const COLUMNS: { key: SortKey; label: string; cls: string }[] = [
   { key: "name", label: "Nombre", cls: "fx-c-name" },

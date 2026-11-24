@@ -8,7 +8,7 @@ use super::api;
 use super::config::{self, DeployRecipe};
 use super::crypto::{self, KdfParams};
 use super::http::{self, Resp};
-use super::localkey;
+use crate::localkeys;
 use super::share::{self, Source};
 use crate::error::AppError;
 
@@ -215,47 +215,7 @@ fn name_validation() {
     assert!(!api::valid_gist_id("../x"));
 }
 
-// ───────── Llaves públicas locales ─────────
-
-const ED: &str =
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl ana@pc";
-
-#[test]
-fn public_key_line_parse() {
-    let (line, ty, comment) = localkey::parse_public_key_line(&format!("\n# c\n{ED}\n")).unwrap();
-    assert_eq!(line, ED);
-    assert_eq!(ty, "ssh-ed25519");
-    assert_eq!(comment, "ana@pc");
-    assert!(localkey::parse_public_key_line("-----BEGIN OPENSSH PRIVATE KEY-----\nabc").is_err());
-    assert!(localkey::parse_public_key_line("hola mundo").is_err());
-    assert!(localkey::parse_public_key_line("ssh-ed25519 ;rm -rf").is_err());
-}
-
-#[test]
-fn read_pub_only_reads_pub_files() {
-    let dir = std::env::temp_dir().join(format!("tv-gh-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let pubf = dir.join("id_ed25519.pub");
-    std::fs::write(&pubf, format!("{ED}\n")).unwrap();
-    let priv_f = dir.join("id_ed25519");
-    std::fs::write(&priv_f, "-----BEGIN OPENSSH PRIVATE KEY-----\n").unwrap();
-    let fake = dir.join("trampa.pub");
-    std::fs::write(&fake, "-----BEGIN OPENSSH PRIVATE KEY-----\n").unwrap();
-
-    assert_eq!(localkey::read_pub(&pubf).unwrap().line, ED);
-    assert!(localkey::read_pub(&priv_f).is_err());
-    assert!(localkey::read_pub(&fake).is_err());
-    #[cfg(unix)]
-    {
-        // Un enlace .pub que apunta a la llave privada tampoco vale.
-        let link = dir.join("enlace.pub");
-        std::os::unix::fs::symlink(&priv_f, &link).unwrap();
-        assert!(localkey::read_pub(&link).is_err());
-    }
-    let list = localkey::list_pub(&dir);
-    assert_eq!(list.len(), 1);
-    std::fs::remove_dir_all(&dir).unwrap();
-}
+// (Las llaves públicas locales se prueban en localkeys/pubkeys.rs.)
 
 // ───────── Compartir comandos ─────────
 
@@ -390,7 +350,7 @@ fn recipes_store_roundtrip() {
 async fn live_public_user_keys() {
     let keys = api::user_keys(None, "LeoMael").await.unwrap();
     for k in &keys {
-        assert!(localkey::parse_public_key_line(&k.key).is_ok(), "{}", k.key);
+        assert!(localkeys::parse_public_key_line(&k.key).is_ok(), "{}", k.key);
     }
     eprintln!("LeoMael tiene {} llaves públicas", keys.len());
     let err = api::user_keys(None, "este-usuario-no-existe-tv-0000000000000")

@@ -15,7 +15,7 @@ import { LingerBanner } from "./LingerBanner";
 import { RootStorageBanner } from "./RootStorageBanner";
 import { SubTabBar, SubTabBody } from "./PanelSections";
 import { PanelDialogs, usePanelDialogs } from "./PanelDialogs";
-import type { SubTab } from "./panelLogic";
+import type { SubTab } from "../../features/containers/panelLogic";
 import { useEngineDetect } from "./useEngineDetect";
 import { useOwnerScope } from "./useOwnerScope";
 import { useResources } from "./useResources";

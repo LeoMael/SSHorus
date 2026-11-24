@@ -29,8 +29,7 @@ pub struct LocalKeys {
 /// Llaves privadas de ~/.ssh y el comentario sugerido para crear una.
 #[tauri::command]
 pub async fn local_ssh_private_keys() -> AppResult<LocalKeys> {
-    let home = dirs::home_dir().ok_or_else(|| AppError::Io("No se encontró la carpeta personal".into()))?;
-    let dir = home.join(".ssh");
+    let dir = crate::localkeys::ssh_dir()?;
     tokio::task::spawn_blocking(move || {
         let mut keys = list_private_keys(&dir);
         // Sin ~/.ssh/config legible, las llaves se listan igual (sin sus `Host`).

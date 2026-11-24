@@ -1,7 +1,7 @@
 // Secciones de sistema, red, servicios, usuarios, paquetes, seguridad, web y git del catálogo.
-import { KEY_USER_CATALOG_COMMAND } from "../../features/admin/keyUser";
-import { USER_DELETE_ROWS, USER_EDIT_ROWS, type GeneratedRow } from "../../features/admin/catalogUsers";
-import { WEB_SITE_ROWS } from "../../features/admin/webSites";
+import { KEY_USER_CATALOG_COMMAND } from "../admin/keyUser";
+import { USER_DELETE_ROWS, USER_EDIT_ROWS, type GeneratedRow } from "../admin/catalogUsers";
+import { WEB_SITE_ROWS } from "../admin/webSites";
 import type { CatalogRow, CatalogSection } from "./catalogContainers";
 
 function rowsOf(list: GeneratedRow[]): CatalogRow[] {

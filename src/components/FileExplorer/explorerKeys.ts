@@ -3,7 +3,7 @@ import type { Dispatch, KeyboardEvent as ReactKeyboardEvent, RefObject, SetState
 import type { FileEntry } from "../../api/types";
 import { matchesShortcut } from "../../features/shortcuts/shortcuts";
 import { HEADER_H, ROW_H } from "./FileList";
-import { typeAheadIndex } from "./explorerLogic";
+import { typeAheadIndex } from "../../features/fileExplorer/explorerLogic";
 
 export interface ExplorerKeyCtx {
   active: boolean;

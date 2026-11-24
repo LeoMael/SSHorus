@@ -1,7 +1,7 @@
 // Pruebas de la navegación dentro de un servidor y del aviso al cerrar (funciones puras).
 // Ejecutar: npx rolldown src/components/Session/sessionNav.test.ts -p node -f esm -o /tmp/nav.mjs && node /tmp/nav.mjs
 import { closeTarget, currentSection, fileStep, sectionItems, stepItem } from "./sessionNav";
-import { closeWarning } from "./closeConfirm";
+import { closeWarning } from "../../features/connect/closeConfirm";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {

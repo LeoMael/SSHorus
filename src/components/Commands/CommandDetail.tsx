@@ -1,11 +1,11 @@
 // Panel derecho: descripción, variables, vista previa exacta, acciones y resultado.
 import { useMemo, useState } from "react";
 import { Copy, CopyPlus, Network, Pencil, Play, SquareTerminal, Terminal, Trash2 } from "lucide-react";
-import { DISTRO_LABEL } from "./catalog";
+import { DISTRO_LABEL } from "../../features/commands/catalog";
 import { captureBlockedReason, toTerminal } from "./actions";
 import { CommandTags, Preview, ResultView, VarField, initialValues, rememberValues } from "./parts";
-import type { CommandItem } from "./state";
-import { missingVars, parseVars, renderTemplate, varLabel } from "./template";
+import type { CommandItem } from "../../features/commands/state";
+import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import { useRun } from "./useRun";
 import { usePrivilege } from "../../features/privileges";
 import { multiRunBlockedReason, runOnManyServers } from "./multi";

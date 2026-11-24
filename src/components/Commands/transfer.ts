@@ -8,7 +8,7 @@ import type { Snippet, SnippetScope } from "../../api/types";
 import { clipboard } from "../../lib/clipboard";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
-import { useSnippets } from "./state";
+import { useSnippets } from "../../features/commands/state";
 
 export const EXPORT_FILE_NAME = "sshorus-comandos.json";
 const JSON_FILTER = [{ name: "JSON", extensions: ["json"] }];

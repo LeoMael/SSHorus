@@ -6,7 +6,7 @@ import { create } from "zustand";
 import { errorMessage } from "../../api/core";
 import { snippets } from "../../api/snippets";
 import { ssh } from "../../api/ssh";
-import { reconnectTab, cancelReconnect } from "../../components/Session/sessionState";
+import { reconnectTab, cancelReconnect } from "../../stores/sessionState";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs, type SessionTab } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";

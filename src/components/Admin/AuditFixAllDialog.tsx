@@ -4,7 +4,7 @@
 import { CircleDashed, Play, ShieldAlert } from "lucide-react";
 import type { AuditReport, Check } from "../../api/audit";
 import type { RecheckOutcome } from "../../features/audit";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { FixFooter, NeedSudo, OutcomeLine } from "./AuditFixParts";
 import { useAdmin } from "./context";
 import { elevationText } from "./PlanReview";

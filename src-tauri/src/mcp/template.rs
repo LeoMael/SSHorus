@@ -1,6 +1,6 @@
 //! Plantillas de la Biblioteca de comandos: `{{nombre}}` / `{{nombre:defecto}}`.
 //!
-//! Igual que `src/components/Commands/template.ts` (`renderTemplate`): cada valor se cita según
+//! Igual que `src/features/commands/template.ts` (`renderTemplate`): cada valor se cita según
 //! dónde está la variable (fuera de comillas, entre comillas simples o dobles), así un valor con
 //! espacios o símbolos nunca rompe ni amplía el comando. Además, para el asistente, los valores no
 //! pueden empezar por «-» (serían opciones del comando) ni llevar saltos de línea.

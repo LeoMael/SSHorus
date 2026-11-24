@@ -6,7 +6,7 @@ import { wrapScript, type Elevation } from "../../features/privileges";
 import { scriptFor } from "../../features/containers/run";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "../Admin/AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import type { ReviewRequest } from "./context";
 
 function elevationText(el: Elevation | null): string {

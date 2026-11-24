@@ -2,7 +2,7 @@
 // y de los puertos publicados de los contenedores, qué servicios hay y cómo traerlos a tu PC. Funciones puras.
 import type { TunnelDef } from "../../api/tunnels";
 import { scopeOf, tunnelDestHost, type ListenPort, type PortScope } from "../admin/ports";
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 import { parsePortsString } from "../containers/parse";
 import { HTTPS_PORTS, PROXY_PROCESSES, SERVICE_CATALOG, type ServiceDef } from "./catalog";
 

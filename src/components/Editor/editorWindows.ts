@@ -11,7 +11,7 @@ import { useSettings } from "../../stores/settings";
 import { useUi } from "../../stores/ui";
 import { toast } from "../../stores/toasts";
 import { basename } from "../../lib/paths";
-import { useEditorDirty } from "../Session/sessionState";
+import { useEditorDirty } from "../../stores/sessionState";
 import { useAppTheme } from "../Settings/theme";
 import {
   EV_EDW_DIRTY,

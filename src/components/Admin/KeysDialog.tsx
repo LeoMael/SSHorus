@@ -4,7 +4,7 @@ import { KeySquare, Plus, Trash2 } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { parsePublicKey, readKeys, setKeysPlan, type Plan, type UserRow } from "../../features/admin";
 import { useAdmin } from "./context";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PlanReview } from "./PlanReview";
 
 function describe(line: string): { type: string; body: string; comment: string; options: string } {

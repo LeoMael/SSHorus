@@ -3,7 +3,7 @@ import type { RefObject } from "react";
 import { ClipboardCopy, ClipboardPaste, Download, Plus, Upload } from "lucide-react";
 import type { Snippet } from "../../api/types";
 import { CommandTags, HighlightedCommand } from "./parts";
-import type { CommandItem } from "./state";
+import type { CommandItem } from "../../features/commands/state";
 import { exportSnippets, exportSnippetsToFile } from "./transfer";
 
 export interface CommandGroup {

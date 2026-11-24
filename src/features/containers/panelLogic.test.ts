@@ -1,9 +1,9 @@
 // Pruebas de la lógica pura del panel de Contenedores: qué cargar, qué motor usar, nombres y avisos.
-// Ejecutar: npx rolldown src/components/Containers/panelLogic.test.ts -p node -f esm -o /tmp/ctp.mjs && node /tmp/ctp.mjs
-import type { CtOwner } from "../../features/containers/owner";
-import type { EngineStatus } from "../../features/containers/detect";
-import type { Container } from "../../features/containers/types";
-import type { Elevation } from "../../features/privileges/elevate";
+// Ejecutar: npx rolldown src/features/containers/panelLogic.test.ts -p node -f esm -o /tmp/ctp.mjs && node /tmp/ctp.mjs
+import type { CtOwner } from "./owner";
+import type { EngineStatus } from "./detect";
+import type { Container } from "./types";
+import type { Elevation } from "../privileges/elevate";
 import {
   bannerTitle,
   combineElevation,

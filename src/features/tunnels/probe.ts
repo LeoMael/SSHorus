@@ -1,7 +1,7 @@
 // Para los puertos que no se reconocen: ¿responden como una web? Se pregunta desde el propio servidor con
 // `curl -sI` (solo la cabecera, máx. 2 s por intento, todos a la vez en una sola ejecución).
 // Sin curl, quedan como «Otro».
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 import { WEB_GUESS } from "./catalog";
 import type { FoundService } from "./detect";
 

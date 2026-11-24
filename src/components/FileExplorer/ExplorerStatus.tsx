@@ -5,8 +5,7 @@ import { errorMessage } from "../../api/core";
 import type { FileEntry } from "../../api/types";
 import { formatBytes } from "../../lib/format";
 import { useTransfers } from "../../stores/transfers";
-import { filesBytes, plural } from "./explorerLogic";
-import { isDirLike } from "./icons";
+import { filesBytes, plural, isDirLike } from "../../features/fileExplorer/explorerLogic";
 
 /** Progreso de "preparando para arrastrar" (lee el lote del panel de transferencias). */
 function DragPrepStatus({ batchId, label, onCancel }: { batchId: string | null; label: string; onCancel: () => void }) {

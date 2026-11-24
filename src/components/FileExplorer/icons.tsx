@@ -77,10 +77,6 @@ const NAMES: Record<string, Kind> = {
   license: "text",
 };
 
-export function isDirLike(e: FileEntry): boolean {
-  return e.kind === "dir" || e.isDirLink;
-}
-
 export function EntryIcon({ entry, size = 16 }: { entry: FileEntry; size?: number }) {
   if (entry.kind === "dir") return <Folder size={size} className="fx-ic fx-ic-folder" />;
   if (entry.isDirLink) return <FolderSymlink size={size} className="fx-ic fx-ic-folder" />;

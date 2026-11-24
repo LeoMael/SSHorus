@@ -1,7 +1,7 @@
 // ¿Quién puede usar contenedores? Podman sin root (rangos de /etc/subuid y /etc/subgid, linger) y
 // Docker (grupo «docker», que equivale a root, o Docker sin root con su socket en /run/user/<uid>).
 // Funciones puras: sin React ni Tauri.
-import { splitSections } from "./parse";
+import { splitSections } from "../../lib/remote";
 
 /**
  * Lectura (con sudo si se puede; si no, como usuario normal). /etc/subuid, /etc/subgid y la carpeta de

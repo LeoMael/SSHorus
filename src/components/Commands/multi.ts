@@ -1,6 +1,6 @@
 // Puente con «Ejecutar en varios servidores» (features/multirun).
 import { openMultiRun, useMultiRun } from "../../features/multirun/store";
-import type { CommandItem } from "./state";
+import type { CommandItem } from "../../features/commands/state";
 
 /** Motivo por el que un comando no se puede lanzar en varios servidores (o null). */
 export function multiRunBlockedReason(item: CommandItem): string | null {

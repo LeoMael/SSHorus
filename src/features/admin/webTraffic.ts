@@ -2,7 +2,7 @@
 // Diseñado para servidores pequeños (1 vCPU): 100 % bajo demanda, prioridad mínima (`nice -n 19` +
 // `ionice -c3`), tope de 8 MiB leídos desde el final (seek O(1), nunca recorre gigabytes) y límite
 // de 15 s. Devuelve un JSON compacto (~4 KB). Funciones puras.
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 import type { Site } from "./web";
 
 export type TrafficRange = "24h" | "7d" | "30d";

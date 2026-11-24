@@ -13,7 +13,7 @@ import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";
 import { FleetHost } from "./components/Fleet/FleetHost";
 import { GitHubHost } from "./components/GitHub";
 import { initThemeSync } from "./components/Settings/theme";
-import { requestCloseTab } from "./components/Session/sessionState";
+import { requestCloseTab } from "./stores/sessionState";
 import { TabBar } from "./components/Tabs/TabBar";
 import { Welcome, recordRecentServer } from "./components/Welcome/Welcome";
 import { useSettings } from "./stores/settings";

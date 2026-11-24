@@ -27,8 +27,8 @@ import {
   type CtOwner,
   type Engine,
 } from "../../features/containers";
-import type { Resource, ResourceKind, ResourceMap } from "./context";
-import { neededResources, runningOwnersKey, type SubTab } from "./panelLogic";
+import type { Resource, ResourceMap } from "./context";
+import { neededResources, runningOwnersKey, type SubTab, type ResourceKind } from "../../features/containers/panelLogic";
 import type { OwnerScope } from "./useOwnerScope";
 
 const STATS_MS = 5000;

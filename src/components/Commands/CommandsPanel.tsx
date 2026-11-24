@@ -11,9 +11,9 @@ import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { openPalette } from "./actions";
-import { ANALYSIS_COMMAND, ANALYSIS_TIMEOUT_SECS, parseReport } from "./analysis";
+import { ANALYSIS_COMMAND, ANALYSIS_TIMEOUT_SECS, parseReport } from "../../features/commands/analysis";
 import { AnalysisReport, type AnalysisState } from "./AnalysisReport";
-import { CATEGORIES, type Distro } from "./catalog";
+import { CATEGORIES, type Distro } from "../../features/commands/catalog";
 import { CommandDetail } from "./CommandDetail";
 import { CommandMenu, type CommandMenuItem } from "./CommandMenu";
 import { CommandsList, type CommandGroup } from "./CommandsList";
@@ -29,7 +29,7 @@ import {
   useSnippets,
   type CommandItem,
   type SessionInfoCache,
-} from "./state";
+} from "../../features/commands/state";
 import { pickImportFile, planImport, type ImportPlan } from "./transfer";
 import "./Commands.css";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";

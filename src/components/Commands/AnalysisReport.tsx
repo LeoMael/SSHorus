@@ -4,8 +4,8 @@ import { AlertTriangle, ArrowLeft, Copy, Cpu, HardDrive, MemoryStick, RefreshCw,
 import { formatBytes } from "../../lib/format";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import { DISTRO_LABEL } from "./catalog";
-import { formatUptime, type ProcRow, type Report } from "./analysis";
+import { DISTRO_LABEL } from "../../features/commands/catalog";
+import { formatUptime, type ProcRow, type Report } from "../../features/commands/analysis";
 
 export interface AnalysisState {
   running: boolean;

@@ -4,6 +4,7 @@
 // así que dentro no puede haber comillas simples, barras invertidas ni "!"; solo lee (/proc, df, id,
 // systemctl, docker/podman ps); nada se instala ni se escribe. Secciones que empiezan con "@@nombre".
 // Los análisis de /proc y df se reutilizan del Monitor.
+import { parseOsRelease, splitSections } from "../../lib/remote";
 import { ADMIN_GROUPS } from "../privileges/detect";
 import { cpuPercent, memMetrics, type MemMetrics } from "../monitor/derive";
 import { parseCpu, parseDf, parseLoadavg, parseMeminfo, parseUptime, type CpuTicks, type DiskUsage } from "../monitor/sample";
@@ -96,21 +97,6 @@ export interface ProbeResult {
   complete: boolean;
 }
 
-function splitSections(stdout: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const raw of stdout.split("\n")) {
-    const line = raw.replace(/\r$/, "");
-    if (line.startsWith("@@")) {
-      cur = out.get(line.slice(2).trim()) ?? [];
-      out.set(line.slice(2).trim(), cur);
-      continue;
-    }
-    if (cur && line.trim() !== "") cur.push(line);
-  }
-  return out;
-}
-
 const firstInt = (lines: string[] | undefined): number | null => {
   const m = /(\d+)/.exec((lines ?? []).join(" "));
   return m ? Number(m[1]) : null;
@@ -164,13 +150,14 @@ export function parseUsers(lines: string[]): UserInfo[] {
 }
 
 export function parseProbe(stdout: string): ProbeResult {
-  const sec = splitSections(stdout);
+  // El nombre es toda la marca («@@ct=docker», «@@reboot=1»); docker y podman pueden repetir sección.
+  const sec = splitSections(stdout, { header: "prefix", blank: "dropBlank", repeat: "append" });
   const get = (k: string) => sec.get(k) ?? [];
   const cpu = parseCpu(get("stat"));
   const cpu2 = sec.has("stat2") ? parseCpu(get("stat2")) : null;
   const containers = new Map<string, string[]>();
   for (const [k, v] of sec) if (k.startsWith("ct=")) containers.set(k.slice(3), v);
-  const os = /^PRETTY_NAME="?([^"]*)"?/.exec(get("os")[0] ?? "")?.[1] ?? null;
+  const os = parseOsRelease(get("os")[0] ?? "").PRETTY_NAME ?? null;
   const nproc = firstInt(get("nproc"));
   return {
     cpu: cpu2 ?? cpu,

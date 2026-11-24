@@ -5,7 +5,7 @@
 // argumentos $1, $2…: el motor (y la interfaz) los citan como argumentos sueltos, así llegan literales y no
 // pueden ampliar el comando. Para reutilizar los planes de `commands.ts` y `web.ts` sin copiarlos, se les pasa
 // una marca (`runtime("1")`) en lugar del valor; `shQuote(marca)` se cambia luego por `"$1"`.
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 
 const MARK = "\u0001";
 

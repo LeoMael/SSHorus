@@ -7,7 +7,7 @@
 //   src-tauri/src/vulnscan/scripts.rs): `runuser -u U -- env HOME=… XDG_RUNTIME_DIR=…` (o `sudo -u U -H`, o `su`).
 //   Sin /run/user/<uid> (sin sesión ni linger), con una carpeta de ejecución propia (`runtimeFallback`).
 //   Docker rootless de otro usuario: su demonio, por su socket (`DOCKER_HOST=unix:///run/user/<uid>/docker.sock`).
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import { displayPrefix, q, renderCmd, type Cmd } from "./shell";
 import type { Engine } from "./types";
 

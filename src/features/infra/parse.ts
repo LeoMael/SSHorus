@@ -1,8 +1,6 @@
 // Mapa de infraestructura: lectura extra del servidor (sistema, direcciones, cortafuegos, usuarios y
 // conexiones TCP establecidas) y su parseo. Funciones puras, sin React ni Tauri. Solo lectura.
-import { splitSections } from "../admin/parse";
-import { parseAddr } from "../admin/ports";
-import { shQuote } from "../admin/shell";
+import { splitSections, parseAddr, shQuote } from "../../lib/remote";
 
 /**
  * Script de lectura. Secciones: @@os (PRETTY_NAME) · @@host (hostname) · @@addrs (IPs del equipo) ·

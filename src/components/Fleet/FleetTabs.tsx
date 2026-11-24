@@ -4,7 +4,7 @@ import { LayoutDashboard, X, XCircle } from "lucide-react";
 import { closeFleetTab, fleetTabTitle, useFleetTabs } from "../../features/fleet/tabs";
 import { useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 import { useProfiles } from "../../stores/profiles";
-import { PopupMenu } from "../Tabs/PopupMenu";
+import { PopupMenu } from "../ui/PopupMenu";
 import "./FleetTabs.css";
 
 /** Lo que la barra comparte con todas sus pestañas: activa, arrastre y «Cerrar las demás». */

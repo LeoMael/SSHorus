@@ -1,6 +1,6 @@
 // Puertos en escucha del servidor (TCP/UDP) con su proceso, usuario, servicio systemd o contenedor.
 // Funciones puras: script de lectura y parseo de `ss -tulpn` o, si no hay ss, `netstat -tulpn`.
-import { splitSections } from "./parse";
+import { parseAddr, splitSections } from "../../lib/remote";
 
 /**
  * Script de lectura. Con root/sudo `ss -p` muestra el proceso de todos los puertos; sin privilegios,
@@ -102,25 +102,6 @@ export const WELL_KNOWN: Record<number, string> = {
 
 function isLoopback(ip: string): boolean {
   return ip.startsWith("127.") || ip === "::1" || ip.toLowerCase().startsWith("::ffff:127.") || ip === "localhost";
-}
-
-/** Separa «dirección:puerto» en sus partes (IPv6 con o sin corchetes, «%interfaz», «*»). */
-export function parseAddr(s: string): { ip: string; iface: string | null; port: number } | null {
-  const i = s.lastIndexOf(":");
-  if (i <= 0) return null;
-  const portStr = s.slice(i + 1);
-  if (!/^\d+$/.test(portStr)) return null;
-  const port = Number(portStr);
-  if (port < 1 || port > 65535) return null;
-  let host = s.slice(0, i);
-  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
-  let iface: string | null = null;
-  const pct = host.indexOf("%");
-  if (pct >= 0) {
-    iface = host.slice(pct + 1) || null;
-    host = host.slice(0, pct);
-  }
-  return { ip: host || "*", iface, port };
 }
 
 export function scopeOf(ip: string): PortScope {

@@ -2,7 +2,7 @@
 //
 // Aquí se reutiliza lo que ya hace la interfaz en vez de copiarlo al motor:
 // - connect: el flujo normal de conexión (contraseña, huella, 2FA) y su pestaña.
-// - catalog: el catálogo base de la Biblioteca (components/Commands/catalog.ts).
+// - catalog: el catálogo base de la Biblioteca (features/commands/catalog.ts).
 // - ports / sites: los scripts y analizadores de Administración (features/admin/ports.ts y web.ts).
 // - audit: «Auditar servidor» (features/audit), sin sudo; se guarda en el historial como desde el botón.
 // - containers: la detección de Podman/Docker y la lista de contenedores (features/containers).
@@ -38,7 +38,7 @@ async function connect(profileId: string): Promise<{ sessionId: string }> {
 }
 
 async function catalog() {
-  const { CATALOG } = await import("../../components/Commands/catalog");
+  const { CATALOG } = await import("../commands/catalog");
   return CATALOG.map((e) => ({
     id: e.id,
     category: e.category,
@@ -60,13 +60,13 @@ function sessionOf(payload: Record<string, unknown>): string {
 }
 
 async function ports(sessionId: string) {
-  const { PORTS_SCRIPT, parsePorts, readElevated } = await import("../admin");
+  const [{ PORTS_SCRIPT, parsePorts }, { readElevated }] = await Promise.all([import("../admin"), import("../privileges")]);
   const r = await readElevated(sessionId, PORTS_SCRIPT, null, 20);
   return parsePorts(r.result.stdout);
 }
 
 async function sites(sessionId: string) {
-  const { WEB_SCRIPT, parseWeb, readElevated } = await import("../admin");
+  const [{ WEB_SCRIPT, parseWeb }, { readElevated }] = await Promise.all([import("../admin"), import("../privileges")]);
   const r = await readElevated(sessionId, WEB_SCRIPT, null, 40);
   return parseWeb(r.result.stdout);
 }

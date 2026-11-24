@@ -10,7 +10,7 @@ import { localTerm, type AiLaunch, type AiTool, type AiToolInfo } from "../../ap
 import { mcp, type McpConfig } from "../../api/mcp";
 import { confirmDialog } from "../../components/ui/dialogs";
 import { openSettingsAt } from "../../components/Settings/settingsNav";
-import { tabCurrentPath } from "../../components/Session/sessionState";
+import { tabCurrentPath } from "../../stores/sessionState";
 import type { TermController } from "../../components/Terminal/termController";
 import { useProfiles } from "../../stores/profiles";
 import { useSettings } from "../../stores/settings";

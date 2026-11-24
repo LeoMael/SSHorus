@@ -2,8 +2,8 @@
 import { useMemo, useState } from "react";
 import { createElement } from "react";
 import { AlertTriangle, BookOpen, Info, Play, ShieldAlert, X } from "lucide-react";
-import { CATALOG, varHint, type CatalogVar } from "../Commands/catalog";
-import { missingVars, parseVars, renderTemplate, varLabel } from "../Commands/template";
+import { CATALOG, varHint, type CatalogVar } from "../../features/commands/catalog";
+import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import {
   dangerReasons,
   looksInteractive,

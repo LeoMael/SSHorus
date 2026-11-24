@@ -1,5 +1,5 @@
 // Construcción de comandos del motor (funciones puras). El citado lo hace `shQuote` de Administración.
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import type { ComposeTool, Engine } from "./types";
 
 /** Caracteres que no necesitan comillas en un shell POSIX. */

@@ -1,7 +1,8 @@
 // Estado real de cada cuenta: contraseña (/etc/shadow), llaves autorizadas, shell y sudo.
 // Una contraseña bloqueada («!») o desactivada («*») con llaves en authorized_keys NO es una cuenta
 // bloqueada: entra con su llave («Solo llave»). Funciones puras (sin React ni Tauri).
-import { daysToDate, parseShadow, splitSections, SHADOW_SCRIPT, UID_MIN, type ShadowEntry, type SudoAccess } from "./parse";
+import { daysToDate, parseShadow, SHADOW_SCRIPT, UID_MIN, type ShadowEntry, type SudoAccess } from "./parse";
+import { splitSections } from "../../lib/remote";
 
 /** Shells que no dejan abrir una sesión (nologin, false, git-shell…). */
 const NO_LOGIN_RE = /(^|\/)(nologin|false|sync|shutdown|halt|git-shell)$/;

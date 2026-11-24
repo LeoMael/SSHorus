@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { AlertTriangle, Copy, RefreshCw, Search, TerminalSquare } from "lucide-react";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "../Admin/AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useCt, type LogsTarget } from "./context";
 
 const TAILS = [100, 500, 1000, 5000];

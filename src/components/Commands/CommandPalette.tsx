@@ -5,11 +5,11 @@ import { ArrowLeft, Search, TerminalSquare } from "lucide-react";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";
-import { CATEGORIES, type Distro } from "./catalog";
+import { CATEGORIES, type Distro } from "../../features/commands/catalog";
 import { captureBlockedReason, toTerminal, type RunMode } from "./actions";
 import { CommandTags, HighlightedCommand, Preview, ResultView, VarField, initialValues, rememberValues } from "./parts";
-import { MY_CATEGORY, buildItems, getSessionInfo, searchItems, useSnippets, type CommandItem } from "./state";
-import { missingVars, parseVars, renderTemplate, varLabel } from "./template";
+import { MY_CATEGORY, buildItems, getSessionInfo, searchItems, useSnippets, type CommandItem } from "../../features/commands/state";
+import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import { useRun } from "./useRun";
 import "./Commands.css";
 

@@ -9,7 +9,7 @@ import { parseDf, parseFirewall, parseSshd, runChecks, sshdFixCommand, sudoUsers
 import { toHtml, toMarkdown } from "./export";
 import { ALPINE_USER, DEBIAN_CONTAINER, ROCKY_CONTAINER, ROCKY_SERVER, UBUNTU_SERVER } from "./fixtures";
 import { categoryScore, checkScore, compare, grade, scoreChecks, SEVERE_CAP } from "./score";
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 
 declare const process: { exit(code: number): never };
 

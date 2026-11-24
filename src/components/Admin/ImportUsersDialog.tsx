@@ -20,7 +20,7 @@ import { useLocalKeysOnMount } from "../../features/sshkeys/store";
 import { useKeyUsages } from "../../features/sshkeys/useKeyUsage";
 import { useProfiles } from "../../stores/profiles";
 import { useAdmin } from "./context";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PlanReview } from "./PlanReview";
 import { ImportUsersList } from "./ImportUsersList";
 import { ImportUserOptions } from "./ImportUserOptions";

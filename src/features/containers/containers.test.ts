@@ -23,7 +23,7 @@ import {
 } from "./owner";
 import { statsFor } from "./parse";
 import { renderCmd } from "./shell";
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 
 // Sin @types/node en el proyecto: se carga a mano lo justo para ejecutar `sh`.
 const CHILD = "node:child_process";

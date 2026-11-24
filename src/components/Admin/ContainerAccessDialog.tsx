@@ -18,10 +18,10 @@ import {
   type UserContainers,
   type UserRow,
 } from "../../features/admin";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
 import { PlanReview } from "./PlanReview";
-import { Segmented } from "./Segmented";
+import { Segmented } from "../ui/Segmented";
 import "./ContainerAccess.css";
 
 interface Ctx {

@@ -9,7 +9,7 @@ import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { useUi } from "../../stores/ui";
 import { copyText, PasswordField } from "./PasswordField";
-import { Segmented } from "./Segmented";
+import { Segmented } from "../ui/Segmented";
 
 export const KEY_USER_SUDO_NOTE = "Entra con su llave. La contraseña solo sirve para sudo y SSHorus la guarda.";
 

@@ -1,5 +1,5 @@
 // Pruebas de las reglas del explorador (funciones puras).
-// Ejecutar: npx rolldown src/components/FileExplorer/explorerLogic.test.ts -p node -f esm -o /tmp/fx.mjs && node /tmp/fx.mjs
+// Ejecutar: npx rolldown src/features/fileExplorer/explorerLogic.test.ts -p node -f esm -o /tmp/fx.mjs && node /tmp/fx.mjs
 import type { FileEntry } from "../../api/types";
 import {
   filesBytes,

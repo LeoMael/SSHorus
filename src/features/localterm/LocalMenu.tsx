@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Bot, FolderOpen, Settings, SquareTerminal } from "lucide-react";
 import { localTerm, type AiTool, type AiToolInfo } from "../../api/localterm";
-import { PopupMenu } from "../../components/Tabs/PopupMenu";
+import { PopupMenu } from "../../components/ui/PopupMenu";
 import { useSettings } from "../../stores/settings";
 import { chooseFolder, launchAssistant, openLocalAiSettings, openLocalTerminal } from "./launch";
 import { ASSISTANTS } from "./logic";

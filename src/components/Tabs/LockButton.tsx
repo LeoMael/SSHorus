@@ -6,7 +6,7 @@ import { lockNow, openPinDialog, useLock } from "../../features/lock/lockStore";
 import { secretWords } from "../../features/lock/secretKind";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 import { openSettingsAt } from "../Settings/settingsNav";
-import { PopupMenu } from "./PopupMenu";
+import { PopupMenu } from "../ui/PopupMenu";
 
 export function LockButton() {
   const enabled = useLock((s) => !!s.status?.enabled);

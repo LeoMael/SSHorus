@@ -18,6 +18,7 @@ import type {
 } from "../../features/containers";
 import type { Elevation } from "../../features/privileges";
 import type { AutostartState } from "./useAutostart";
+import type { ResourceKind } from "../../features/containers/panelLogic";
 
 export interface Resource<T> {
   data: T | null;
@@ -27,7 +28,6 @@ export interface Resource<T> {
   loadedAt: number;
 }
 
-export type ResourceKind = "containers" | "images" | "volumes" | "networks" | "df";
 
 export interface ResourceMap {
   containers: Resource<Container[]>;

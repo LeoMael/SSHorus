@@ -8,7 +8,7 @@ import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { sessionOnline } from "./connection";
 import { BIG_DRAG_BYTES, DragOutCanceled, forgetPrepared, prepareDragOut, readyPaths, startDragOut } from "./dragOut";
-import { filesBytes, itemsLabel } from "./explorerLogic";
+import { filesBytes, itemsLabel } from "../../features/fileExplorer/explorerLogic";
 import { useEvent } from "./useEvent";
 
 /** Píxeles que hay que mover el ratón con el botón apretado para empezar a arrastrar al sistema. */

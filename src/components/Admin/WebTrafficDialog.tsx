@@ -7,20 +7,20 @@ import { formatBytes } from "../../lib/format";
 import {
   enableSiteLogPlan,
   parseTraffic,
-  readElevated,
   trafficScript,
   type ServerInfo,
   type Site,
   type TrafficRange,
   type TrafficReport,
 } from "../../features/admin";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PlanModal } from "./PlanReview";
-import { Segmented, type SegOption } from "./Segmented";
+import { Segmented, type SegOption } from "../ui/Segmented";
 import { useAdmin } from "./context";
 import { WebTrafficChart } from "./WebTrafficChart";
 import { WebTrafficTables, type TrafficSubTab } from "./WebTrafficTables";
 import "./WebTraffic.css";
+import { readElevated } from "../../features/privileges";
 
 const RANGE_OPTIONS: SegOption<TrafficRange>[] = [
   { value: "24h", label: "24 h" },

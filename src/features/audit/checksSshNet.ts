@@ -1,7 +1,7 @@
 // Comprobaciones de SSH, Usuarios y Red de la auditoría del servidor.
 import type { Check, Fix } from "../../api/audit";
 import type { PortsResult } from "../admin/ports";
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import { check, fix, lines, NEEDS_SUDO, noread, parsePasswdLines, plural, sudoUsers, type AuditCtx } from "./checksCommon";
 import { sshListenPorts } from "./fixSafety";
 

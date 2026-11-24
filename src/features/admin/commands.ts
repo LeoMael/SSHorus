@@ -5,7 +5,8 @@
 //   - "shadow": shadow-utils (Fedora/RHEL, Debian/Ubuntu, Arch; también Alpine con el paquete «shadow»):
 //     useradd/usermod/userdel/groupadd/groupdel/groupmod/gpasswd/chpasswd/chage.
 //   - "busybox": Alpine mínimo: adduser -D/deluser/addgroup/delgroup/passwd -l|-u/chpasswd.
-import { MASK, shQuote } from "./shell";
+import { MASK } from "./shell";
+import { shQuote } from "../../lib/remote";
 
 export type Toolset = "shadow" | "busybox";
 

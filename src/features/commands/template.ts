@@ -1,5 +1,6 @@
 // Plantillas de comandos: variables {{nombre}} / {{nombre:defecto}}, sustitución segura y búsqueda.
 // Las plantillas Go como {{.Names}} NO son variables (el nombre debe empezar por letra o "_").
+import { shQuoteMinimal } from "../../lib/remote";
 
 export const VAR_RE = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?\}\}/g;
 
@@ -28,19 +29,6 @@ export function parseVars(template: string): TemplateVar[] {
   return out;
 }
 
-/** Caracteres que no necesitan comillas fuera de comillas. */
-const SAFE_RE = /^[A-Za-z0-9_@%+=:,./~^-]+$/;
-
-/** Cita un valor para la shell (fuera de comillas). */
-export function shellQuote(value: string): string {
-  if (value === "") return "''";
-  if (SAFE_RE.test(value)) return value;
-  // "~/mi carpeta" → ~/'mi carpeta' (conserva la expansión de ~).
-  const tilde = /^~[A-Za-z0-9_.-]*\//.exec(value);
-  if (tilde) return tilde[0] + shellQuote(value.slice(tilde[0].length));
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
 type QuoteCtx = "none" | "single" | "double";
 
 function quoteFor(ctx: QuoteCtx, value: string): string {
@@ -51,7 +39,8 @@ function quoteFor(ctx: QuoteCtx, value: string): string {
     case "double":
       return value.replace(/[\\"$`]/g, (c) => `\\${c}`);
     default:
-      return shellQuote(value);
+      // Fuera de comillas: solo si hace falta, y "~/mi carpeta" → ~/'mi carpeta' (conserva la ~).
+      return shQuoteMinimal(value);
   }
 }
 

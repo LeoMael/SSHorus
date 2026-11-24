@@ -15,8 +15,8 @@ import {
   Upload,
 } from "lucide-react";
 import type { FileEntry } from "../../api/types";
-import type { MenuItem } from "./ContextMenu";
-import { isDirLike } from "./icons";
+import type { MenuItem } from "../ui/ContextMenu";
+import { isDirLike } from "../../features/fileExplorer/explorerLogic";
 import { addToProjectItem } from "./projectMenu";
 import type { FileActions } from "./useFileActions";
 

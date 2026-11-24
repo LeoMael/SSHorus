@@ -1,6 +1,6 @@
 // Comprobaciones de Endurecimiento de la auditoría del servidor.
 import type { Check } from "../../api/audit";
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import { check, fix, lines, NEEDS_SUDO, plural, type AuditCtx } from "./checksCommon";
 
 export function hardeningChecks(ctx: AuditCtx): Check[] {

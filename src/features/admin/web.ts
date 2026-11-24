@@ -1,6 +1,6 @@
 // Sitios web del servidor: scripts de lectura, coordinación nginx/Caddy y recarga.
 // Los parsers viven en webNginx.ts, webCaddy.ts y webTypes.ts; todo se reexporta aquí.
-import { shQuote } from "./shell";
+import { shQuote, splitSections } from "../../lib/remote";
 import { sitesFromCaddy } from "./webCaddy";
 import { resolveNginx, sitesFromNginx, splitNginxDump } from "./webNginx";
 import { parseCerts, type ServerInfo, type Site, type WebResult } from "./webTypes";
@@ -63,25 +63,9 @@ export const WEB_SCRIPT = [
   "echo @@end",
 ].join("\n");
 
-/** Como splitSections, pero conserva las líneas vacías (para numerar líneas de archivos). */
-export function splitSectionsRaw(stdout: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const raw of stdout.split("\n")) {
-    const line = raw.replace(/\r$/, "");
-    const m = /^@@([a-z]+)$/.exec(line);
-    if (m) {
-      cur = [];
-      out.set(m[1], cur);
-      continue;
-    }
-    if (cur) cur.push(line);
-  }
-  return out;
-}
-
 export function parseWeb(stdout: string): WebResult {
-  const s = splitSectionsRaw(stdout);
+  // Se conservan las líneas vacías (para numerar las líneas de los archivos).
+  const s = splitSections(stdout, { blank: "keep" });
   const svc = new Map<string, string>();
   for (const l of s.get("svc") ?? []) {
     const [n, st] = l.trim().split(/\s+/);

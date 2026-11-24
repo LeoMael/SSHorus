@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import type { FileEntry } from "../../api/types";
 import { HEADER_H, ROW_H } from "./FileList";
-import { rangePaths } from "./explorerLogic";
+import { rangePaths } from "../../features/fileExplorer/explorerLogic";
 import { useEvent } from "./useEvent";
 
 export interface SelectionState {

@@ -6,8 +6,8 @@ import { normHost } from "../profiles/serverMatches";
 import { appendKeySteps, type Plan } from "./commands";
 import { checkPublicKey } from "./keyUser";
 import { accountState, isLoginShell, parseAccounts, ACCOUNTS_SCRIPT, type AccountState } from "./accounts";
-import { splitSections, type ShadowEntry, type UserRow } from "./parse";
-import { shQuote } from "./shell";
+import { type ShadowEntry, type UserRow } from "./parse";
+import { splitSections, shQuote } from "../../lib/remote";
 
 // ───────── Lectura (como root) ─────────
 

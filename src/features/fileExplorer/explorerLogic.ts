@@ -1,7 +1,16 @@
 // Reglas del explorador sin React ni DOM: orden y filtro de filas, nombres, historial y búsqueda rápida.
 import type { FileEntry } from "../../api/types";
-import type { SortState } from "./FileList";
-import { isDirLike } from "./icons";
+
+export type SortKey = "name" | "size" | "modified" | "permissions";
+export interface SortState {
+  key: SortKey;
+  dir: 1 | -1;
+}
+
+/** Carpeta o enlace a carpeta (se abre al entrar y va primero en la lista). */
+export function isDirLike(e: FileEntry): boolean {
+  return e.kind === "dir" || e.isDirLink;
+}
 
 const collator = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
 

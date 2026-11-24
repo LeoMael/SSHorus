@@ -22,10 +22,10 @@ import {
 } from "../../features/containers";
 import type { Elevation, ElevationState, PrivilegeInfo } from "../../features/privileges";
 import { sudoRejected } from "../../features/privileges/sudo";
-import { ElevationError } from "../../features/admin/run";
+import { ElevationError } from "../../features/privileges";
 import { loadStoreUsers, useVulnScan } from "../../features/vulnscan/run";
 import { errorMessage } from "../../api/core";
-import { NO_ELEVATION, pickStatus, selfOwnerLabel } from "./panelLogic";
+import { NO_ELEVATION, pickStatus, selfOwnerLabel } from "../../features/containers/panelLogic";
 
 interface Args {
   sessionId: string;

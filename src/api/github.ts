@@ -1,5 +1,6 @@
 // Cuenta de GitHub (motor: src-tauri/src/github). Todas las peticiones salen del motor.
 import { call } from "./core";
+import type { LocalPublicKey } from "./localkeys";
 import type { Snippet } from "./types";
 
 export interface GhStatus {
@@ -44,13 +45,6 @@ export interface GhSshKey {
   key: string;
   title: string | null;
   createdAt: string | null;
-}
-
-export interface LocalPubKey {
-  path: string;
-  line: string;
-  keyType: string;
-  comment: string;
 }
 
 export interface GhRepo {
@@ -146,9 +140,9 @@ export const github = {
   myKeys: () => call<GhSshKey[]>("gh_my_keys"),
   userKeys: (login: string) => call<GhSshKey[]>("gh_user_keys", { login }),
   addKey: (title: string, key: string) => call<GhSshKey>("gh_add_key", { title, key }),
-  localPubkeys: () => call<LocalPubKey[]>("gh_local_pubkeys"),
+  localPubkeys: () => call<LocalPublicKey[]>("gh_local_pubkeys"),
   /** Solo lee archivos .pub */
-  readPubkey: (path: string) => call<LocalPubKey>("gh_read_pubkey", { path }),
+  readPubkey: (path: string) => call<LocalPublicKey>("gh_read_pubkey", { path }),
 
   repos: () => call<GhRepo[]>("gh_repos"),
   branches: (owner: string, repo: string) => call<string[]>("gh_branches", { owner, repo }),

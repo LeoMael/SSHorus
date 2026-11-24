@@ -10,7 +10,7 @@ import { useProfiles } from "../../stores/profiles";
 import { useAdmin, type PortProtoFilter, type PortScopeFilter } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
-import { Segmented } from "./Segmented";
+import { Segmented } from "../ui/Segmented";
 
 function copy(text: string, what: string) {
   clipboard.write(text).then(

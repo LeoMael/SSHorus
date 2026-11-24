@@ -15,7 +15,7 @@ import {
 import { useAdmin } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PlanModal, PlanReview } from "./PlanReview";
 
 interface GroupRow extends GroupEntry {

@@ -6,7 +6,7 @@ import { basename } from "../../lib/paths";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { useUi } from "../../stores/ui";
-import type { MenuItem } from "./ContextMenu";
+import type { MenuItem } from "../ui/ContextMenu";
 
 function hasBookmark(p: Project, b: Bookmark): boolean {
   return p.bookmarks.some((x) => x.serverId === b.serverId && x.path === b.path);

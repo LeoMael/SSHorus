@@ -1,11 +1,14 @@
 import { call } from "./core";
 
-/** Llave pública de ~/.ssh de este equipo. */
+/** Llave pública (`.pub`) de este equipo, ya validada por el motor. */
 export interface LocalPublicKey {
   path: string;
   /** Privada correspondiente (el .pub sin extensión), si existe. */
   privatePath: string | null;
+  /** Línea normalizada `tipo base64 [comentario]`. */
   line: string;
+  keyType: string;
+  comment: string;
 }
 
 export interface GeneratedKey {

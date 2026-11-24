@@ -1,10 +1,10 @@
 // Pruebas de «Nuevo usuario con clave»: validación de usuario y llave, AllowUsers/AllowGroups, plan y catálogo.
 // Ejecutar: npx rolldown src/features/admin/keyUser.test.ts -p node -f esm -o /tmp/ku.mjs && node /tmp/ku.mjs
 // Con KU_SH=1 además ejecuta el comando del catálogo en un sh local con useradd/usermod/… falsos.
-import { renderTemplate, missingVars } from "../../components/Commands/template";
-import { CATALOG } from "../../components/Commands/catalog";
+import { renderTemplate, missingVars } from "../commands/template";
+import { CATALOG } from "../commands/catalog";
 import { detectEnv } from "./commands";
-import { splitSections } from "./parse";
+import { splitSections } from "../../lib/remote";
 import { validateName } from "./shell";
 import {
   accessAdvice,
@@ -14,8 +14,8 @@ import {
   KEY_USER_CATALOG_COMMAND,
   parseSshdAccess,
   suggestKeyName,
-  validateKeyName,
 } from "./keyUser";
+import { validateKeyName } from "../sshkeys/keys";
 
 // Sin @types/node en el proyecto: lo mínimo de Node, tipado a mano.
 declare const process: { env: Record<string, string | undefined> };

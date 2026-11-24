@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { CornerDownLeft, ExternalLink } from "lucide-react";
 import { basename } from "../../lib/paths";
 import { focusEditorWindow, requestReturn } from "../Editor/editorWindows";
-import { ContextMenu, type MenuItem } from "../FileExplorer/ContextMenu";
+import { ContextMenu, type MenuItem } from "../ui/ContextMenu";
 
 export function DetachedButton({ sessionId, paths }: { sessionId: string; paths: string[] }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);

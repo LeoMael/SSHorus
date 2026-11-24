@@ -48,7 +48,8 @@ export {
   type ElevationFailure,
   type ExecRequest,
 } from "./elevate";
-export { loadStoredSudo, obtainSudoPassword, sudoModeOf, useStoredSudo, type SudoObtainResult } from "./stored";
+export { ElevationError, failureText, readElevated, runScript, succeeded, type ElevatedRead } from "./run";
+export { loadStoredSudo,obtainSudoPassword, sudoModeOf, useStoredSudo, type SudoObtainResult } from "./stored";
 export {
   defaultSaveChecked,
   otherSessionPasswords,

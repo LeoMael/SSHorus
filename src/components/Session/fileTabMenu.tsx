@@ -2,7 +2,7 @@
 import { Columns2, Copy, ExternalLink, PanelTop, X } from "lucide-react";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import type { MenuItem } from "../FileExplorer/ContextMenu";
+import type { MenuItem } from "../ui/ContextMenu";
 import type { FixedTab } from "./fixedViews";
 
 interface FileTabMenuCtx {

@@ -5,8 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, KeyRound, Loader2, Square, Wrench } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import type { Finding, Report } from "../../api/vulnscan";
-import { ElevationError, failureText } from "../../features/admin/run";
-import { wrapScript } from "../../features/privileges";
+import { wrapScript, ElevationError, failureText } from "../../features/privileges";
 import {
   checkRestart,
   crossReports,
@@ -23,7 +22,7 @@ import {
 } from "../../features/vulnscan";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
 import { FixResult } from "./FixResult";
 import { SevTag } from "./vulnUi";

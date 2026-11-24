@@ -2,7 +2,7 @@
 // (Puertos y Sitios web) y de Contenedores (también los de otros usuarios con sudo). Solo lectura: nada
 // se instala ni se cambia en el servidor.
 import { errorMessage } from "../../api/core";
-import { PORTS_SCRIPT, WEB_SCRIPT, parsePorts, parseWeb, readElevated, runScript } from "../admin";
+import { PORTS_SCRIPT, WEB_SCRIPT, parsePorts, parseWeb } from "../admin";
 import {
   canElevate,
   computeElevation,
@@ -10,6 +10,8 @@ import {
   getPrivilege,
   getSudoPassword,
   obtainSudoPassword,
+  readElevated,
+  runScript,
   sudoPasswordNeeded,
   type Elevation,
 } from "../privileges";

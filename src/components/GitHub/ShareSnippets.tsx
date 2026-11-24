@@ -5,7 +5,7 @@ import { github, type GhGistInfo } from "../../api/github";
 import type { Snippet } from "../../api/types";
 import { confirmDialog } from "../ui/dialogs";
 import { toast } from "../../stores/toasts";
-import { useSnippets } from "../Commands/state";
+import { useSnippets } from "../../features/commands/state";
 import { useGitHub } from "../../features/github/store";
 import { Card, ErrorBox, Link } from "./parts";
 

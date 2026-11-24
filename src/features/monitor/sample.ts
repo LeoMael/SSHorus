@@ -9,6 +9,7 @@
 // Procesos: en vez de `ps --sort=-pcpu` (su %CPU es la media desde que arrancó el proceso, no el
 // consumo actual, y busybox no lo admite) se leen los contadores de /proc/[pid]/stat y el % se
 // calcula por diferencia entre dos muestras, igual que `top`. Funciona igual en GNU y en busybox.
+import { splitSections } from "../../lib/remote";
 
 export interface CpuTicks {
   /** Suma de todos los campos de la línea "cpu" de /proc/stat. */
@@ -162,23 +163,6 @@ const num = (s: string | undefined): number => {
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 };
-
-function splitSections(stdout: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const raw of stdout.split("\n")) {
-    const line = raw.replace(/\r$/, "");
-    if (line.startsWith("@@")) {
-      const eq = line.indexOf("=");
-      const name = (eq > 0 ? line.slice(2, eq) : line.slice(2)).trim();
-      cur = [];
-      out.set(name, cur);
-      continue;
-    }
-    if (cur && line.trim() !== "") cur.push(line);
-  }
-  return out;
-}
 
 function sectionValues(stdout: string): Map<string, string> {
   const out = new Map<string, string>();
@@ -383,7 +367,8 @@ function dropOwnProcesses(procs: Map<number, ProcStat>, self: number): void {
 }
 
 export function parseSample(stdout: string, at = Date.now()): RawSample {
-  const s = splitSections(stdout);
+  // Marcas «@@nombre» o «@@nombre=valor» (el valor se lee aparte, con sectionValues).
+  const s = splitSections(stdout, { header: "key", blank: "dropBlank" });
   const get = (k: string) => s.get(k) ?? [];
   const procs = new Map<number, ProcStat>();
   for (const l of get("ps")) {

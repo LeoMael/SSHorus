@@ -11,8 +11,7 @@ import type { ExecResult } from "../../api/types";
 import type { Report, Target, UserCtx } from "../../api/vulnscan";
 import { displayCmds, emptyRunForm, failureMessage, validateRunForm, type RunForm } from "../../features/containers";
 import { renderCmd } from "../../features/containers/shell";
-import { ElevationError } from "../../features/admin/run";
-import { wrapScript } from "../../features/privileges";
+import { wrapScript, ElevationError } from "../../features/privileges";
 import {
   elevationFor,
   ownerCtx,
@@ -41,7 +40,7 @@ import {
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { RunFormFields } from "../Containers/RunFormFields";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
 import "../Containers/Containers.css";
 

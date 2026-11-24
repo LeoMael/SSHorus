@@ -4,10 +4,11 @@ import { errorMessage, isApiError } from "../../api/core";
 import type { AuditReport, Check } from "../../api/audit";
 import { newExecId } from "../../api/snippets";
 import { useProfiles } from "../../stores/profiles";
-import { ElevationError, failureText, innerScript, runScript, succeeded, useAdminHistory } from "../admin";
+import { innerScript, useAdminHistory } from "../admin";
 import type { Elevation } from "../privileges";
 import { GUARD_SCRIPT, NO_RECHECK, parseGuard, type GuardInfo } from "./fixSafety";
 import { recheckAudit, useAuditRun, type RecheckResult } from "./run";
+import { ElevationError, failureText, runScript, succeeded } from "../privileges";
 
 /** Las actualizaciones pueden tardar mucho. */
 const FIX_TIMEOUT_SECS = 900;

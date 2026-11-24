@@ -8,7 +8,7 @@ import { newExecId } from "../../api/snippets";
 import { ai } from "../../api/vulnscan";
 import { buildAuditAiMessages } from "../../features/audit";
 import { useSettings } from "../../stores/settings";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 
 export function AuditAiDialog({
   report,

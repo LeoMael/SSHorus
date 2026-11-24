@@ -1,5 +1,6 @@
 // Lectura del estado del servidor (usuarios, grupos, sesiones): scripts de solo lectura y su parseo.
 // Funciones puras: sin React ni Tauri.
+import { splitSections } from "../../lib/remote";
 
 /** Herramientas que se buscan en el servidor. */
 export const PROBED_TOOLS = [
@@ -106,23 +107,6 @@ export interface ReadResult {
   tools: Set<string>;
   /** Último acceso por usuario (texto ya legible), si lastlog existe. */
   lastLogin: Map<string, string>;
-}
-
-/** Separa la salida en secciones `@@nombre`. */
-export function splitSections(stdout: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  let cur: string[] | null = null;
-  for (const raw of stdout.split("\n")) {
-    const line = raw.replace(/\r$/, "");
-    const m = /^@@([a-z]+)$/.exec(line);
-    if (m) {
-      cur = [];
-      out.set(m[1], cur);
-      continue;
-    }
-    if (cur && line !== "") cur.push(line);
-  }
-  return out;
 }
 
 function int(s: string | undefined): number | null {

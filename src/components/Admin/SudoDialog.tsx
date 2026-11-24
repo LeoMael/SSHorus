@@ -22,7 +22,7 @@ import { profiles as profilesApi } from "../../api/profiles";
 import { resetStoredSudoForProfile } from "../../features/privileges/resetForProfile";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 
 /** Guarda la contraseña como «Contraseña de sudo: Guardar» del servidor. Devuelve si se pudo. */
 async function saveForServer(profileId: string, password: string): Promise<boolean> {

@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { snippets } from "../../api/snippets";
 import type { Project, Snippet } from "../../api/types";
+import { parseOsRelease } from "../../lib/remote";
 import { toast } from "../../stores/toasts";
 import { CATALOG, type CatalogEntry, type CatalogVar, type Distro, varHint } from "./catalog";
 import { fuzzyScore, parseVars } from "./template";
@@ -134,15 +135,6 @@ export interface SessionInfoCache {
 
 const sessionInfo = new Map<string, Promise<SessionInfoCache>>();
 const suggestions = new Map<string, Promise<string[]>>();
-
-export function parseOsRelease(text: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const line of text.split("\n")) {
-    const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
-    if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
-  }
-  return out;
-}
 
 export function distroFromOs(os: Record<string, string>): Distro | null {
   const ids = `${os.ID ?? ""} ${os.ID_LIKE ?? ""}`.toLowerCase();

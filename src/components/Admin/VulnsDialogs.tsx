@@ -7,7 +7,7 @@ import { vulnscan, type Report, type ReportMeta, type UsersView, type VulnScanSe
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 
 /** «Ver qué se envía»: el JSON de las consultas a OSV del último análisis. */
 export function OsvSampleDialog({ report, onClose }: { report: Report | null; onClose: () => void }) {

@@ -1,8 +1,9 @@
 // Quién puede usar contenedores en el servidor. Se vuelve a leer con cada recarga de Usuarios
 // (`read` cambia) y tras dar o quitar un permiso (el panel recarga solo).
 import { useEffect, useState } from "react";
-import { CONTAINER_ACCESS_SCRIPT, parseContainerAccess, readElevated, type ContainerAccessInfo } from "../../features/admin";
+import { CONTAINER_ACCESS_SCRIPT, parseContainerAccess, type ContainerAccessInfo } from "../../features/admin";
 import { useAdmin } from "./context";
+import { readElevated } from "../../features/privileges";
 
 /** null mientras se lee o si falla (la columna simplemente no se muestra). */
 export function useContainerAccess(): ContainerAccessInfo | null {

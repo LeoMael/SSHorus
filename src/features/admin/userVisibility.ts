@@ -1,6 +1,6 @@
 // «Qué pueden ver tus usuarios»: evaluación pura por usuario sin sudo (6 áreas + nota).
 // Tipos, script POSIX sh y parseadores viven en `userVisibilityScript.ts` y se re-exportan aquí.
-import { splitSections } from "./parse";
+import { splitSections } from "../../lib/remote";
 import type { PortsResult } from "./ports";
 import {
   NO_LOGIN_SHELL,

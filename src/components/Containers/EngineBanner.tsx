@@ -4,7 +4,7 @@ import { KeyRound, Play, ShieldAlert, Users } from "lucide-react";
 import { dockerGroupCommand, usesRootStorage, type DetectResult, type EngineStatus } from "../../features/containers";
 import type { ElevationState, PrivilegeInfo } from "../../features/privileges";
 import type { ReviewRequest } from "./context";
-import { bannerTitle } from "./panelLogic";
+import { bannerTitle } from "../../features/containers/panelLogic";
 import type { OwnerScope } from "./useOwnerScope";
 
 interface Props {

@@ -1,6 +1,6 @@
 // Comprobaciones de Actualizaciones, Sitios web, Contenedores, Sistema e Intentos de entrada.
 import type { Check, CheckStatus } from "../../api/audit";
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import { certStatus, type WebResult } from "../admin/web";
 import { rebootPending, type RebootPending } from "../reboot/detect";
 import { check, fix, lines, NEEDS_SUDO, plural, type AuditCtx, type AuditInput, type Family } from "./checksCommon";

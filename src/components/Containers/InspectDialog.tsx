@@ -4,7 +4,7 @@ import { AlertTriangle, Copy, Eye, EyeOff } from "lucide-react";
 import { inspect, parseInspect, withOwner, RESTART_LABELS, type Container, type InspectSummary, type RestartPolicy } from "../../features/containers";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import { AdmModal } from "../Admin/AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { AutostartBadge } from "./Autostart";
 import { useCt } from "./context";
 

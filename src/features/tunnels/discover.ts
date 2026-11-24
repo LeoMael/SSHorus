@@ -1,8 +1,7 @@
 // Lectura del servidor para «Servicios que puedes traer»: puertos en escucha (como root si hay sudo, para
 // ver el programa de cada uno) y puertos publicados de los contenedores. Solo lectura: no se cambia nada.
 import { PORTS_SCRIPT, parsePorts } from "../admin/ports";
-import { readElevated, runScript } from "../admin/run";
-import { refreshPrivilege, type Elevation } from "../privileges";
+import { refreshPrivilege, type Elevation, readElevated, runScript } from "../privileges";
 import { tunnels, type TunnelDef } from "../../api/tunnels";
 import { CONTAINER_PORTS_SCRIPT, findServices, parseContainerPublish, wantedLocalPort, type FoundService } from "./detect";
 import { applyHttpProbe, httpProbeScript, parseHttpProbe } from "./probe";

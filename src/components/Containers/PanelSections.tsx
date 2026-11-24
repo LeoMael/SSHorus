@@ -3,7 +3,7 @@ import { Suspense, lazy } from "react";
 import { ShieldAlert } from "lucide-react";
 import type { ResourceMap } from "./context";
 import { ContainersTab } from "./ContainersTab";
-import { SUBTABS, type SubTab } from "./panelLogic";
+import { SUBTABS, type SubTab } from "../../features/containers/panelLogic";
 
 const ImagesTab = lazy(() => import("./ImagesTab").then((m) => ({ default: m.ImagesTab })));
 const VolumesTab = lazy(() => import("./VolumesTab").then((m) => ({ default: m.VolumesTab })));

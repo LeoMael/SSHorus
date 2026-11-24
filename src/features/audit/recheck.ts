@@ -1,7 +1,7 @@
 // Después de un arreglo: qué volver a comprobar, cómo cruzar el informe guardado con lo nuevo (y recalcular
 // las notas) y, si algo sigue mal, por qué en una línea. Funciones puras: se prueban en fix.test.ts.
 import type { AuditReport, CategoryId, Check, CheckStatus } from "../../api/audit";
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 import { CATEGORIES, scoreChecks } from "./score";
 
 /** Categorías que cambian además de la propia (fail2ban depende de si SSH admite contraseña). */

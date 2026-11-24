@@ -5,14 +5,10 @@ import { localkeys } from "../../api/localkeys";
 import { ssh } from "../../api/ssh";
 import type { ServerProfile, SessionInfo } from "../../api/types";
 import {
-  ElevationError,
   importedProfile,
   namesToRead,
   parseUserAccess,
   resolveImportBase,
-  runScript,
-  succeeded,
-  failureText,
   userAccessScript,
   type AccessRead,
   type ImportBase,
@@ -20,7 +16,7 @@ import {
   type NewKey,
   type UserRow,
 } from "../../features/admin";
-import { refreshPrivilege, type Elevation } from "../../features/privileges";
+import { refreshPrivilege, type Elevation, ElevationError, runScript, succeeded, failureText } from "../../features/privileges";
 import { describeTestOk, testServerConnection } from "../../features/connect/serverTest";
 import { useLocalKeys } from "../../features/sshkeys/store";
 import { useProfiles } from "../../stores/profiles";

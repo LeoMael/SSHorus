@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { FolderOpen, Search, Server, Upload } from "lucide-react";
-import { github, type GhSshKey, type LocalPubKey } from "../../api/github";
+import { github, type GhSshKey } from "../../api/github";
+import type { LocalPublicKey } from "../../api/localkeys";
 import { confirmDialog } from "../ui/dialogs";
 import { toast } from "../../stores/toasts";
 import { useGitHub } from "../../features/github/store";
@@ -165,8 +166,8 @@ function KeysToServer() {
 
 function PcToGitHub() {
   const connected = useGitHub((s) => s.connected);
-  const [local, setLocal] = useState<LocalPubKey[] | null>(null);
-  const [chosen, setChosen] = useState<LocalPubKey | null>(null);
+  const [local, setLocal] = useState<LocalPublicKey[] | null>(null);
+  const [chosen, setChosen] = useState<LocalPublicKey | null>(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -181,7 +182,7 @@ function PcToGitHub() {
       });
   }, []);
 
-  const pick = (k: LocalPubKey) => {
+  const pick = (k: LocalPublicKey) => {
     setChosen(k);
     setTitle((t) => t || k.comment || "SSHorus");
   };

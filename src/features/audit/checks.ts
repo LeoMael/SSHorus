@@ -4,7 +4,7 @@
 // Regla de privacidad: `detail` no lleva nombres de usuario, direcciones ni rutas de casa (va a la IA);
 // todo eso va en `items`, que solo se ve en este equipo.
 import type { Check } from "../../api/audit";
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 import { familyOf, type AuditCtx, type AuditInput } from "./checksCommon";
 import { hardeningChecks } from "./checksHardening";
 import { isolationChecks } from "./checksIsolation";

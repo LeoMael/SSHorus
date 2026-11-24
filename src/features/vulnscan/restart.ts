@@ -2,7 +2,7 @@
 // servidor pide reiniciarse. Usa lo que tenga la distro: `needrestart` (Debian/Ubuntu),
 // `needs-restarting` (dnf4 / yum-utils) o `dnf5 needs-restarting`. Si no hay ninguno, no se sabe.
 // Script (solo lectura) y lectura de su salida: funciones puras.
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 
 // dnf5 sin -C baja metadatos de los repositorios (más de 2 minutos medido): -C usa la caché, y cada
 // herramienta tiene su límite de tiempo por si acaso.

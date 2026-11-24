@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { RotateCw, Unplug } from "lucide-react";
 import type { SessionReconnecting } from "../../api/types";
 import type { SessionTab } from "../../stores/tabs";
-import { cancelReconnect, reconnectTab, requestCloseTab } from "./sessionState";
+import { cancelReconnect, reconnectTab, requestCloseTab } from "../../stores/sessionState";
 
 /** Segundos que faltan para el próximo intento (cuenta atrás en vivo). */
 /** Solo corre mientras la pestaña se ve (las ocultas no gastan un temporizador). */

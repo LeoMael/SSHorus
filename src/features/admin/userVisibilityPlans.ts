@@ -1,7 +1,7 @@
 // Planes de arreglo para «Qué pueden ver tus usuarios» (Administración → Visibilidad).
 // Todas las funciones son puras y devuelven `Plan` para enseñar los comandos exactos antes de ejecutarlos.
 import { removeMemberStep, type AdminEnv, type Plan } from "./commands";
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 import { noTunnelsNonAdminSteps, noTunnelsSshdSteps } from "./sshdConf";
 import type { UserVisibilityReport, VisibilityArea, VisibilityReport } from "./userVisibility";
 

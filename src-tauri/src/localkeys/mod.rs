@@ -1,6 +1,9 @@
-//! Llaves SSH LOCALES (en ~/.ssh de este equipo), para el asistente «Nuevo usuario con clave»:
-//! listar las públicas (`*.pub`) y generar una ed25519 nueva. La privada nunca sale del equipo:
-//! solo se devuelve la línea pública y la ruta de la privada.
+//! Llaves SSH LOCALES (en ~/.ssh de este equipo): listar y leer las públicas (`*.pub`, en
+//! `pubkeys.rs`) y generar una ed25519 nueva. La privada nunca sale del equipo: solo se devuelve la
+//! línea pública y la ruta de la privada. Lo usan el asistente «Nuevo usuario con clave», las llaves
+//! de GitHub y la lista de llaves privadas (`sshkeys`).
+
+mod pubkeys;
 
 use std::fs;
 use std::io::Write;
@@ -13,20 +16,7 @@ use zeroize::Zeroizing;
 
 use crate::error::{AppError, AppResult};
 
-/// Máximo de `*.pub` que se listan y tamaño máximo de cada uno.
-const MAX_FILES: usize = 64;
-const MAX_PUB_BYTES: u64 = 16 * 1024;
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LocalPublicKey {
-    /// Ruta del `.pub`.
-    pub path: String,
-    /// Ruta de la privada (el `.pub` sin extensión) si existe.
-    pub private_path: Option<String>,
-    /// Primera línea no vacía (tipo, base64 y comentario).
-    pub line: String,
-}
+pub use pubkeys::{list_public_keys, parse_public_key_line, read_pub, LocalPublicKey};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +27,8 @@ pub struct GeneratedKey {
     pub public_line: String,
 }
 
-fn ssh_dir() -> AppResult<PathBuf> {
+/// Carpeta `~/.ssh` del usuario.
+pub fn ssh_dir() -> AppResult<PathBuf> {
     let home = dirs::home_dir().ok_or_else(|| AppError::Io("No se encontró la carpeta personal".into()))?;
     Ok(home.join(".ssh"))
 }
@@ -57,30 +48,6 @@ pub fn check_key_name(name: &str) -> AppResult<()> {
             "Nombre de llave no válido: usa letras, números, «.», «_» o «-» (p. ej. id_ed25519_ana)".into(),
         ))
     }
-}
-
-/// Lista las llaves públicas de una carpeta (ordenadas por nombre).
-pub fn list_public_keys(dir: &Path) -> Vec<LocalPublicKey> {
-    let Ok(rd) = fs::read_dir(dir) else { return Vec::new() };
-    let mut out: Vec<LocalPublicKey> = rd
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "pub") && p.is_file())
-        .filter(|p| p.metadata().is_ok_and(|m| m.len() <= MAX_PUB_BYTES))
-        .filter_map(|p| {
-            let text = fs::read_to_string(&p).ok()?;
-            let line = text.lines().map(str::trim).find(|l| !l.is_empty())?.to_string();
-            let private = p.with_extension("");
-            Some(LocalPublicKey {
-                path: p.to_string_lossy().into_owned(),
-                private_path: private.is_file().then(|| private.to_string_lossy().into_owned()),
-                line,
-            })
-        })
-        .collect();
-    out.sort_by(|a, b| a.path.cmp(&b.path));
-    out.truncate(MAX_FILES);
-    out
 }
 
 /// Crea un archivo nuevo (falla si ya existe) con permisos `mode` en Unix.
@@ -155,7 +122,7 @@ pub fn generate_ed25519(dir: &Path, name: &str, comment: &str, passphrase: &str)
     })
 }
 
-/// Llaves públicas de ~/.ssh.
+/// Llaves públicas válidas de ~/.ssh (las mismas que `gh_local_pubkeys`).
 #[tauri::command]
 pub async fn local_ssh_public_keys() -> AppResult<Vec<LocalPublicKey>> {
     let dir = ssh_dir()?;

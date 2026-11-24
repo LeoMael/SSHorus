@@ -4,8 +4,8 @@ import { Search, X } from "lucide-react";
 import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import type { Snippet } from "../../api/types";
-import { CATALOG, DISTRO_LABEL, type CatalogEntry } from "../Commands/catalog";
-import { fuzzyScore } from "../Commands/template";
+import { CATALOG, DISTRO_LABEL, type CatalogEntry } from "../../features/commands/catalog";
+import { fuzzyScore } from "../../features/commands/template";
 
 export interface LibraryChoice {
   command: string;

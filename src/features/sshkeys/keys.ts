@@ -51,6 +51,15 @@ export function freeKeyName(taken: readonly string[], base = "id_ed25519"): stri
   }
 }
 
+/** Nombre de archivo para una llave nueva en ~/.ssh. Mismas reglas que el motor (`localkeys::check_key_name`). */
+export function validateKeyName(name: string): string | null {
+  if (!name) return "Escribe un nombre para el archivo de la llave";
+  if (name.length > 64) return "Máximo 64 caracteres";
+  if (!/^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(name) || name.endsWith(".pub"))
+    return "Solo letras, números, «.», «_» y «-» (p. ej. id_ed25519_ana)";
+  return null;
+}
+
 /** Comando para probar la llave con GitHub (con `-i` si ssh no la usa sola). */
 export function githubTestCommand(name: string, privatePath: string): string {
   if (DEFAULT_IDENTITIES.includes(name)) return "ssh -T git@github.com";

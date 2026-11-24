@@ -1,11 +1,13 @@
 // Panel de Contenedores (funciones puras): sub-pestañas, qué motor usar, qué cargar, nombres de dueños
 // y textos que dependen del estado. Solo importa módulos sin efectos (se prueban con node).
-import { OWNER_SELF, type CtOwner } from "../../features/containers/owner";
-import type { Cmd } from "../../features/containers/shell";
-import type { EngineStatus } from "../../features/containers/detect";
-import type { Container, Engine } from "../../features/containers/types";
-import type { Elevation } from "../../features/privileges/elevate";
-import type { ResourceKind } from "./context";
+import { OWNER_SELF, type CtOwner } from "./owner";
+import type { Cmd } from "./shell";
+import type { EngineStatus } from "./detect";
+import type { Container, Engine } from "./types";
+import type { Elevation } from "../privileges/elevate";
+
+/** Listas que carga el panel (cada una con su estado de carga). */
+export type ResourceKind = "containers" | "images" | "volumes" | "networks" | "df";
 
 export type SubTab = "containers" | "images" | "volumes" | "networks" | "compose" | "cleanup";
 

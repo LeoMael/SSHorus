@@ -2,8 +2,9 @@
 // Funciones puras (sin React ni Tauri): validación de la llave pública, lectura de AllowUsers/AllowGroups
 // de sshd, el plan de comandos del asistente y el comando equivalente del catálogo (también para MCP).
 import { addMemberStep, passwordPart, writeKeysSteps, type AdminEnv, type Plan } from "./commands";
-import { parsePublicKey, shQuote } from "./shell";
+import { parsePublicKey } from "./shell";
 import { keyOnlySshdSteps, noTunnelsSshdSteps, RELOAD_SSHD_STEP } from "./sshdConf";
+import { shQuote } from "../../lib/remote";
 
 const q = shQuote;
 
@@ -49,15 +50,6 @@ export function suggestKeyName(user: string, host: string): string {
   const clean = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
   const h = clean(host.split(".")[0] ?? "");
   return ["id_ed25519", clean(user), h].filter(Boolean).join("_");
-}
-
-/** Mismas reglas que el motor (`localkeys::check_key_name`). */
-export function validateKeyName(name: string): string | null {
-  if (!name) return "Escribe un nombre para el archivo de la llave";
-  if (name.length > 64) return "Máximo 64 caracteres";
-  if (!/^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(name) || name.endsWith(".pub"))
-    return "Solo letras, números, «.», «_» y «-» (p. ej. id_ed25519_ana)";
-  return null;
 }
 
 // ───────── Quién puede entrar por SSH (AllowUsers/AllowGroups) ─────────

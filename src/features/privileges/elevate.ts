@@ -11,7 +11,7 @@
 //    nada más), y después `sudo -k -S` (sin reutilizar credenciales: -k obliga a leer la contraseña, así
 //    nunca pasa al comando) ejecuta el script interior; el resto de stdin llega a ese script.
 //    Sin terminal, sudo no reutiliza el sello de tiempo entre canales: se envía en cada comando.
-import { shQuote } from "../admin/shell";
+import { shQuote } from "../../lib/remote";
 import type { ElevationTool } from "./detect";
 
 export type Elevation =

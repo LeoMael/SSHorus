@@ -25,7 +25,7 @@ import {
   type UsersView,
   type VulnScanSettings,
 } from "../../api/vulnscan";
-import { ElevationError, runScript } from "../admin/run";
+import { ElevationError, runScript } from "../privileges";
 import type { Elevation } from "../privileges";
 
 export type PhaseId = "detect" | "inventory" | "distro" | "images" | "osv";

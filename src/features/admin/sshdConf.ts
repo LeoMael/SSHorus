@@ -1,7 +1,7 @@
 // Cambios en sshd para usuarios creados por SSHorus: recarga y bloque «solo con llave» (Match User).
 // Funciones puras: devuelven pasos de shell ya citados. Ningún paso lee stdin (</dev/null): el stdin del
 // plan queda para chpasswd.
-import { shQuote } from "./shell";
+import { shQuote } from "../../lib/remote";
 
 const q = shQuote;
 

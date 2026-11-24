@@ -1,7 +1,7 @@
 // Selector «Lo mío» / «Todo el servidor» y la caja plegada «Otros» de cada servidor.
 import { othersText, type MapScope } from "../../features/infra/scope";
 import type { Box } from "../../features/infra/layout";
-import { Segmented } from "../Admin/Segmented";
+import { Segmented } from "../ui/Segmented";
 // Estilos del selector (.adm-seg): el mapa de un proyecto se abre sin Administración cargada.
 import "../Admin/Admin.css";
 import "./MapScope.css";

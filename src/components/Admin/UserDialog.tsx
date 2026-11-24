@@ -16,7 +16,7 @@ import {
   type UserRow,
 } from "../../features/admin";
 import { useAdmin } from "./context";
-import { AdmModal } from "./AdmModal";
+import { AdmModal } from "../ui/AdmModal";
 import { PasswordField } from "./PasswordField";
 import { PlanReview } from "./PlanReview";
 

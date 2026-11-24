@@ -1,6 +1,6 @@
 // Comandos de «Reiniciar ahora»: el que reinicia (como root) y la lectura del estado antes y después
 // (sin root). Funciones puras.
-import { splitSections } from "../admin/parse";
+import { splitSections } from "../../lib/remote";
 import type { PrivilegeInfo } from "../privileges";
 import { REBOOT_PENDING_LINES, rebootPending, type RebootPendingInfo } from "./detect";
 
