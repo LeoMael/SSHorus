@@ -12,6 +12,7 @@ export const CATEGORIES: { id: CategoryId; label: string; weight: number }[] = [
   { id: "system", label: "Sistema", weight: 1 },
   { id: "logins", label: "Intentos de entrada", weight: 1 },
   { id: "hardening", label: "Endurecimiento", weight: 2 },
+  { id: "isolation", label: "Qué pueden ver tus usuarios", weight: 2 },
 ];
 
 // Criterio de la nota (pensado para que se lea bien, no para castigar):

@@ -1,6 +1,6 @@
 // Informe de la auditoría: nota general y por categoría, los problemas en orden de importancia (con
 // «Arreglar todo lo seguro») y, debajo, lo demás por categoría.
-import { ArrowDown, ArrowUp, Bot, CheckCircle2, Wrench } from "lucide-react";
+import { ArrowDown, ArrowUp, Bot, CheckCircle2, Eye, Wrench } from "lucide-react";
 import type { AuditReport, Check } from "../../api/audit";
 import { CATEGORIES, problemsByImportance, safeFixes, statusOrder, type Comparison, type RecheckOutcome } from "../../features/audit";
 import { AuditCheckRow, type FixAvailability } from "./AuditCheckRow";
@@ -25,11 +25,12 @@ interface Props {
   onFix: (c: Check) => void;
   onFixAll: () => void;
   onOpenVulns: () => void;
+  onOpenVisibility?: () => void;
   /** Terminó un «Reiniciar ahora» (desde «Reinicio pendiente»). */
   onRebooted: () => void;
 }
 
-export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAll, onOpenVulns, onRebooted }: Props) {
+export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAll, onOpenVulns, onOpenVisibility, onRebooted }: Props) {
   const { sessionId } = useAdmin();
   const problems = problemsByImportance(report.checks);
   const safe = safeFixes(problems);
@@ -126,7 +127,14 @@ export function AuditReportView({ report, cmp, outcomes, fixable, onFix, onFixAl
         const rest = mine.filter((c) => c.status !== "bad" && c.status !== "warn").sort((a, b) => statusOrder(a.status) - statusOrder(b.status));
         return (
           <section key={cat.id} className="au-section" id={`au-${sessionId}-${cat.id}`}>
-            <div className="section-label">{cat.label}</div>
+            <div className="au-fx-head">
+              <div className="section-label">{cat.label}</div>
+              {cat.id === "isolation" && onOpenVisibility && (
+                <button type="button" className="btn btn-sm" onClick={onOpenVisibility}>
+                  <Eye size={12} /> Ver detalle por usuario
+                </button>
+              )}
+            </div>
             {rest.length ? rest.map(row) : <div className="faint au-fx-reason">Sus problemas están arriba.</div>}
           </section>
         );

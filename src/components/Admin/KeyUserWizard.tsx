@@ -55,6 +55,8 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
   const [extraGroups, setExtraGroups] = useState("");
   const [admin, setAdmin] = useState(false);
   const [linger, setLinger] = useState(false);
+  const [allowTunnels, setAllowTunnels] = useState(false);
+  const [tunnelsTouched, setTunnelsTouched] = useState(false);
   const sudo = useSudoPassword();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -165,7 +167,7 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
     setErrors(errs);
     if (Object.keys(errs).length) return;
     const groups = [...groupList, ...(allowGroup && addAllowGroup ? [allowGroup] : [])];
-    setPlan(createKeyUserPlan(env, { name, publicKey: line, shell, groups, admin, linger, sudoPassword: sp?.ok ? sp.password : undefined }));
+    setPlan(createKeyUserPlan(env, { name, publicKey: line, shell, groups, admin, linger, allowTunnels, sudoPassword: sp?.ok ? sp.password : undefined }));
     if (typeof k !== "string") setKeyPath(k.privatePath);
     setStep("review");
   };
@@ -443,10 +445,29 @@ export function KeyUserWizard({ onClose, onCreated }: { onClose: () => void; onC
             {err("groups")}
           </label>
           <label className="checkbox adm-check adm-mb">
-            <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={admin}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setAdmin(next);
+                if (!tunnelsTouched) setAllowTunnels(next);
+              }}
+            />
             Dar sudo (grupo <span className="mono">{env.adminGroup}</span>)
           </label>
           {admin && <KeyUserSudoFields sudo={sudo} error={errors.sudo} />}
+          <label className="checkbox adm-check adm-mb">
+            <input
+              type="checkbox"
+              checked={allowTunnels}
+              onChange={(e) => {
+                setAllowTunnels(e.target.checked);
+                setTunnelsTouched(true);
+              }}
+            />
+            Permitir túneles SSH (sin esto no puede reenviar puertos hacia <span className="mono">127.0.0.1</span>)
+          </label>
           <label className="checkbox adm-check">
             <input type="checkbox" checked={linger} onChange={(e) => setLinger(e.target.checked)} />
             Activar linger (sus servicios de usuario y contenedores siguen activos sin sesión abierta)

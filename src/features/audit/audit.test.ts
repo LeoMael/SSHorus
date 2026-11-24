@@ -132,7 +132,7 @@ function byId(checks: Check[]): Map<string, Check> {
   ok(s.categories.every((x) => x.score === null || x.score >= 25), "rocky: ninguna categoría baja de 25 aunque tenga muchos problemas");
   eq(s.grade, grade(s.score ?? 0), "rocky: letra coherente");
   ok(s.summary.includes("graves") && s.summary.includes("avisos"), `rocky: resumen: ${s.summary}`);
-  eq(s.categories.length, 9, "rocky: nueve categorías");
+  eq(s.categories.length, 10, "rocky: diez categorías (incluye Qué pueden ver tus usuarios)");
   ok(s.categories.every((x) => x.score !== null), "rocky: con sudo todas tienen nota");
 
   // Privacidad: lo que va a la IA no lleva usuarios, dominios, IP, rutas de casa ni comandos.
@@ -269,6 +269,48 @@ function byId(checks: Check[]): Map<string, Check> {
   eq(g.grade, "C", "general: letra C");
   eq(scoreChecks(mostlyB.filter((c) => c.status !== "bad")).score, 88, "sin el grave sube a B");
   eq(categoryScore("web", []).score, null, "categoría vacía sin nota");
+
+  // Aislamiento («Qué pueden ver tus usuarios»): usuario sin sudo con túneles, HOME abierto, docker y logs.
+  const isoOut = [
+    "@@id",
+    "0 root",
+    "root",
+    "@@os",
+    "rocky|rhel|Rocky 9",
+    "@@passwd",
+    "root:0:/root:/bin/bash",
+    "admin:1000:/home/admin:/bin/bash",
+    "invitado:1001:/home/invitado:/bin/bash",
+    "@@groups",
+    "wheel:x:10:admin",
+    "@@sudoers",
+    "%wheel ALL=(ALL) ALL",
+    "@@isogroups",
+    "docker:x:998:invitado",
+    "adm:x:4:invitado",
+    "@@sshtun",
+    "invitado|yes|yes|no|no|no",
+    "@@homes",
+    "admin|/home/admin|755|admin|admin",
+    "invitado|/home/invitado|700|invitado|invitado",
+    "@@cronlogs",
+    "@log /var/log/caddy/access.log",
+    "@@dockersock",
+    "@sock /var/run/docker.sock|660|root|docker",
+    "@@end",
+  ].join("\n");
+  const isoChecks = runChecks(input(isoOut, { elevated: true, ports: PORTS })).checks;
+  const ic = byId(isoChecks);
+  eq(ic.get("iso.tunnels")?.status, "warn", "iso: usuario sin sudo puede abrir túneles");
+  ok(ic.get("iso.tunnels")?.fix?.command.includes("Match User !root Group"), "iso: arreglo global de túneles");
+  eq(ic.get("iso.homes")?.status, "warn", "iso: HOME abierto a otros");
+  eq(ic.get("iso.homes")?.fix?.command, "chmod 700 '/home/admin'", "iso: chmod 700 en HOME");
+  eq(ic.get("iso.local")?.status, "warn", "iso: redis en 127.0.0.1 sin auth");
+  eq(ic.get("iso.docker")?.status, "bad", "iso: usuario sin sudo en grupo docker");
+  eq(ic.get("iso.logs")?.status, "warn", "iso: acceso a logs");
+  for (const ch of isoChecks.filter((x) => x.category === "isolation")) {
+    ok(!/\b(invitado|admin)\b/.test(ch.detail), `iso privacidad sin usuarios en detail: ${ch.id}: ${ch.detail}`);
+  }
 }
 
 console.log(`${passed} pruebas bien, ${failed} mal`);

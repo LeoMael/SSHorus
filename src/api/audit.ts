@@ -6,7 +6,7 @@ import type { AiExplanation } from "./vulnscan";
 /** bien · aviso · mal · dato (no puntúa) · sin comprobar. */
 export type CheckStatus = "ok" | "warn" | "bad" | "info" | "skip";
 
-export type CategoryId = "ssh" | "users" | "net" | "updates" | "web" | "containers" | "system" | "logins" | "hardening";
+export type CategoryId = "ssh" | "users" | "net" | "updates" | "web" | "containers" | "system" | "logins" | "hardening" | "isolation";
 
 export interface Fix {
   command: string;

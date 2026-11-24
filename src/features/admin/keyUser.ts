@@ -3,7 +3,7 @@
 // de sshd, el plan de comandos del asistente y el comando equivalente del catálogo (también para MCP).
 import { addMemberStep, passwordPart, writeKeysSteps, type AdminEnv, type Plan } from "./commands";
 import { parsePublicKey, shQuote } from "./shell";
-import { keyOnlySshdSteps, RELOAD_SSHD_STEP } from "./sshdConf";
+import { keyOnlySshdSteps, noTunnelsSshdSteps, RELOAD_SSHD_STEP } from "./sshdConf";
 
 const q = shQuote;
 
@@ -146,6 +146,8 @@ export interface KeyUser {
   groups: string[];
   admin: boolean;
   linger: boolean;
+  /** Permitir túneles SSH (AllowTcpForwarding, etc.). Si es false, se restringe con Match User en sshd_config.d. */
+  allowTunnels?: boolean;
   /** Contraseña solo para sudo (con `admin`): sudo la pide aunque se entre con llave. */
   sudoPassword?: string;
 }
@@ -181,7 +183,10 @@ export function createKeyUserPlan(env: AdminEnv, u: KeyUser): Plan {
       )} >&2; fi`,
     );
   }
-  const action = `Crear usuario «${u.name}» con acceso solo por llave SSH${pw ? " y contraseña para sudo" : ""}`;
+  if (u.allowTunnels === false) {
+    steps.push(...noTunnelsSshdSteps(u.name));
+  }
+  const action = `Crear usuario «${u.name}» con acceso solo por llave SSH${pw ? " y contraseña para sudo" : ""}${u.allowTunnels === false ? " (sin túneles SSH)" : ""}`;
   return pw ? { action, steps, secret: pw.secret, secretLabel: pw.secretLabel } : { action, steps };
 }
 

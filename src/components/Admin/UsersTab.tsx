@@ -1,6 +1,6 @@
 // Sub-pestaña «Usuarios»: tabla, filtros y acciones (crear, editar, llaves, contenedores, bloquear, eliminar).
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
-import { Boxes, Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import { Boxes, Eye, Import, KeyRound, KeySquare, Lock, LockOpen, Pencil, Search, Trash2, UserPlus } from "lucide-react";
 import { accountState, deleteUserPlan, lockUserPlan, todayDays, userContainers, type AccountState, type UserContainers, type UserRow } from "../../features/admin";
 import { protectedReason, useAdmin } from "./context";
 import { VirtualTable, type Column } from "./VirtualTable";
@@ -25,7 +25,7 @@ type Dialog =
   | { kind: "lock"; user: UserRow; lock: boolean }
   | { kind: "delete"; user: UserRow };
 
-export function UsersTab() {
+export function UsersTab({ onOpenVisibility }: { onOpenVisibility?: () => void }) {
   const { users, readOnly, me, env } = useAdmin();
   const [query, setQuery] = useState("");
   const [showSystem, setShowSystem] = useState(false);
@@ -207,6 +207,15 @@ export function UsersTab() {
             <Trash2 size={13} /> Eliminar
           </button>
         </div>
+        {onOpenVisibility && (
+          <button
+            className="btn btn-sm"
+            title="Ver qué pueden ver o alcanzar tus usuarios sin sudo (túneles, 127.0.0.1, procesos, carpetas y Docker)"
+            onClick={onOpenVisibility}
+          >
+            <Eye size={13} /> Qué pueden ver
+          </button>
+        )}
         <button
           className="btn btn-sm"
           disabled={readOnly}

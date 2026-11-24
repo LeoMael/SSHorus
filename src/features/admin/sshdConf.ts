@@ -23,6 +23,85 @@ export function keyOnlyFile(user: string): string {
   return `${SSHD_CONFIG_D}/10-sshorus-solo-llave-${user}.conf`;
 }
 
+/** Archivo Match User para desactivar túneles SSH a un usuario concreto. */
+export function noTunnelsUserFile(user: string): string {
+  return `${SSHD_CONFIG_D}/65-sshorus-sin-tuneles-${user}.conf`;
+}
+
+/** Archivo Match para desactivar túneles SSH a todos los usuarios sin sudo. */
+export const NO_TUNNELS_GLOBAL_FILE = `${SSHD_CONFIG_D}/65-sshorus-sin-tuneles.conf`;
+
+export const NO_TUNNELS_DIRECTIVES = [
+  "    AllowTcpForwarding no",
+  "    AllowStreamLocalForwarding no",
+  "    X11Forwarding no",
+  "    PermitTunnel no",
+  "    GatewayPorts no",
+] as const;
+
+/**
+ * Desactiva túneles SSH (TCP, sockets Unix, X11, tun/tap y GatewayPorts) para `user` con un archivo en
+ * sshd_config.d. Comprueba con `sshd -t`, verifica con `sshd -T -C` que se aplica a `user` y que no cambia
+ * nada para `root`; si algo falla, lo deshace.
+ */
+export function noTunnelsSshdSteps(user: string): string[] {
+  const file = q(noTunnelsUserFile(user));
+  const lines = [
+    `# Añadido por SSHorus: ${user} no puede abrir túneles SSH`,
+    `Match User ${user}`,
+    ...NO_TUNNELS_DIRECTIVES,
+  ];
+  return [
+    `# Desactivar túneles SSH para ${user} (no podrá reenviar puertos ni llegar a 127.0.0.1 desde su PC)`,
+    "PATH=$PATH:/usr/sbin:/sbin",
+    `eff_tun() { sshd -T -C "user=$1,host=localhost,addr=127.0.0.1" </dev/null 2>/dev/null; }`,
+    `undo_tun() { rm -f ${file}; echo "$1" >&2; exit 1; }`,
+    `if [ -d ${q(SSHD_CONFIG_D)} ]; then`,
+    `  antes_tun=$(eff_tun root) || antes_tun=`,
+    `  printf '%s\\n' ${lines.map(q).join(" ")} > ${file}`,
+    `  chmod 600 ${file}`,
+    `  sshd -t </dev/null || undo_tun ${q("sshd -t falló al limitar túneles: se deshizo el cambio")}`,
+    `  eff_tun ${q(user)} | grep -qix 'allowtcpforwarding no' || undo_tun ${q(
+      "sshd no aplicó el bloqueo de túneles (¿falta «Include /etc/ssh/sshd_config.d/*.conf»?): se deshizo",
+    )}`,
+    `  [ "$(eff_tun root)" = "$antes_tun" ] || undo_tun ${q("El cambio de túneles afectaba a root: se deshizo")}`,
+    ...RELOAD_SSHD_STEP.split("\n").map((l) => `  ${l}`),
+    "else",
+    `  echo ${q("Sin /etc/ssh/sshd_config.d: añade manualmente «Match User " + user + "» con AllowTcpForwarding no")} >&2`,
+    "  exit 1",
+    "fi",
+  ];
+}
+
+/**
+ * Desactiva túneles SSH para cualquier usuario sin sudo (`Match User !root Group !sudo,!wheel,!admin`).
+ * Se prueba con `sshd -t` y verifica que `root` sigue igual; si falla, se restaura o borra.
+ */
+export function noTunnelsNonAdminSteps(adminGroups: string[] = ["sudo", "wheel", "admin"]): string[] {
+  const groups = [...new Set(["sudo", "wheel", "admin", ...adminGroups])].filter((g) => /^[a-zA-Z0-9._-]+$/.test(g));
+  const file = q(NO_TUNNELS_GLOBAL_FILE);
+  const lines = [
+    "# Añadido por SSHorus: los usuarios sin sudo no pueden abrir túneles SSH",
+    `Match User !root Group ${groups.map((g) => `!${g}`).join(",")}`,
+    ...NO_TUNNELS_DIRECTIVES,
+  ];
+  return [
+    "# Desactivar túneles SSH para todos los usuarios sin sudo",
+    "PATH=$PATH:/usr/sbin:/sbin",
+    `eff_tun() { sshd -T -C "user=$1,host=localhost,addr=127.0.0.1" </dev/null 2>/dev/null; }`,
+    `if [ ! -d ${q(SSHD_CONFIG_D)} ]; then echo ${q("Este servidor no tiene /etc/ssh/sshd_config.d: añade el bloque Match a mano en /etc/ssh/sshd_config")} >&2; exit 1; fi`,
+    `antes_tun=$(eff_tun root) || antes_tun=`,
+    `if [ -f ${file} ]; then cp -p ${file} ${q(`${NO_TUNNELS_GLOBAL_FILE}.bak`)}; fi`,
+    `restore_tun() { if [ -f ${q(`${NO_TUNNELS_GLOBAL_FILE}.bak`)} ]; then mv ${q(`${NO_TUNNELS_GLOBAL_FILE}.bak`)} ${file}; else rm -f ${file}; fi; echo "$1" >&2; exit 1; }`,
+    `printf '%s\\n' ${lines.map(q).join(" ")} > ${file}`,
+    `chmod 600 ${file}`,
+    `sshd -t </dev/null || restore_tun ${q("sshd -t falló: se deshizo el cambio")}`,
+    `[ "$(eff_tun root)" = "$antes_tun" ] || restore_tun ${q("El cambio de túneles afectaba a root: se deshizo")}`,
+    `rm -f ${q(`${NO_TUNNELS_GLOBAL_FILE}.bak`)}`,
+    RELOAD_SSHD_STEP,
+  ];
+}
+
 /**
  * `user` solo puede entrar por SSH con su llave aunque tenga contraseña (que entonces solo sirve para sudo):
  * «Match User … AuthenticationMethods publickey» en un archivo aparte. Se comprueba con `sshd -t`, que sshd

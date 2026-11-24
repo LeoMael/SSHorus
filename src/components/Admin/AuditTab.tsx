@@ -34,7 +34,7 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export function AuditTab({ onOpenVulns }: { onOpenVulns: () => void }) {
+export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () => void; onOpenVisibility?: () => void }) {
   const { sessionId, profileId, serverName, elevation, elev, disabled, askSudo } = useAdmin();
   const step = useAuditRun((s) => s.running[sessionId]);
   const [metas, setMetas] = useState<AuditMeta[]>([]);
@@ -221,6 +221,7 @@ export function AuditTab({ onOpenVulns }: { onOpenVulns: () => void }) {
             onFix={setFixing}
             onFixAll={() => setFixing("all")}
             onOpenVulns={onOpenVulns}
+            onOpenVisibility={onOpenVisibility}
             onRebooted={() => void start()}
           />
         )}

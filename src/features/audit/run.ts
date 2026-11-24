@@ -132,7 +132,7 @@ export async function recheckAudit(o: AuditOptions & { report: AuditReport; fixe
   const step = stepper(o);
   try {
     const cats = recheckCategories(o.fixed);
-    const input = await collect({ ...o, ports: cats.includes("net"), web: cats.includes("web"), step: (t) => step(`Comprobando de nuevo: ${t[0].toLowerCase()}${t.slice(1)}`) });
+    const input = await collect({ ...o, ports: cats.includes("net") || cats.includes("isolation"), web: cats.includes("web"), step: (t) => step(`Comprobando de nuevo: ${t[0].toLowerCase()}${t.slice(1)}`) });
     const fresh = runChecks(input).checks;
     const merged = mergeRecheck(o.report, fresh, cats);
     step("Guardando…");

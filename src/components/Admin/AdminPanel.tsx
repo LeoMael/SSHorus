@@ -3,7 +3,7 @@
 // Lee como usuario normal; los cambios se ejecutan como root (directo, sudo -n/doas -n o sudo -S con la
 // contraseña por stdin, guardada solo en memoria). Antes de cada cambio se muestra el comando exacto.
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Bug, ClipboardCheck, Globe, History, KeyRound, LogOut, MonitorDot, Network, RefreshCw, ShieldAlert, ShieldCheck, Unplug, Users, UsersRound, Waypoints } from "lucide-react";
+import { Bug, ClipboardCheck, Eye, Globe, History, KeyRound, LogOut, MonitorDot, Network, RefreshCw, ShieldAlert, ShieldCheck, Unplug, Users, UsersRound, Waypoints } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
 import { useTabs } from "../../stores/tabs";
@@ -49,6 +49,7 @@ import { PortsTab } from "./PortsTab";
 import { WebTab } from "./WebTab";
 import { VulnsTab } from "./VulnsTab";
 import { AuditTab } from "./AuditTab";
+import { VisibilityTab } from "./VisibilityTab";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
 import { preloadable } from "../../lib/lazy";
@@ -56,7 +57,7 @@ import "./Admin.css";
 
 const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
 
-type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "history";
+type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "visibility" | "history";
 
 const TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "users", label: "Usuarios", icon: <Users size={14} /> },
@@ -67,6 +68,7 @@ const TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "map", label: "Mapa", icon: <Waypoints size={14} /> },
   { id: "vulns", label: "Vulnerabilidades", icon: <Bug size={14} /> },
   { id: "audit", label: "Auditoría", icon: <ClipboardCheck size={14} /> },
+  { id: "visibility", label: "Qué pueden ver", icon: <Eye size={14} /> },
   { id: "history", label: "Historial", icon: <History size={14} /> },
 ];
 
@@ -234,10 +236,10 @@ export function AdminPanel({
       void load();
     }
   }, [active, disabled, stale, load]);
-  // Puertos: al abrir «Puertos» o «Sitios web» (los dos los usan). Sitios web: solo en su pestaña.
+  // Puertos: al abrir «Puertos», «Sitios web» o «Qué pueden ver» (los tres los usan). Sitios web: solo en su pestaña.
   useEffect(() => {
     if (!active || disabled) return;
-    const needPorts = (tab === "ports" || tab === "web") && scanStale.ports;
+    const needPorts = (tab === "ports" || tab === "web" || tab === "visibility") && scanStale.ports;
     const needWeb = tab === "web" && scanStale.web;
     if (!needPorts && !needWeb) return;
     setScanStale((s) => ({ ports: needPorts ? false : s.ports, web: needWeb ? false : s.web }));
@@ -488,7 +490,9 @@ export function AdminPanel({
           ) : tab === "vulns" ? (
             <VulnsTab />
           ) : tab === "audit" ? (
-            <AuditTab onOpenVulns={() => setTab("vulns")} />
+            <AuditTab onOpenVulns={() => setTab("vulns")} onOpenVisibility={() => setTab("visibility")} />
+          ) : tab === "visibility" ? (
+            <VisibilityTab />
           ) : tab === "ports" ? (
             <PortsTab />
           ) : tab === "web" ? (
@@ -508,7 +512,7 @@ export function AdminPanel({
               <div>Leyendo usuarios y grupos…</div>
             </div>
           ) : tab === "users" ? (
-            <UsersTab />
+            <UsersTab onOpenVisibility={() => setTab("visibility")} />
           ) : tab === "groups" ? (
             <GroupsTab />
           ) : tab === "sessions" ? (
