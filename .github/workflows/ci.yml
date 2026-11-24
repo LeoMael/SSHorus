@@ -95,7 +95,10 @@ jobs:
         run: npm run lint -- --max-warnings 0
 
       # Las pruebas de la interfaz (src/**/*.test.ts), cada una empaquetada con rolldown para Node.
+      # Solo en Linux: varias ejecutan de verdad los scripts de servidor (bash, /etc/group, /tmp), que en
+      # Windows no existen. Lo que se prueba es lógica que corre igual en los dos sistemas.
       - name: Pruebas de la interfaz
+        if: runner.os == 'Linux'
         run: npm test
 
       # También genera dist/, que el motor necesita para compilar (frontendDist = ../dist).

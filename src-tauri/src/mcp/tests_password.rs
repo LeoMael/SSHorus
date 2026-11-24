@@ -15,6 +15,9 @@ use crate::mcp::server;
 
 const LOGIN_PW: &str = "conexion-pw1";
 
+/// Guion de la terminal simulada: lo que sale al empezar y lo que sale tras cada escritura.
+type PtyScript = (Vec<String>, Vec<Vec<String>>);
+
 /// Lo que el Mock necesita para `run_with_password`.
 #[derive(Default)]
 pub(super) struct MockPasswords {
@@ -23,7 +26,7 @@ pub(super) struct MockPasswords {
     /// Respuestas a «password-run» y «password-prompt», en orden (si no hay: «no»).
     replies: Mutex<VecDeque<Value>>,
     /// Terminal: lo que sale al empezar y tras cada escritura (con «\0» = el programa termina con código 0).
-    script: Mutex<Option<(Vec<String>, Vec<Vec<String>>)>>,
+    script: Mutex<Option<PtyScript>>,
     written: Arc<Mutex<Vec<Vec<u8>>>>,
     commands: Mutex<Vec<String>>,
 }

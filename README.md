@@ -428,8 +428,9 @@ npm test               # todas (src/**/*.test.ts)
 npm test -- vulnscan   # solo las que tengan «vulnscan» en la ruta
 ```
 
-La CI (GitHub Actions) ejecuta en cada push, en Linux y en Windows: `tsc`, ESLint (0 avisos), `npm test`,
-`vite build`, `cargo clippy` y `cargo test --lib` (sin las pruebas que necesitan servidor SSH).
+La CI (GitHub Actions) ejecuta en cada push, en Linux y en Windows: `tsc`, ESLint (0 avisos), `vite build`,
+`cargo clippy --all-targets` y `cargo test --lib` (sin las pruebas que necesitan servidor SSH). `npm test` corre
+solo en Linux, porque varias pruebas ejecutan scripts de servidor con bash.
 
 ### Estructura
 

@@ -25,15 +25,16 @@ El usuario habla español: **todo texto visible en la app va en español**. Cali
 
 ```bash
 source ~/.cargo/env
-cd src-tauri && cargo clippy --lib -- -W clippy::all                                  # motor (0 warnings)
+cd src-tauri && cargo clippy --all-targets -- -D warnings                              # motor y sus pruebas (como la CI)
 cd src-tauri && cargo test --lib TU_MODULO -- --ignored --test-threads=1              # tests con servidor real
 npm run lint && npx tsc --noEmit                                                      # interfaz (0 errores y 0 warnings)
 npm test                                                                              # pruebas de la interfaz (src/**/*.test.ts)
 npm test -- TU_FILTRO                                                                 # solo las que tengan TU_FILTRO en la ruta
 ```
 - No empaquetes pruebas a mano con `npx rolldown … && node …`: usa `npm test` (borra sus archivos temporales).
-- La CI ejecuta en Linux y en Windows `tsc`, ESLint (0 avisos), `npm test`, `vite build`, `cargo clippy` y
-  `cargo test --lib`: lo que pasa en tu equipo tiene que pasar también ahí.
+- La CI ejecuta en Linux y en Windows `tsc`, ESLint (0 avisos), `vite build`, `cargo clippy --all-targets` y
+  `cargo test --lib`, y `npm test` solo en Linux (varias pruebas ejecutan scripts de servidor con bash). Clippy
+  revisa también el código de pruebas: compruébalo con `--all-targets`, no solo con `--lib`.
 - Esperar el candado de cargo ("Blocking waiting for file lock") es normal.
 - **La máquina es justa (15 GB de RAM, disco casi lleno): no dejes nada abierto ni ocupando espacio.**
   - Compila siempre con `CARGO_BUILD_JOBS=3 CARGO_INCREMENTAL=0` y, si estás en un worktree,
