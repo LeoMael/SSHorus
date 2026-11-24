@@ -55,12 +55,59 @@ const TESIS = [
   "",
   "@@tv:units",
   "Id=web.service",
+  "LoadState=loaded",
   "UnitFileState=generated",
   "WantedBy=default.target",
   "RequiredBy=",
   "",
+  "@@tv:sysunits",
   "@@tv:linger",
   "yes",
+  "@@tv:end",
+].join("\n");
+
+// podman-compose@licitaciones.service: unidad de plantilla deshabilitada que gestiona varios contenedores.
+const COMPOSE_UNIT = [
+  "@@tv:inspect",
+  `${ID_A}|no|podman-compose@licitaciones.service`,
+  `${ID_B}|no|podman-compose@licitaciones.service`,
+  "@@tv:service",
+  "enabled",
+  "@@tv:units",
+  "Id=podman-compose@licitaciones.service",
+  "LoadState=loaded",
+  "UnitFileState=disabled",
+  "WantedBy=",
+  "RequiredBy=",
+  "",
+  "@@tv:sysunits",
+  "@@tv:linger",
+  "yes",
+  "@@tv:end",
+].join("\n");
+
+// Unidad del sistema (User=leo_oti): en `--user` sale not-found, pero en `systemctl` del sistema existe.
+const SYS_COMPOSE_UNIT = [
+  "@@tv:inspect",
+  `${ID_A}|no|podman-compose@licitaciones.service`,
+  "@@tv:service",
+  "enabled",
+  "@@tv:units",
+  "Id=podman-compose@licitaciones.service",
+  "LoadState=not-found",
+  "UnitFileState=",
+  "WantedBy=",
+  "RequiredBy=",
+  "",
+  "@@tv:sysunits",
+  "Id=podman-compose@licitaciones.service",
+  "LoadState=loaded",
+  "UnitFileState=disabled",
+  "WantedBy=",
+  "RequiredBy=",
+  "",
+  "@@tv:linger",
+  "no",
   "@@tv:end",
 ].join("\n");
 
@@ -88,7 +135,7 @@ eq(leo.linger, true, "linger sí");
 const tesis = parseAutostart(TESIS);
 eq(tesis.policies.get(ID_Q)?.unit, "web.service", "unidad de Quadlet");
 eq(tesis.service, null, "servicio sin dato");
-eq(tesis.units.get("web.service"), { fileState: "generated", wanted: true }, "unidad generada y pedida por default.target");
+eq(tesis.units.get("web.service"), { loadState: "loaded", fileState: "generated", wanted: true, system: false }, "unidad generada y pedida por default.target");
 eq(parseAutostart(DOCKER).linger, null, "sin linger en Docker del sistema");
 eq(parseAutostart("@@tv:linger\nno\n@@tv:end").linger, false, "linger no");
 
@@ -128,10 +175,21 @@ eq(decideAutostart(ID_A, of, podUser, "6.1.1")?.verdict, "no", "on-failure: podm
 
 const q = decideAutostart(ID_Q, tesis, podUser, "6.1.1");
 eq([q?.verdict, q?.unit, q?.missing], ["yes", "web.service", []], "Quadlet habilitado con linger: sí");
-const qOff: OwnerAutostart = { ...tesis, units: new Map([["web.service", { fileState: "generated", wanted: false }]]) };
+const qOff: OwnerAutostart = {
+  ...tesis,
+  units: new Map([["web.service", { loadState: "loaded", fileState: "generated", wanted: false, system: false }]]),
+};
 eq(decideAutostart(ID_Q, qOff, podUser, "6.1.1")?.verdict, "no", "Quadlet sin [Install]: no");
+eq(decideAutostart(ID_Q, qOff, podUser, "6.1.1")?.missing, [], "Quadlet no se habilita con systemctl");
 eq(decideAutostart(ID_Q, { ...tesis, linger: false }, podUser, "6.1.1")?.missing, ["linger"], "Quadlet sin linger: solo linger");
 eq(decideAutostart(ID_Q, { ...tesis, units: new Map() }, podUser, "6.1.1")?.verdict, "unknown", "Quadlet sin datos de la unidad");
+
+const comp = parseAutostart(COMPOSE_UNIT);
+const ca = decideAutostart(ID_A, comp, podUser, "6.1.1");
+eq([ca?.verdict, ca?.missing], ["no", ["unit"]], "podman-compose@ deshabilitado: falta habilitar unidad");
+const sysComp = parseAutostart(SYS_COMPOSE_UNIT);
+const sca = decideAutostart(ID_A, sysComp, podUser, "6.1.1");
+eq([sca?.verdict, sca?.missing, sca?.unitInfo?.system], ["no", ["unit"], true], "servicio del sistema detectado y no pide linger");
 
 const dock = parseAutostart(DOCKER);
 eq(decideAutostart(ID_A, dock, dockSys, "27.0")?.verdict, "yes", "docker unless-stopped + servicio");
@@ -184,8 +242,53 @@ const p2 = autostartPlan(true, [target(ID_B, "web", "u:leo_oti")], ctx("4.9.4"))
 eq(p2.cmds.map(renderCmd).some((c) => c.includes("update")), false, "podman 4: no hay update");
 ok(p2.notes.some((n) => n.includes("volver a crear")), "podman 4: explica que hay que recrearlo");
 const p3 = autostartPlan(true, [target(ID_Q, "systemd-web", "u:tesis")], ctx("6.1.1"));
-eq(p3.cmds, [], "Quadlet: no se toca");
-ok(p3.notes[0].includes("web.service"), "Quadlet: lo explica");
+eq(p3.cmds, [], "Quadlet ya habilitado: no se toca");
+
+// Quadlet deshabilitado: nota única (no se puede habilitar con systemctl).
+const qOffFacts: Record<string, OwnerAutostart> = { "u:tesis": qOff };
+const qOffTarget: AutostartTarget = { id: ID_Q, name: "systemd-web", owner: "u:tesis", info: decideAutostart(ID_Q, qOff, podUser, "6.1.1")! };
+const p3b = autostartPlan(true, [qOffTarget], { engine: "podman", version: "6.1.1", owner: (k) => owners[k] ?? null, facts: (k) => qOffFacts[k] ?? null });
+eq(p3b.cmds, [], "Quadlet sin Install: sin comandos");
+ok(p3b.notes[0].includes("web.service") && p3b.notes[0].includes("Quadlet"), "Quadlet sin Install: lo explica");
+
+// podman-compose@licitaciones.service (de usuario): habilita el servicio UNA sola vez para varios contenedores.
+const compFacts: Record<string, OwnerAutostart> = { "u:leo_oti": comp };
+const cTargets: AutostartTarget[] = [
+  { id: ID_A, name: "licitaciones_web_1", owner: "u:leo_oti", info: decideAutostart(ID_A, comp, podUser, "6.1.1")! },
+  { id: ID_B, name: "licitaciones_backend_1", owner: "u:leo_oti", info: decideAutostart(ID_B, comp, podUser, "6.1.1")! },
+];
+const pComp = autostartPlan(true, cTargets, { engine: "podman", version: "6.1.1", owner: (k) => owners[k] ?? null, facts: (k) => compFacts[k] ?? null });
+eq(
+  pComp.cmds.map((c) => [c.owner, renderCmd(c)]),
+  [["u:leo_oti", "systemctl --user enable podman-compose@licitaciones.service"]],
+  "compose@ de usuario: un solo systemctl --user enable deduplicado",
+);
+
+// podman-compose@licitaciones.service (del sistema): habilita como root y deshabilita como root.
+const sysFacts: Record<string, OwnerAutostart> = { "u:leo_oti": sysComp };
+const sTarget: AutostartTarget = { id: ID_A, name: "licitaciones_web_1", owner: "u:leo_oti", info: decideAutostart(ID_A, sysComp, podUser, "6.1.1")! };
+const pSys = autostartPlan(true, [sTarget], { engine: "podman", version: "6.1.1", owner: (k) => owners[k] ?? null, facts: (k) => sysFacts[k] ?? null });
+eq(
+  pSys.cmds.map((c) => [c.owner, renderCmd(c)]),
+  [["root", "systemctl enable podman-compose@licitaciones.service"]],
+  "compose@ del sistema: systemctl enable como root",
+);
+const sysEnabled: OwnerAutostart = {
+  ...sysComp,
+  units: new Map([["podman-compose@licitaciones.service", { loadState: "loaded", fileState: "enabled", wanted: true, system: true }]]),
+};
+const sOffTarget: AutostartTarget = { id: ID_A, name: "licitaciones_web_1", owner: "u:leo_oti", info: decideAutostart(ID_A, sysEnabled, podUser, "6.1.1")! };
+const pSysOff = autostartPlan(false, [sOffTarget], {
+  engine: "podman",
+  version: "6.1.1",
+  owner: (k) => owners[k] ?? null,
+  facts: () => sysEnabled,
+});
+eq(
+  pSysOff.cmds.map((c) => [c.owner, renderCmd(c)]),
+  [["root", "systemctl disable podman-compose@licitaciones.service"]],
+  "compose@ del sistema: deshabilitar como root",
+);
 const p4 = autostartPlan(false, [target(ID_A, "db", "u:leo_oti"), target(ID_Q, "systemd-web", "u:tesis")], ctx("6.1.1"));
 eq(p4.cmds.map((c) => [c.owner, renderCmd(c)]), [["u:leo_oti", "podman update --restart no db"]], "apagar: política no");
 eq(p4.notes.length, 1, "apagar Quadlet: nota");

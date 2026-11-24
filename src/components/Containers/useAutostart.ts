@@ -11,20 +11,32 @@ import {
   type AutostartInfo,
   type AutostartOwner,
   type Container,
+  type CtOwner,
+  type Engine,
+  type EngineRun,
+  type EngineStatus,
   type OwnerAutostart,
 } from "../../features/containers";
-import { useCt } from "./context";
 
-export function useAutostart() {
-  const ct = useCt();
-  const { engine, owners, status, active, runRawAs, ownerIsRoot } = ct;
-  const containers = ct.res.containers.data;
-  const isRoot = ownerIsRoot("self");
+interface Args {
+  engine: Engine;
+  owners: CtOwner[];
+  status: EngineStatus | null;
+  active: boolean;
+  containers: Container[] | null;
+  runRawAs: (owner: string | undefined, script: string, timeoutSecs?: number) => Promise<EngineRun>;
+  isRoot: boolean;
+}
+
+export function useAutostart({ engine, owners, status, active, containers, runRawAs, isRoot }: Args) {
+  const rootless = !!status?.rootless;
+  const needsSudo = !!status?.needsSudo;
+  const version = status?.version ?? null;
 
   const ownerInfo = useMemo(() => {
-    const ctx = { engine, isRoot, rootless: status.rootless, selfSudo: engine === "docker" && status.needsSudo && !isRoot };
+    const ctx = { engine, isRoot, rootless, selfSudo: engine === "docker" && needsSudo && !isRoot };
     return new Map<string, AutostartOwner>(owners.map((o) => [ownerKey(o), autostartOwner(o, ctx)]));
-  }, [engine, owners, isRoot, status.rootless, status.needsSudo]);
+  }, [engine, owners, isRoot, rootless, needsSudo]);
 
   const [facts, setFacts] = useState<Map<string, OwnerAutostart>>(() => new Map());
   const [loading, setLoading] = useState(false);
@@ -52,24 +64,24 @@ export function useAutostart() {
 
   const hasContainers = !!containers && containers.length > 0;
   useEffect(() => {
-    if (active && hasContainers) void reload();
+    if (active && status && hasContainers) void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, idsKey]);
+  }, [active, !!status, idsKey]);
 
   const infoOf = useCallback(
     (c: Container): AutostartInfo | null => {
       const k = c.owner ?? "";
       const f = facts.get(k);
       const o = ownerInfo.get(k);
-      return f && o ? decideAutostart(c.id, f, o.scope, status.version) : null;
+      return f && o ? decideAutostart(c.id, f, o.scope, version) : null;
     },
-    [facts, ownerInfo, status.version],
+    [facts, ownerInfo, version],
   );
 
   const ownerOf = useCallback((k: string) => ownerInfo.get(k) ?? null, [ownerInfo]);
   const factsOf = useCallback((k: string) => facts.get(k) ?? null, [facts]);
 
-  return { infoOf, ownerOf, factsOf, loading, reload };
+  return useMemo(() => ({ infoOf, ownerOf, factsOf, loading, reload }), [infoOf, ownerOf, factsOf, loading, reload]);
 }
 
 export type AutostartState = ReturnType<typeof useAutostart>;

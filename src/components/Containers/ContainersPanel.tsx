@@ -20,6 +20,7 @@ import { useEngineDetect } from "./useEngineDetect";
 import { useOwnerScope } from "./useOwnerScope";
 import { useResources } from "./useResources";
 import { useEngineActions } from "./useEngineActions";
+import { useAutostart } from "./useAutostart";
 import "./Containers.css";
 
 export interface ContainersPanelProps {
@@ -48,6 +49,15 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
   const actions = useEngineActions({ ...scope, sessionId, runuser: !!result?.runuser, reload, askSudo });
   const { run, runRawAs, toTerminal, render, ownerLabel } = actions;
   const { setReview, setLogs, setInspectC, setRunForm } = dialogs;
+  const autostart = useAutostart({
+    engine,
+    owners: activeOwners,
+    status: status ?? null,
+    active,
+    containers: res.containers.data,
+    runRawAs,
+    isRoot,
+  });
 
   const ctx: CtContextValue | null = useMemo(() => {
     if (!status || !result) return null;
@@ -84,6 +94,8 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
         return !!o && ownerIsRoot(o, isRoot);
       },
       perOwner: (items, build) => perOwner(items, currentKey, build),
+      autostart,
+      reloadUsers: scope.reloadUsersIfLoaded,
     };
   }, [
     status,
@@ -114,6 +126,8 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
     setLogs,
     setInspectC,
     setRunForm,
+    autostart,
+    scope.reloadUsersIfLoaded,
   ]);
 
   // ───────── Render ─────────
@@ -178,7 +192,7 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
           detect={detect}
         />
         <RootStorageBanner scope={scope} status={status} ownerErrors={ownerErrors} runRawAs={runRawAs} review={setReview} detect={detect} />
-        <LingerBanner scope={scope} review={setReview} />
+        <LingerBanner scope={scope} review={setReview} onLingerEnabled={() => void autostart.reload()} />
         <SubTabBar tab={tab} setTab={setTab} res={res} />
         <SubTabBody
           tab={tab}

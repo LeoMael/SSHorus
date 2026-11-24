@@ -17,6 +17,7 @@ import type {
   VolumeInfo,
 } from "../../features/containers";
 import type { Elevation } from "../../features/privileges";
+import type { AutostartState } from "./useAutostart";
 
 export interface Resource<T> {
   data: T | null;
@@ -120,6 +121,10 @@ export interface CtContextValue {
   ownerIsRoot: (owner: string | undefined) => boolean;
   /** Un comando por dueño de los elementos (acciones en lote). */
   perOwner: <T extends { owner?: string }>(items: T[], build: (items: T[]) => Cmd) => Cmd[];
+  /** Estado de arranque automático al reiniciar el servidor (compartido por la tabla e Inspeccionar). */
+  autostart: AutostartState;
+  /** Vuelve a leer los usuarios con contenedores (p. ej. tras activar linger para quitar su aviso). */
+  reloadUsers: () => void;
 }
 
 /** Aviso de los botones de crear y limpiar con «Todos». */

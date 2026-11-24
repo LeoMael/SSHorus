@@ -343,6 +343,7 @@
   min-height: 0;
   overflow: auto;
   border-top: 1px solid var(--border);
+  container-type: inline-size;
 }
 .ct-table {
   width: 100%;
@@ -1166,19 +1167,22 @@
   gap: 6px;
 }
 
-@media (max-width: 860px) {
+@container (max-width: 780px) {
   .ct-col-image,
   .ct-col-created {
     display: none;
   }
+}
+
+@media (max-width: 860px) {
   .ct-compose-list {
     width: 200px;
   }
 }
 
-/* ───────── «¿Arranca solo?» ───────── */
+/* ───────── «Al reiniciar» ───────── */
 .ct-col-auto {
-  width: 104px;
+  width: 108px;
 }
 .ct-auto {
   display: inline-flex;
@@ -1208,8 +1212,10 @@
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
-@media (max-width: 860px) {
-  .ct-col-auto {
-    display: none;
-  }
+.ct-auto-why {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
 }

@@ -43,11 +43,10 @@ import { promptDialog } from "../ui/dialogs";
 import { ContextMenu, type MenuItem } from "../Admin/ContextMenu";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { openPortTunnel } from "./tunnel";
-import { useAutostart } from "./useAutostart";
 import { AutostartBadge, askAutostart, autostartMenuLabel } from "./Autostart";
 
 type Filter = "all" | "running" | "stopped";
-type SortKey = "name" | "owner" | "image" | "state" | "created" | "cpu" | "mem";
+type SortKey = "name" | "owner" | "image" | "state" | "autostart" | "created" | "cpu" | "mem";
 
 const ACTION_TEXT: Record<ContainerAction, { done: string; verb: string }> = {
   start: { done: "Contenedor iniciado", verb: "Iniciar" },
@@ -69,8 +68,7 @@ function copy(text: string, what = "Copiado") {
 
 export function ContainersTab() {
   const ct = useCt();
-  const { engine, res, stats } = ct;
-  const auto = useAutostart();
+  const { engine, res, stats, autostart: auto } = ct;
   const list = useMemo(() => res.containers.data ?? [], [res.containers.data]);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -114,6 +112,11 @@ export function ContainersTab() {
           return c.image.toLowerCase();
         case "state":
           return `${c.state === "running" ? 0 : 1}${c.name.toLowerCase()}`;
+        case "autostart": {
+          const v = auto.infoOf(c)?.verdict;
+          const rank = v === "yes" ? 0 : v === "no" ? 1 : 2;
+          return `${rank}${c.name.toLowerCase()}`;
+        }
         case "created":
           return c.created ?? 0;
         case "cpu":
@@ -128,7 +131,7 @@ export function ContainersTab() {
       return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, filter, search, sort, stats, ct.allOwners, ct.ownerLabel]);
+  }, [list, filter, search, sort, stats, ct.allOwners, ct.ownerLabel, auto.infoOf]);
 
   const visibleIds = new Set(rows.map(rowKey));
   const sel = list.filter((c) => selected.has(rowKey(c)) && visibleIds.has(rowKey(c)));
@@ -446,7 +449,7 @@ export function ContainersTab() {
         </div>
       )}
 
-      <div className="ct-table-wrap">
+      <div className="ct-table-wrap" tabIndex={0} role="region" aria-label="Lista de contenedores">
         {res.containers.data === null && loading ? (
           <div className="empty-state">
             <span className="spinner" />
@@ -481,8 +484,15 @@ export function ContainersTab() {
                 {th("image", "Imagen", "ct-col-image")}
                 {th("state", "Estado", "ct-col-state")}
                 <th className="ct-col-ports">Puertos</th>
-                <th className="ct-col-auto" title="Si arranca solo al reiniciar el servidor o si se cae">
-                  Arranque
+                <th
+                  className="ct-col-auto"
+                  aria-sort={sort.key === "autostart" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
+                  title="Si el contenedor está activado para levantarse solo tras reiniciar el servidor"
+                >
+                  <button className="ct-th" onClick={() => sortBy("autostart")}>
+                    Al reiniciar
+                    {sort.key === "autostart" && <span className="ct-sort">{sort.dir === 1 ? "▲" : "▼"}</span>}
+                  </button>
                 </th>
                 {th("created", "Creado", "ct-col-created")}
                 {th("cpu", "CPU", "ct-col-num")}

@@ -82,10 +82,14 @@ export function autostartScript(s: AutostartScope): string {
     'echo "$s"',
     "echo @@tv:units",
     `units=$(printf '%s\\n' "$out" | cut -d'|' -f3 | grep -E '^[A-Za-z0-9@_.:-]+$' | sort -u)`,
-    `if [ -n "$units" ]; then systemctl ${sc} show -p Id -p UnitFileState -p WantedBy -p RequiredBy $units 2>/dev/null; fi`,
+    `if [ -n "$units" ]; then systemctl ${sc} show -p Id -p LoadState -p UnitFileState -p WantedBy -p RequiredBy $units 2>/dev/null; fi`,
   ];
   if (s.userMode) {
     lines.push(
+      // Si un contenedor sin root lo arranca un servicio del sistema (p. ej. podman-compose@.service con User=),
+      // `systemctl --user` dirá LoadState=not-found: miramos también el gestor del sistema (solo lectura, sin sudo).
+      "echo @@tv:sysunits",
+      'if [ -n "$units" ]; then systemctl show -p Id -p LoadState -p UnitFileState -p WantedBy -p RequiredBy $units 2>/dev/null; fi',
       "echo @@tv:linger",
       `u=${s.machineUser ? q(s.machineUser) : '"$(id -un)"'}`,
       'if [ -e "/var/lib/systemd/linger/$u" ]; then echo yes',
@@ -98,10 +102,14 @@ export function autostartScript(s: AutostartScope): string {
 }
 
 export interface UnitInfo {
-  /** Estado del archivo de la unidad (enabled, disabled, generated…). */
+  /** Estado de carga (loaded, not-found…). */
+  loadState: string;
+  /** Estado del archivo de la unidad (enabled, disabled, generated, indirect, static…). */
   fileState: string;
   /** Algún objetivo la arranca (WantedBy/RequiredBy) o está habilitada. */
   wanted: boolean;
+  /** Pertenece al gestor del sistema (`systemctl`), no al del usuario (`--user`). */
+  system: boolean;
 }
 
 export interface OwnerAutostart {
@@ -115,8 +123,14 @@ export interface OwnerAutostart {
 }
 
 const ENABLED = new Set(["enabled", "enabled-runtime"]);
+/** Estados de archivo que `systemctl enable/disable` puede cambiar (excluye Quadlet `generated`, `static`, `transient`, `masked`). */
+const TOGGLEABLE_UNIT = new Set(["disabled", "indirect", "enabled", "enabled-runtime", "linked", "linked-runtime"]);
 
-function parseUnits(text: string): Map<string, UnitInfo> {
+export function canToggleUnit(u: UnitInfo | null | undefined): boolean {
+  return !!u && u.loadState !== "not-found" && TOGGLEABLE_UNIT.has(u.fileState);
+}
+
+function parseUnits(text: string, system: boolean): Map<string, UnitInfo> {
   const out = new Map<string, UnitInfo>();
   for (const block of text.split(/\n\s*\n/)) {
     const kv = new Map<string, string>();
@@ -126,8 +140,14 @@ function parseUnits(text: string): Map<string, UnitInfo> {
     }
     const id = kv.get("Id");
     if (!id) continue;
+    const loadState = kv.get("LoadState") ?? "";
     const fileState = kv.get("UnitFileState") ?? "";
-    out.set(id, { fileState, wanted: ENABLED.has(fileState) || !!kv.get("WantedBy") || !!kv.get("RequiredBy") });
+    out.set(id, {
+      loadState,
+      fileState,
+      wanted: loadState !== "not-found" && (ENABLED.has(fileState) || !!kv.get("WantedBy") || !!kv.get("RequiredBy")),
+      system,
+    });
   }
   return out;
 }
@@ -142,7 +162,15 @@ export function parseAutostart(stdout: string): OwnerAutostart {
   }
   const service = (s.get("service") ?? "").trim().split("\n")[0].trim() || null;
   const l = (s.get("linger") ?? "").trim();
-  return { policies, service, units: parseUnits(s.get("units") ?? ""), linger: l === "yes" ? true : l === "no" ? false : null };
+  const hasSys = s.has("sysunits");
+  const units = parseUnits(s.get("units") ?? "", !hasSys);
+  if (hasSys) {
+    for (const [id, sys] of parseUnits(s.get("sysunits") ?? "", true)) {
+      const cur = units.get(id);
+      if ((!cur || cur.loadState === "not-found") && sys.loadState !== "not-found") units.set(id, sys);
+    }
+  }
+  return { policies, service, units, linger: l === "yes" ? true : l === "no" ? false : null };
 }
 
 // ───────── Decisión ─────────
@@ -170,13 +198,15 @@ export function canUpdateRestart(engine: Engine, version: string | null): boolea
 }
 
 export type AutostartVerdict = "yes" | "no" | "unknown";
-export type AutostartMissing = "policy" | "service" | "linger";
+export type AutostartMissing = "policy" | "service" | "linger" | "unit";
 
 export interface AutostartInfo {
   verdict: AutostartVerdict;
   policy: string;
-  /** Unidad de systemd que lo gestiona (Quadlet…): su política no se toca. */
+  /** Unidad de systemd que lo gestiona (Quadlet, podman-compose@.service…): su política de reinicio no se toca. */
   unit: string | null;
+  /** Datos de la unidad de systemd si se pudieron leer. */
+  unitInfo?: UnitInfo | null;
   /** Explicación para el tooltip (una idea por línea). */
   why: string[];
   /** Qué falta para que arranque solo. */
@@ -225,14 +255,27 @@ export function decideAutostart(id: string, f: OwnerAutostart, scope: AutostartS
   const lingerMissing: AutostartMissing[] = scope.userMode && f.linger === false ? ["linger"] : [];
 
   if (p.unit) {
-    const u = f.units.get(p.unit);
-    const wanted = u ? u.wanted : null;
-    const why = [`Lo gestiona el servicio «${p.unit}» (systemd${scope.userMode ? " de usuario" : ""}); su política no se toca desde aquí.`];
-    if (wanted === true) why.push("El servicio está habilitado: arranca con el servidor.");
-    else if (wanted === false) why.push("El servicio no está habilitado para arrancar con el servidor (falta «WantedBy=default.target» en su sección [Install]).");
-    else why.push("No se pudo saber si el servicio está habilitado.");
-    if (scope.userMode) why.push(lingerLine(f.linger));
-    return { verdict: verdictOf([wanted, lingerOk]), policy: p.policy, unit: p.unit, why, missing: lingerMissing };
+    const u = f.units.get(p.unit) ?? null;
+    const found = u && u.loadState !== "not-found" ? u : null;
+    const wanted = found ? found.wanted : null;
+    const needsLinger = scope.userMode && !found?.system;
+    const unitLinger = needsLinger ? f.linger : true;
+    const unitLingerMissing: AutostartMissing[] = needsLinger && f.linger === false ? ["linger"] : [];
+    const why = [`Lo gestiona el servicio «${p.unit}» (systemd${found?.system ? " del sistema" : scope.userMode ? " de usuario" : ""}).`];
+    if (wanted === true) {
+      why.push("El servicio está habilitado: arranca con el servidor.");
+    } else if (wanted === false) {
+      why.push(
+        found?.fileState === "generated"
+          ? "El servicio (Quadlet) no está habilitado para arrancar con el servidor (falta «WantedBy=default.target» en su archivo .container)."
+          : "El servicio no está habilitado: no arranca al reiniciar el servidor.",
+      );
+    } else {
+      why.push("No se pudo comprobar si el servicio está habilitado.");
+    }
+    if (needsLinger) why.push(lingerLine(f.linger));
+    const missing: AutostartMissing[] = [...(wanted === false && canToggleUnit(found) ? (["unit"] as const) : []), ...unitLingerMissing];
+    return { verdict: verdictOf([wanted, unitLinger]), policy: p.policy, unit: p.unit, unitInfo: found, why, missing };
   }
 
   const pOk = policyOk(scope.engine, p.policy, version);

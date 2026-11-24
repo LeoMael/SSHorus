@@ -125,10 +125,10 @@ export function useOwnerScope({ sessionId, profileId, info, elev, result, active
     void loadUsers();
   }, [active, disabled, status, canElevate, otherEl, usersView, usersLoad.loading, usersLoad.error, loadUsers]);
 
-  /** «Volver a detectar» también vuelve a buscar los usuarios si ya se buscaron (o fallaron). */
-  const reloadUsersIfLoaded = () => {
+  /** «Volver a detectar» (o activar linger) vuelve a buscar los usuarios si ya se buscaron o fallaron. */
+  const reloadUsersIfLoaded = useCallback(() => {
     if (canElevate && otherEl && (usersView || usersLoad.error)) void loadUsers();
-  };
+  }, [canElevate, otherEl, usersView, usersLoad.error, loadUsers]);
 
   const chooseEngine = (e: Engine) => {
     setEnginePref(e);

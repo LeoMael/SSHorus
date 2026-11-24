@@ -8,13 +8,14 @@ import type { OwnerScope } from "./useOwnerScope";
 interface Props {
   scope: OwnerScope;
   review: (req: ReviewRequest) => void;
+  onLingerEnabled?: () => void;
 }
 
 function names(list: string[]): string {
   return list.length === 1 ? `«${list[0]}»` : `${list.slice(0, -1).map((n) => `«${n}»`).join(", ")} y «${list[list.length - 1]}»`;
 }
 
-export function LingerBanner({ scope, review }: Props) {
+export function LingerBanner({ scope, review, onLingerEnabled }: Props) {
   const users = usersWithoutLinger(scope.activeOwners, scope.engine);
   if (users.length === 0) return null;
   const one = users.length === 1;
@@ -47,7 +48,10 @@ export function LingerBanner({ scope, review }: Props) {
                 build: () => [cmd],
                 elevationOverride: scope.otherEl,
                 success: `Linger activado para ${u.name}`,
-                onDone: () => scope.reloadUsersIfLoaded(),
+                onDone: () => {
+                  scope.reloadUsersIfLoaded();
+                  onLingerEnabled?.();
+                },
               })
             }
           >

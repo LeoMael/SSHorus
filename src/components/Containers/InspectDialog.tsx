@@ -5,6 +5,7 @@ import { inspect, parseInspect, withOwner, RESTART_LABELS, type Container, type 
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { AdmModal } from "../Admin/AdmModal";
+import { AutostartBadge } from "./Autostart";
 import { useCt } from "./context";
 
 /** Variables que suelen ser secretas: se ocultan hasta que el usuario las muestre. */
@@ -54,6 +55,7 @@ export function InspectDialog({ container, onClose }: { container: Container; on
   const json = useMemo(() => (data?.raw ? JSON.stringify(data.raw, null, 2) : ""), [data]);
   const s = data?.summary;
   const rp = s?.restartPolicy || "no";
+  const autoInfo = ct.autostart.infoOf(container);
 
   return (
     <AdmModal title={ct.allOwners ? `Inspeccionar «${container.name}» (${ct.ownerLabel(container.owner)})` : `Inspeccionar «${container.name}»`} onClose={onClose} width={860}>
@@ -109,6 +111,17 @@ export function InspectDialog({ container, onClose }: { container: Container; on
                 <dd>
                   {RESTART_LABELS[rp.split(":")[0] as RestartPolicy] ?? rp} <span className="faint mono">({rp})</span>
                   {s.restartCount ? <span className="faint"> · {s.restartCount} reinicios</span> : null}
+                </dd>
+                <dt>Al reiniciar el servidor</dt>
+                <dd>
+                  <AutostartBadge info={autoInfo} loading={ct.autostart.loading} />
+                  {autoInfo && (
+                    <ul className="ct-auto-why">
+                      {autoInfo.why.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
                 </dd>
                 <dt>Comando</dt>
                 <dd className="mono ct-break">{s.command || "—"}</dd>

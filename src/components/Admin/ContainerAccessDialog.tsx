@@ -72,7 +72,11 @@ function Status({ info, access }: { info: ContainerAccessInfo; access: UserConta
       {info.podman && access.linger !== null && (
         <>
           <dt>Linger</dt>
-          <dd>{access.linger ? "Activado: sus contenedores siguen encendidos al salir" : "No: sus contenedores se apagan al salir"}</dd>
+          <dd>
+            {access.linger
+              ? "Activado: sus contenedores siguen encendidos al salir y pueden arrancar solos al reiniciar el servidor"
+              : "No: sus contenedores se apagan al salir y no arrancan solos al reiniciar el servidor"}
+          </dd>
         </>
       )}
       {info.docker && (

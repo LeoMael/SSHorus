@@ -11,8 +11,8 @@ interface Tag {
 }
 
 const LINGER_TEXT: Record<"on" | "off", string> = {
-  on: "Linger activado: sus contenedores siguen encendidos cuando sale.",
-  off: "Sin linger: sus contenedores se apagan cuando cierra su sesión.",
+  on: "Linger activado: sus contenedores siguen encendidos al cerrar sesión y pueden arrancar solos al reiniciar el servidor.",
+  off: "Sin linger: sus contenedores se apagan al cerrar sesión y no arrancan solos al reiniciar el servidor.",
 };
 
 function containerTags(c: UserContainers): Tag[] {

@@ -4,11 +4,13 @@
 import {
   AUTOSTART_SERVICE,
   autostartPolicy,
+  canToggleUnit,
   canUpdateRestart,
   systemctlArgs,
   type AutostartInfo,
   type AutostartOwner,
   type OwnerAutostart,
+  type UnitInfo,
 } from "./autostart";
 import { splitByOwner } from "./owner";
 import { engineCmd, type Cmd } from "./shell";
@@ -50,6 +52,45 @@ function cantUpdateNote(ctx: PlanCtx, ts: AutostartTarget[], policy: string): st
   );
 }
 
+/** Agrupa los contenedores que comparten una misma unidad de systemd (p. ej. un proyecto Compose). */
+function groupByUnit(ts: AutostartTarget[]): Map<string, AutostartTarget[]> {
+  const map = new Map<string, AutostartTarget[]>();
+  for (const t of ts) {
+    if (!t.info.unit) continue;
+    const list = map.get(t.info.unit) ?? [];
+    list.push(t);
+    map.set(t.info.unit, list);
+  }
+  return map;
+}
+
+/** Comando `systemctl enable/disable <unit>` en el gestor (usuario o sistema) que corresponda. */
+function unitToggleCmd(
+  action: "enable" | "disable",
+  unit: string,
+  u: UnitInfo,
+  o: AutostartOwner,
+  key: string,
+  offline: boolean,
+): { cmd: Cmd | null; note?: string } {
+  if (u.system) {
+    if (!o.rootKey) {
+      return {
+        cmd: null,
+        note: `«${unit}» es un servicio del sistema y hace falta root para cambiarlo: «sudo systemctl ${action} ${unit}».`,
+      };
+    }
+    return { cmd: { bin: ["systemctl"], args: [action, unit], owner: o.rootKey } };
+  }
+  return {
+    cmd: {
+      bin: offline ? ["env", "SYSTEMCTL_INSTALL_CLIENT_SIDE=1", "systemctl"] : ["systemctl"],
+      args: [...systemctlArgs(o.scope), action, unit],
+      owner: key,
+    },
+  };
+}
+
 function enablePlan(ctx: PlanCtx, key: string, ts: AutostartTarget[], out: AutostartPlan) {
   const o = ctx.owner(key);
   if (!o) {
@@ -59,14 +100,27 @@ function enablePlan(ctx: PlanCtx, key: string, ts: AutostartTarget[], out: Autos
   const f = ctx.facts(key);
   const missing = new Set(ts.flatMap((t) => t.info.missing));
   const svc = AUTOSTART_SERVICE[ctx.engine];
+  const offline = o.scope.userMode && !o.scope.machineUser && (f?.service === null || missing.has("linger"));
 
   if (missing.has("linger") && o.linger) {
     out.cmds.push({ bin: ["loginctl"], args: ["enable-linger", ...(o.linger.user ? [o.linger.user] : [])], owner: o.linger.owner });
   }
 
-  const byUnit = ts.filter((t) => t.info.unit);
-  for (const t of byUnit) {
-    out.notes.push(`«${t.name}» lo arranca su servicio «${t.info.unit}»: su política no se toca. Para que arranque con el servidor, ese servicio tiene que estar habilitado.`);
+  for (const [unit, group] of groupByUnit(ts)) {
+    const u = group[0].info.unitInfo ?? f?.units.get(unit) ?? null;
+    if (u && !u.wanted && canToggleUnit(u)) {
+      const r = unitToggleCmd("enable", unit, u, o, key, offline);
+      if (r.cmd) out.cmds.push(r.cmd);
+      else if (r.note) out.notes.push(r.note);
+    } else if (!u || !u.wanted) {
+      const why =
+        u?.fileState === "generated"
+          ? "es un servicio Quadlet (añade «WantedBy=default.target» en la sección [Install] de su archivo .container)."
+          : u?.fileState === "static"
+            ? "es un servicio static sin sección [Install] (no se habilita con systemctl)."
+            : "su servicio no se puede habilitar directamente con systemctl desde aquí.";
+      out.notes.push(`${quoted(group)} depende de «${unit}»: ${why}`);
+    }
   }
 
   const policy = autostartPolicy(ctx.engine, ctx.version);
@@ -83,7 +137,6 @@ function enablePlan(ctx: PlanCtx, key: string, ts: AutostartTarget[], out: Autos
     } else {
       // Sin gestor de usuario en marcha (sin sesión ni linger), systemctl --user no responde: se habilita
       // directamente en sus archivos.
-      const offline = o.scope.userMode && !o.scope.machineUser && (f?.service === null || missing.has("linger"));
       out.cmds.push({
         bin: offline ? ["env", "SYSTEMCTL_INSTALL_CLIENT_SIDE=1", "systemctl"] : ["systemctl"],
         args: [...systemctlArgs(o.scope), "enable", svc],
@@ -94,13 +147,24 @@ function enablePlan(ctx: PlanCtx, key: string, ts: AutostartTarget[], out: Autos
 }
 
 function disablePlan(ctx: PlanCtx, key: string, ts: AutostartTarget[], out: AutostartPlan) {
-  for (const t of ts.filter((x) => x.info.unit)) {
-    out.notes.push(
-      `«${t.name}» lo arranca su servicio «${t.info.unit}»: para que no arranque solo, deshabilita ese servicio ` +
-        "(o, si es de Quadlet, quita «WantedBy=» de la sección [Install] de su archivo .container).",
-    );
+  const o = ctx.owner(key);
+  const f = ctx.facts(key);
+  const offline = !!o && o.scope.userMode && !o.scope.machineUser && f?.service === null;
+
+  for (const [unit, group] of groupByUnit(ts)) {
+    const u = group[0].info.unitInfo ?? f?.units.get(unit) ?? null;
+    if (o && u && u.wanted && canToggleUnit(u)) {
+      const r = unitToggleCmd("disable", unit, u, o, key, offline);
+      if (r.cmd) out.cmds.push(r.cmd);
+      else if (r.note) out.notes.push(r.note);
+    } else {
+      out.notes.push(
+        `${quoted(group)} lo arranca su servicio «${unit}»: para que no arranque solo, deshabilita ese servicio ` +
+          "(o, si es de Quadlet, quita «WantedBy=» de la sección [Install] de su archivo .container).",
+      );
+    }
   }
-  const ts2 = ts.filter((t) => !t.info.unit && t.info.policy !== "no");
+  const ts2 = ts.filter((x) => !x.info.unit && x.info.policy !== "no");
   if (!ts2.length) return;
   if (canUpdateRestart(ctx.engine, ctx.version)) out.cmds.push(...updateCmds(ctx.engine, "no", ts2, key));
   else out.notes.push(cantUpdateNote(ctx, ts2, "no"));
