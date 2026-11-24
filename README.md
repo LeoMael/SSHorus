@@ -54,7 +54,7 @@
 - **Administrar usuarios y grupos** si eres root o tienes sudo. SSHorus lo detecta solo y lo muestra en la pestaña.
 - **Abrir túneles** para usar en tu PC una base de datos o un panel del servidor sin abrir puertos.
 - **Ver puertos y sitios web** del servidor: qué programa usa cada puerto y los sitios de nginx o Caddy
-  con sus dominios y certificados.
+  con sus dominios, certificados y monitor de tráfico/visitas bajo demanda (con activación segura de registro si el sitio no tiene log).
 - **Ejecutar un comando en varios servidores** a la vez y comparar los resultados.
 - **Buscar vulnerabilidades** en el servidor y en sus contenedores, con datos de OSV.dev y de tu distro, y
   el comando para actualizar. Si quieres, una IA te lo explica.
@@ -240,6 +240,7 @@ Qué puede hacer el asistente (siempre dentro del acceso que le diste):
 | `scan_vulnerabilities` | Analizar ahora, sin sudo (tarda minutos; consulta OSV.dev desde tu PC) | Te pregunta la primera vez; puedes elegir «Permitir siempre» |
 | `get_audit_report` | Última auditoría del servidor (notas y problemas con su arreglo) | Pasa solo |
 | `run_audit` | Auditar ahora, sin sudo y sin instalar nada | Te pregunta la primera vez; puedes elegir «Permitir siempre» |
+| `reboot_server` | Reiniciar el servidor con sudo, avisando a SSHorus para reconectar | Te pregunta siempre (nunca «Permitir siempre») |
 
 Qué esperar:
 - Lo que solo **lee** (listar, leer archivos, ver logs) pasa solo.
@@ -409,6 +410,8 @@ podman run -d --name terview-sshd -p 127.0.0.1:2222:2222 \
   -e USER_NAME=test -e USER_PASSWORD=test123 \
   lscr.io/linuxserver/openssh-server:latest
 podman exec terview-sshd apk add tmux   # para las pruebas de terminales persistentes
+# Para túneles y la batería completa: AllowTcpForwarding yes y PerSourcePenalties no en /config/sshd/sshd_config
+podman exec terview-sshd sh -c 'sed -i "s/^AllowTcpForwarding no/AllowTcpForwarding yes/" /config/sshd/sshd_config && grep -q PerSourcePenalties /config/sshd/sshd_config || echo "PerSourcePenalties no" >> /config/sshd/sshd_config; pkill -HUP sshd'
 
 cd src-tauri
 cargo test --lib -- --include-ignored --test-threads=1

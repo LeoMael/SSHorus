@@ -264,6 +264,10 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 
 - Con root o sudo, arriba eliges **Usuario**: tú, **root**, cada usuario con contenedores propios o
   **Todos** (con una columna «Usuario»). Lo que hagas se ejecuta como el dueño de cada contenedor.
+- La columna **Al reiniciar** (también en **Inspeccionar**) indica si cada contenedor volverá a arrancar solo al
+  reiniciar el servidor (**Activado** / **No activado**), comprobando su política de reinicio, `podman-restart.service`
+  o `docker.service`, unidades systemd/Quadlet (como `podman-compose@*.service`) y *linger*. Puedes activarlo o
+  desactivarlo por fila o en lote.
 - Clic en un puerto de un contenedor → **Abrir túnel a mi PC…** para usarlo en tu navegador.
 - En **Imágenes**, el botón de vulnerabilidades te lleva a Administración → Vulnerabilidades.
 
@@ -315,7 +319,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 **Cómo se usa:**
 
 1. Abre la pestaña **Administración**. Arriba ves si tienes permisos (**root**, **sudo**) o **Solo lectura**.
-2. En **Usuarios** pulsa **Crear usuario**, o selecciona uno y usa **Editar**, **Llaves SSH**, **Bloquear** o **Eliminar**.
+2. En **Usuarios** pulsa **Crear usuario**, o selecciona uno y usa **Editar**, **Llaves SSH**, **Contenedores** (ver y dar/quitar acceso a Podman, *linger* y Docker), **Bloquear** o **Eliminar**.
    - **Nuevo usuario con clave…** crea un usuario **sin contraseña** que solo entra con su llave SSH. Pega la
      llave pública, elige una de `~/.ssh` de tu equipo o **genera una nueva** (ed25519; la privada se queda en
      tu equipo, con frase opcional). Si sshd limita el acceso con `AllowGroups`, te ofrece añadir el grupo; si
@@ -332,7 +336,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 **Puertos y sitios web:**
 
 - **Puertos**: cada puerto abierto, con su programa, usuario y servicio. **Túnel** lo abre en tu PC.
-- **Sitios web**: los sitios de nginx y Caddy, con dominios, HTTPS y caducidad del certificado. Tienes **Comprobar configuración** y **Recargar**.
+- **Sitios web**: los sitios de nginx y Caddy, con dominios, HTTPS, caducidad del certificado y su registro de visitas. Tienes **Comprobar configuración**, **Recargar** y **Tráfico** (análisis bajo demanda de peticiones, IPs aproximadas, errores 4xx/5xx, gráfica por hora/día, rutas y orígenes; corre con prioridad mínima y tope de 8 MB para no cargar servidores pequeños). Si un sitio no tiene log o usa uno compartido, puedes activar un registro dedicado con rotación automática desde el propio diálogo (guarda respaldo, valida y restaura si algo falla).
 
 ![Administración → Puertos con los puertos en escucha y su programa](manual/13b-puertos.png)
 
@@ -509,7 +513,7 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - `sshorus-mcp` es el puente que se instala con SSHorus. Añade `--scope user` al comando para usarlo en todos tus proyectos.
 - Con la AppImage, usa **Claude Code (HTTP directo)**: la ruta del puente cambia en cada arranque.
 - Para Claude Desktop, copia el bloque **Claude Desktop** en `claude_desktop_config.json` y reinicia Claude Desktop.
-- Lo que solo lee pasa solo. Lo peligroso (`rm -rf`, `sudo`, `reboot`…) se pregunta siempre. Si no respondes a tiempo, se deniega.
+- Lo que solo lee pasa solo. Lo peligroso (`rm -rf`, `sudo`, `reboot`, `reboot_server`…) se pregunta siempre. Si no respondes a tiempo, se deniega.
 - El botón del **robot** en la barra de pestañas abre **Actividad del asistente**, con todo lo que ha hecho.
 
 **Aceptar automáticamente:** si te cansa aprobar cada paso, en **Ajustes → Asistentes de IA (MCP)** pulsa **Automático…** junto a un servidor con acceso **Completo** (o, en el propio diálogo de permiso, **Aceptar automáticamente en este servidor…**).
@@ -517,7 +521,7 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - **Cambios normales**: lo que no es peligroso pasa sin preguntar.
 - **Todo (incluido sudo)**: también lo peligroso y los comandos con sudo. Se marca en rojo y se pide confirmación. Si SSHorus tiene la contraseña de sudo (en memoria o guardada) la usa sin preguntar; si no, la pide una vez.
 - Duración: **15 min**, **1 hora**, **hasta cerrar SSHorus** o **siempre**.
-- Mientras esté activo verás **Automático** en la barra de pestañas: un clic lo apaga en todos los servidores.
+- Mientras esté activo verás **Automático** en la barra de pestañas: al pulsarlo se abre una ventana con el detalle por servidor para apagar uno concreto o **Apagar todo** (con confirmación).
 - Nunca funciona con SSHorus bloqueado ni en servidores de solo lectura. Cada acción queda en **Actividad del asistente** marcada como «automático», y las peligrosas muestran un aviso.
 
 ## Terminal local y asistentes de IA

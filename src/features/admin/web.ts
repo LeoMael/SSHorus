@@ -1,6 +1,7 @@
 // Sitios web del servidor: lee la configuración de nginx y de Caddy y la resume por sitio
 // (dominios, puertos, HTTPS y certificado, a qué sirve cada ruta). Funciones puras, sin React ni Tauri.
 import { shQuote } from "./shell";
+import { detectCaddyAccessLogs, detectNginxAccessLogs, type SiteAccessLog } from "./webTrafficLog";
 
 /** Deja en `cp` el nginx.conf que usa nginx (el de `nginx -V` o el habitual). */
 export const NGINX_CONF_STEPS = [
@@ -121,6 +122,8 @@ export interface Site {
   /** Archivo y línea donde se define. */
   file: string | null;
   line: number | null;
+  /** Registro de visitas (access log) detectado en la configuración. */
+  accessLog?: SiteAccessLog | null;
 }
 
 export interface ServerInfo {
@@ -482,10 +485,12 @@ export function sitesFromNginx(tree: NgxDirective[], certs: Map<string, number |
     }
   }
   const httpCert = first(http, "ssl_certificate")?.args[0] ?? null;
+  const serverBlocks: NgxDirective[][] = [];
   const sites: Site[] = [];
   for (const srv of http) {
     if (srv.name !== "server" || !srv.block) continue;
     const b = srv.block;
+    serverBlocks.push(b);
     const lst = b.filter((d) => d.name === "listen").map((d) => parseNginxListen(d.args));
     const listens: Listen[] = lst.length ? lst.map(({ host, port, https }) => ({ host, port, https })) : [{ host: null, port: 80, https: false }];
     const names = b
@@ -515,6 +520,10 @@ export function sitesFromNginx(tree: NgxDirective[], certs: Map<string, number |
       line: srv.line,
     });
   }
+  const logs = detectNginxAccessLogs(http, serverBlocks);
+  sites.forEach((s, i) => {
+    s.accessLog = logs[i];
+  });
   return sites;
 }
 
@@ -650,6 +659,8 @@ export function sitesFromCaddy(cfg: unknown, configPath: string): Site[] {
       site.routes.push(...routes);
     }
   }
+  const logs = detectCaddyAccessLogs(cfg, order);
+  for (const s of order) s.accessLog = logs.get(s.key) ?? null;
   return order;
 }
 

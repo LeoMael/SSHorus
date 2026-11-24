@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
   FileCode,
   FileText,
@@ -35,6 +36,7 @@ import { useProfiles } from "../../stores/profiles";
 import { useAdmin } from "./context";
 import { AdmModal } from "./AdmModal";
 import { PlanModal } from "./PlanReview";
+import { WebTrafficDialog } from "./WebTrafficDialog";
 
 const SERVER_NAME: Record<ServerInfo["server"], string> = { nginx: "nginx", caddy: "Caddy" };
 
@@ -135,11 +137,12 @@ function RouteTarget({ route }: { route: SiteRoute }) {
   }
 }
 
-function SiteCard({ site }: { site: Site }) {
+function SiteCard({ site, onTraffic }: { site: Site; onTraffic: () => void }) {
   const { openFile, goToPort } = useAdmin();
   const cs = certStatus(site.certExpires);
   const title = site.names[0] ?? (site.server === "caddy" ? "Cualquier dominio" : "Sitio por defecto");
   const where = site.file ? `${site.file}${site.line ? `:${site.line}` : ""}` : null;
+  const log = site.accessLog;
   return (
     <article className="adm-site" aria-label={title}>
       <header className="adm-site-head">
@@ -198,6 +201,27 @@ function SiteCard({ site }: { site: Site }) {
             </dd>
           </>
         )}
+        <dt>Visitas</dt>
+        <dd className="adm-cell-flex">
+          {log?.path ? (
+            <>
+              <span className="mono adm-ellipsis" title={log.path}>
+                {log.path}
+              </span>
+              {log.shared && (
+                <span className="adm-tag adm-tag-yellow" title="Varios sitios comparten este registro">
+                  compartido
+                </span>
+              )}
+            </>
+          ) : log?.format === "journal" ? (
+            <span className="muted">journalctl (Caddy)</span>
+          ) : (
+            <span className="faint" title="Sin registro de acceso configurado (puedes activarlo desde Tráfico)">
+              sin activar
+            </span>
+          )}
+        </dd>
       </dl>
 
       {site.routes.length > 0 ? (
@@ -215,22 +239,35 @@ function SiteCard({ site }: { site: Site }) {
         <div className="faint adm-routes-none">Sin rutas reconocidas</div>
       )}
 
-      {where && (
-        <footer className="adm-site-foot">
-          <FileText size={12} />
-          <span className="mono adm-ellipsis" title={where}>
-            {where}
-          </span>
-          <button
-            className="btn btn-sm adm-row-btn"
-            disabled={!openFile}
-            onClick={() => site.file && openFile?.(site.file)}
-            title={`${site.line ? `Abrir en el editor (el sitio empieza en la línea ${site.line}). ` : "Abrir en el editor. "}${WRITE_NOTE}`}
-          >
-            Abrir
-          </button>
-        </footer>
-      )}
+      <footer className="adm-site-foot">
+        {where ? (
+          <>
+            <FileText size={12} aria-hidden="true" />
+            <span className="mono adm-ellipsis" title={where}>
+              {where}
+            </span>
+            <button
+              className="btn btn-sm adm-row-btn"
+              disabled={!openFile}
+              onClick={() => site.file && openFile?.(site.file)}
+              aria-label={`Abrir archivo de ${title}`}
+              title={`${site.line ? `Abrir en el editor (el sitio empieza en la línea ${site.line}). ` : "Abrir en el editor. "}${WRITE_NOTE}`}
+            >
+              Abrir
+            </button>
+          </>
+        ) : (
+          <span className="adm-spacer" />
+        )}
+        <button
+          className="btn btn-sm adm-row-btn"
+          onClick={onTraffic}
+          aria-label={`Tráfico de ${title}`}
+          title="Ver visitas y tráfico bajo demanda (o activar registro)"
+        >
+          <BarChart3 size={12} aria-hidden="true" /> Tráfico
+        </button>
+      </footer>
     </article>
   );
 }
@@ -299,7 +336,17 @@ function CheckDialog({ info, onClose }: { info: ServerInfo; onClose: () => void 
   );
 }
 
-function ServerGroup({ info, onCheck, onReload }: { info: ServerInfo; onCheck: () => void; onReload: () => void }) {
+function ServerGroup({
+  info,
+  onCheck,
+  onReload,
+  onTraffic,
+}: {
+  info: ServerInfo;
+  onCheck: () => void;
+  onReload: () => void;
+  onTraffic: (site: Site) => void;
+}) {
   const { elevation, disabled, openFile, elev, askSudo, web } = useAdmin();
   const name = SERVER_NAME[info.server];
   // Como root «nginx -T» solo falla si la configuración no es válida (o falta algún archivo).
@@ -363,7 +410,7 @@ function ServerGroup({ info, onCheck, onReload }: { info: ServerInfo; onCheck: (
       ) : (
         <div className="adm-sites">
           {info.sites.map((s) => (
-            <SiteCard key={s.key} site={s} />
+            <SiteCard key={s.key} site={s} onTraffic={() => onTraffic(s)} />
           ))}
         </div>
       )}
@@ -375,6 +422,7 @@ export function WebTab() {
   const { web, loadWeb, disabled, ports } = useAdmin();
   const [check, setCheck] = useState<ServerInfo | null>(null);
   const [reload, setReload] = useState<ServerInfo | null>(null);
+  const [trafficRef, setTrafficRef] = useState<{ server: ServerInfo["server"]; siteKey: string } | null>(null);
 
   if (web.error && !web.data) {
     return (
@@ -414,12 +462,25 @@ export function WebTab() {
 
   const plan: Plan | null = reload ? { action: `Recargar ${SERVER_NAME[reload.server]}`, steps: reloadSteps(reload) } : null;
   const total = web.data.servers.reduce((n, s) => n + s.sites.length, 0);
+  const activeTraffic = trafficRef
+    ? (() => {
+        const srv = web.data.servers.find((s) => s.server === trafficRef.server);
+        const st = srv?.sites.find((x) => x.key === trafficRef.siteKey);
+        return srv && st ? { server: srv, site: st } : null;
+      })()
+    : null;
 
   return (
     <div className="adm-pane">
       <div className="adm-web-scroll">
         {web.data.servers.map((s) => (
-          <ServerGroup key={s.server} info={s} onCheck={() => setCheck(s)} onReload={() => setReload(s)} />
+          <ServerGroup
+            key={s.server}
+            info={s}
+            onCheck={() => setCheck(s)}
+            onReload={() => setReload(s)}
+            onTraffic={(site) => setTrafficRef({ server: s.server, siteKey: site.key })}
+          />
         ))}
       </div>
       <div className="adm-statusbar">
@@ -434,6 +495,14 @@ export function WebTab() {
         {(web.loading || ports.loading) && <span className="spinner adm-spinner-btn" aria-label="Actualizando" />}
       </div>
       {check && <CheckDialog info={check} onClose={() => setCheck(null)} />}
+      {activeTraffic && (
+        <WebTrafficDialog
+          server={activeTraffic.server}
+          site={activeTraffic.site}
+          onClose={() => setTrafficRef(null)}
+          onLogEnabled={loadWeb}
+        />
+      )}
       {plan && reload && (
         <PlanModal
           title={plan.action}

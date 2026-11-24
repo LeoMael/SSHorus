@@ -4,6 +4,46 @@ Todos los cambios importantes de SSHorus se anotan aquí.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones
 siguen [Versionado Semántico](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Añadido
+- **«Reiniciar ahora»**: reinicia el servidor con sudo desde SSHorus (escáner de vulnerabilidades, auditoría y Panel
+  de VPS), espera hasta 5 minutos a que vuelva, reconecta todas sus sesiones y comprueba que efectivamente arrancó
+  de nuevo.
+- **MCP: `reboot_server`**: el asistente puede reiniciar un servidor de forma segura (pide permiso siempre, avisa al
+  vigilante de reconexión y envía el reinicio con sudo).
+- **Contenedores → columna «Al reiniciar»** (siempre visible, también en Inspeccionar): muestra si cada contenedor está
+  «Activado» o «No activado» para levantarse solo tras un reinicio del servidor (política, `podman-restart.service` /
+  `docker.service`, unidad Quadlet/systemd como `podman-compose@*.service` y linger), con acciones por fila y en lote
+  para activarlo o desactivarlo.
+- **Administración → Sitios web → «Tráfico»**: monitor de visitas y tráfico bajo demanda por cada sitio de **Caddy** o
+  **nginx** (peticiones, IPs aproximadas, bytes transferidos, desglose 2xx/3xx/4xx/5xx, gráfica horaria/diaria con
+  tabla accesible, rutas más visitadas, IPs, orígenes y últimas peticiones). Pensado para servidores de 1 vCPU (sin
+  consultas automáticas en segundo plano, `nice -n 19` + `ionice -c3`, límite de 8 MB desde el final y timeout de 15 s).
+  Si el sitio no tiene log activado o usa uno compartido, permite activar un registro dedicado con rotación automática
+  tras validar la configuración (con copia de respaldo y restauración si falla).
+- **Administración → Usuarios → «Contenedores»**: columna con etiquetas de Podman, linger y Docker, y diálogo para
+  dar o quitar permisos de contenedores y activar/quitar linger por usuario.
+- **Terminal**: botón de llave para escribir la contraseña de sudo solo cuando la terminal la pide (previa
+  confirmación de PIN).
+
+### Cambiado
+- **MCP → «Aceptar automáticamente»**: el indicador de la barra de pestañas abre una ventana con el detalle por
+  servidor, botón «Apagar» por fila y «Apagar todo» con confirmación.
+- **Orden del código (parte 1)**: divididos en módulos pequeños `FileExplorer`, `SessionView`, `ServerEditor`,
+  `SettingsDialog`, `Sidebar`, `ContainersPanel`, `transfer/engine.rs`, `mcp/core.rs`, `storage/ssh_config.rs` y
+  `ssh/connect.rs`.
+
+### Corregido
+- **Terminal**: escritura sin retraso (`TCP_NODELAY` y envío inmediato tras pausa), texto insertado visible al momento,
+  y al reconectar tras un reinicio distingue si volvió a la sesión tmux existente o abrió una nueva.
+- **Contenedores (Podman)**: los contenedores de otros usuarios sin sesión activa funcionan con carpeta propia en
+  `/tmp/sshorus-run-<uid>`; aviso y botón «Arreglar» si Podman apunta a las carpetas de root; el aviso de linger
+  desaparece al instante al activarlo desde cualquier acción del panel.
+- **IA para explicar informes**: si el modelo o proveedor (p. ej. Claude con thinking o modelos de razonamiento)
+  rechaza el parámetro `temperature`, se reintenta automáticamente sin él.
+- **Confirmaciones**: los diálogos ya quedan siempre encima de Ajustes.
+
 ## [1.0.0-beta.2] - 2026-11-16
 
 ### Importante

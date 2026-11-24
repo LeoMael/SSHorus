@@ -94,19 +94,21 @@ recomendada: **llave para entrar + contraseña solo para sudo**. Cambio pendient
 sudo de ese servidor; la entrada por contraseña sigue desactivada en SSH (solo llave). Sin sudo sin contraseña.
 El Mapa de proyecto se queda como está (el usuario está conforme).
 
-**Ronda de pruebas del 18–19/11/2026 (en `main`, sin publicar).** Hecho: terminal sin retraso al escribir (salida
+**Ronda de pruebas del 18–23/11/2026 (en `main`, sin publicar).** Hecho: terminal sin retraso al escribir (salida
 inmediata tras una pausa y `TCP_NODELAY`), lo insertado se ve al momento, botón de la llave para escribir la
 contraseña de sudo (pide el PIN de SSHorus y solo escribe si la terminal la pide), confirmaciones encima de Ajustes,
 **«Reiniciar ahora»** (reinicia con sudo, espera hasta 5 min, reconecta y comprueba; en escáner, auditoría y Panel
 de VPS), Podman de otros usuarios sin sesión (carpeta propia en `/tmp/sshorus-run-<uid>` y aviso de linger),
 botón «Arreglar» cuando podman usa las carpetas de root, ventana de «aceptar automáticamente» (apagar por servidor,
-«Apagar todo» con confirmación). **Falta probar todo esto en la app.** Ideas que salieron:
-- MCP: herramienta `reboot_server` (reutiliza `ssh_expect_reboot`).
-- Contenedores de `leo_oti` sin arranque automático tras reiniciar (no son servicios): ofrecer «reiniciar siempre» +
-  `podman-restart.service` de usuario, o pasarlos a Quadlet.
-- La terminal dice «volviendo a la sesión tmux» tras un reinicio, aunque abre una nueva.
-- IA de informes con Claude: la app manda siempre `temperature: 0.2` (`src-tauri/src/ai/mod.rs`); si Claude la
-  rechaza, quitarla.
+«Apagar todo» con confirmación), **Usuarios → Contenedores** (ver y dar/quitar Podman, linger y Docker),
+**Contenedores → «Al reiniciar»** (columna siempre visible con «Activado» / «No activado», detalle en Inspeccionar,
+acciones por fila y en lote para política + `podman-restart.service`/`docker.service` + unidades systemd como
+`podman-compose@*.service` + linger, y sincronización inmediata con el aviso de linger), **Sitios web → «Tráfico»**
+(monitor de visitas bajo demanda para Caddy y nginx con prioridad mínima `nice`/`ionice`, tope de 8 MB y activación en
+un clic de log dedicado con rotación y validación/restauración automática), **MCP `reboot_server`** (reutiliza
+`ssh_expect_reboot`), **terminal tras reinicio** (comprueba si la sesión tmux realmente seguía viva o abrió una nueva),
+y **IA de informes** (si el proveedor/modelo rechaza `temperature: 0.2`, reintenta sin ella). **Falta probar en la app
+real.**
 
 **Idea del usuario (19/11/2026): «Qué pueden ver tus usuarios» (aviso para el administrador).** Caso: alquilas el VPS
 o das acceso a otras personas y no sabes a qué datos llegan. Para quien tiene sudo, una vista en Administración (y un
@@ -132,10 +134,10 @@ Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es
 archivos grandes partidos…», sin publicar): `FileExplorer`, `SessionView`, `ServerEditor` (carpeta
 `src/features/serverEditor/`), `SettingsDialog`, `Sidebar`, `ContainersPanel`, `transfer/engine.rs`, `mcp/core.rs`,
 `storage/ssh_config.rs` y `ssh/connect.rs` quedan como entradas finas con módulos de < 300 líneas. Pasa `tsc`,
-`vite build`, todos los tests de TS, `cargo test --lib` (326) y los tests con servidor real salvo 4 que **ya
-fallaban en `main`** (`tunnels::tests::{local_lee_banner_ssh,socks_dominio_e_ipv4,remoto_y_reconexion}` y
-`vulnscan::live_tests::sshd_scan_can_be_canceled`: revisar aparte). Nota: el contenedor `terview-sshd` necesita
-`PerSourcePenalties no` (puesto en `/config/sshd/sshd_config`); si no, OpenSSH 10 corta las conexiones a mitad de los tests.
+`vite build`, todos los tests de TS, `cargo test --lib` y los tests con servidor real (los 3 de túneles necesitaban
+`AllowTcpForwarding yes` en `terview-sshd` y `sshd_scan_can_be_canceled` se hizo determinista sin carrera de 150 ms).
+Nota: el contenedor `terview-sshd` necesita `PerSourcePenalties no` y `AllowTcpForwarding yes` en
+`/config/sshd/sshd_config`.
 **Probar a mano en la app:** barra lateral (doble clic, Ctrl+doble clic, clic central, menús y Shift+F10, flechas,
 añadir servidor a proyecto), Contenedores (cambiar motor/usuario, sudo, refresco), formulario de servidor (cambiar
 autenticación con sudo «La de la conexión», Intro/Escape, «Guardar de todos modos», elegir host), Ajustes (buscador,

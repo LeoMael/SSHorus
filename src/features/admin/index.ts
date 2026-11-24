@@ -15,3 +15,6 @@ export * from "./sshdConf";
 export * from "./keyUserSudo";
 export * from "./containerAccess";
 export * from "./containerPlans";
+export * from "./webTrafficLog";
+export * from "./webTraffic";
+export * from "./webTrafficSetup";

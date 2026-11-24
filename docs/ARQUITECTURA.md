@@ -370,7 +370,13 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   - **Puertos:** `ss -tulpn` (o `netstat -tulpn`), más `/proc/<pid>` para el usuario y el servicio
     systemd, y `podman ps` / `docker ps` para saber de qué contenedor es cada puerto.
   - **Sitios web:** `nginx -T` (o los archivos de configuración si falla); Caddy por su API local
-    `127.0.0.1:2019/config/` o, si no responde, `caddy adapt`; caducidad de certificados con `openssl`.
+    `127.0.0.1:2019/config/` o, si no responde, `caddy adapt`; caducidad de certificados con `openssl`. De esa misma
+    lectura (cero SSH extra) `features/admin/webTrafficLog.ts` deduce el archivo de registro de visitas de cada sitio.
+  - **Tráfico web por sitio** (`features/admin/webTraffic.ts`, `webTrafficSetup.ts`, `components/Admin/WebTraffic*.tsx`):
+    100 % bajo demanda (sin polling), ejecuta un analizador compacto en Python 3 bajo `ionice -c3 nice -n 19` y
+    `timeout 15` que salta a los últimos 8 MiB del archivo (o lee `journalctl -u caddy`) y devuelve un JSON resumido
+    (~4 KB). Si el sitio no tiene log o usa uno compartido, `enableSiteLogPlan` propone un Plan con respaldo, validación
+    (`caddy validate` / `nginx -t`), recarga y restauración automática si falla (Caddy con rotación `10 MB × 5`, 30 días).
   - `readElevated`: si tienes sudo se lee como root; si sudo falla, se repite como tu usuario.
 - **Cambios:** cada cambio es un **Plan** (pasos ya escapados que se ejecutan con `sh -e` como root,
   más un secreto aparte que se ve enmascarado). `PlanReview` muestra **el comando exacto** y cómo se
@@ -594,7 +600,7 @@ Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas 
 2. **Puerta** (`mcp/http.rs`): cabecera `Origin` → 403; SSHorus bloqueado → error «SSHorus está bloqueado:
    desbloquéalo para continuar»; token `Bearer` distinto → 401. El token se lee de la bóveda o el llavero
    (`mcp-token`) y se olvida al bloquear.
-3. **SDK** (`mcp/server.rs`, crate `rmcp` 3.9): sin sesiones y con respuestas JSON; anuncia 19 herramientas
+3. **SDK** (`mcp/server.rs`, crate `rmcp` 3.9): sin sesiones y con respuestas JSON; anuncia 24 herramientas
    con su esquema y pasa cada llamada a `McpCore`.
 4. **Reglas** (`mcp/core.rs` + `mcp/policy.rs`): el servidor tiene que tener acceso (Sin acceso / Solo lectura /
    Completo, en `mcp.json`); las lecturas pasan; los cambios abren el diálogo `mcp://approval` en la ventana
@@ -662,6 +668,7 @@ después de que lo apruebes (se pregunta siempre, salvo con «Aceptar automátic
 | `get_vuln_report` (último informe del escáner, resumido), `get_audit_report` (última auditoría) | Lectura (pasa sola, también en Solo lectura) |
 | `connect`, `download`, `scan_vulnerabilities` (análisis sin sudo, 600 s por defecto, cancelable), `run_audit` (auditoría sin sudo) | Pregunta, con «Permitir siempre»; también en Solo lectura |
 | `run_command`, `run_catalog_command` (los 📊 pasan solos; con sudo, SSHorus pone la contraseña), `write_file`, `upload` | Pregunta; en Solo lectura, rechazado |
+| `request_sudo_password` (pide autorización explícita para entregar la contraseña de sudo si está habilitado en Ajustes), `reboot_server` (`mcp/core/reboot.rs`: avisa a `ssh/reboot_wait.rs` y reinicia con sudo) | Pregunta siempre (sin «Permitir siempre» en `reboot_server`); en Solo lectura, rechazado |
 
 Lo peligroso pregunta siempre, sin «Permitir siempre». Detalle y límites de cada una en
 [PENDIENTES.md](PENDIENTES.md#herramientas).

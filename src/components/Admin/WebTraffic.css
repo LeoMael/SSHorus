@@ -1,0 +1,375 @@
+/* ───────── Monitor de tráfico / visitas por sitio web ───────── */
+.wt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 360px;
+}
+
+.wt-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.wt-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.wt-filter input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.wt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wt-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.wt-kpi {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wt-kpi-label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.wt-kpi-val {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  user-select: text;
+}
+
+.wt-kpi-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.wt-status-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wt-status-bar {
+  display: flex;
+  height: 7px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+  gap: 1px;
+}
+
+.wt-seg-2xx {
+  background: var(--green);
+}
+
+.wt-seg-3xx {
+  background: var(--accent);
+}
+
+.wt-seg-4xx {
+  background: var(--yellow);
+}
+
+.wt-seg-5xx {
+  background: var(--red);
+}
+
+.wt-status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.wt-chart-fig {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wt-chart-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: var(--fs-sm);
+}
+
+.wt-chart-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wt-chart-peak {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 116px;
+  padding-top: 6px;
+}
+
+.wt-bar-col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.wt-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.wt-bar {
+  width: 100%;
+  max-width: 24px;
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+  position: relative;
+  overflow: hidden;
+}
+
+.wt-bar.empty {
+  height: 2px;
+  min-height: 2px;
+  background: var(--border);
+}
+
+.wt-bar-err {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--red);
+}
+
+.wt-bar-lbl {
+  height: 13px;
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-chart-details {
+  font-size: var(--fs-sm);
+}
+
+.wt-chart-details > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  width: fit-content;
+}
+
+.wt-chart-details > summary:hover {
+  color: var(--text);
+}
+
+.wt-chart-details .wt-table-wrap {
+  margin-top: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.wt-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.wt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.wt-table th,
+.wt-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.wt-table tr:last-child td {
+  border-bottom: none;
+}
+
+.wt-table th {
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wt-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.wt-table td.wt-num,
+.wt-table th.wt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wt-path {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.wt-ua {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  user-select: text;
+}
+
+.wt-code {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wt-code-2xx {
+  background: var(--mix-green-15);
+  color: var(--green);
+}
+
+.wt-code-3xx {
+  background: var(--mix-accent-12);
+  color: var(--accent);
+}
+
+.wt-code-4xx {
+  background: var(--mix-yellow-14-surface);
+  color: var(--yellow);
+}
+
+.wt-code-5xx {
+  background: var(--mix-red-15);
+  color: var(--red);
+}
+
+.wt-empty-box {
+  padding: 18px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.wt-empty-box h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wt-empty-box p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.wt-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+  padding-top: 2px;
+  user-select: text;
+}
+
+.wt-sr-only {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
