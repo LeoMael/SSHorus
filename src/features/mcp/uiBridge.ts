@@ -10,7 +10,9 @@
 // - sudo / sudo-rejected: la contraseña de sudo de un comando del asistente ya aprobado (sudoAsk.ts) y el
 //   aviso de que sudo la rechazó. La contraseña va al motor (que la pasa por stdin), nunca al asistente.
 // - sudo-reveal: la contraseña para `request_sudo_password`, que el usuario ya permitió en su diálogo
-//   (SudoRevealDialog). Esta sí se le da al asistente.
+//   (SudoRevealDialog). Esta sí se le da al asistente (solo si el usuario encendió ese ajuste).
+// - password-run / password-prompt: `run_with_password` (PasswordRunDialog): qué contraseña escribe SSHorus en
+//   el programa. Si es la guardada, el motor la lee él mismo; si se escribe, va al motor, nunca al asistente.
 // Las lecturas se hacen como el usuario conectado (sin sudo).
 import { errorMessage } from "../../api/core";
 import { mcp, type McpUiRequest } from "../../api/mcp";
@@ -19,6 +21,7 @@ import { useTabs } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";
 import { connectToServer } from "../connect";
 import { sudoRejectedNotified } from "../privileges";
+import { askPasswordRun } from "./passwordRun";
 import { sudoForAssistant } from "./sudoAsk";
 
 async function connect(profileId: string): Promise<{ sessionId: string }> {
@@ -145,6 +148,10 @@ async function run(req: McpUiRequest): Promise<unknown> {
       return sudoForAssistant(req.payload);
     case "sudo-reveal":
       return sudoForAssistant(req.payload, "reveal");
+    case "password-run":
+      return askPasswordRun("run", req.payload);
+    case "password-prompt":
+      return askPasswordRun("prompt", req.payload);
     case "sudo-rejected": {
       // Igual que la interfaz: se olvida la de memoria y la guardada queda como rechazada.
       sudoRejectedNotified(sessionOf(req.payload));

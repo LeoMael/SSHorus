@@ -59,8 +59,8 @@ export interface McpConfig {
   remembered: Record<string, string[]>;
   /** id de servidor → «Aceptar automáticamente» guardado («siempre»). */
   autoAccept: Record<string, McpAutoLevel>;
-  /** La IA puede pedir la contraseña de sudo (`request_sudo_password`; siempre pregunta). */
-  allowSudoPasswordRequest: boolean;
+  /** La IA puede pedir VER la contraseña de sudo (`request_sudo_password`; apagado por defecto, siempre pregunta). */
+  allowSudoReveal: boolean;
   /** id de servidor → casillas de «Solo lo marcado» (puede faltar). */
   grants?: Record<string, McpGrants>;
   /** id de servidor → usuarios protegidos. */
@@ -146,7 +146,7 @@ export interface AuditEntry {
 
 export interface McpUiRequest {
   id: string;
-  kind: "connect" | "catalog" | "ports" | "sites" | "containers" | "sudo" | "sudo-reveal" | "sudo-rejected" | string;
+  kind: "connect" | "catalog" | "ports" | "sites" | "containers" | "sudo" | "sudo-reveal" | "sudo-rejected" | "password-run" | "password-prompt" | string;
   payload: Record<string, unknown>;
 }
 

@@ -168,7 +168,7 @@ fn old_mcp_json_still_loads() {
     assert_eq!(cfg.auto_accept.get("a"), Some(&AutoLevel::Changes));
     assert!(!cfg.auto_accept.contains_key("b"));
     assert!(cfg.grants.is_empty() && cfg.protected_users.is_empty() && cfg.protected_global.is_empty());
-    assert!(cfg.allow_sudo_password_request);
+    assert!(!cfg.allow_sudo_reveal, "ver la contraseña de sudo: apagado salvo que se encienda");
 
     // Lo nuevo se guarda y se vuelve a leer igual.
     let mut next = cfg.clone();

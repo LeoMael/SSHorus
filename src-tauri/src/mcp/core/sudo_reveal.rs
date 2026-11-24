@@ -49,7 +49,7 @@ pub fn read_only_msg(server: &str) -> String {
 }
 
 /// Motivo limpio: sin espacios de sobra y como mucho `MAX_REASON_CHARS` caracteres.
-fn clean_reason(s: &str) -> String {
+pub(super) fn clean_reason(s: &str) -> String {
     let one_line = s.split_whitespace().collect::<Vec<_>>().join(" ");
     match one_line.char_indices().nth(MAX_REASON_CHARS) {
         Some((i, _)) => format!("{}…", &one_line[..i]),
@@ -62,7 +62,7 @@ impl<B: Backend> McpCore<B> {
         let reason = clean_reason(&p.reason);
         rec.entry.detail = format!("motivo: {reason}");
         let t = self.target(&p.server, p.session_id.as_deref(), rec).await?;
-        if !self.config.get().allow_sudo_password_request {
+        if !self.config.get().allow_sudo_reveal {
             return Err(Fail::Denied(REVEAL_DISABLED_MSG.into()));
         }
         if t.access != Access::Full {

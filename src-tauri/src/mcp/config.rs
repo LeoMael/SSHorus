@@ -40,8 +40,10 @@ pub struct McpConfig {
     /// «Aceptar automáticamente» guardado («siempre»): id → nivel. Lo temporal (15 min, 1 h, hasta
     /// cerrar SSHorus) vive solo en memoria (`McpCore`).
     pub auto_accept: BTreeMap<String, AutoLevel>,
-    /// La IA puede pedir la contraseña de sudo con `request_sudo_password` (siempre pregunta).
-    pub allow_sudo_password_request: bool,
+    /// La IA puede pedir VER la contraseña de sudo con `request_sudo_password` (siempre pregunta).
+    /// Apagado por defecto: la IA usa las contraseñas sin verlas. Antes se llamaba
+    /// `allowSudoPasswordRequest` y venía encendido: ese campo viejo se ignora (queda apagado).
+    pub allow_sudo_reveal: bool,
     /// Casillas de «Solo lo marcado» por servidor (se conservan aunque se cambie de nivel).
     pub grants: BTreeMap<String, Grants>,
     /// Usuarios protegidos por servidor (id → nombres). No hace falta que existan en el servidor.
@@ -59,7 +61,7 @@ impl Default for McpConfig {
             access: BTreeMap::new(),
             remembered: BTreeMap::new(),
             auto_accept: BTreeMap::new(),
-            allow_sudo_password_request: true,
+            allow_sudo_reveal: false,
             grants: BTreeMap::new(),
             protected_users: BTreeMap::new(),
             protected_global: BTreeSet::new(),

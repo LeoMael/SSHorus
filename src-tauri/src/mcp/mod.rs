@@ -12,6 +12,8 @@
 //! - `commands`: comandos Tauri expuestos a la interfaz.
 //! - `server_audit`: resumen de las auditorías del servidor (`get_audit_report`, `run_audit`).
 //! - `vuln`: resumen de los informes del escáner de vulnerabilidades para el asistente.
+//! - `pty_run`, `prompt` y `redact`: `run_with_password` (escribir la contraseña en el terminal de un
+//!   programa) y tapar contraseñas en lo que ve la IA.
 //! - `bridge`: puente stdio (`sshorus-mcp`), compartido con `src/bin/sshorus-mcp.rs`.
 
 pub mod approval;
@@ -25,8 +27,12 @@ pub mod core;
 pub mod diff;
 pub mod grants;
 pub mod http;
+pub mod local_guard;
 pub mod policy;
+pub mod prompt;
 pub mod protect;
+pub mod pty_run;
+pub mod redact;
 pub mod rules;
 pub mod server;
 pub mod server_audit;

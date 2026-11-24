@@ -25,6 +25,7 @@ import { PinDialogHost } from "./features/lock/PinDialog";
 import { initMcp } from "./features/mcp/store";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { SudoAskHost } from "./features/mcp/SudoAskHost";
+import { PasswordRunHost } from "./features/mcp/PasswordRunDialog";
 import { RebootHost } from "./features/reboot";
 import { McpActivity } from "./components/McpActivity/McpActivity";
 import { useUi } from "./stores/ui";
@@ -312,6 +313,7 @@ export default function App() {
       <ApprovalDialogHost />
       <ChoiceDialogHost />
       <SudoAskHost />
+      <PasswordRunHost />
       <RebootHost />
     </>
   );

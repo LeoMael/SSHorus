@@ -76,6 +76,8 @@ struct Mock {
     links: Mutex<HashMap<String, String>>,
     /// Llamadas a `expect_reboot` (session_id, wait_secs).
     reboot_expects: Mutex<Vec<(String, u32)>>,
+    /// `run_with_password`: contraseñas guardadas, respuestas a sus diálogos y el terminal simulado.
+    password: password_flow::MockPasswords,
 }
 
 fn server(id: &str, name: &str) -> ServerProfile {
@@ -143,6 +145,7 @@ impl Mock {
             sudo_delay: AtomicBool::new(false),
             links: Mutex::new(HashMap::new()),
             reboot_expects: Mutex::new(Vec::new()),
+            password: Default::default(),
         }
     }
 }
@@ -190,6 +193,19 @@ impl Backend for Mock {
             truncated: false,
             timed_out: false,
         })
+    }
+    async fn run_pty(
+        &self,
+        _sid: &str,
+        command: &str,
+        opts: crate::mcp::pty_run::PtyOptions,
+        _id: &str,
+        prompts: tokio::sync::mpsc::Sender<crate::mcp::pty_run::PromptAsk>,
+    ) -> AppResult<crate::mcp::pty_run::PtyOutcome> {
+        self.password.run(command, opts, prompts).await
+    }
+    async fn saved_password(&self, _p: &str, _sid: &str, kind: super::backend::SavedPassword) -> AppResult<Option<Zeroizing<String>>> {
+        Ok(self.password.saved(kind))
     }
     fn cancel_exec(&self, id: &str) -> bool {
         match self.scan_stops.lock().unwrap().get(id) {
@@ -310,6 +326,7 @@ impl Backend for Mock {
                 Ok(self.sudo_reply.lock().unwrap().clone())
             }
             "sudo-rejected" => Ok(Value::Null),
+            "password-run" | "password-prompt" => Ok(self.password.reply()),
             "ports" => Ok(json!({ "tool": "ss", "ports": [{ "port": 22 }] })),
             "audit" => Ok(serde_json::to_value(audit_fixture()).unwrap()),
             _ => Err(AppError::Invalid("no disponible".into())),
@@ -1190,7 +1207,7 @@ fn vuln_tools_are_announced_as_reads() {
     let reboot = tools.iter().find(|t| t.name == "reboot_server").expect("falta reboot_server");
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.read_only_hint), Some(false));
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.destructive_hint), Some(true));
-    assert_eq!(tools.len(), 24);
+    assert_eq!(tools.len(), 25);
 }
 
 // ───────────────────────── Auditoría del servidor ─────────────────────────
@@ -1828,3 +1845,6 @@ mod marked_flow;
 
 #[path = "tests_reboot.rs"]
 mod reboot_flow;
+
+#[path = "tests_password.rs"]
+mod password_flow;

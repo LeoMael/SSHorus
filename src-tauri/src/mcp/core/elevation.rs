@@ -80,6 +80,7 @@ impl<B: Backend> McpCore<B> {
         let r = self.exec_raw(rec, session_id, command, None, timeout, cancel).await?;
         rec.entry.message = Some(exec_summary(&r));
         let mut out = format_exec(&r, max);
+        self.redact_known(t, session_id, &mut out, &[]).await;
         if let Some(hint) = why.and_then(|w| raw_sudo_hint(w, &r, &t.server.name)) {
             out.push_str("\n\n");
             out.push_str(&hint);
@@ -116,7 +117,9 @@ impl<B: Backend> McpCore<B> {
             return Err(Fail::Error(sudo::failure_message(f, &t.server.name)));
         }
         rec.entry.message = Some(format!("{} (con sudo)", exec_summary(&r)));
-        Ok(format_exec(&r, max))
+        let mut out = format_exec(&r, max);
+        self.redact_known(t, session_id, &mut out, &[]).await;
+        Ok(out)
     }
 
     /// Pide a la interfaz la contraseña de sudo de la conexión (en memoria → guardada → otra pestaña →

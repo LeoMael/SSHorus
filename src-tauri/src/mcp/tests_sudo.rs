@@ -6,8 +6,15 @@ use super::*;
 use crate::mcp::core::AutoDuration;
 use crate::mcp::policy::AutoLevel;
 
+/// Configuración de prueba con «La IA puede pedir ver la contraseña de sudo» encendido.
+fn reveal_config() -> McpConfig {
+    let mut cfg = config();
+    cfg.allow_sudo_reveal = true;
+    cfg
+}
+
 fn reveal_core() -> McpCore<Mock> {
-    let c = core();
+    let c = core_with(Mock::new(), reveal_config());
     *c.backend.sudo_reply.lock().unwrap() = json!({ "elevate": true, "password": SUDO_PW });
     c
 }
@@ -23,7 +30,7 @@ async fn reveal_approved_gives_the_password_and_logs_without_it() {
     let path = dir.join(super::super::audit::FILE_NAME);
     let mock = Mock::new();
     *mock.sudo_reply.lock().unwrap() = json!({ "elevate": true, "password": SUDO_PW });
-    let c = McpCore::new(mock, McpConfigStore::in_memory(config()), AuditLog::at(Some(path.clone())));
+    let c = McpCore::new(mock, McpConfigStore::in_memory(reveal_config()), AuditLog::at(Some(path.clone())));
 
     let out = reveal(&c, "web-prod").await;
     assert!(!out.is_error, "{}", out.text);
@@ -135,17 +142,18 @@ async fn reveal_only_with_full_access() {
 
 #[tokio::test]
 async fn reveal_setting_off() {
-    let mut cfg = config();
-    cfg.allow_sudo_password_request = false;
-    let c = core_with(Mock::new(), cfg);
+    let c = core_with(Mock::new(), config());
     let out = reveal(&c, "web-prod").await;
     assert!(out.is_error);
     assert!(out.text.contains("no permite") && out.text.contains("run_command"), "{}", out.text);
     assert_eq!(asked(&c), 0);
-    // Encendido por defecto (también en un mcp.json viejo sin el campo).
-    assert!(McpConfig::default().allow_sudo_password_request);
-    let old: McpConfig = serde_json::from_value(json!({ "enabled": true })).unwrap();
-    assert!(old.allow_sudo_password_request);
+    // Apagado por defecto. Un mcp.json viejo con el campo de antes (encendido por defecto) queda apagado;
+    // el nuevo sí se respeta.
+    assert!(!McpConfig::default().allow_sudo_reveal);
+    let old: McpConfig = serde_json::from_value(json!({ "enabled": true, "allowSudoPasswordRequest": true })).unwrap();
+    assert!(!old.allow_sudo_reveal);
+    let new: McpConfig = serde_json::from_value(json!({ "allowSudoReveal": true })).unwrap();
+    assert!(new.allow_sudo_reveal);
 }
 
 #[tokio::test]

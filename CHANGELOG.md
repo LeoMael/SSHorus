@@ -31,8 +31,19 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   **«Permitir túneles SSH»** apagada por defecto cuando no tiene sudo.
 - **Terminal**: botón de llave para escribir la contraseña de sudo solo cuando la terminal la pide (previa
   confirmación de PIN).
+- **MCP: `run_with_password`**: para programas que piden una contraseña por su cuenta (`passwd`, `su`, `mysql -p`,
+  `ssh-keygen -p`, `docker login`, `git` por HTTPS…). SSHorus siempre te pregunta (con el comando y el motivo de la IA):
+  eliges la contraseña guardada del servidor (opción por defecto), escribes otra o no lo permites. SSHorus la escribe
+  cuando el programa la pide y la IA solo ve la salida, con la contraseña tapada (`••••`). Si el programa vuelve a
+  pedir la misma (contraseña incorrecta), se detiene para no repetir intentos.
 
 ### Cambiado
+- **MCP: la IA usa las contraseñas pero nunca las ve**. «Permitir que la IA pida ver la contraseña de sudo»
+  (`request_sudo_password`) ahora viene **apagado** y, apagado, la herramienta ni se anuncia. Si lo tenías encendido
+  sin haberlo tocado (antes venía así), queda apagado: puedes volver a encenderlo en Ajustes → Asistentes de IA.
+- **MCP: más protección de contraseñas**: si la salida de un comando o un archivo muestra una contraseña guardada del
+  servidor, se tapa; y `upload` no deja subir llaves privadas SSH (`~/.ssh`, la llave de cada servidor) ni la carpeta
+  de configuración de SSHorus.
 - **MCP → «Aceptar automáticamente»**: el indicador de la barra de pestañas abre una ventana con el detalle por
   servidor, botón «Apagar» por fila y «Apagar todo» con confirmación.
 - **Orden del código (partes 1, 2 y 3) y ESLint**: añadida configuración de **ESLint** (`npm run lint`, **0 errores y 0 warnings**),

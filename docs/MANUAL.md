@@ -517,6 +517,8 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - Con la AppImage, usa **Claude Code (HTTP directo)**: la ruta del puente cambia en cada arranque.
 - Para Claude Desktop, copia el bloque **Claude Desktop** en `claude_desktop_config.json` y reinicia Claude Desktop.
 - Lo que solo lee pasa solo. Lo peligroso (`rm -rf`, `sudo`, `reboot`, `reboot_server`…) se pregunta siempre. Si no respondes a tiempo, se deniega.
+- **La IA nunca ve tus contraseñas.** Con `sudo …` SSHorus pone la contraseña por ella. Si un programa la pide por su cuenta (`passwd`, `su`, `mysql -p`…), la IA usa `run_with_password`: SSHorus te pregunta qué contraseña usar (la guardada, otra que escribas o ninguna), la escribe en el programa y a la IA le llega la salida con la contraseña tapada (`••••`).
+- **Permitir que la IA pida ver la contraseña de sudo** está apagado (recomendado). Si lo enciendes, cada vez te pregunta y, si aceptas, la contraseña queda en la conversación con la IA.
 - El botón del **robot** en la barra de pestañas abre **Actividad del asistente**, con todo lo que ha hecho.
 
 **Aceptar automáticamente:** si te cansa aprobar cada paso, en **Ajustes → Asistentes de IA (MCP)** pulsa **Automático…** junto a un servidor con acceso **Completo** (o, en el propio diálogo de permiso, **Aceptar automáticamente en este servidor…**).

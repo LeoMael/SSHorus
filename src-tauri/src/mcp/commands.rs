@@ -62,10 +62,10 @@ pub async fn mcp_set_approval_timeout(state: State<'_, McpState>, secs: u32) -> 
     state.core.config.update(|c| c.approval_timeout_secs = secs)
 }
 
-/// «La IA puede pedir la contraseña de sudo» (`request_sudo_password`; siempre pregunta).
+/// «Permitir que la IA pida ver la contraseña de sudo» (`request_sudo_password`; apagado por defecto, siempre pregunta).
 #[tauri::command]
 pub async fn mcp_set_sudo_password_request(state: State<'_, McpState>, allow: bool) -> AppResult<McpConfig> {
-    state.core.config.update(|c| c.allow_sudo_password_request = allow)
+    state.core.config.update(|c| c.allow_sudo_reveal = allow)
 }
 
 #[tauri::command]

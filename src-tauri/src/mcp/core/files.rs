@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 use super::super::backend::Backend;
 use super::super::diff;
 use super::super::grants::Need;
+use super::super::local_guard::Protected;
 use super::super::policy::Action;
 use super::output::{bullet, pretty};
 use super::{
@@ -63,6 +64,7 @@ impl<B: Backend> McpCore<B> {
         }
         out.push('\n');
         out.push_str(&String::from_utf8_lossy(&part.data));
+        self.redact_known(&t, &sid, &mut out, &[]).await;
         if end < part.size {
             out.push_str(&format!("\n[Quedan {} bytes: vuelve a llamar con offset={end}.]", part.size - end));
         }
@@ -126,6 +128,11 @@ impl<B: Backend> McpCore<B> {
             if !path.is_absolute() || !path.exists() {
                 return Err(Fail::Error(format!("No existe en este PC (usa rutas absolutas): {lp}")));
             }
+        }
+        let keys: Vec<String> = self.backend.profiles().servers.into_iter().filter_map(|s| s.key_path).collect();
+        let guard = Protected::of_this_user(&keys);
+        if let Some(why) = p.local_paths.iter().find_map(|lp| guard.blocked(std::path::Path::new(lp))) {
+            return Err(Fail::Denied(format!("No se puede subir: {why}. Los secretos de este PC no salen hacia el asistente.")));
         }
         if p.remote_dir.trim().is_empty() {
             return Err(Fail::Error("Falta la carpeta de destino.".into()));

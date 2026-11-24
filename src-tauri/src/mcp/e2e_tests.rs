@@ -65,6 +65,21 @@ impl Backend for Real {
     fn cancel_exec(&self, exec_id: &str) -> bool {
         self.registry.cancel(exec_id)
     }
+    async fn run_pty(
+        &self,
+        sid: &str,
+        command: &str,
+        opts: super::pty_run::PtyOptions,
+        exec_id: &str,
+        prompts: tokio::sync::mpsc::Sender<super::pty_run::PromptAsk>,
+    ) -> AppResult<super::pty_run::PtyOutcome> {
+        let ticket = self.registry.register(exec_id)?;
+        let s = self.sessions.get(sid).await?;
+        super::pty_run::run_ssh(&s, command, &opts, &ticket.token, &prompts).await
+    }
+    async fn saved_password(&self, _p: &str, _sid: &str, _k: super::backend::SavedPassword) -> AppResult<Option<Zeroizing<String>>> {
+        Ok(None)
+    }
     async fn list_dir(&self, sid: &str, path: &str) -> AppResult<Vec<FileEntry>> {
         let s = self.sessions.get(sid).await?;
         self.sftp.list_dir(&s, path).await

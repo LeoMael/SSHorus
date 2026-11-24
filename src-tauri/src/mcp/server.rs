@@ -14,17 +14,20 @@ use serde_json::Value;
 use super::backend::Backend;
 use super::core::{
     AuditReportParams, CatalogListParams, CatalogRunParams, ConnectParams, DownloadParams, ListDirParams, McpCore, NoParams,
-    PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams, SudoPasswordParams,
+    PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams, SudoPasswordParams,
     TransferStatusParams, UploadParams, VulnReportParams, VulnScanParams, WriteFileParams,
 };
 
-const INSTRUCTIONS: &str = "SSHorus da acceso a los servidores SSH que el usuario guardó en la app, sin \
-mostrar contraseñas ni llaves. Empieza con list_servers. Para trabajar en un servidor hace falta una \
+const INSTRUCTIONS: &str = "SSHorus da acceso a los servidores SSH que el usuario guardó en la app. Nunca \
+verás contraseñas ni llaves: SSHorus las usa por ti. No pidas contraseñas en el chat ni las pongas en los \
+comandos. Empieza con list_servers. Para trabajar en un servidor hace falta una \
 conexión abierta (connect abre una pestaña en SSHorus). Las lecturas pasan solas; todo lo que cambia algo \
 (run_command, write_file, upload…) muestra un diálogo en SSHorus y espera a que el usuario lo permita. \
 Prefiere run_catalog_command con comandos de solo lectura (ver list_catalog) para diagnosticar. \
-Para administrar usa run_command con «sudo …» normal: SSHorus pone la contraseña de sudo sin que la veas; \
-request_sudo_password (te la muestra) es solo para cuando de verdad necesitas verla. \
+Para administrar usa run_command con «sudo …» normal: SSHorus pone la contraseña de sudo sin que la veas. \
+Para programas que piden una contraseña por su cuenta (passwd, su, mysql -p, ssh-keygen -p, docker login, \
+git por HTTPS…) usa run_with_password: el usuario elige la contraseña en SSHorus, SSHorus la escribe cuando \
+el programa la pide y tú solo ves la salida, con la contraseña tapada (••••). \
 En servidores con «Solo lo marcado» (access=custom) mira en list_servers qué tareas tienes (marked): \
 los cambios van con run_catalog_command (comandos cuyo «permission» está permitido) y write_file/upload en \
 las carpetas permitidas; run_command solo si freeCommands es true. No intentes lo que no está permitido. \
@@ -44,7 +47,27 @@ fn tool<T: rmcp::schemars::JsonSchema + 'static>(name: &'static str, description
     Tool::new(name, description, schema_for_type::<T>()).annotate(a)
 }
 
-/// Todas las herramientas que ofrece SSHorus.
+/// Herramienta que da la contraseña de sudo EN TEXTO: solo se anuncia si el usuario lo permitió.
+pub const SUDO_REVEAL_TOOL: &str = "request_sudo_password";
+
+/// Herramientas que se anuncian con estos ajustes (sin `request_sudo_password` si está apagado).
+pub fn tools_for(allow_sudo_reveal: bool) -> Vec<Tool> {
+    tools().into_iter().filter(|t| allow_sudo_reveal || t.name != SUDO_REVEAL_TOOL).collect()
+}
+
+/// Instrucciones con estos ajustes.
+pub fn instructions_for(allow_sudo_reveal: bool) -> String {
+    if allow_sudo_reveal {
+        format!(
+            "{INSTRUCTIONS} El usuario permite request_sudo_password, que te MUESTRA la contraseña de sudo: úsala \
+             solo si de verdad hace falta verla (casi nunca: run_command y run_with_password no la necesitan)."
+        )
+    } else {
+        INSTRUCTIONS.to_string()
+    }
+}
+
+/// Todas las herramientas de SSHorus.
 pub fn tools() -> Vec<Tool> {
     vec![
         tool::<NoParams>("list_servers", "Servidores guardados en SSHorus a los que tienes acceso (sin contraseñas), con su nivel de acceso, las tareas permitidas si es «Solo lo marcado» (marked), los usuarios protegidos y conexiones abiertas.", true),
@@ -70,6 +93,7 @@ pub fn tools() -> Vec<Tool> {
         tool::<AuditReportParams>("get_audit_report", "Última auditoría guardada del servidor (hecha en SSHorus o con run_audit): nota general (0-100 y A-F), nota por categoría (SSH, usuarios, red, actualizaciones, certificados, contenedores, sistema, entradas, endurecimiento) y los problemas con el comando para arreglarlos. No necesita conexión.", true),
         tool::<SudoPasswordParams>("request_sudo_password", "Pide al usuario la contraseña de sudo de un servidor y te la devuelve EN TEXTO (queda en la conversación). Úsala solo si de verdad hace falta verla, p. ej. un programa que la pide por su cuenta y no se puede lanzar con sudo delante. Para comandos con sudo NO la necesitas: usa run_command con «sudo …» y SSHorus la pone sin que la veas. Siempre muestra un diálogo en SSHorus con tu motivo (reason) y el usuario puede negarse; solo en servidores con acceso Completo. Si te la da, no la repitas, no la guardes en archivos ni la pongas en la línea de comandos.", false),
         tool::<ServerParams>("run_audit", "Audita ahora el servidor sin sudo y sin instalar nada (SSH, usuarios, puertos y cortafuegos, actualizaciones, certificados, contenedores, servicios caídos, intentos de entrada, disco, memoria, permisos). Solo lee; pide permiso la primera vez. Devuelve el mismo resumen que get_audit_report y lo guarda. Lo que necesita sudo sale como «sin comprobar».", true),
+        tool::<PasswordRunParams>("run_with_password", "Ejecuta un programa que pide una contraseña por su cuenta y no se puede lanzar con sudo delante (passwd, su - otro, mysql -p, ssh-keygen -p, docker login, git por HTTPS…). Siempre muestra un diálogo en SSHorus con el comando y tu motivo (reason): el usuario elige la contraseña guardada del servidor o escribe otra, o se niega. SSHorus ejecuta el programa en un terminal, escribe la contraseña cuando la pregunta dice password/contraseña/passphrase/clave (o prompt_hint) y te devuelve solo la salida, con la contraseña tapada (••••): nunca la ves. Si el programa vuelve a pedir la misma, se detiene (contraseña incorrecta). No pongas la contraseña en el comando. Para comandos con sudo usa run_command.", false),
         tool::<RebootServerParams>("reboot_server", "Reinicia el servidor de forma segura: avisa antes a SSHorus para que todas las sesiones abiertas a ese servidor esperen a que arranque (wait_secs, por defecto 300 s) y reconecten automáticamente, y envía el reinicio con sudo. Prefiere esta herramienta en lugar de ejecutar `reboot` con run_command. Siempre pide permiso.", false),
     ]
 }
@@ -82,6 +106,10 @@ pub struct SshorusMcp<B: Backend> {
 impl<B: Backend> SshorusMcp<B> {
     pub fn new(core: Arc<McpCore<B>>) -> Self {
         SshorusMcp { core }
+    }
+
+    fn tools(&self) -> Vec<Tool> {
+        tools_for(self.core.config.get().allow_sudo_reveal)
     }
 }
 
@@ -97,7 +125,7 @@ impl<B: Backend> ServerHandler for SshorusMcp<B> {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("sshorus", env!("CARGO_PKG_VERSION")))
-            .with_instructions(INSTRUCTIONS)
+            .with_instructions(instructions_for(self.core.config.get().allow_sudo_reveal))
     }
 
     async fn list_tools(
@@ -105,11 +133,11 @@ impl<B: Backend> ServerHandler for SshorusMcp<B> {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
-        Ok(ListToolsResult::with_all_items(tools()))
+        Ok(ListToolsResult::with_all_items(self.tools()))
     }
 
     fn get_tool(&self, name: &str) -> Option<Tool> {
-        tools().into_iter().find(|t| t.name == name)
+        self.tools().into_iter().find(|t| t.name == name)
     }
 
     async fn call_tool(

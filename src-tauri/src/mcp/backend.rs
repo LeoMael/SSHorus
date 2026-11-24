@@ -7,18 +7,21 @@ use std::time::Duration;
 
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+use zeroize::Zeroizing;
 
 use super::approval::{ApprovalRequest, Decision, PendingApprovals};
+use super::pty_run::{self, PromptAsk, PtyOptions, PtyOutcome};
 use super::ui::UiBridge;
 use crate::error::{AppError, AppResult};
 use crate::sftp::{FilePart, SftpStore};
 use crate::snippets::{exec, ExecRegistry, SnippetStore};
 use crate::ssh::SessionStore;
 use crate::storage::vault::Vault;
-use crate::storage::{ProfileStore, SettingsStore};
+use crate::storage::{secrets, ProfileStore, SettingsStore};
 use crate::transfer::TransferManager;
-use crate::types::{ExecResult, FileEntry, ProfilesData, SessionInfo, Snippet, TransferJob};
+use crate::types::{AuthMethod, ExecResult, FileEntry, ProfilesData, SessionInfo, Snippet, TransferJob};
 use crate::audit::model::AuditReport;
 use crate::vulnscan::model::Report;
 use crate::vulnscan::scan::{scan_session, ScanOptions};
@@ -28,6 +31,15 @@ use crate::vulnscan::{store as vuln_store, VulnScanSettings};
 pub const EV_APPROVAL: &str = "mcp://approval";
 /// Evento: la petición ya no está pendiente (payload: id). Cierra el diálogo.
 pub const EV_APPROVAL_DONE: &str = "mcp://approval-done";
+
+/// Contraseña guardada de un servidor que `run_with_password` puede escribir (y que se tapa en las salidas).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SavedPassword {
+    /// La de conexión (solo si entra con contraseña): la escrita al conectar esta sesión o la guardada.
+    Login,
+    /// La de sudo guardada aparte.
+    Sudo,
+}
 
 pub trait Backend: Send + Sync + 'static {
     /// SSHorus está bloqueado (bóveda con PIN sin abrir).
@@ -47,6 +59,23 @@ pub trait Backend: Send + Sync + 'static {
         exec_id: &str,
     ) -> impl Future<Output = AppResult<ExecResult>> + Send;
     fn cancel_exec(&self, exec_id: &str) -> bool;
+    /// Ejecuta en un terminal (PTY) de la conexión y contesta sus preguntas de contraseña con lo que llegue
+    /// por `prompts` (`pty_run.rs`). Cancelable con `cancel_exec(exec_id)`.
+    fn run_pty(
+        &self,
+        session_id: &str,
+        command: &str,
+        opts: PtyOptions,
+        exec_id: &str,
+        prompts: mpsc::Sender<PromptAsk>,
+    ) -> impl Future<Output = AppResult<PtyOutcome>> + Send;
+    /// Contraseña guardada del servidor (None si no hay). Nunca se registra ni va a la IA.
+    fn saved_password(
+        &self,
+        profile_id: &str,
+        session_id: &str,
+        kind: SavedPassword,
+    ) -> impl Future<Output = AppResult<Option<Zeroizing<String>>>> + Send;
     fn list_dir(&self, session_id: &str, path: &str) -> impl Future<Output = AppResult<Vec<FileEntry>>> + Send;
     fn stat(&self, session_id: &str, path: &str) -> impl Future<Output = AppResult<FileEntry>> + Send;
     fn read_part(
@@ -163,6 +192,47 @@ impl Backend for TauriBackend {
 
     fn cancel_exec(&self, exec_id: &str) -> bool {
         self.app.try_state::<ExecRegistry>().is_some_and(|r| r.cancel(exec_id))
+    }
+
+    async fn run_pty(
+        &self,
+        session_id: &str,
+        command: &str,
+        opts: PtyOptions,
+        exec_id: &str,
+        prompts: mpsc::Sender<PromptAsk>,
+    ) -> AppResult<PtyOutcome> {
+        let registry = self
+            .app
+            .try_state::<ExecRegistry>()
+            .ok_or_else(|| AppError::Invalid("SSHorus aún está arrancando".into()))?;
+        let ticket = registry.register(exec_id)?;
+        let session = self.ssh(session_id).await?;
+        pty_run::run_ssh(&session, command, &opts, &ticket.token, &prompts).await
+    }
+
+    async fn saved_password(&self, profile_id: &str, session_id: &str, kind: SavedPassword) -> AppResult<Option<Zeroizing<String>>> {
+        let store = self
+            .app
+            .try_state::<ProfileStore>()
+            .ok_or_else(|| AppError::Invalid("SSHorus aún está arrancando".into()))?;
+        let server = store.get_server(profile_id)?;
+        let id = match kind {
+            SavedPassword::Login if server.auth != AuthMethod::Password => return Ok(None),
+            SavedPassword::Login => {
+                // La escrita al conectar, solo si la sesión es de este servidor.
+                let same = self.sessions_store()?.get(session_id).await.is_ok_and(|s| s.info.profile_id == profile_id);
+                if let Some(p) = same.then(|| crate::ssh::login_secret::get(session_id)).flatten() {
+                    return Ok(Some(p));
+                }
+                profile_id.to_string()
+            }
+            SavedPassword::Sudo => secrets::sudo_id(profile_id),
+        };
+        let got = tokio::task::spawn_blocking(move || secrets::get_secret(&id))
+            .await
+            .map_err(|e| AppError::Io(format!("tarea interrumpida: {e}")))??;
+        Ok(got.filter(|s| !s.is_empty()).map(Zeroizing::new))
     }
 
     async fn list_dir(&self, session_id: &str, path: &str) -> AppResult<Vec<FileEntry>> {

@@ -13,8 +13,11 @@
 //! Las contraseñas y llaves nunca llegan al asistente: usa conexiones ya abiertas en la app. La única que
 //! pasa por aquí es la de sudo: tras aprobar un comando con sudo, la consigue la interfaz y va por stdin al
 //! envoltorio de `sudo.rs` (`core/elevation.rs`); no aparece en la respuesta, en el registro ni en la línea
-//! de comandos remota. Solo `request_sudo_password` (`core/sudo_reveal.rs`) se la da a la IA, y siempre
-//! con un diálogo propio.
+//! de comandos remota. Solo `request_sudo_password` (`core/sudo_reveal.rs`) se la da a la IA: apagado por
+//! defecto y, si el usuario lo enciende, siempre con un diálogo propio. Los programas que piden una
+//! contraseña por su cuenta van con `run_with_password` (`core/password_run.rs`): SSHorus la escribe en su
+//! terminal y la IA solo ve la salida, con la contraseña tapada. Las salidas de comandos y archivos también
+//! se tapan si muestran una contraseña guardada del servidor (`core/redaction.rs`).
 //!
 //! Partes (`core/`): `params` (parámetros de las herramientas), `auto` (Aceptar automáticamente),
 //! `access` (servidor, permisos y aprobación), `listing` (herramientas sin servidor), `catalog`
@@ -32,7 +35,9 @@ mod listing;
 mod marked;
 mod output;
 mod params;
+mod password_run;
 mod reboot;
+mod redaction;
 mod scans;
 mod sudo_reveal;
 
@@ -47,6 +52,7 @@ pub use params::{
     PathParams, ReadFileParams, RunCommandParams, ServerParams, TransferStatusParams, UploadParams, VulnReportParams,
     VulnScanParams, WriteFileParams,
 };
+pub use password_run::PasswordRunParams;
 pub use reboot::RebootServerParams;
 pub use sudo_reveal::SudoPasswordParams;
 
@@ -250,6 +256,7 @@ impl<B: Backend> McpCore<B> {
             "get_audit_report" => self.audit_report(parse(args)?, rec).await,
             "run_audit" => self.run_audit(parse(args)?, rec).await,
             "request_sudo_password" => self.request_sudo_password(parse(args)?, rec).await,
+            "run_with_password" => self.run_with_password(parse(args)?, rec, cancel).await,
             "reboot_server" => self.reboot_server(parse(args)?, rec, cancel).await,
             other => Err(Fail::Error(format!("Herramienta desconocida: {other}"))),
         }

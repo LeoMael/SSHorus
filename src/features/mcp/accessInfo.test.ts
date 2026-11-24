@@ -35,7 +35,7 @@ const cfg = {
   access: { a: "custom", b: "full", c: "read" },
   remembered: {},
   autoAccept: {},
-  allowSudoPasswordRequest: true,
+  allowSudoReveal: true,
   grants: { a: { tasks: ["users-create"], folders: [], freeCommands: false } },
   protectedUsers: { a: ["ana", "root"] },
   protectedGlobal: ["root"],

@@ -678,7 +678,8 @@ después de que lo apruebes (se pregunta siempre, salvo con «Aceptar automátic
 | `get_vuln_report` (último informe del escáner, resumido), `get_audit_report` (última auditoría) | Lectura (pasa sola, también en Solo lectura) |
 | `connect`, `download`, `scan_vulnerabilities` (análisis sin sudo, 600 s por defecto, cancelable), `run_audit` (auditoría sin sudo) | Pregunta, con «Permitir siempre»; también en Solo lectura |
 | `run_command`, `run_catalog_command` (los 📊 pasan solos; con sudo, SSHorus pone la contraseña), `write_file`, `upload` | Pregunta; en Solo lectura, rechazado |
-| `request_sudo_password` (pide autorización explícita para entregar la contraseña de sudo si está habilitado en Ajustes), `reboot_server` (`mcp/core/reboot.rs`: avisa a `ssh/reboot_wait.rs` y reinicia con sudo) | Pregunta siempre (sin «Permitir siempre» en `reboot_server`); en Solo lectura, rechazado |
+| `run_with_password` (`mcp/core/password_run.rs` + `mcp/pty_run.rs`: programa en un PTY sin eco; SSHorus escribe la contraseña elegida en tu diálogo cuando lo pide y la tapa en la salida; nunca automático) | Pregunta siempre (diálogo propio); en Solo lectura, rechazado |
+| `request_sudo_password` (apagado por defecto: sin el ajuste ni se anuncia; si está encendido, entrega la contraseña de sudo tras un diálogo propio), `reboot_server` (`mcp/core/reboot.rs`: avisa a `ssh/reboot_wait.rs` y reinicia con sudo) | Pregunta siempre (sin «Permitir siempre» en `reboot_server`); en Solo lectura, rechazado |
 
 Lo peligroso pregunta siempre, sin «Permitir siempre». Detalle y límites de cada una en
 [el historial de pendientes](historial/PENDIENTES-historial.md#herramientas).
