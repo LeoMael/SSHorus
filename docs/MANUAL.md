@@ -414,8 +414,11 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 **Qué revisa:** SSH (root, contraseña, claves), usuarios (sudo, sudo sin contraseña, cuentas sin
 contraseña, UID 0), puertos abiertos y cortafuegos, actualizaciones y reinicio pendiente, el último análisis
 de vulnerabilidades, certificados que caducan en menos de 30 días, contenedores (`--privileged`, root,
-puertos), servicios caídos, disco, memoria, intentos de entrada y fail2ban, y permisos (`/proc` con
-`hidepid`, `/etc/shadow`, `/etc` escribible por todos, configuración web, `cron`).
+puertos), servicios caídos, disco, memoria, intentos de entrada y fail2ban, permisos (`/proc` con
+`hidepid`, `/etc/shadow`, `/etc` escribible por todos, configuración web, `cron`) y **Qué pueden ver tus
+usuarios** (túneles SSH de usuarios sin sudo, servicios en `127.0.0.1`, carpetas `HOME` abiertas, acceso a
+Docker y logs). Para ver el desglose cuenta por cuenta y arreglar cada punto, abre **Administración → Qué
+pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
 
 **Notas:**
 

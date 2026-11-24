@@ -110,25 +110,22 @@ un clic de log dedicado con rotación y validación/restauración automática), 
 y **IA de informes** (si el proveedor/modelo rechaza `temperature: 0.2`, reintenta sin ella). **Falta probar en la app
 real.**
 
-**Idea del usuario (19/11/2026): «Qué pueden ver tus usuarios» (aviso para el administrador).** Caso: alquilas el VPS
-o das acceso a otras personas y no sabes a qué datos llegan. Para quien tiene sudo, una vista en Administración (y un
-apartado en **Auditar servidor**) que explique, por cada usuario sin sudo, qué puede ver o alcanzar, en lenguaje
-simple y con el arreglo de cada punto:
-- **Túneles SSH**: por defecto cualquier usuario que entra por SSH puede abrir túneles (`AllowTcpForwarding yes`) y
-  llegar desde su PC a lo que escucha solo en `127.0.0.1` (bases de datos, webs internas). Arreglo: `Match` en
-  `sshd_config.d` con `AllowTcpForwarding no`, `AllowStreamLocalForwarding no`, `X11Forwarding no`,
-  `PermitTunnel no`, `GatewayPorts no` para quien no es admin. En «Crear usuario solo por clave», casilla
-  «Permitir túneles» apagada por defecto sin sudo.
-- **Servicios internos** a los que llega con su propia shell (`curl`, `psql`) aunque no haya túneles: listar los
-  puertos de `127.0.0.1` y avisar de los que no piden contraseña.
-- **Procesos y configuración ajena**: `/proc` sin `hidepid` (ve los procesos y comandos de todos), `/etc/nginx`,
-  `/etc/caddy`, archivos legibles por todos, otros `HOME` sin `700`, `cron`, logs.
-- **Contenedores de otros** (rootless) y sockets de Docker accesibles.
-- Resultado por usuario: «puede ver / no puede ver», con nota, y botón «Arreglar» que muestra el cambio antes
-  (como el resto de la auditoría). Relacionado con el punto 4 (endurecimiento) y 4b.
+**Idea del usuario (19/11/2026): «Qué pueden ver tus usuarios» (aviso para el administrador).** ✅ **Hecho el
+24/11/2026** (en `main`, sin publicar; falta probar en un servidor real). Vista **Administración → «Qué pueden ver»**
+(`VisibilityTab.tsx`, `userVisibility.ts`, `userVisibilityPlans.ts`), botón de acceso desde Usuarios y nueva categoría
+en **Auditar servidor** (`checksIsolation.ts`), explicando por cada usuario sin sudo qué puede ver o alcanzar, con nota
+y botón **«Arreglar»** que enseña antes los comandos:
+- **Túneles SSH**: comprueba `sshd -T -C` por usuario y propone `Match User` / `Match User !root Group !sudo,!wheel,!admin`
+  en `/etc/ssh/sshd_config.d/65-sshorus-sin-tuneles*.conf` con `AllowTcpForwarding no`, `AllowStreamLocalForwarding no`,
+  `X11Forwarding no`, `PermitTunnel no`, `GatewayPorts no`, validado con `sshd -t` y vuelta atrás automática. En
+  **«Nuevo usuario con clave»**, casilla **«Permitir túneles SSH»** apagada por defecto sin sudo.
+- **Servicios internos** en `127.0.0.1` / `::1`: lista los puertos locales y avisa de los que suelen ir sin contraseña.
+- **Procesos y configuración ajena**: `/proc` sin `hidepid`, `/etc/nginx`, `/etc/caddy`, carpetas `HOME` sin `700`,
+  `cron` y logs (`adm`/`systemd-journal` y archivos legibles por todos).
+- **Contenedores de otros** (directorios runtime abiertos) y acceso al grupo/socket de Docker.
 
-Pendiente (no se hace en esta ronda): **Mapa de infraestructura**: zoom con la rueda del ratón y con
-Ctrl + / Ctrl − / Ctrl 0, y mejorar lo visual (al usuario le gusta la idea; es pulido).
+**Mapa de infraestructura:** zoom con rueda del ratón, pellizco táctil y `Ctrl +` / `Ctrl −` / `Ctrl 0` ✅ **ya hecho
+el 14/11/2026** (`useMapViewport.ts`, `viewport.ts`, `nativePinch.ts`). Queda como mejora opcional pulido visual.
 
 **Ronda de orden del código** (antes de la 1.0.0). **Parte 1 ✅ hecha el 18/11/2026** (commit «Orden del código:
 archivos grandes partidos…», sin publicar): `FileExplorer`, `SessionView`, `ServerEditor` (carpeta
@@ -143,10 +140,14 @@ añadir servidor a proyecto), Contenedores (cambiar motor/usuario, sudo, refresc
 autenticación con sudo «La de la conexión», Intro/Escape, «Guardar de todos modos», elegir host), Ajustes (buscador,
 Restablecer), explorador (atrás/adelante, reconectar, arrastrar al sistema y desde él, menú) y sesión (reordenar y
 despegar pestañas, dividir, cerrar el archivo activo).
-**Parte 2 (pendiente):** añadir ESLint (no hay), revisar duplicados entre archivos y partir los que siguen grandes:
-`features/audit/checks.ts` (~850), `vulnscan/analyze.rs` (~840), `tunnels/manager.rs` (~830), `features/admin/web.ts`
-(~740), `Commands/catalog.ts`, `Admin/VulnsTab.tsx`, `infra/graph.ts`, `TransferPanel.tsx`, `vulnscan/osv.rs`,
-`vulnscan/imageUpdate.ts`. Reglas de calidad en `docs/dev/REGLAS-AGENTES.md` §5.
+**Parte 2 ✅ hecha el 24/11/2026** (en `main`, sin publicar): añadido **ESLint** (`eslint.config.js` + `npm run lint`,
+0 errores) y partidos los archivos grandes restantes: `features/audit/checks.ts` (en 5 módulos por categoría +
+`checksIsolation.ts`), `features/admin/web.ts` (`webTypes.ts`, `webNginx.ts`, `webCaddy.ts`), `Commands/catalog.ts`
+(`catalogContainers.ts`, `catalogSystem.ts`), `Admin/VulnsTab.tsx` (`VulnsTable.tsx`), `infra/graph.ts`
+(`graphTypes.ts`, `graphLinks.ts`), `TransferPanel.tsx` (`TransferHelpers.tsx`, `TransferJobs.tsx`),
+`vulnscan/imageUpdate.ts` (`imageUpdateRead.ts`, `imageUpdateForm.ts`), `vulnscan/analyze.rs` (`analyze_merge.rs`),
+`vulnscan/osv.rs` (`osv_model.rs`) y `tunnels/manager.rs` (`forward.rs`). Verificado: `npm run lint`, `npm run build`,
+51/51 suites TS y 350/350 tests Rust. Reglas de calidad en `docs/dev/REGLAS-AGENTES.md` §5.
 
 **Estado.** La **0.5.0 está publicada** (13/11/2026). En `main`, sin publicar todavía (ver «Sin publicar» en el
 CHANGELOG): botón «Actualizar imagen» en el escáner, terminal local con Claude Code y Codex, añadir servidor

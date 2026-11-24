@@ -52,6 +52,8 @@
   Compose, y limpiar imágenes que no se usan.
 - **Ver el servidor en vivo**: CPU, memoria, discos, red y procesos, con alertas.
 - **Administrar usuarios y grupos** si eres root o tienes sudo. SSHorus lo detecta solo y lo muestra en la pestaña.
+  Incluye **«Qué pueden ver»** (aislamiento de usuarios sin sudo: túneles SSH, servicios en `127.0.0.1`, `/proc`,
+  carpetas personales, cron/logs y Docker) y opción para desactivar túneles SSH al crear cuentas nuevas.
 - **Abrir túneles** para usar en tu PC una base de datos o un panel del servidor sin abrir puertos.
 - **Ver puertos y sitios web** del servidor: qué programa usa cada puerto y los sitios de nginx o Caddy
   con sus dominios, certificados y monitor de tráfico/visitas bajo demanda (con activación segura de registro si el sitio no tiene log).
@@ -415,7 +417,7 @@ podman exec terview-sshd sh -c 'sed -i "s/^AllowTcpForwarding no/AllowTcpForward
 
 cd src-tauri
 cargo test --lib -- --include-ignored --test-threads=1
-cd .. && npx tsc --noEmit
+cd .. && npx tsc --noEmit && npm run lint -- --quiet
 ```
 
 Pruebas de funciones puras de la interfaz (sin la app):

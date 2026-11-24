@@ -24,15 +24,22 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   tras validar la configuración (con copia de respaldo y restauración si falla).
 - **Administración → Usuarios → «Contenedores»**: columna con etiquetas de Podman, linger y Docker, y diálogo para
   dar o quitar permisos de contenedores y activar/quitar linger por usuario.
+- **Administración → «Qué pueden ver»** (y nueva categoría en **Auditar servidor**): muestra por cada usuario sin sudo
+  qué puede ver o alcanzar (túneles SSH, servicios en `127.0.0.1` avisando de los que suelen ir sin contraseña, `/proc`
+  sin `hidepid`, carpetas `HOME` ajenas, configuración web, `cron`/logs y acceso a Docker o contenedores de otros), con
+  nota y botón **«Arreglar»** mostrando antes los comandos exactos. En **«Nuevo usuario con clave»**, casilla
+  **«Permitir túneles SSH»** apagada por defecto cuando no tiene sudo.
 - **Terminal**: botón de llave para escribir la contraseña de sudo solo cuando la terminal la pide (previa
   confirmación de PIN).
 
 ### Cambiado
 - **MCP → «Aceptar automáticamente»**: el indicador de la barra de pestañas abre una ventana con el detalle por
   servidor, botón «Apagar» por fila y «Apagar todo» con confirmación.
-- **Orden del código (parte 1)**: divididos en módulos pequeños `FileExplorer`, `SessionView`, `ServerEditor`,
-  `SettingsDialog`, `Sidebar`, `ContainersPanel`, `transfer/engine.rs`, `mcp/core.rs`, `storage/ssh_config.rs` y
-  `ssh/connect.rs`.
+- **Orden del código (partes 1 y 2) y ESLint**: añadida configuración de **ESLint** (`npm run lint`, 0 errores) y
+  divididos en módulos pequeños `FileExplorer`, `SessionView`, `ServerEditor`, `SettingsDialog`, `Sidebar`,
+  `ContainersPanel`, `TransferPanel`, `VulnsTab`, `Commands/catalog.ts`, `audit/checks.ts`, `admin/web.ts`,
+  `infra/graph.ts`, `vulnscan/imageUpdate.ts`, `transfer/engine.rs`, `mcp/core.rs`, `storage/ssh_config.rs`,
+  `ssh/connect.rs`, `tunnels/manager.rs`, `vulnscan/analyze.rs` y `vulnscan/osv.rs`.
 
 ### Corregido
 - **Terminal**: escritura sin retraso (`TCP_NODELAY` y envío inmediato tras pausa), texto insertado visible al momento,

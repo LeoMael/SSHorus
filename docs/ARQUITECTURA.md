@@ -352,12 +352,18 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 
 ![Administración](arquitectura/10-administracion.png)
 
-- **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web e Historial. Interfaz en
-  `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal exec de la sección 8.
+- **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web, Mapa, Vulnerabilidades, Auditoría,
+  **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
+  exec de la sección 8.
 - **Nuevo usuario con clave** (`KeyUserWizard.tsx`, `features/admin/keyUser.ts`): valida la llave (tipo +
   base64 + tipo interno), lee `AllowUsers/AllowGroups` con `sshd -T` (o `sshd_config`), arma el plan
-  (`useradd` + `usermod -p '*'` + `authorized_keys` 700/600 + linger) y después prueba la conexión con
-  `ssh_test_connection`. `AllowUsers` va en un plan aparte (archivo en `sshd_config.d`, `sshd -t`, recarga).
+  (`useradd` + `usermod -p '*'` + `authorized_keys` 700/600 + linger + bloqueo de túneles SSH cuando «Permitir
+  túneles SSH» queda desmarcado, por defecto sin sudo, mediante `65-sshorus-sin-tuneles-<u>.conf` validado con
+  `sshd -t` y `sshd -T -C`) y después prueba la conexión con `ssh_test_connection`. `AllowUsers` va en un plan aparte.
+- **Qué pueden ver tus usuarios** (`VisibilityTab.tsx`, `features/admin/userVisibility.ts`, `userVisibilityPlans.ts`
+  y categoría `isolation` en `features/audit/checksIsolation.ts`): revisa por cada usuario sin sudo los túneles SSH
+  (`sshd -T -C`), servicios en `127.0.0.1`, `/proc` (`hidepid`), carpetas `HOME`, configuración web, `cron`/logs y
+  acceso a Docker/contenedores ajenos, dando una nota por cuenta y planes de arreglo con confirmación previa.
   Con «Dar sudo» (`keyUserSudo.ts`, `sshdConf.ts`, `KeyUserSudo.tsx`): antes de crear el usuario, archivo
   `10-sshorus-solo-llave-<u>.conf` con `Match User <u>` + `AuthenticationMethods publickey` (`sshd -t`,
   `sshd -T -C` para él y para root; si falla se deshace y se para), y luego `chpasswd` por stdin en vez de
