@@ -6,6 +6,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [1.0.0-beta.3] - 2026-11-24
+
 ### Añadido
 - **«Reiniciar ahora»**: reinicia el servidor con sudo desde SSHorus (escáner de vulnerabilidades, auditoría y Panel
   de VPS), espera hasta 5 minutos a que vuelva, reconecta todas sus sesiones y comprueba que efectivamente arrancó
@@ -528,6 +530,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
+[1.0.0-beta.3]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.1
 [0.5.0]: https://github.com/LeoMael/SSHorus/releases/tag/v0.5.0

@@ -8,7 +8,7 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 24/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.2** (16/11/2026, borrador en GitHub Releases). En `main` hay trabajo nuevo
+Última versión etiquetada: **1.0.0-beta.3** (24/11/2026; la CI deja el Release en borrador y lo publica el usuario tras probarlo). En `main` hay trabajo nuevo
 que saldrá como **1.0.0-beta.3**, verificado con `npm run lint` (0 errores, 0 avisos), `npm run build`, 53/53 suites
 TS (`npm test`), `cargo clippy --lib -- -W clippy::all` (0 avisos) y 380/380 tests Rust (`cargo test --lib`). La batería
 completa con el servidor de pruebas (`--include-ignored`) pasó 426/426 en los «Arreglos tras la revisión».
@@ -50,12 +50,9 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     configuración» (que no se repita al escribir la contraseña de sudo).
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
-- **Checklist de publicación (`v1.0.0-beta.3`)**:
-  - `git push` de los commits locales en `main`.
-  - Subir versión a `1.0.0-beta.3` en `package.json`, `src-tauri/Cargo.toml` y `src-tauri/tauri.conf.json`.
-  - **Mantener `bundle.windows.wix.version`** en `src-tauri/tauri.conf.json` (el `.msi` no admite «-beta»): subirlo
-    a `0.6.0.3`, como en cada beta. Se quita al pasar a `1.0.0`.
-  - Cerrar «Sin publicar» en `CHANGELOG.md`, crear etiqueta `v1.0.0-beta.3` y verificar que la CI publique
+- **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no
+  admite «-beta»; se quita al pasar a `1.0.0`), CHANGELOG cerrado y etiqueta creada. Falta: comprobar el borrador
+  del Release, publicarlo y verificar que la CI publique
     `latest.json` + firmas `.sig` (en las betas Linux solo genera `.deb` y AppImage, sin `.rpm`) y que el actualizador
     de la beta.2 detecte la beta.3.
 
