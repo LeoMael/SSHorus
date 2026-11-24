@@ -1,5 +1,5 @@
 // Conexión con diálogos (contraseña, frase, 2FA, huella) SIN abrir pestaña.
-// Misma lógica que features/connect.ts (connectToServer), reutilizando sus diálogos.
+// Misma lógica que features/connect/connect.ts (connectToServer), reutilizando sus diálogos.
 import { ssh } from "../../api/ssh";
 import { isApiError } from "../../api/core";
 import type { ServerProfile } from "../../api/types";

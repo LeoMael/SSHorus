@@ -1,5 +1,6 @@
-// Texto que sale de la terminal (copiar) y que entra (pegar). Funciones puras, con pruebas en
-// termText.test.ts.
+// Texto que sale de la terminal (copiar, línea del cursor) y que entra (pegar). Funciones puras, con
+// pruebas en termText.test.ts.
+import type { Terminal } from "@xterm/xterm";
 
 /** Texto copiado sin los espacios de relleno: xterm.js copia los espacios que el programa escribió
  *  para borrar la línea (Claude Code y otros los ponen hasta el borde), y no sirven a nadie. */
@@ -31,4 +32,16 @@ export function pastePreview(text: string, maxLines = 6, maxChars = 120): string
 /** Ctrl+C (sin más teclas): copia si hay selección; si no, va al programa (interrumpir). */
 export function isPlainCtrlC(ev: Pick<KeyboardEvent, "ctrlKey" | "shiftKey" | "altKey" | "metaKey" | "code">): boolean {
   return ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.code === "KeyC";
+}
+
+/** Texto de la línea donde está el cursor (con las anteriores si es continuación de ellas). */
+export function readCursorLine(term: Pick<Terminal, "buffer">): string {
+  const buf = term.buffer.active;
+  let y = buf.baseY + buf.cursorY;
+  let text = buf.getLine(y)?.translateToString(true) ?? "";
+  while (y > 0 && buf.getLine(y)?.isWrapped) {
+    y--;
+    text = (buf.getLine(y)?.translateToString(false) ?? "") + text;
+  }
+  return text;
 }

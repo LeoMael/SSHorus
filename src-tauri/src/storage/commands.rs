@@ -31,7 +31,10 @@ pub async fn profiles_load(store: State<'_, ProfileStore>) -> AppResult<Profiles
     Ok(store.data())
 }
 
-/// Crea o actualiza un servidor y, si se indica `secret`, actualiza o borra su entrada en el llavero/bóveda.
+/// Crea o actualiza. Si `server.id` está vacío se asigna uno nuevo.
+/// `secret`: Some(x) guarda x en el llavero (contraseña o frase de la llave); None no lo toca.
+/// Some("") borra el secreto guardado. Si el llavero falla, el servidor queda guardado igual
+/// y se devuelve el error `Keyring`.
 #[tauri::command]
 pub async fn profiles_save_server(
     app: AppHandle,
@@ -61,6 +64,7 @@ pub async fn profiles_delete_server(app: AppHandle, store: State<'_, ProfileStor
     store.delete_server(&id)?;
     let id_for_history = id.clone();
     sync_ssh_config(&app).await;
+    // El servidor ya no existe: si el llavero no está disponible solo lo registramos.
     if let Err(e) = blocking(move || secrets::delete_server_secrets(&id)).await {
         log::warn!("No se pudo borrar el secreto del servidor: {e}");
     }
@@ -98,7 +102,8 @@ pub async fn profiles_set_secret(id: String, secret: Option<String>, kind: Optio
     .await
 }
 
-/// Muestra un secreto guardado de un servidor (botón del ojo). Con bóveda pide el PIN o la contraseña.
+/// Muestra un secreto guardado de un servidor (botón del ojo). Con bóveda pide el PIN o la contraseña, que cuenta
+/// como intento (misma espera tras fallos que al desbloquear); sin bóveda lee del llavero.
 #[tauri::command]
 pub async fn profiles_reveal_secret(id: String, kind: SecretKind, pin: Option<String>) -> AppResult<Option<String>> {
     let pin = pin.map(Zeroizing::new);
@@ -114,7 +119,9 @@ pub async fn profiles_reveal_secret(id: String, kind: SecretKind, pin: Option<St
     .await
 }
 
-/// Contraseña de sudo de un servidor según su ajuste: la de conexión, la guardada aparte o ninguna.
+/// Contraseña de sudo de un servidor según su ajuste: la de conexión, la guardada aparte o
+/// ninguna («Pedir cada vez»). Solo con SSHorus desbloqueado; nunca va a disco ni a logs.
+/// Con «La de la conexión» y `session_id`, primero la que se escribió al conectar esa sesión.
 #[tauri::command]
 pub async fn profiles_sudo_password(
     store: State<'_, ProfileStore>,
@@ -134,6 +141,7 @@ pub async fn settings_load(store: State<'_, SettingsStore>) -> AppResult<Setting
 pub async fn settings_save(app: AppHandle, store: State<'_, SettingsStore>, settings: Settings) -> AppResult<Settings> {
     let was_synced = store.get().ssh_config_sync;
     let saved = store.save(settings)?;
+    // Al activar «Mantener sincronizado» exportamos ya.
     if saved.ssh_config_sync && !was_synced {
         sync_ssh_config(&app).await;
     }
@@ -150,6 +158,7 @@ pub async fn profiles_duplicate_server(
     let copy = store.duplicate_server(&id)?;
     sync_ssh_config(&app).await;
     let new_id = copy.id.clone();
+    // La copia ya existe: si el llavero falla solo lo registramos (se pedirá la contraseña al conectar).
     let r = blocking(move || secrets::copy_server_secrets(&id, &new_id)).await;
     if let Err(e) = r {
         log::warn!("No se pudo copiar el secreto del servidor duplicado: {e}");

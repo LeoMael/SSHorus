@@ -6,8 +6,6 @@ import { multiRunActions, repeatMultiRun, showSetup, useMultiRun } from "../../f
 import { isProblem, type TargetStatus } from "../../features/multirun/types";
 import { CompareView, SideView, StatusIcon, TableView, copyMultiRunText } from "./ResultsSubViews";
 
-export { StatusIcon };
-
 type ViewMode = "table" | "side" | "compare";
 
 const VIEW_KEY = "sshorus.multirun.view";

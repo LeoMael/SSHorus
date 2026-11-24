@@ -1,4 +1,11 @@
 //! Servidores, proyectos, ajustes (JSON en ~/.config/sshorus/) y secretos (llavero).
+//! DUEÑO: agente Almacenamiento.
+//!
+//! API usada por otros módulos (NO cambiar firmas):
+//!   ProfileStore::load(), ProfileStore::get_server(id)
+//!   SettingsStore::load(), SettingsStore::get()
+//!   secrets::get_secret / set_secret / delete_secret
+//!
 //! Los comandos Tauri viven en `commands.rs` y se re-exportan desde aquí.
 
 pub(crate) mod cipher;
@@ -21,6 +28,7 @@ use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use crate::error::{AppError, AppResult};
 use crate::types::{AuthMethod, Bookmark, Project, ProfilesData, ServerProfile, Settings, SudoMode};
 
+/// Ejecuta trabajo de disco o llavero fuera del hilo asíncrono (no bloquea a Tokio).
 pub(crate) async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + 'static) -> AppResult<T> {
     tokio::task::spawn_blocking(f)
         .await
@@ -37,6 +45,7 @@ fn clean_opt(v: Option<String>) -> Option<String> {
 }
 
 fn read_lock<T>(l: &RwLock<T>) -> RwLockReadGuard<'_, T> {
+    // Un pánico con el candado tomado no deja datos a medias (siempre se reemplaza entero).
     l.read().unwrap_or_else(|p| p.into_inner())
 }
 
@@ -51,11 +60,13 @@ fn no_config_dir() -> AppError {
 // ───────────────────────── Servidores y proyectos ─────────────────────────
 
 pub struct ProfileStore {
+    /// None si el sistema no tiene carpeta de configuración (solo en memoria).
     path: Option<PathBuf>,
     data: RwLock<ProfilesData>,
 }
 
 impl ProfileStore {
+    /// Lee ~/.config/sshorus/profiles.json (o vacío si no existe). Nunca falla: registra el error.
     pub fn load() -> Self {
         match fsutil::config_dir() {
             Some(dir) => Self::load_from(dir.join("profiles.json")),
@@ -66,6 +77,7 @@ impl ProfileStore {
         }
     }
 
+    /// Igual que `load` pero con una ruta concreta (tests).
     pub fn load_from(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
         let mut data: ProfilesData = fsutil::read_json_or_default(&path);
@@ -86,6 +98,8 @@ impl ProfileStore {
             .ok_or_else(|| AppError::NotFound(format!("servidor {id}")))
     }
 
+    /// Aplica `f` sobre una copia; si todo va bien la guarda en disco y la publica.
+    /// Si falla la validación o el disco, nada cambia.
     fn mutate<R>(&self, f: impl FnOnce(&mut ProfilesData) -> AppResult<R>) -> AppResult<R> {
         let mut guard = write_lock(&self.data);
         let mut next = guard.clone();
@@ -98,6 +112,7 @@ impl ProfileStore {
         Ok(out)
     }
 
+    /// Crea (id vacío → UUID nuevo) o actualiza un servidor. Devuelve el servidor guardado.
     pub fn save_server(&self, server: ServerProfile) -> AppResult<ServerProfile> {
         let mut server = validate_server(server)?;
         self.mutate(|d| {
@@ -107,12 +122,14 @@ impl ProfileStore {
             } else if let Some(existing) = d.servers.iter_mut().find(|s| s.id == server.id) {
                 *existing = server.clone();
             } else {
+                // Id desconocido (p. ej. importado): lo conservamos.
                 d.servers.push(server.clone());
             }
             Ok(server)
         })
     }
 
+    /// Borra el servidor y sus referencias en proyectos. (El secreto lo borra el comando.)
     pub fn delete_server(&self, id: &str) -> AppResult<()> {
         self.mutate(|d| {
             let before = d.servers.len();
@@ -128,6 +145,8 @@ impl ProfileStore {
         })
     }
 
+    /// Copia un servidor con nombre "<nombre> (copia)" (único) e id nuevo, justo debajo del original.
+    /// La copia se añade también a los proyectos del original. (El secreto lo copia el comando.)
     pub fn duplicate_server(&self, id: &str) -> AppResult<ServerProfile> {
         self.mutate(|d| {
             let idx = d
@@ -211,8 +230,10 @@ fn validate_server(mut s: ServerProfile) -> AppResult<ServerProfile> {
             return Err(AppError::Invalid("Indica la ruta de la llave SSH".into()));
         }
         AuthMethod::Key => {}
+        // La ruta de llave solo tiene sentido con auth = key.
         AuthMethod::Password | AuthMethod::Agent => s.key_path = None,
     }
+    // «La misma de la conexión» solo existe si se entra con contraseña.
     if s.sudo_mode == SudoMode::Login && s.auth != AuthMethod::Password {
         s.sudo_mode = SudoMode::Ask;
     }
@@ -226,8 +247,10 @@ fn validate_project(mut p: Project, known_servers: &HashSet<&str>) -> AppResult<
     if p.name.is_empty() {
         return Err(AppError::Invalid("El nombre del proyecto no puede estar vacío".into()));
     }
+    // Solo servidores existentes, sin duplicados, en el orden dado.
     let mut seen = HashSet::new();
     p.server_ids.retain(|id| known_servers.contains(id.as_str()) && seen.insert(id.clone()));
+    // Marcadores válidos; su servidor pasa a formar parte del proyecto.
     let bookmarks: Vec<Bookmark> = p
         .bookmarks
         .into_iter()
@@ -274,6 +297,7 @@ pub struct SettingsStore {
 }
 
 impl SettingsStore {
+    /// Lee ~/.config/sshorus/settings.json (o valores por defecto).
     pub fn load() -> Self {
         match fsutil::config_dir() {
             Some(dir) => Self::load_from(dir.join("settings.json")),
@@ -294,6 +318,7 @@ impl SettingsStore {
         read_lock(&self.data).clone()
     }
 
+    /// Sanea, guarda en disco y devuelve los ajustes efectivos.
     pub fn save(&self, settings: Settings) -> AppResult<Settings> {
         let s = sanitize_settings(settings);
         let mut guard = write_lock(&self.data);

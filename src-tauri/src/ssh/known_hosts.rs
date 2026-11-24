@@ -1,4 +1,14 @@
 //! Lectura/escritura de ~/.ssh/known_hosts.
+//! DUEÑO: agente SSH.
+//!
+//! Implementación propia (en vez de `russh::keys::known_hosts`) porque la de russh
+//! no tolera tabuladores, marcadores (`@cert-authority`, `@revoked`), comodines
+//! ni negaciones, y falla entera si una línea que coincide trae una llave rara.
+//! Compatible con el formato de OpenSSH:
+//! - `host`, `host1,host2`, `[host]:puerto` (puertos ≠ 22), comodines `*`/`?`, `!negación`.
+//! - Entradas cifradas `|1|sal|hmac` (HashKnownHosts yes) → HMAC-SHA1.
+//! - `@revoked` → se trata como llave cambiada (no se confía). `@cert-authority` → se ignora.
+//!
 //! La coincidencia de comodines, negaciones y entradas cifradas (`|1|…`) vive en `known_hosts_match.rs`.
 
 use std::io::Write;
@@ -45,6 +55,7 @@ pub fn host_field(host: &str, port: u16) -> String {
     }
 }
 
+/// Una línea de known_hosts ya separada en campos.
 struct Entry<'a> {
     marker: Option<&'a str>,
     hosts: &'a str,
@@ -75,6 +86,7 @@ fn parse_line(line: &str) -> Option<Entry<'_>> {
 }
 
 /// Comprueba la llave `key` del servidor `host:port` contra el archivo `path`.
+/// Un archivo inexistente equivale a "host desconocido".
 pub fn check(
     path: &Path,
     host: &str,
@@ -136,6 +148,8 @@ fn check_content(content: &str, host: &str, port: u16, key: &PublicKey) -> HostK
     }
 }
 
+// ───────────────────────── Escritura ─────────────────────────
+
 /// Normaliza la llave recibida de la interfaz a `algoritmo base64` (sin comentario).
 pub fn parse_key_openssh(key_openssh: &str) -> AppResult<PublicKey> {
     PublicKey::from_openssh(key_openssh.trim())
@@ -154,6 +168,8 @@ fn key_line(key: &PublicKey) -> AppResult<String> {
 }
 
 /// Quita del contenido todas las entradas exactas de `host:port` (planas o cifradas).
+/// En líneas con varios nombres (`host,ip`) solo quita ese nombre. No toca comentarios,
+/// marcadores ni líneas con comodines. Devuelve (nuevo contenido, entradas quitadas).
 fn remove_host_from_content(content: &str, host: &str, port: u16) -> (String, usize) {
     let target = host_field(host, port).to_ascii_lowercase();
     let mut out = String::with_capacity(content.len());
@@ -168,6 +184,7 @@ fn remove_host_from_content(content: &str, host: &str, port: u16) -> (String, us
             out.push_str(line);
             continue;
         }
+        // La línea contiene el host: reconstruirla sin ese nombre.
         let trimmed_start = line.trim_start();
         let hosts_end = trimmed_start
             .find(char::is_whitespace)
@@ -209,6 +226,8 @@ fn write_atomic(path: &Path, content: &str) -> AppResult<()> {
         f.write_all(content.as_bytes())?;
         f.sync_all()?;
         drop(f);
+        // Si el archivo original tenía otros permisos, se respetan (en Unix; en Windows
+        // copiar el «solo lectura» impediría reemplazarlo).
         #[cfg(unix)]
         if let Ok(meta) = std::fs::metadata(path) {
             std::fs::set_permissions(&tmp, meta.permissions())?;
@@ -242,7 +261,8 @@ fn ensure_parent_dir(path: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Confía en `key_openssh` para `host:port`: borra las entradas previas y añade la nueva.
+/// Confía en `key_openssh` para `host:port`: borra las entradas previas de ese host
+/// (p. ej. una llave cambiada que el usuario ya aceptó reemplazar) y añade la nueva.
 pub fn trust(path: &Path, host: &str, port: u16, key_openssh: &str) -> AppResult<()> {
     let host = host.trim();
     if host.is_empty() || host.contains(char::is_whitespace) || host.contains(',') {
@@ -309,10 +329,11 @@ mod tests {
 
     #[test]
     fn check_hashed_wildcard_revoked() {
+        // Entrada cifrada de pruebas de russh: corresponde a "example.com".
         let c = format!(
             "|1|O33ESRMWPVkMYIwJ1Uw+n877jTo=|nuuC5vEqXlEZ/8BXQR7m619W6Ak= {K2}\n*.lan,!bad.lan {K1}\n@revoked * {K2}\n"
         );
-        assert_eq!(check_content(&c, "example.com", 22, &key(K2)), HostKeyStatus::Changed);
+        assert_eq!(check_content(&c, "example.com", 22, &key(K2)), HostKeyStatus::Changed); // revocada
         let c2 = format!("|1|O33ESRMWPVkMYIwJ1Uw+n877jTo=|nuuC5vEqXlEZ/8BXQR7m619W6Ak= {K2}\n*.lan,!bad.lan {K1}\n");
         assert_eq!(check_content(&c2, "example.com", 22, &key(K2)), HostKeyStatus::Match);
         assert_eq!(check_content(&c2, "example.com", 22, &key(K1)), HostKeyStatus::Changed);

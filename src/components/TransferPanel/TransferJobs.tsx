@@ -14,10 +14,11 @@ const ORDER: Record<TransferStatus, number> = { running: 0, error: 1, paused: 2,
 
 type Filter = "all" | "pending" | "skipped" | "error";
 
-function listBatchJobs(batch: BatchSummary, filter: Filter): TransferJob[] {
+/** Trabajos del lote que pasan el filtro, ordenados por estado (lee el store sin suscribirse). */
+function listBatchJobs(batchId: string, filter: Filter): TransferJob[] {
   const jobs = useTransfers.getState().jobs;
   const out: TransferJob[] = [];
-  for (const id of batchJobIds(batch.id)) {
+  for (const id of batchJobIds(batchId)) {
     const j = jobs[id];
     if (!j) continue;
     if (filter === "error" && j.status !== "error") continue;
@@ -33,7 +34,10 @@ export function JobList({ batch }: { batch: BatchSummary }) {
   const [filter, setFilter] = useState<Filter>(batch.error > 0 && !isActiveStatus(batch.status) ? "error" : "all");
   const [scrollTop, setScrollTop] = useState(0);
 
-  const rows = useMemo(() => listBatchJobs(batch, filter), [batch, filter]);
+  // `batch` se recrea en cada tic (velocidad, ETA) y la lista puede tener miles de trabajos: se vuelve a
+  // filtrar solo cuando cambia algún trabajo del lote (`version`) o el filtro.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` es la señal de cambio de `batchJobIds`
+  const rows = useMemo(() => listBatchJobs(batch.id, filter), [batch.id, batch.version, filter]);
 
   const height = Math.max(1, Math.min(rows.length, MAX_ROWS)) * ROW_H;
   const first = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);

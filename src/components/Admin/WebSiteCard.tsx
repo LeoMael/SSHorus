@@ -1,5 +1,5 @@
 // Tarjeta de sitio web (puertos, certificado, visitas, rutas) y diálogo «Comprobar configuración».
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, BarChart3, CheckCircle2, FileText, Lock, LockOpen, RefreshCw, XCircle } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import {
@@ -265,7 +265,12 @@ export function WebCheckDialog({ info, onClose }: { info: ServerInfo; onClose: (
       setState({ busy: false, ok: false, text: errorMessage(e), elevated: false });
     }
   }, [sessionId, script, elevation]);
+  // Solo al abrir; «Repetir» vuelve a lanzarlo. `run` cambia cuando cambia `elevation` (al escribir la
+  // contraseña de sudo o al refrescar los privilegios) y eso no debe repetir la comprobación sola.
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     void run();
   }, [run]);
   return (

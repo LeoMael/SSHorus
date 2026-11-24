@@ -3,31 +3,28 @@
 // Independiente de React: el componente solo lo crea, le pasa cambios y lo destruye.
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-import { SearchAddon, type ISearchResultChangeEvent } from "@xterm/addon-search";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { terminal } from "../../api/terminal";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
-import { buildSearchDecorations, buildTermTheme, onAppThemeChange } from "./termTheme";
+import { buildTermTheme, onAppThemeChange } from "./termTheme";
 import { ensureExitListener, onTerminalExit } from "./exitEvents";
 import { RENDER_OPTIONS, TermGpu, enableUnicode11 } from "./termRender";
 import { terminalFontStack } from "./termFont";
 import { copyTermSelection, createTermKeyHandler, pasteCheckedToTerm, pasteClipboardToTerm } from "./termClipboard";
-import {
-  DIM,
-  RED,
-  formatExitMessage,
-  formatReconnectMessage,
-  readCursorLine,
-  type ConnState,
-  type SearchResults,
-  type TermBackend,
-  type TermControllerOptions,
-  type TermOpenResult,
-  type TermStatus,
-  type TmuxState,
+import { TermFit } from "./termFit";
+import { TermSearch } from "./termSearch";
+import { DIM, RED, formatExitMessage, formatReconnectMessage } from "./termMessages";
+import { readCursorLine } from "./termText";
+import type {
+  ConnState,
+  SearchResults,
+  TermBackend,
+  TermControllerOptions,
+  TermOpenResult,
+  TermStatus,
+  TmuxState,
 } from "./termTypes";
 
 export type { ConnState, SearchResults, TermBackend, TermControllerOptions, TermOpenResult, TermStatus, TmuxState };
@@ -36,18 +33,13 @@ export type { ConnState, SearchResults, TermBackend, TermControllerOptions, Term
  *  decidir qué mensaje mostrar: el vigilante del motor detecta la caída en ~1,5 s. */
 const EXIT_GRACE_MS = 2500;
 
-/** Espera tras el último cambio de tamaño antes de ajustar columnas y filas (y avisar al programa):
- *  al arrastrar el borde de la ventana, el programa redibuja una vez y no en cada píxel. */
-const FIT_DEBOUNCE_MS = 80;
-
 /** Tras escribir desde fuera, durante este tiempo se repinta entera al llegar salida (el eco). */
 const REVEAL_REPAINT_MS = 1500;
 
 export class TermController {
   readonly term: Terminal;
-  private readonly fit = new FitAddon();
-  private readonly search = new SearchAddon({ highlightLimit: 2000 });
-  private readonly host: HTMLElement;
+  private readonly fit: TermFit;
+  private readonly search: TermSearch;
   private readonly sessionId: string;
   private readonly backend: TermBackend | null;
   private readonly onStatus: (s: TermStatus) => void;
@@ -78,14 +70,11 @@ export class TermController {
   private repaintUntil = 0;
   private repaintQueued = false;
 
-  private fitTimer: ReturnType<typeof setTimeout> | undefined;
-  private readonly ro: ResizeObserver;
   private readonly unTheme: () => void;
   private unExit: (() => void) | null = null;
   private readonly gpu: TermGpu;
 
   constructor(host: HTMLElement, opts: TermControllerOptions) {
-    this.host = host;
     this.sessionId = opts.sessionId;
     this.backend = opts.backend ?? null;
     this.onStatus = opts.onStatus;
@@ -108,8 +97,7 @@ export class TermController {
       rightClickSelectsWord: false,
     });
     enableUnicode11(this.term);
-    this.term.loadAddon(this.fit);
-    this.term.loadAddon(this.search);
+    this.search = new TermSearch(this.term);
     this.term.loadAddon(
       new WebLinksAddon((ev, uri) => {
         ev.preventDefault();
@@ -117,6 +105,7 @@ export class TermController {
       }),
     );
     this.term.open(host);
+    this.fit = new TermFit(this.term, host);
     this.term.attachCustomKeyEventHandler(
       createTermKeyHandler(this.term, {
         onSearch: opts.onSearchRequest,
@@ -129,13 +118,10 @@ export class TermController {
     // Todo pegado (también el del sistema: clic central en Linux) pasa por el aviso de varias líneas.
     this.term.element?.addEventListener("paste", this.handlePasteEvent, true);
 
-    this.ro = new ResizeObserver(() => this.scheduleFit());
-    this.ro.observe(host);
     this.unTheme = onAppThemeChange(() => {
       if (!this.disposed) this.term.options.theme = buildTermTheme();
     });
     this.gpu = new TermGpu(this.term);
-    document.fonts?.ready.then(() => this.fitNow()).catch(() => {});
 
     this.fitNow();
     void this.start();
@@ -190,6 +176,7 @@ export class TermController {
       }
       this.termId = id;
       this.lost = false;
+      // El historial ya está en xterm.js: al reabrir (reconexión) no se vuelve a volcar.
       this.tmuxReplay = false;
       this.persistent = (opened.tmux ?? null) !== null;
       if (reconnected) {
@@ -216,6 +203,7 @@ export class TermController {
       this.pending = "";
       this.lost = true;
       this.setStatus("exited");
+      // Si la conexión se está cayendo, el aviso de la pestaña ya lo explica.
       if (this.connState !== "connected") return;
       this.term.write(`\r\n${RED(`No se pudo abrir la shell: ${errorMessage(e)}`)}\r\n`);
       if (!this.disabled) this.term.write(`${DIM("[Pulsa Enter para reintentar]")}\r\n`);
@@ -227,9 +215,11 @@ export class TermController {
     this.termId = null;
     this.unExit = null;
     this.pending = "";
+    // Sin código de salida = el canal se cortó (normalmente, la conexión cayó).
     this.lost = code === null || this.connState !== "connected";
     this.setStatus("exited");
     if (code === null && this.connState === "connected" && !this.disabled) {
+      // Esperar a saber si fue la conexión (llegará "reconectando"/"cerrada") antes de avisar.
       this.cancelExitMessage();
       this.exitMsgPending = true;
       this.exitTimer = setTimeout(() => {
@@ -251,11 +241,13 @@ export class TermController {
     this.term.write(`\r\n${DIM(formatExitMessage(this.disabled, this.connState, code))}\r\n`);
   }
 
-  /** La sesión volvió (mismo sessionId, conexión nueva): reabre la shell si murió con la caída. */
+  /** La sesión volvió (mismo sessionId, conexión nueva): reabre la shell si murió con la caída.
+   *  Conserva el historial; las shells que el usuario cerró a propósito no se tocan. */
   reconnected() {
     if (this.disposed || this.disabled) return;
     this.connState = "connected";
     if (this.status === "exited" && !this.lost) return;
+    // Cualquier shell "viva" pertenecía a la conexión anterior: ya no sirve.
     this.cancelExitMessage();
     this.unExit?.();
     this.unExit = null;
@@ -270,6 +262,7 @@ export class TermController {
     const prev = this.connState;
     this.connState = state;
     if (state !== "connected") {
+      // Nada se acumula mientras no hay conexión.
       this.pending = "";
       if (prev === "connected" && this.exitMsgPending) {
         this.cancelExitMessage();
@@ -278,14 +271,15 @@ export class TermController {
     }
   }
 
-  // ───────── Entrada / salida ─────────
+  // ───────── Entrada del usuario ─────────
 
   private handleInput(data: string) {
-    if (this.connState !== "connected") return;
+    if (this.connState !== "connected") return; // sin conexión no se acumula nada
     if (this.status === "running" && this.termId) {
       this.pending += data;
       void this.pump();
     } else if (this.status === "opening") {
+      // Lo tecleado mientras abre se envía al estar lista.
       this.pending += data;
     } else if (this.status === "exited" && !this.disabled && data.includes("\r")) {
       this.term.write("\r\n");
@@ -312,6 +306,8 @@ export class TermController {
     }
   }
 
+  /** Texto desde fuera (Biblioteca de comandos): mismo camino ordenado que el teclado.
+   *  Si la shell había terminado, abre otra y lo envía al estar lista. */
   sendText(text: string) {
     if (this.disposed || !text || this.disabled || this.connState !== "connected") return;
     if (this.status === "exited") {
@@ -323,6 +319,12 @@ export class TermController {
     this.handleInput(text);
   }
 
+  /**
+   * Tras escribir desde fuera (Biblioteca de comandos, escáner…): ajusta, repinta y le da el foco.
+   * Sin foco, el dibujado por GPU no siempre muestra el eco que llega después (se veía al hacer clic):
+   * con el foco xterm redibuja todo y mantiene viva la línea del cursor, y por si acaso se repinta
+   * entera al llegar el eco.
+   */
   reveal() {
     if (this.disposed) return;
     this.repaintUntil = performance.now() + REVEAL_REPAINT_MS;
@@ -348,30 +350,40 @@ export class TermController {
     });
   }
 
+  /** Texto de la línea donde está el cursor (con las anteriores si es continuación de ellas). */
   cursorLineText(): string {
     return this.disposed ? "" : readCursorLine(this.term);
   }
 
+  /** Pega texto como si lo pegara el usuario (con «pegado entre corchetes» si el programa lo pidió:
+   *  así un texto de varias líneas no se ejecuta línea a línea). */
   pasteText(text: string) {
-    if (!this.disposed && text) this.term.paste(text);
+    if (this.disposed || !text) return;
+    this.term.paste(text);
   }
 
+  /** El programa activó el «pegado entre corchetes» (lo hacen las shells modernas y los asistentes de IA). */
   acceptsBracketedPaste(): boolean {
     return !this.disposed && this.term.modes.bracketedPasteMode;
   }
 
+  /** La shell está abierta y lista para recibir texto. */
   isRunning(): boolean {
     return this.status === "running" && this.termId !== null;
   }
 
+  /** Línea informativa (gris) en la terminal; no llega al programa. */
   note(text: string) {
-    if (!this.disposed) this.term.write(`${DIM(text.replace(/\r?\n/g, "\r\n"))}\r\n`);
+    if (this.disposed) return;
+    this.term.write(`${DIM(text.replace(/\r?\n/g, "\r\n"))}\r\n`);
   }
 
+  /** Copia la selección sin los espacios de relleno del final de cada línea. */
   copy(clearSelection = false) {
     copyTermSelection(this.term, clearSelection);
   }
 
+  /** Pega el portapapeles, avisando antes si son varias líneas y el programa las ejecutaría. */
   paste() {
     pasteClipboardToTerm(this.term, () => this.disposed);
   }
@@ -391,6 +403,7 @@ export class TermController {
     this.term.focus();
   }
 
+  /** La shell actual corre dentro de tmux. */
   isPersistent(): boolean {
     return this.persistent;
   }
@@ -399,52 +412,45 @@ export class TermController {
     return this.term.hasSelection();
   }
 
-  // ───────── Búsqueda y tamaño ─────────
+  // ───────── Búsqueda ─────────
 
-  private searchOpts(caseSensitive: boolean, incremental = false) {
-    return { caseSensitive, incremental, decorations: buildSearchDecorations() };
-  }
-
+  /** Busca hacia abajo. `incremental`: mientras se escribe (no avanza si la actual sigue valiendo). */
   findNext(query: string, caseSensitive: boolean, incremental = false): boolean {
-    return this.disposed || !query ? false : this.search.findNext(query, this.searchOpts(caseSensitive, incremental));
+    if (this.disposed) return false;
+    return this.search.findNext(query, caseSensitive, incremental);
   }
 
   findPrevious(query: string, caseSensitive: boolean): boolean {
-    return this.disposed || !query ? false : this.search.findPrevious(query, this.searchOpts(caseSensitive));
+    if (this.disposed) return false;
+    return this.search.findPrevious(query, caseSensitive);
   }
 
   clearSearch() {
-    if (this.disposed) return;
-    this.search.clearDecorations();
-    this.term.clearSelection();
+    if (!this.disposed) this.search.clear();
   }
 
   onSearchResults(cb: (r: SearchResults) => void): () => void {
-    const d = this.search.onDidChangeResults((e: ISearchResultChangeEvent) =>
-      cb({ index: e.resultIndex, count: e.resultCount }),
-    );
-    return () => d.dispose();
+    return this.search.onResults(cb);
   }
 
-  private scheduleFit() {
-    clearTimeout(this.fitTimer);
-    this.fitTimer = setTimeout(() => this.fitNow(), FIT_DEBOUNCE_MS);
-  }
+  // ───────── Tamaño ─────────
 
+  /** Ajusta columnas/filas al contenedor, solo si está visible. */
   fitNow() {
-    if (this.disposed || !this.host.offsetWidth || !this.host.offsetHeight) return;
-    const dims = this.fit.proposeDimensions();
-    if (!dims || !Number.isFinite(dims.cols) || !Number.isFinite(dims.rows) || dims.cols < 2 || dims.rows < 1) return;
-    if (dims.cols !== this.term.cols || dims.rows !== this.term.rows) this.term.resize(dims.cols, dims.rows);
+    if (!this.disposed) this.fit.fitNow();
   }
 
   private sendResize() {
-    if (this.termId && !this.disposed) this.api.resize(this.termId, this.term.cols, this.term.rows).catch(() => {});
+    if (!this.termId || this.disposed) return;
+    this.api.resize(this.termId, this.term.cols, this.term.rows).catch(() => {});
   }
+
+  // ───────── Cambios desde React ─────────
 
   show(focus: boolean) {
     requestAnimationFrame(() => {
       if (this.disposed) return;
+      // Si perdió el contexto GPU mientras estaba oculta, reintentar (con límite).
       this.gpu.enable();
       this.fitNow();
       if (focus) this.term.focus();
@@ -472,9 +478,8 @@ export class TermController {
     if (this.disposed) return;
     this.disposed = true;
     this.gen++;
-    clearTimeout(this.fitTimer);
+    this.fit.dispose();
     this.cancelExitMessage();
-    this.ro.disconnect();
     this.unTheme();
     this.term.element?.removeEventListener("paste", this.handlePasteEvent, true);
     this.gpu.dispose();

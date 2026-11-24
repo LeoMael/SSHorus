@@ -10,23 +10,46 @@ export interface MenuState {
   items: MenuItem[];
 }
 
-export function useSidebarTree(listVersion?: unknown) {
+/** Si la fila pedida no aparece en este tiempo (p. ej. el servidor se borró), se deja de buscar. */
+const REVEAL_GIVE_UP_MS = 3000;
+
+export function useSidebarTree() {
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
-  /** Fila que hay que mostrar (desplazar y enfocar) en cuanto aparezca, p. ej. un servidor recién añadido. */
-  const [reveal, setReveal] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** Fila que hay que mostrar (desplazar y enfocar) en cuanto aparezca, p. ej. un servidor recién añadido. */
+  const revealRef = useRef<string | null>(null);
+  const giveUpRef = useRef<number | undefined>(undefined);
+  const [, forceRender] = useState(0);
 
+  const setReveal = useCallback((key: string) => {
+    revealRef.current = key;
+    window.clearTimeout(giveUpRef.current);
+    // Si la fila no llega a aparecer (p. ej. el servidor se borró), se deja de buscar: así no roba el
+    // foco mucho después.
+    giveUpRef.current = window.setTimeout(() => {
+      if (revealRef.current === key) revealRef.current = null;
+    }, REVEAL_GIVE_UP_MS);
+    forceRender((n) => n + 1);
+  }, []);
+
+  useEffect(() => () => window.clearTimeout(giveUpRef.current), []);
+
+  // Sin lista de dependencias a propósito: la fila puede aparecer varios renders después (se guarda el
+  // servidor, se despliega su proyecto, se borra la búsqueda) y cualquiera de ellos puede ser el bueno.
+  // Sin nada pendiente sale enseguida, así que no cuesta nada.
   useEffect(() => {
-    if (!reveal) return;
+    const key = revealRef.current;
+    if (!key) return;
     const row = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-sb-key]") ?? []).find(
-      (el) => el.dataset.sbKey === reveal,
+      (el) => el.dataset.sbKey === key,
     );
-    if (!row) return; // aún no está en la lista: se reintenta cuando cambie listVersion
+    if (!row) return; // aún no está en la lista: se reintenta en el siguiente render
+    revealRef.current = null;
+    window.clearTimeout(giveUpRef.current);
     row.scrollIntoView({ block: "nearest" });
     row.focus();
-    setReveal(null);
-  }, [reveal, listVersion]);
+  });
 
   const closeMenu = useCallback(() => setMenu(null), []);
 

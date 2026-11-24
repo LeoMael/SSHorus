@@ -47,11 +47,7 @@ export function Sidebar() {
   const q = query.trim().toLowerCase();
   const visibleProjects = useMemo(() => filterProjects(projects, serverById, q), [projects, serverById, q]);
   const visibleServers = useMemo(() => (q ? servers.filter((s) => matchesServer(s, q)) : servers), [servers, q]);
-  const collapsedKey = useMemo(
-    () => Object.entries(collapsed).filter(([, v]) => v).map(([k]) => k).sort().join(","),
-    [collapsed],
-  );
-  const tree = useSidebarTree(`${visibleProjects.length}:${visibleServers.length}:${collapsedKey}:${q}`);
+  const tree = useSidebarTree();
 
   /** Selecciona y muestra un servidor: dentro de su proyecto (que se despliega) o en «Servidores». */
   const revealServer = (s: ServerProfile, projectId: string) => {

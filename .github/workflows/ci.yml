@@ -1,7 +1,7 @@
 # Integración continua: en cada push o pull request a main comprueba que SSHorus compila y
 # pasa las pruebas en Linux y en Windows (así una rotura de Windows se ve en el mismo push).
 #
-#   Interfaz: tsc (tipos) + vite build
+#   Interfaz: tsc (tipos) + ESLint (sin avisos) + pruebas (npm test) + vite build
 #   Motor:    cargo clippy + cargo test --lib (las pruebas que necesitan servidor SSH son
 #             #[ignore] y no se ejecutan aquí)
 #   macOS:    empaqueta la .app universal (Intel + Apple Silicon) en modo debug, como hace el
@@ -89,6 +89,14 @@ jobs:
 
       - name: Tipos (tsc)
         run: npx tsc --noEmit
+
+      # Cualquier aviso nuevo de ESLint hace fallar la CI (hoy está en 0).
+      - name: ESLint
+        run: npm run lint -- --max-warnings 0
+
+      # Las pruebas de la interfaz (src/**/*.test.ts), cada una empaquetada con rolldown para Node.
+      - name: Pruebas de la interfaz
+        run: npm test
 
       # También genera dist/, que el motor necesita para compilar (frontendDist = ../dist).
       - name: Compilar la interfaz (vite build)

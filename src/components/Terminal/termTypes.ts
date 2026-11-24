@@ -1,5 +1,4 @@
-// Tipos y utilidades puras del controlador de terminal (mensajes ANSI y lectura de línea).
-import type { Terminal } from "@xterm/xterm";
+// Tipos del controlador de terminal (estado, apertura de la shell, opciones y búsqueda).
 
 export type TermStatus = "opening" | "running" | "exited";
 /** Estado de la conexión SSH de la pestaña (de `useTabs`). */
@@ -55,32 +54,4 @@ export interface TermControllerOptions {
 export interface SearchResults {
   index: number;
   count: number;
-}
-
-export const DIM = (s: string) => `\x1b[0m\x1b[2m${s}\x1b[0m`;
-export const RED = (s: string) => `\x1b[0m\x1b[31m${s}\x1b[0m`;
-
-export function formatReconnectMessage(persistent: boolean, wasPersistent: boolean, reattached?: boolean): string {
-  if (persistent && reattached) return "— reconectado: volviendo a la sesión tmux —";
-  if (persistent && wasPersistent) return "— reconectado: la sesión tmux anterior terminó, abriendo una nueva —";
-  return "— reconectado —";
-}
-
-export function formatExitMessage(disabled: boolean, connState: ConnState, code: number | null): string {
-  if (disabled || connState === "closed") return "[Conexión cerrada]";
-  if (connState === "reconnecting") return "[Conexión perdida]";
-  if (code !== null && code !== 0) return `[Proceso terminado (código ${code}) — pulsa Enter para abrir otra shell]`;
-  return "[Proceso terminado — pulsa Enter para abrir otra shell]";
-}
-
-/** Texto de la línea donde está el cursor (con las anteriores si es continuación de ellas). */
-export function readCursorLine(term: Terminal): string {
-  const buf = term.buffer.active;
-  let y = buf.baseY + buf.cursorY;
-  let text = buf.getLine(y)?.translateToString(true) ?? "";
-  while (y > 0 && buf.getLine(y)?.isWrapped) {
-    y--;
-    text = (buf.getLine(y)?.translateToString(false) ?? "") + text;
-  }
-  return text;
 }
