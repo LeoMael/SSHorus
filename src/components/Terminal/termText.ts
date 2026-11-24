@@ -4,7 +4,7 @@
 /** Texto copiado sin los espacios de relleno: xterm.js copia los espacios que el programa escribió
  *  para borrar la línea (Claude Code y otros los ponen hasta el borde), y no sirven a nadie. */
 export function cleanCopiedText(text: string): string {
-  return text.replace(/[ \t ]+(?=\r?\n|$)/g, "").replace(/(?:\r?\n)+$/, "");
+  return text.replace(/[ \t\u00A0]+(?=\r?\n|$)/g, "").replace(/(?:\r?\n)+$/, "");
 }
 
 /** Líneas del texto pegado (sin contar el salto final). */

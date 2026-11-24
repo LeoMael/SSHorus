@@ -145,7 +145,7 @@ function sameContent(a: Snippet, b: Snippet): boolean {
 export function planImport(text: string): ImportPlan {
   let data: unknown;
   try {
-    data = JSON.parse(text.replace(/^﻿/, ""));
+    data = JSON.parse(text.replace(/^\uFEFF/, ""));
   } catch {
     throw new Error("El contenido no es un JSON válido.");
   }

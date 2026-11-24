@@ -370,7 +370,7 @@ export function AdminPanel({
 
   const onTabKey = (e: KeyboardEvent) => {
     const i = TABS.findIndex((t) => t.id === tab);
-    let n = i;
+    let n: number;
     if (e.key === "ArrowRight") n = (i + 1) % TABS.length;
     else if (e.key === "ArrowLeft") n = (i - 1 + TABS.length) % TABS.length;
     else if (e.key === "Home") n = 0;

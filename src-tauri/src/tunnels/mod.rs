@@ -5,6 +5,7 @@
 //! - En marcha por sesión (`manager`), con estado y contadores → evento `tunnel://status`.
 //! - Los canales `forwarded-tcpip` del servidor llegan por `ssh::handler` → `remote`.
 
+mod forward;
 mod io;
 mod local_ports;
 mod manager;

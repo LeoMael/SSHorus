@@ -20,6 +20,7 @@
 //! `get_vuln_report` y `scan_vulnerabilities` (`mcp/core.rs`).
 
 pub mod analyze;
+mod analyze_merge;
 pub mod cache;
 pub mod commands;
 pub mod ecosystem;
@@ -27,6 +28,7 @@ pub mod export;
 pub mod kernel;
 pub mod model;
 pub mod osv;
+mod osv_model;
 pub mod parse;
 pub mod recheck;
 // Lo usan el servidor MCP (`scan_vulnerabilities`) y las pruebas.

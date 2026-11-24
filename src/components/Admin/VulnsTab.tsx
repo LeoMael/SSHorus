@@ -1,91 +1,26 @@
 // Sub-pestaña «Vulnerabilidades»: qué software tiene el servidor y qué vulnerabilidades conocidas le
-// afectan. La lista sale de OSV.dev, de la herramienta de la distro o de Trivy; nunca de una IA.
-// Sin sudo se analiza el sistema y lo del usuario conectado; con sudo, también los contenedores de root
-// y de los usuarios elegidos. Todo es de solo lectura.
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import {
-  Bot,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  CircleSlash,
-  Eye,
-  FileDown,
-  History,
-  KeyRound,
-  Loader2,
-  Play,
-  RotateCcw,
-  Search,
-  Settings2,
-  ShieldAlert,
-  Square,
-  TriangleAlert,
-  Users,
-  X,
-} from "lucide-react";
+// afectan. Columnas, filtros e iconos de fase en VulnsTable.tsx.
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bot, Check, CircleSlash, Eye, FileDown, History, KeyRound, Play, RotateCcw, Settings2, ShieldAlert, Square, Users } from "lucide-react";
 import { errorMessage } from "../../api/core";
-import { ai, vulnscan, type Finding, type Report, type Severity } from "../../api/vulnscan";
-import {
-  cancelScan,
-  fixKind,
-  loadStoreUsers,
-  startScan,
-  useVulnNav,
-  useVulnScan,
-  type FixKind,
-  type Phase,
-} from "../../features/vulnscan";
+import { ai, vulnscan, type Report, type Severity } from "../../api/vulnscan";
+import { cancelScan, fixKind, loadStoreUsers, startScan, useVulnNav, useVulnScan, type FixKind } from "../../features/vulnscan";
 import { useLock } from "../../features/lock/lockStore";
 import { storedFailed, sudoModeOf, useStoredSudoState } from "../../features/privileges";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { useAdmin } from "./context";
-import { VirtualTable, type Column } from "./VirtualTable";
+import { VirtualTable } from "./VirtualTable";
 import { VulnSummary, diffReports, type ScanDiff } from "./VulnSummary";
 import { VulnDetail } from "./VulnDetail";
 import { AiAnswer, AiExplainDialog } from "./AiExplainDialog";
 import { ExportDialog, HistoryDialog, OptionsDialog, OsvSampleDialog, UsersDialog } from "./VulnsDialogs";
-import { originLabel, SEV_LABEL, SEV_ORDER, SevTag, SOURCE_LABEL, sudoToolOf } from "./vulnUi";
+import { SEV_ORDER, sudoToolOf } from "./vulnUi";
 import { VulnFixBar } from "./VulnFixBar";
 import { FixDialog } from "./FixDialog";
 import { useVulnFix } from "./useVulnFix";
+import { buildVulnColumns, matchesVuln, PhaseIcon, vulnRowKey, VulnsFilterBar, type VulnRow } from "./VulnsTable";
 import "./Vulns.css";
-
-const KERNEL_KEY = "__kernel__";
-
-type Row = { kind: "f"; f: Finding; child: boolean } | { kind: "kernel"; items: Finding[]; worst: Severity; open: boolean };
-
-function rowKey(r: Row): string {
-  return r.kind === "kernel" ? KERNEL_KEY : r.f.key;
-}
-
-function PhaseIcon({ p }: { p: Phase }) {
-  switch (p.status) {
-    case "ok":
-      return <Check size={13} className="vs-ph-ok" />;
-    case "running":
-      return <Loader2 size={13} className="adm-spin" />;
-    case "warn":
-      return <TriangleAlert size={13} className="vs-ph-warn" />;
-    case "error":
-      return <TriangleAlert size={13} className="vs-ph-error" />;
-    case "skipped":
-      return <CircleSlash size={13} className="faint" />;
-    default:
-      return <span className="vs-ph-dot" />;
-  }
-}
-
-function matches(f: Finding, q: string): boolean {
-  if (!q) return true;
-  const hay = [f.id, f.package, f.installed, f.fixed ?? "", f.summary ?? "", ...f.aliases, ...f.advisories, ...f.binaries].join(" ").toLowerCase();
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((w) => hay.includes(w));
-}
 
 export function VulnsTab() {
   const { sessionId, profileId, serverName, disabled, elevation, elev, info, askSudo } = useAdmin();
@@ -98,7 +33,6 @@ export function VulnsTab() {
   const aiSettings = useSettings((s) => s.settings.ai);
   const locked = useLock((s) => !!s.status?.locked);
   const running = !!run?.running;
-  // La contraseña de sudo (guardada, de la conexión o en memoria) no funcionó: mismo aviso que Administración.
   const storedSudo = useStoredSudoState(sessionId);
   const sudoBad = !elevation && (!!run?.sudoRejected || storedFailed(storedSudo));
 
@@ -117,7 +51,6 @@ export function VulnsTab() {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [pendingImage, setPendingImage] = useState<{ id: string; label: string } | null>(null);
 
-  // Último informe guardado al abrir (si aún no hay ninguno en memoria).
   useEffect(() => {
     if (report !== undefined) return;
     let alive = true;
@@ -130,7 +63,6 @@ export function VulnsTab() {
     };
   }, [report, profileId, sessionId, setReport]);
 
-  // Diferencia con el análisis anterior del historial.
   useEffect(() => {
     setDiff(null);
     if (!report) return;
@@ -148,7 +80,6 @@ export function VulnsTab() {
     };
   }, [report, profileId]);
 
-  // Atajo «Ver vulnerabilidades» desde Contenedores → Imágenes.
   const nav = useVulnNav((s) => s.request);
   const navDone = useVulnNav((s) => s.done);
   useEffect(() => {
@@ -183,14 +114,14 @@ export function VulnsTab() {
           (origin === "all" || f.target === origin) &&
           (!onlyFix || f.hasFix) &&
           (!fixFilter || (!!report && fixKind(report, f) === fixFilter)) &&
-          matches(f, query.trim()),
+          matchesVuln(f, query.trim()),
       ),
     [all, report, showUnimportant, severity, origin, onlyFix, fixFilter, query],
   );
-  const rows = useMemo<Row[]>(() => {
+  const rows = useMemo<VulnRow[]>(() => {
     const kernel = filtered.filter((f) => f.kernel && f.target === "system");
     const rest = filtered.filter((f) => !(f.kernel && f.target === "system"));
-    const out: Row[] = [];
+    const out: VulnRow[] = [];
     if (kernel.length) {
       const worst = SEV_ORDER.find((s) => kernel.some((k) => k.severity === s)) ?? "unknown";
       out.push({ kind: "kernel", items: kernel, worst, open: kernelOpen });
@@ -200,7 +131,7 @@ export function VulnsTab() {
     return out;
   }, [filtered, kernelOpen]);
 
-  const selRow = rows.find((r) => rowKey(r) === selected) ?? null;
+  const selRow = rows.find((r) => vulnRowKey(r) === selected) ?? null;
   const tool = sudoToolOf(info, elevation);
 
   const analyze = useCallback(async () => {
@@ -242,104 +173,8 @@ export function VulnsTab() {
     );
   }, [aiSettings.enabled, locked]);
 
-  const columns: Column<Row>[] = [
-    {
-      key: "sev",
-      label: "Gravedad",
-      width: "110px",
-      render: (r) =>
-        r.kind === "kernel" ? (
-          <span className="adm-cell-flex">
-            <button
-              className="icon-btn adm-row-btn vs-expander"
-              aria-expanded={r.open}
-              aria-label={r.open ? "Plegar las del kernel" : "Ver las del kernel una por una"}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleKernel();
-              }}
-              tabIndex={-1}
-            >
-              {r.open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            </button>
-            <SevTag s={r.worst} />
-          </span>
-        ) : (
-          <span className={r.child ? "vs-child" : undefined}>
-            <SevTag s={r.f.severity} />
-          </span>
-        ),
-    },
-    {
-      key: "id",
-      label: "CVE / aviso",
-      width: "minmax(150px, 1fr)",
-      render: (r) =>
-        r.kind === "kernel" ? (
-          <strong>Kernel: {r.items.length} vulnerabilidades</strong>
-        ) : (
-          <span className="adm-cell-flex">
-            <span className="mono adm-ellipsis">{r.f.id}</span>
-            {r.f.unimportant && <span className="adm-tag vs-tag-muted" title="La distro lo considera sin importancia">sin importancia</span>}
-          </span>
-        ),
-      title: (r) => (r.kind === "kernel" ? "Actualiza el kernel y reinicia" : [r.f.id, ...r.f.advisories, r.f.summary ?? ""].filter(Boolean).join("\n")),
-    },
-    {
-      key: "pkg",
-      label: "Paquete",
-      width: "minmax(120px, 1fr)",
-      render: (r) =>
-        r.kind === "kernel" ? (
-          <span className="faint">actualiza el kernel y reinicia</span>
-        ) : (
-          <span className="mono adm-ellipsis">{r.f.package}</span>
-        ),
-      title: (r) => (r.kind === "kernel" ? "" : r.f.binaries.join(", ") || r.f.package),
-    },
-    {
-      key: "ver",
-      label: "Instalada → arreglada",
-      width: "minmax(170px, 1.3fr)",
-      render: (r) => {
-        if (r.kind === "kernel") return <span className="faint">{r.items.filter((x) => x.hasFix).length} con arreglo</span>;
-        const f = r.f;
-        return (
-          <span className="mono adm-ellipsis">
-            {f.installed || "?"} →{" "}
-            {f.fixed ? (
-              <span className="vs-fixed">{f.fixed}</span>
-            ) : f.hasFix ? (
-              <span className="vs-fixed">sí</span>
-            ) : (
-              <span className="faint">sin arreglo</span>
-            )}
-          </span>
-        );
-      },
-      title: (r) => (r.kind === "kernel" ? "" : `${r.f.installed} → ${r.f.fixed ?? (r.f.hasFix ? "hay arreglo" : "sin arreglo")}`),
-    },
-    {
-      key: "origin",
-      label: "Origen",
-      width: "minmax(110px, 1fr)",
-      render: (r) => <span className="adm-ellipsis">{r.kind === "kernel" ? "Sistema" : originLabel(report!, r.f.target)}</span>,
-      title: (r) => (r.kind === "kernel" ? "Sistema" : originLabel(report!, r.f.target)),
-    },
-    {
-      key: "src",
-      label: "Fuente",
-      width: "100px",
-      render: (r) =>
-        r.kind === "kernel" ? (
-          ""
-        ) : (
-          <span className="faint">{r.f.sources.map((s) => SOURCE_LABEL[s]).join(", ")}</span>
-        ),
-    },
-  ];
-
   const toggleKernel = () => setKernelOpen((o) => !o);
+  const columns = buildVulnColumns(report, toggleKernel);
   const statusSources = report?.sources ?? [];
   const aiBlock = !aiSettings.enabled
     ? null
@@ -408,11 +243,7 @@ export function VulnsTab() {
                 { id: "trivy" as const, label: "Trivy", used: false, note: "se sabrá al analizar" },
               ]
           ).map((s) => (
-            <span
-              key={s.id}
-              className={`vs-src${s.used ? " on" : ""}`}
-              title={`${s.label}${s.note ? `: ${s.note}` : s.used ? ": usado" : ""}`}
-            >
+            <span key={s.id} className={`vs-src${s.used ? " on" : ""}`} title={`${s.label}${s.note ? `: ${s.note}` : s.used ? ": usado" : ""}`}>
               {s.used ? <Check size={11} /> : <CircleSlash size={11} />} {s.id === "osv" ? "OSV" : s.id === "trivy" ? s.label : "Distro"}
             </span>
           ))}
@@ -456,9 +287,7 @@ export function VulnsTab() {
               </li>
             ))}
           </ul>
-          <div className="vs-ph-progress">
-            {running ? run.progress : run.canceled ? "Análisis cancelado." : `No se pudo terminar: ${run.error}`}
-          </div>
+          <div className="vs-ph-progress">{running ? run.progress : run.canceled ? "Análisis cancelado." : `No se pudo terminar: ${run.error}`}</div>
         </div>
       )}
 
@@ -511,63 +340,27 @@ export function VulnsTab() {
               </ul>
             </details>
           )}
-          <div className="adm-toolbar">
-            <div className="adm-search adm-search-wide">
-              <Search size={13} />
-              <input
-                className="input"
-                placeholder="CVE, paquete, versión o texto"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e: KeyboardEvent) => {
-                  if (e.key === "Escape" && query) {
-                    e.stopPropagation();
-                    setQuery("");
-                  }
-                }}
-                aria-label="Buscar vulnerabilidades"
-              />
-              {query && (
-                <button className="icon-btn adm-search-clear" onClick={() => setQuery("")} aria-label="Limpiar búsqueda">
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-            <select className="input vs-select" value={severity} onChange={(e) => setSeverity(e.target.value as Severity | "all")} aria-label="Gravedad">
-              <option value="all">Todas las gravedades</option>
-              {SEV_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {SEV_LABEL[s]}
-                </option>
-              ))}
-            </select>
-            <select className="input vs-select" value={origin} onChange={(e) => setOrigin(e.target.value)} aria-label="Origen">
-              <option value="all">Todo (sistema, programas e imágenes)</option>
-              {report.targets.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.kind === "system" ? "Sistema" : t.kind === "runtime" ? "Programas sueltos" : t.label}
-                  {t.error ? " (con avisos)" : ""}
-                </option>
-              ))}
-            </select>
-            <label className="checkbox">
-              <input type="checkbox" checked={onlyFix} onChange={(e) => setOnlyFix(e.target.checked)} />
-              Solo con arreglo
-            </label>
-            {unimportantCount > 0 && (
-              <label className="checkbox" title="Debian marca algunas como «unimportant»: no suelen afectar en la práctica">
-                <input type="checkbox" checked={showUnimportant} onChange={(e) => setShowUnimportant(e.target.checked)} />
-                Mostrar lo que la distro considera sin importancia ({unimportantCount})
-              </label>
-            )}
-          </div>
+          <VulnsFilterBar
+            report={report}
+            query={query}
+            setQuery={setQuery}
+            severity={severity}
+            setSeverity={setSeverity}
+            origin={origin}
+            setOrigin={setOrigin}
+            onlyFix={onlyFix}
+            setOnlyFix={setOnlyFix}
+            unimportantCount={unimportantCount}
+            showUnimportant={showUnimportant}
+            setShowUnimportant={setShowUnimportant}
+          />
           <div className="vs-main">
             <VirtualTable
               label="Vulnerabilidades"
               columns={columns}
               rows={rows}
-              rowKey={rowKey}
-              selected={selRow ? rowKey(selRow) : null}
+              rowKey={vulnRowKey}
+              selected={selRow ? vulnRowKey(selRow) : null}
               onSelect={setSelected}
               onActivate={(r) => (r.kind === "kernel" ? toggleKernel() : setSelected(r.f.key))}
               rowClass={(r) => (r.kind === "kernel" ? "vs-row-kernel" : r.f.unimportant ? "adm-row-muted" : "")}
@@ -641,23 +434,11 @@ export function VulnsTab() {
       )}
       {dialog === "export" && report && <ExportDialog report={report} profileId={profileId} serverName={serverName} onClose={() => setDialog(null)} />}
       {dialog === "users" && (
-        <UsersDialog
-          profileId={profileId}
-          users={users}
-          loading={usersLoading}
-          error={usersError}
-          onReload={() => void loadUsers()}
-          onClose={() => setDialog(null)}
-        />
+        <UsersDialog profileId={profileId} users={users} loading={usersLoading} error={usersError} onReload={() => void loadUsers()} onClose={() => setDialog(null)} />
       )}
       {dialog === "options" && <OptionsDialog onClose={() => setDialog(null)} />}
       {dialog === "ai" && report && (
-        <AiExplainDialog
-          report={report}
-          profileId={profileId}
-          onDone={(r) => setReport(sessionId, r)}
-          onClose={() => setDialog(null)}
-        />
+        <AiExplainDialog report={report} profileId={profileId} onDone={(r) => setReport(sessionId, r)} onClose={() => setDialog(null)} />
       )}
     </div>
   );

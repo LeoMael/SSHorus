@@ -161,7 +161,7 @@ export async function rescanImage(o: {
     report = await vulnscan.rescanImage(o.report.serverId, o.report.id, o.target.key, images, o.useOsv, scanId);
   } catch (e) {
     if (isApiError(e, "Canceled") || cancel.canceled) throw new UpdateCanceled();
-    throw new Error(errorMessage(e));
+    throw new Error(errorMessage(e), { cause: e });
   } finally {
     unlisten();
     cancel.scanId = null;

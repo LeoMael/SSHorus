@@ -9,7 +9,7 @@ export function compareEntries(a: FileEntry, b: FileEntry, sort: SortState): num
   const da = isDirLike(a);
   const db = isDirLike(b);
   if (da !== db) return da ? -1 : 1;
-  let r = 0;
+  let r: number;
   switch (sort.key) {
     case "size":
       r = da ? 0 : a.size - b.size;

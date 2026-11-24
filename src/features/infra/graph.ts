@@ -1,175 +1,31 @@
 // Mapa de infraestructura: de lo leído en cada servidor (puertos, sitios web, contenedores, conexiones)
-// a un grafo de nodos y aristas, como un diagrama de arquitectura. Funciones puras.
-import type { ListenPort, PortsResult } from "../admin/ports";
+// a un grafo de nodos y aristas. Tipos y filtros en graphTypes.ts; upstreams/enlaces en graphLinks.ts.
 import { WELL_KNOWN } from "../admin/ports";
-import { certStatus, type Site, type WebResult } from "../admin/web";
-import type { Container, Engine } from "../containers/types";
-import { resolveOwner, sortOwners, SYSTEM_OWNER, webServerOwner, type OwnerContext } from "./owner";
-import type { InfraExtra } from "./parse";
+import { resolveOwner, sortOwners, SYSTEM_OWNER, webServerOwner } from "./owner";
+import { resolveUpstreamsAndCross } from "./graphLinks";
+import {
+  classify,
+  containerFor,
+  DB_RE,
+  healthOfContainer,
+  ownerContext,
+  PLUMBING_RE,
+  portText,
+  PROXY_IMG_RE,
+  siteNode,
+  type EdgeKind,
+  type Health,
+  type InfraGraph,
+  type Listener,
+  type MapEdge,
+  type MapNode,
+  type MapServer,
+  type OwnedContainer,
+  type PendingUpstream,
+  type ServerSnapshot,
+} from "./graphTypes";
 
-export { SYSTEM_OWNER, UNKNOWN_OWNER, sortOwners } from "./owner";
-
-export interface OwnedContainer extends Container {
-  engine: Engine;
-  /** Usuario dueño del contenedor («root» si es rootful o del demonio de Docker). */
-  user: string;
-}
-
-/** Lo leído en un servidor. */
-export interface ServerSnapshot {
-  /** id del perfil. */
-  id: string;
-  name: string;
-  /** Host o IP del perfil. */
-  host: string;
-  sessionId: string | null;
-  /** null = sin leer (no conectado). */
-  error: string | null;
-  offline?: boolean;
-  /** Se leyó con root/sudo (se ven los procesos y contenedores de todos los usuarios). */
-  elevated: boolean;
-  /** Usuario conectado. */
-  me: string | null;
-  ports: PortsResult | null;
-  web: WebResult | null;
-  containers: OwnedContainer[];
-  extra: InfraExtra | null;
-  /** Servicios `systemctl --user` en marcha por usuario. */
-  userServices: Record<string, string[]>;
-  /** Dueño de cada archivo de configuración de los servidores web (ruta → usuario). */
-  configOwners?: Record<string, string>;
-  /** El usuario conectado puede usar sudo (aunque esta lectura no lo usara). */
-  canSudo?: boolean;
-  /** Avisos cortos de la lectura. */
-  notes: string[];
-}
-
-export type NodeKind =
-  | "internet"
-  | "firewall"
-  | "port"
-  | "proxy"
-  | "site"
-  | "container"
-  | "service"
-  | "process"
-  | "db"
-  | "system"
-  | "external";
-
-export type Health = "ok" | "warn" | "bad" | "off";
-
-/** Adónde lleva «Ir a…» desde el panel de detalles. */
-export type NavTarget =
-  | { kind: "ports"; port: number }
-  | { kind: "web" }
-  | { kind: "containers"; name: string };
-
-export interface MapNode {
-  id: string;
-  /** Servidor (id del perfil); null = Internet. */
-  server: string | null;
-  owner: string | null;
-  kind: NodeKind;
-  /** Columna: 0 Internet · 1 cortafuegos · 2 puertos · 3 proxy · 4 sitios · 5 apps · 6 datos. */
-  layer: number;
-  label: string;
-  sub: string;
-  health: Health;
-  /** Proyecto de Compose o pod. */
-  group: string | null;
-  /** Solo escucha en local (o no escucha). */
-  localOnly: boolean;
-  details: [string, string][];
-  nav: NavTarget | null;
-}
-
-export type EdgeKind = "net" | "proxy" | "publish" | "cross";
-
-export interface MapEdge {
-  id: string;
-  from: string;
-  to: string;
-  label: string;
-  kind: EdgeKind;
-}
-
-export interface MapServer {
-  id: string;
-  name: string;
-  os: string | null;
-  host: string;
-  health: Health;
-  owners: string[];
-  elevated: boolean;
-  notes: string[];
-  firewall: string | null;
-  /** «Lo mío»: cuántos servicios de otros quedan plegados en «Otros». */
-  hidden?: number;
-}
-
-export interface InfraGraph {
-  servers: MapServer[];
-  nodes: MapNode[];
-  edges: MapEdge[];
-}
-
-export const LAYERS = ["Internet", "Cortafuegos", "Entrada", "Proxy", "Sitios", "Apps", "Datos"];
-
-const DB_RE = /postgres|mysqld|mariadb|mongod|mongo|redis|valkey|memcached|elasticsearch|opensearch|clickhouse|rabbitmq|beam\.smp|influxd|cassandra|cockroach|etcd|keydb|minio/i;
-const PROXY_RE = /^(nginx|caddy|apache2?|httpd|traefik|haproxy|envoy|lighttpd)$/i;
-const PROXY_IMG_RE = /(^|\/)(nginx|caddy|traefik|haproxy|httpd|envoy)(:|$|-)/i;
-const SYSTEM_RE =
-  /^(sshd|systemd.*|chronyd|ntpd|cupsd|cups-browsed|rpcbind|rpc\.\w+|avahi-daemon|dnsmasq|master|exim4?|postfix|dhclient|NetworkManager|containerd|dockerd|cockpit.*|smbd|nmbd|rsyslogd|sssd|zabbix_agentd|node_exporter|tailscaled|xrdp.*|colord|snapd)$/;
-/** Procesos que solo reenvían el puerto publicado de un contenedor. */
-const PLUMBING_RE = /^(rootlessport|rootlesskit|docker-proxy|conmon|pasta|pasta\.avx2|slirp4netns|podman)$/;
-const DB_PORTS = new Set([5432, 3306, 6379, 27017, 11211, 9200, 5672, 9042, 26257, 8086, 6380, 2379, 9000]);
-
-function isLocalHost(h: string | null): boolean {
-  if (!h) return true;
-  const x = h.toLowerCase().replace(/^\[|\]$/g, "");
-  return x === "localhost" || x.startsWith("127.") || x === "::1" || x === "0.0.0.0" || x === "::" || x === "*";
-}
-
-function healthOfContainer(c: Container): Health {
-  if (c.state === "running") return c.health === "unhealthy" ? "bad" : c.health === "starting" ? "warn" : "ok";
-  if (c.state === "restarting" || c.state === "paused") return "warn";
-  if (c.state === "exited" && c.exitCode !== null && c.exitCode !== 0) return "bad";
-  return "off";
-}
-
-function portText(p: { port: number; proto: string }): string {
-  return p.proto === "udp" ? `${p.port}/udp` : `:${p.port}`;
-}
-
-interface Listener {
-  node: MapNode;
-  pids: Set<number>;
-  procName: string | null;
-  ports: ListenPort[];
-}
-
-/** Busca el contenedor de un puerto: por nombre/id (cgroup) o por el puerto publicado. */
-function containerFor(p: ListenPort, cs: OwnedContainer[]): OwnedContainer | null {
-  if (p.container) {
-    const k = p.container;
-    const byName = cs.find((c) => c.name === k || c.id.startsWith(k) || k.startsWith(c.shortId));
-    if (byName) return byName;
-  }
-  // Solo los que están en marcha: uno parado no escucha (y no debe quedarse con el puerto de otro).
-  const pub = cs.filter((c) => c.state === "running" && c.ports.some((m) => m.hostPort !== null && p.port >= m.hostPort && p.port < m.hostPort + Math.max(1, m.range) && m.protocol === p.proto));
-  if (pub.length === 0) return null;
-  // Con varios usuarios, el del mismo dueño que el proceso que escucha.
-  return pub.find((c) => c.user === p.user) ?? pub[0];
-}
-
-function classify(name: string, port: number | null): NodeKind {
-  if (PROXY_RE.test(name)) return "proxy";
-  if (DB_RE.test(name)) return "db";
-  if (SYSTEM_RE.test(name) || /^systemd-/.test(name)) return "system";
-  if (port !== null && DB_PORTS.has(port) && !name) return "db";
-  return "process";
-}
+export * from "./graphTypes";
 
 /** Construye el grafo de uno o varios servidores (los de un proyecto en un mismo lienzo). */
 export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGraph {
@@ -203,7 +59,6 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
     nav: null,
   };
 
-  // Por servidor: puerto → quien escucha (para resolver upstreams y conexiones de otros servidores).
   const byPort = new Map<string, Map<number, Listener>>();
   const allListeners = new Map<string, Listener[]>();
 
@@ -230,7 +85,6 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
     const ctx = ownerContext(s);
     const ownerOfUser = (user: string | null) => resolveOwner({ kind: "account", user }, ctx);
 
-    // Cortafuegos activo: Internet → cortafuegos → puertos.
     const fw = s.extra?.firewall.find((f) => f.active) ?? null;
     if (s.extra?.firewall.length) srv.firewall = s.extra.firewall.map((f) => `${f.tool} ${f.state}`).join(" · ");
     let entry = internet.id;
@@ -253,7 +107,6 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
       entry = n.id;
     }
 
-    // Contenedores.
     const ctrNode = new Map<OwnedContainer, MapNode>();
     for (const c of s.containers) {
       const db = DB_RE.test(c.image) || DB_RE.test(c.name);
@@ -288,7 +141,6 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
       owners.add(owner);
     }
 
-    // Quién escucha cada puerto.
     const seen = new Set<string>();
     for (const p of s.ports?.ports ?? []) {
       const owner = ownerOfUser(p.user);
@@ -370,14 +222,12 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
       const m = n.kind === "container" || n.kind === "db" ? ctr?.ports.find((x) => x.hostPort === p.port) : null;
       edge(pn.id, n.id, m ? `→${m.containerPort}` : "", m ? "publish" : "net");
     }
-    // Puertos de cada nodo en sus detalles.
     for (const l of listeners) {
       const list = [...new Set(l.ports.map((p) => `${p.scope === "local" ? "local " : ""}${portText(p)}`))];
       l.node.details.push(["Escucha", list.join(", ")]);
       if (l.node.sub === "proceso" || l.node.sub === "systemd") l.node.sub = list.slice(0, 3).join(" ");
     }
 
-    // Servicios de usuario (systemctl --user).
     for (const [user, units] of Object.entries(s.userServices)) {
       const owner = resolveOwner({ kind: "unit", scope: "user", user }, ctx);
       for (const u of units) {
@@ -401,10 +251,8 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
       }
     }
 
-    // Proxy web y sitios.
     for (const w of s.web?.servers ?? []) {
       const declared = webServerOwner({ status: w.status, configOwner: s.configOwners?.[w.configPath] ?? null }, ctx);
-      // El proceso que escucha, solo si es del mismo dueño (un Caddy propio no se lleva la configuración del sistema).
       const l = listeners.find((x) => x.procName && x.procName.toLowerCase().startsWith(w.server) && (declared === null || x.node.owner === declared));
       const health: Health = w.status === "failed" ? "bad" : w.status === "inactive" ? "off" : w.warning ? "warn" : "ok";
       let pn: MapNode;
@@ -429,7 +277,6 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
           nav: { kind: "web" },
         });
         owners.add(pn.owner!);
-        // Sin ver quién escucha en sus puertos (80/443 sin sudo), el camino desde Internet pasa por él.
         for (const port of new Set(w.sites.flatMap((x) => x.listens.map((li) => li.port)))) {
           const pnode = nodes.get(nid(`port:tcp:${port}`));
           if (pnode && portMap.get(port)?.node.id === nid(`proc:?:tcp:${port}`)) edge(pnode.id, pn.id, "", "net");
@@ -453,100 +300,8 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
     srv.owners = sortOwners([...owners], s.me);
   }
 
-  // Upstreams (necesitan los puertos de todos los servidores).
-  const findServer = (host: string | null, from: string): ServerSnapshot | null => {
-    if (!host || isLocalHost(host)) return null;
-    const h = host.toLowerCase();
-    return snaps.find((x) => x.id !== from && (x.host.toLowerCase() === h || x.name.toLowerCase() === h || x.extra?.hostname?.toLowerCase() === h || x.extra?.addrs.includes(host))) ?? null;
-  };
-  for (const u of pendingUpstreams) {
-    const snap = snaps.find((x) => x.id === u.sid)!;
-    const self = isLocalHost(u.host) || snap.extra?.addrs.includes(u.host ?? "") || snap.extra?.hostname === u.host;
-    let target: MapNode | null = null;
-    let kind: EdgeKind = "proxy";
-    if (u.socket) {
-      target = add({
-        id: `${u.sid}|sock:${u.socket}`,
-        server: u.sid,
-        owner: u.owner,
-        kind: "process",
-        layer: 5,
-        label: u.socket.split("/").pop() ?? u.socket,
-        sub: "socket unix",
-        health: "ok",
-        group: null,
-        localOnly: true,
-        details: [["Socket", u.socket]],
-        nav: null,
-      });
-    } else if (self && u.port !== null) {
-      target = byPort.get(u.sid)?.get(u.port)?.node ?? null;
-    } else if (u.host && u.port !== null) {
-      const ctr = snap.containers.find((c) => c.name === u.host || c.composeService === u.host);
-      const other = findServer(u.host, u.sid);
-      if (ctr) target = nodes.get(`${u.sid}|ctr:${ctr.user}:${ctr.name}`) ?? null;
-      else if (other) {
-        target = byPort.get(other.id)?.get(u.port)?.node ?? null;
-        kind = "cross";
-      }
-    }
-    if (!target) {
-      const host = u.host ?? "localhost";
-      target = add({
-        id: `${u.sid}|ext:${host}:${u.port ?? ""}`,
-        server: u.sid,
-        owner: u.owner,
-        kind: "external",
-        layer: 6,
-        label: `${host}${u.port ? `:${u.port}` : ""}`,
-        sub: self ? "nada escucha aquí" : "destino externo",
-        health: self ? "bad" : "ok",
-        group: null,
-        localOnly: true,
-        details: [["Destino", u.url]],
-        nav: null,
-      });
-    }
-    edge(u.from, target.id, u.label, kind);
-  }
+  resolveUpstreamsAndCross({ snaps, servers, nodes, byPort, allListeners, add, edge }, pendingUpstreams);
 
-  // Conexiones establecidas entre servidores del proyecto (p. ej. la app de web-prod → postgres de db-01).
-  for (const s of snaps) {
-    const mine = byPort.get(s.id)!;
-    for (const c of s.extra?.established ?? []) {
-      if (mine.has(c.localPort)) continue; // entrante
-      const other = snaps.find((x) => x.id !== s.id && (x.extra?.addrs.includes(c.peerIp) || x.host === c.peerIp));
-      if (!other) continue;
-      const target = byPort.get(other.id)?.get(c.peerPort)?.node;
-      if (!target) continue;
-      const ls = allListeners.get(s.id)!;
-      const src = (c.pid !== null ? ls.find((l) => l.pids.has(c.pid!)) : undefined) ?? (c.proc ? ls.find((l) => l.procName === c.proc) : undefined);
-      let node = src?.node;
-      if (!node) {
-        const user = c.pid !== null ? (s.extra?.procUsers?.get(c.pid) ?? null) : null;
-        const owner = resolveOwner({ kind: "account", user }, ownerContext(s));
-        node = add({
-          id: `${s.id}|cli:${owner}:${c.proc ?? "?"}`,
-          server: s.id,
-          owner,
-          kind: "process",
-          layer: 5,
-          label: c.proc ?? "conexión saliente",
-          sub: "cliente",
-          health: "ok",
-          group: null,
-          localOnly: true,
-          details: [["Proceso", c.proc ?? "? (con sudo se ve cuál)"]],
-          nav: null,
-        });
-        const srv = servers.find((x) => x.id === s.id)!;
-        if (!srv.owners.includes(owner)) srv.owners = sortOwners([...srv.owners, owner], s.me);
-      }
-      edge(node.id, target.id, `:${c.peerPort}`, "cross");
-    }
-  }
-
-  // Estado del servidor: aviso si algo está caído.
   for (const srv of servers) {
     if (srv.health !== "ok") continue;
     if ([...nodes.values()].some((n) => n.server === srv.id && n.health === "bad")) srv.health = "warn";
@@ -554,100 +309,7 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
 
   const list = [...nodes.values()];
   if (list.length > 0 || servers.length > 0) list.unshift(internet);
-  // Internet solo si hay algo expuesto.
   const es = [...edges.values()];
   const out = es.some((e) => e.from === internet.id) ? list : list.filter((n) => n !== internet);
   return { servers, nodes: out, edges: es };
-}
-
-interface PendingUpstream {
-  sid: string;
-  from: string;
-  host: string | null;
-  port: number | null;
-  socket: string | null;
-  label: string;
-  owner: string;
-  url: string;
-}
-function siteNode(site: Site, sid: string, owner: string, now: number): MapNode {
-  const cert = site.https ? certStatus(site.certExpires, now) : null;
-  const name = site.names[0] ?? (site.isDefault ? "(por defecto)" : "(sin nombre)");
-  const more = site.names.length > 1 ? ` +${site.names.length - 1}` : "";
-  return {
-    id: `${sid}|site:${site.key}`,
-    server: sid,
-    owner,
-    kind: "site",
-    layer: 4,
-    label: name + more,
-    sub: site.https ? (cert ? `TLS · ${cert.text.replace(/^caduca en /, "")}` : "TLS") : "HTTP",
-    health: cert ? cert.level : "ok",
-    group: null,
-    localOnly: false,
-    details: [
-      ["Dominios", site.names.join(", ") || "cualquiera"],
-      ["Escucha", site.listens.map((l) => `${l.port}${l.https ? " HTTPS" : ""}`).join(", ")],
-      ...(site.https ? [["Certificado", cert?.text ?? "sin leer"] as [string, string]] : []),
-      ...site.routes.map((r) => [r.path, routeText(r.target)] as [string, string]),
-      ...(site.file ? [["Archivo", `${site.file}${site.line ? `:${site.line}` : ""}`] as [string, string]] : []),
-    ],
-    nav: { kind: "web" },
-  };
-}
-
-function routeText(t: Site["routes"][number]["target"]): string {
-  switch (t.kind) {
-    case "proxy":
-      return `→ ${t.url}`;
-    case "fastcgi":
-      return `fastcgi ${t.addr}`;
-    case "files":
-      return `archivos ${t.root}`;
-    case "redirect":
-      return `redirige ${t.to}`;
-    default:
-      return t.text;
-  }
-}
-
-function ownerContext(s: ServerSnapshot): OwnerContext {
-  return { me: s.me, seesAll: s.elevated, humans: s.extra?.humans ?? null };
-}
-
-export interface GraphFilter {
-  hideLocal: boolean;
-  hideSystem: boolean;
-  /** null = todos. */
-  owners: Set<string> | null;
-}
-
-/** Aplica los filtros: quita nodos y las aristas que se quedan sin uno de sus extremos. */
-export function filterGraph(g: InfraGraph, f: GraphFilter): InfraGraph {
-  const linked = new Set<string>();
-  for (const e of g.edges) if (e.kind !== "net") (linked.add(e.from), linked.add(e.to));
-  let keep = g.nodes.filter((n) => {
-    if (n.kind === "internet") return true;
-    if (f.owners && n.owner && !f.owners.has(n.owner)) return false;
-    if (f.hideSystem && n.kind === "system") return false;
-    if (f.hideLocal && n.localOnly && !linked.has(n.id) && n.kind !== "proxy") return false;
-    return true;
-  });
-  let ids = new Set(keep.map((n) => n.id));
-  let edges = g.edges.filter((e) => ids.has(e.from) && ids.has(e.to));
-  // Puertos (y cortafuegos) que se quedan sin nadie detrás.
-  const outgoing = new Set(edges.map((e) => e.from));
-  keep = keep.filter((n) => (n.kind !== "port" && n.kind !== "firewall") || outgoing.has(n.id));
-  ids = new Set(keep.map((n) => n.id));
-  edges = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
-  const used = new Set(edges.map((e) => e.from));
-  if (!used.has("internet")) keep = keep.filter((n) => n.kind !== "internet");
-  const servers = g.servers.map((s) => ({ ...s, owners: f.owners ? s.owners.filter((o) => f.owners!.has(o)) : s.owners }));
-  return { servers, nodes: keep, edges };
-}
-
-/** Todos los usuarios que aparecen en el grafo. */
-export function graphOwners(g: InfraGraph): string[] {
-  const all = g.servers.flatMap((s) => s.owners);
-  return sortOwners(all, null);
 }

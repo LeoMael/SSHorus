@@ -135,7 +135,7 @@ export function checkForUpdates({ silent = false }: { silent?: boolean } = {}): 
         error: friendlyError(e),
         lastCheck: Date.now(),
       });
-      if (!silent) throw new Error(friendlyError(e));
+      if (!silent) throw new Error(friendlyError(e), { cause: e });
       return null;
     } finally {
       checking = null;
@@ -183,7 +183,7 @@ export async function installUpdate(): Promise<void> {
     await relaunch();
   } catch (e) {
     useUpdater.setState({ status: "error", error: friendlyError(e) });
-    throw new Error(friendlyError(e));
+    throw new Error(friendlyError(e), { cause: e });
   }
 }
 

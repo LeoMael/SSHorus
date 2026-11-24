@@ -64,7 +64,7 @@ function VirtualTableInner<T>(p: Props<T>) {
   const onKeyDown = (e: KeyboardEvent) => {
     if (!p.rows.length) return;
     const page = Math.max(1, Math.floor(view.height / ROW_H) - 1);
-    let next = index;
+    let next: number;
     switch (e.key) {
       case "ArrowDown":
         next = Math.min(p.rows.length - 1, index + 1);

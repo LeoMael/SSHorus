@@ -416,8 +416,8 @@ export function parseStats(text: string): ContainerStats[] {
     const id = str(pick(o, "id", "ID", "ContainerID", "Container"));
     const name = str(pick(o, "name", "Name"));
     if (!id && !name) continue;
-    let memUsage: number | null = null;
-    let memLimit: number | null = null;
+    let memUsage: number | null;
+    let memLimit: number | null;
     const mu = pick(o, "mem_usage", "MemUsage");
     if (typeof mu === "string") {
       const [a, b] = mu.split("/");
@@ -449,7 +449,7 @@ export function statsFor(stats: ContainerStats[], c: { id: string; name: string;
 
 /** Resumen legible de `inspect <contenedor>` (igual para Podman y Docker). */
 export function parseInspect(text: string): { summary: InspectSummary | null; raw: unknown } {
-  let raw: unknown = null;
+  let raw: unknown;
   try {
     raw = JSON.parse(text.trim());
   } catch {
