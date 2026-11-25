@@ -1,20 +1,22 @@
 // Diálogo «Tráfico y visitas» de un sitio web (Caddy o nginx).
 // Consulta 100 % bajo demanda (sin refresco automático) ejecutada con prioridad mínima en el servidor.
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, FilePlus2, KeyRound, RefreshCw, Terminal } from "lucide-react";
+import { AlertTriangle, BarChart3, FileMinus2, FilePlus2, KeyRound, RefreshCw, Terminal } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { formatBytes } from "../../lib/format";
 import {
-  enableSiteLogPlan,
+  isSshorusLog,
+  siteLogPlan,
   parseTraffic,
   trafficScript,
+  type LogAction,
   type ServerInfo,
   type Site,
   type TrafficRange,
   type TrafficReport,
 } from "../../features/admin";
 import { AdmModal } from "../ui/AdmModal";
-import { PlanModal } from "./PlanReview";
+import { WebLogDialog } from "./WebLogDialog";
 import { Segmented, type SegOption } from "../ui/Segmented";
 import { useAdmin } from "./context";
 import { WebTrafficChart } from "./WebTrafficChart";
@@ -32,11 +34,11 @@ interface Props {
   server: ServerInfo;
   site: Site;
   onClose: () => void;
-  /** Tras activar el registro en el servidor, recarga Sitios web para detectar la nueva ruta. */
-  onLogEnabled: () => void;
+  /** Tras poner o quitar el registro en el servidor, recarga Sitios web para detectar la nueva ruta. */
+  onLogChanged: () => void;
 }
 
-export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props) {
+export function WebTrafficDialog({ server, site, onClose, onLogChanged }: Props) {
   const { sessionId, elevation, elev, askSudo, disabled } = useAdmin();
   const staticId = useId();
   const botsId = useId();
@@ -45,7 +47,7 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
   const [excludeBots, setExcludeBots] = useState(true);
   const [useJournal, setUseJournal] = useState(false);
   const [subtab, setSubtab] = useState<TrafficSubTab>("paths");
-  const [setupOpen, setSetupOpen] = useState(false);
+  const [logDialog, setLogDialog] = useState<LogAction | null>(null);
   const [state, setState] = useState<{ busy: boolean; report: TrafficReport | null; error: string | null; elevated: boolean }>({
     busy: false,
     report: null,
@@ -56,7 +58,10 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
   const log = site.accessLog ?? null;
   const hasSource = !!log?.path || log?.format === "journal" || useJournal;
   const title = site.names[0] ?? (site.server === "caddy" ? "Cualquier dominio" : "Sitio por defecto");
-  const setup = useMemo(() => enableSiteLogPlan(server, site), [server, site]);
+  const setup = useMemo(() => siteLogPlan(server, site, "enable"), [server, site]);
+  const removal = useMemo(() => (isSshorusLog(site) ? siteLogPlan(server, site, "disable") : null), [server, site]);
+  const logPlan = logDialog === "enable" ? setup : logDialog === "disable" ? removal : null;
+  const openLog = (a: LogAction) => (elevation ? setLogDialog(a) : askSudo());
 
   const load = useCallback(async () => {
     if (!hasSource || disabled) return;
@@ -109,7 +114,7 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
                   <button
                     className="btn btn-primary"
                     disabled={disabled || (!elevation && !elev.canAskSudo)}
-                    onClick={() => (elevation ? setSetupOpen(true) : askSudo())}
+                    onClick={() => openLog("enable")}
                     title={!elevation ? "Necesitas permisos de administrador (sudo) para editar la configuración" : undefined}
                   >
                     {elevation ? <FilePlus2 size={14} /> : <KeyRound size={14} />}
@@ -162,7 +167,7 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
                       : "Este registro lo comparten varios sitios (el formato estándar de nginx no guarda el dominio por línea): las cifras incluyen todo el servidor."}
                   </span>
                   {setup && (
-                    <button className="btn btn-sm" onClick={() => (elevation ? setSetupOpen(true) : askSudo())} disabled={disabled}>
+                    <button className="btn btn-sm" onClick={() => openLog("enable")} disabled={disabled}>
                       <FilePlus2 size={13} /> Crear log propio…
                     </button>
                   )}
@@ -174,7 +179,7 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
                   <Terminal size={13} aria-hidden="true" />
                   <span>Leyendo desde el diario de systemd (<code>journalctl -u caddy</code>). Puedes guardar un archivo dedicado con rotación.</span>
                   {setup && (
-                    <button className="btn btn-sm" onClick={() => (elevation ? setSetupOpen(true) : askSudo())} disabled={disabled}>
+                    <button className="btn btn-sm" onClick={() => openLog("enable")} disabled={disabled}>
                       <FilePlus2 size={13} /> Guardar en archivo…
                     </button>
                   )}
@@ -264,6 +269,8 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
                       Leídos {formatBytes(report.meta.scannedBytes)}
                       {report.meta.fileSize > 0 ? ` de ${formatBytes(report.meta.fileSize)}` : ""}
                       {" "}({report.meta.linesRead.toLocaleString("es-ES")} líneas)
+                      {report.meta.rotatedFiles > 0 &&
+                        ` · con ${report.meta.rotatedFiles} ${report.meta.rotatedFiles === 1 ? "archivo rotado" : "archivos rotados"}`}
                     </span>
                     {report.meta.truncated && (
                       <>
@@ -279,30 +286,33 @@ export function WebTrafficDialog({ server, site, onClose, onLogEnabled }: Props)
           )}
         </div>
         <div className="modal-footer">
+          {removal && (
+            <button
+              className="btn adm-footer-left"
+              onClick={() => openLog("disable")}
+              disabled={disabled}
+              title="Quita del sitio el registro que puso SSHorus (el archivo se conserva)"
+            >
+              <FileMinus2 size={14} /> Quitar registro…
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onClose}>
             Cerrar
           </button>
         </div>
       </AdmModal>
 
-      {setupOpen && setup && (
-        <PlanModal
-          title={setup.plan.action}
-          plan={setup.plan}
-          runLabel="Activar registro"
-          width={640}
-          onCancel={() => setSetupOpen(false)}
-          onDone={() => {
-            setSetupOpen(false);
+      {logPlan && (
+        <WebLogDialog
+          server={server}
+          site={site}
+          plan={logPlan}
+          onClose={() => setLogDialog(null)}
+          onChanged={() => {
             setUseJournal(false);
-            onLogEnabled();
+            onLogChanged();
           }}
-        >
-          <p className="dialog-message">
-            Se añadirá un registro dedicado en <code className="mono">{setup.logPath}</code>. Antes de recargar se guarda una
-            copia del archivo original y se valida la configuración; si algo falla, se restaura automáticamente.
-          </p>
-        </PlanModal>
+        />
       )}
     </>
   );

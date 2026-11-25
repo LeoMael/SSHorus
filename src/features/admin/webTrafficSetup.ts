@@ -1,11 +1,45 @@
-// Planes seguros para activar un registro de visitas dedicado a un sitio (Caddy o nginx).
-// Siempre muestran el comando exacto antes de ejecutarse, guardan copia de respaldo, validan la
-// configuración y restauran el archivo original si algo falla. Funciones puras.
-import type { Plan } from "./commands";
+// Scripts para poner o quitar el registro de visitas propio de un sitio (Caddy o nginx), paso a paso:
+// revisar, copia de respaldo, carpeta (dueño y SELinux), editar, validar, recargar y una visita de
+// prueba. Si algo falla (o se cancela) antes de recargar bien, el archivo vuelve a quedar como estaba.
+// El script avisa de cada paso con «@@paso <clave>» (lo lee webLogResult.ts). Funciones puras.
 import { shQuote } from "../../lib/remote";
 import { reloadSteps, type ServerInfo, type Site } from "./web";
+import { PY_LOG_PATCH } from "./webLogPatch";
 
 export const TRAFFIC_LOG_MARK = "# sshorus-traffic-log";
+/** Donde quedan las copias del archivo antes de cada cambio (no las lee nginx ni Caddy). */
+export const LOG_BACKUP_DIR = "/var/backups/sshorus";
+/** Agente de la visita de prueba (el filtro «Sin bots» la quita de las cifras). */
+export const PROBE_AGENT = "SSHorus-prueba-del-registro";
+
+export type LogAction = "enable" | "disable";
+export type LogStepKey = "check" | "backup" | "folder" | "edit" | "validate" | "reload" | "verify";
+
+const STEP_LABEL: Record<LogStepKey, string> = {
+  check: "Revisar la configuración",
+  backup: "Copia de respaldo",
+  folder: "Preparar la carpeta del registro",
+  edit: "Editar el sitio",
+  validate: "Validar la configuración",
+  reload: "Recargar sin cortar conexiones",
+  verify: "Comprobar con una visita de prueba",
+};
+
+const STEPS: Record<LogAction, LogStepKey[]> = {
+  enable: ["check", "backup", "folder", "edit", "validate", "reload", "verify"],
+  disable: ["check", "backup", "edit", "validate", "reload"],
+};
+
+export interface SiteLogPlan {
+  action: LogAction;
+  title: string;
+  logPath: string;
+  steps: { key: LogStepKey; label: string }[];
+  /** Script completo (se enseña antes de ejecutarlo). */
+  script: string;
+  /** El mismo script sin el parche en Python (para el historial). */
+  brief: string;
+}
 
 /** Convierte un dominio o clave de sitio en un nombre de archivo seguro (`[a-z0-9._-]`). */
 export function siteLogSlug(site: Pick<Site, "names" | "server" | "key">): string {
@@ -18,235 +52,175 @@ export function siteLogSlug(site: Pick<Site, "names" | "server" | "key">): strin
   return base || `${site.server}-site`;
 }
 
-/** Ruta por defecto donde SSHorus propone guardar el registro del sitio. */
+/** Ruta donde SSHorus guarda el registro del sitio: en la carpeta de logs del servidor web (SELinux ya la conoce). */
 export function suggestedLogPath(site: Pick<Site, "names" | "server" | "key">): string {
   const slug = siteLogSlug(site);
   return site.server === "caddy" ? `/var/log/caddy/${slug}.log` : `/var/log/nginx/${slug}.access.log`;
 }
 
-/**
- * Python compacto para insertar la directiva de log en el bloque del sitio (sin tocar el resto).
- * - Caddy: busca el archivo (el principal o sus `import`) con la cabecera del dominio e inserta un
- *   bloque `log { output file … { roll_size 10mb; roll_keep 5; roll_keep_for 720h }; format json }`.
- * - nginx: en `file` a partir de `line`, sustituye `access_log off;` si existe en ese `server {}` o
- *   inserta `access_log <logPath> combined;` tras la apertura `server {`.
- */
-const PY_PATCH_CADDY = String.raw`
-import glob, os, re, sys
+const logDir = (log: string) => log.replace(/\/[^/]+$/, "") || "/";
 
-cfg_path, host, log_path, mark, backup_out = sys.argv[1:6]
+/** El registro del sitio es el que pone SSHorus (y por tanto se puede quitar desde aquí). */
+export function isSshorusLog(site: Site): boolean {
+  return !!site.accessLog?.path && site.accessLog.path === suggestedLogPath(site);
+}
 
-def collect_files(path, seen):
-    real = os.path.realpath(path)
-    if real in seen or not os.path.isfile(path):
-        return []
-    seen.add(real)
-    files = [path]
-    base = os.path.dirname(path)
-    try:
-        txt = open(path, "r", encoding="utf-8", errors="replace").read()
-    except OSError:
-        return files
-    for m in re.finditer(r"^\s*import\s+([^\s#]+)", txt, re.M):
-        pat = m.group(1).strip("\"'")
-        full = pat if os.path.isabs(pat) else os.path.join(base, pat)
-        for g in sorted(glob.glob(full)):
-            files.extend(collect_files(g, seen))
-    return files
-
-def find_site_block(lines, target):
-    low = target.lower()
-    depth = 0
-    for idx, line in enumerate(lines):
-        stripped = line.split("#", 1)[0].strip()
-        if depth == 0 and "{" in stripped:
-            head = stripped.split("{", 1)[0].strip()
-            addrs = [a.strip().rstrip(",") for a in re.split(r"[\s,]+", head) if a.strip()]
-            for a in addrs:
-                clean = re.sub(r"^https?://", "", a, flags=re.I).split(":")[0].lower()
-                if clean == low:
-                    # Buscar el cierre del bloque para comprobar si ya tiene «log»
-                    d = stripped.count("{") - stripped.count("}")
-                    end = idx
-                    for j in range(idx + 1, len(lines)):
-                        s2 = lines[j].split("#", 1)[0]
-                        d += s2.count("{") - s2.count("}")
-                        end = j
-                        if d <= 0:
-                            break
-                    return idx, end
-        depth += stripped.count("{") - stripped.count("}")
-    return None
-
-target_file = None
-span = None
-for f in collect_files(cfg_path, set()):
-    try:
-        ls = open(f, "r", encoding="utf-8").read().splitlines(True)
-    except OSError:
-        continue
-    hit = find_site_block(ls, host)
-    if hit:
-        target_file = f
-        span = (ls, hit[0], hit[1])
-        break
-
-if not target_file or not span:
-    sys.stderr.write(f"No se encontró el bloque de «{host}» en {cfg_path} ni en sus archivos importados.\n")
-    sys.exit(2)
-
-ls, start, end = span
-body = "".join(ls[start + 1 : end])
-if re.search(r"^\s*log\b", body, re.M):
-    sys.stderr.write(f"El bloque de «{host}» en {target_file} ya tiene una directiva log: edítala en el editor.\n")
-    sys.exit(3)
-
-indent = "\t"
-for l in ls[start + 1 : end]:
-    m = re.match(r"^([ \t]+)\S", l)
-    if m:
-        indent = m.group(1)
-        break
-
-snippet = [
-    f"{indent}{mark}\n",
-    f"{indent}log {{\n",
-    f"{indent}{indent}output file {log_path} {{\n",
-    f"{indent}{indent}{indent}roll_size 10mb\n",
-    f"{indent}{indent}{indent}roll_keep 5\n",
-    f"{indent}{indent}{indent}roll_keep_for 720h\n",
-    f"{indent}{indent}}}\n",
-    f"{indent}{indent}format json\n",
-    f"{indent}}}\n",
-]
-
-with open(backup_out, "w", encoding="utf-8") as bf:
-    bf.write(target_file + "\n")
-    bf.writelines(ls)
-
-new_lines = ls[: start + 1] + snippet + ls[start + 1 :]
-tmp = target_file + ".sshorus.tmp"
-with open(tmp, "w", encoding="utf-8") as tf:
-    tf.writelines(new_lines)
-os.replace(tmp, target_file)
-print(target_file)
-`.trim();
-
-const PY_PATCH_NGINX = String.raw`
-import os, re, sys
-
-file_path, line_no, log_path, mark, backup_out = sys.argv[1:6]
-line_no = max(1, int(line_no))
-
-if not os.path.isfile(file_path):
-    sys.stderr.write(f"No existe el archivo {file_path}\n")
-    sys.exit(2)
-
-ls = open(file_path, "r", encoding="utf-8").read().splitlines(True)
-start = None
-for i in range(max(0, line_no - 2), min(len(ls), line_no + 4)):
-    if "{" in ls[i].split("#", 1)[0]:
-        start = i
-        break
-if start is None:
-    sys.stderr.write(f"No se encontró la apertura del bloque server cerca de la línea {line_no} en {file_path}.\n")
-    sys.exit(2)
-
-depth = 0
-end = len(ls) - 1
-for j in range(start, len(ls)):
-    s = ls[j].split("#", 1)[0]
-    depth += s.count("{") - s.count("}")
-    end = j
-    if depth <= 0:
-        break
-
-indent = "    "
-for l in ls[start + 1 : end]:
-    m = re.match(r"^([ \t]+)\S", l)
-    if m:
-        indent = m.group(1)
-        break
-
-with open(backup_out, "w", encoding="utf-8") as bf:
-    bf.write(file_path + "\n")
-    bf.writelines(ls)
-
-# Si el bloque tenía «access_log off;», se reemplaza en el sitio; si no, se inserta al inicio del bloque.
-replaced = False
-new_lines = list(ls)
-for j in range(start + 1, end):
-    if re.match(r"^\s*access_log\s+off\s*;", new_lines[j]):
-        new_lines[j] = f"{indent}access_log {log_path} combined; {mark}\n"
-        replaced = True
-        break
-if not replaced:
-    new_lines.insert(start + 1, f"{indent}access_log {log_path} combined; {mark}\n")
-
-tmp = file_path + ".sshorus.tmp"
-with open(tmp, "w", encoding="utf-8") as tf:
-    tf.writelines(new_lines)
-os.replace(tmp, file_path)
-print(file_path)
-`.trim();
-
-/**
- * Plan para activar un log de visitas dedicado a `site` (Caddy o nginx).
- * Devuelve null si el sitio no tiene suficiente información (p. ej. sin dominio en Caddy o sin archivo en nginx).
- */
-export function enableSiteLogPlan(server: ServerInfo, site: Site): { plan: Plan; logPath: string } | null {
-  const logPath = suggestedLogPath(site);
-  const reload = reloadSteps(server);
+/** Qué se le pasa al parche: Caddy busca el bloque por dominio; nginx, por archivo y línea. */
+function patchTarget(server: ServerInfo, site: Site): { where: string; target: string } | null {
   if (site.server === "caddy") {
     const host = site.names[0];
-    if (!host) return null;
-    const steps = [
-      "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin",
-      "command -v python3 >/dev/null 2>&1 || { echo 'Hace falta python3 para modificar el Caddyfile de forma segura' >&2; exit 1; }",
-      "mkdir -p /var/log/caddy",
-      "if id caddy >/dev/null 2>&1; then chown caddy:caddy /var/log/caddy && chmod 750 /var/log/caddy; fi",
-      "b=$(mktemp -d)",
-      `trap 'rm -f "$b/patch.py" "$b/bak"; rmdir "$b" 2>/dev/null || true' EXIT`,
-      "cat <<'__SSHORUS_PATCH__' > \"$b/patch.py\"\n" + PY_PATCH_CADDY + "\n__SSHORUS_PATCH__",
-      `edited=$(python3 "$b/patch.py" ${shQuote(server.configPath)} ${shQuote(host)} ${shQuote(logPath)} ${shQuote(TRAFFIC_LOG_MARK)} "$b/bak")`,
-      `if ! (${reload.join(" && ")}); then`,
-      `  tail -n +2 "$b/bak" > "$edited.sshorus.restore" && mv -f "$edited.sshorus.restore" "$edited"`,
-      "  echo 'La configuración no pasó la validación de Caddy: se restauró el archivo original.' >&2",
-      "  exit 1",
-      "fi",
-      `echo "Registro activado en ${logPath} (editado $edited)"`,
-    ];
-    return {
-      logPath,
-      plan: {
-        action: `Activar registro de visitas para ${host} (Caddy)`,
-        steps,
-      },
-    };
+    return host ? { where: server.configPath, target: host } : null;
   }
+  return site.file && site.line ? { where: site.file, target: String(site.line) } : null;
+}
 
-  if (!site.file || !site.line) return null;
-  const label = site.names[0] ?? "sitio";
-  const steps = [
-    "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin",
-    "command -v python3 >/dev/null 2>&1 || { echo 'Hace falta python3 para modificar la configuración de nginx de forma segura' >&2; exit 1; }",
-    "mkdir -p /var/log/nginx",
-    "b=$(mktemp -d)",
-    `trap 'rm -f "$b/patch.py" "$b/bak"; rmdir "$b" 2>/dev/null || true' EXIT`,
-    "cat <<'__SSHORUS_PATCH__' > \"$b/patch.py\"\n" + PY_PATCH_NGINX + "\n__SSHORUS_PATCH__",
-    `edited=$(python3 "$b/patch.py" ${shQuote(site.file)} ${site.line} ${shQuote(logPath)} ${shQuote(TRAFFIC_LOG_MARK)} "$b/bak")`,
-    `if ! (${reload.join(" && ")}); then`,
-    `  tail -n +2 "$b/bak" > "$edited.sshorus.restore" && mv -f "$edited.sshorus.restore" "$edited"`,
-    "  echo 'La configuración no pasó nginx -t: se restauró el archivo original.' >&2",
-    "  exit 1",
+/** Visita de prueba al propio sitio (por 127.0.0.1 con su dominio), con curl o wget. */
+export function probeCommand(site: Site): string {
+  const host = site.names.find((n) => n && !n.includes("*")) ?? "localhost";
+  const listen = site.listens.find((l) => !l.https && l.port > 0) ?? site.listens.find((l) => l.port > 0);
+  const https = listen ? listen.https : site.https;
+  const port = listen?.port ?? (https ? 443 : 80);
+  const raw = listen?.host && listen.host !== "*" ? listen.host : "127.0.0.1";
+  const addr = raw.includes(":") ? `[${raw}]` : raw;
+  const scheme = https ? "https" : "http";
+  const url = `${scheme}://${host}:${port}/`;
+  return [
+    "if command -v curl >/dev/null 2>&1; then",
+    `  curl -sk -o /dev/null -m 5 -A ${PROBE_AGENT} --resolve ${shQuote(`${host}:${port}:${addr}`)} ${shQuote(url)} || true`,
+    "elif command -v wget >/dev/null 2>&1; then",
+    `  wget -q -O /dev/null -T 5 --no-check-certificate -U ${PROBE_AGENT} --header ${shQuote(`Host: ${host}`)} ${shQuote(`${scheme}://${addr}:${port}/`)} || true`,
+    "else echo '@@verifica sin-cliente'; exit 0; fi",
+  ].join("\n");
+}
+
+/** Dueño de la carpeta y del archivo (Caddy escribe como su usuario; nginx abre los logs como root). */
+function ownerSteps(site: Site, rawDir: string, rawLog: string): string[] {
+  if (site.server !== "caddy") return [];
+  const [dir, log] = [shQuote(rawDir), shQuote(rawLog)];
+  return [
+    "u=$(ps -o user= -C caddy 2>/dev/null | tr -d ' ' | grep -v '^root$' | head -n1)",
+    '[ -n "$u" ] || { id caddy >/dev/null 2>&1 && u=caddy; }',
+    'if [ -n "$u" ]; then',
+    // `caddy validate` (como root) crearía el archivo con dueño root y permisos 600: Caddy, que corre
+    // como su usuario, no podría abrirlo al recargar. Por eso se crea antes con el dueño correcto.
+    `  chown "$u": ${dir} && { [ -e ${log} ] || : > ${log}; } && chown "$u": ${log} && chmod 640 ${log} || falla folder`,
+    `  echo "La carpeta ${rawDir} y el registro son del usuario $u (con el que corre Caddy)."`,
     "fi",
-    `echo "Registro activado en ${logPath} (editado $edited)"`,
   ];
+}
+
+/** Con SELinux, el servidor web (httpd_t) solo escribe en carpetas con contexto httpd_log_t. */
+function selinuxSteps(site: Site, rawDir: string): string[] {
+  const dir = shQuote(rawDir);
+  const pattern = shQuote(`${rawDir}(/.*)?`);
+  return [
+    "if selinux_on; then",
+    `  restorecon -R ${dir} 2>/dev/null`,
+    `  dom=$(ps -eo label=,comm= 2>/dev/null | awk '$2=="${site.server}" {split($1,a,":"); print a[3]; exit}')`,
+    `  t=$(stat -c %C ${dir} 2>/dev/null | cut -d: -f3)`,
+    `  echo "SELinux activo: ${site.server} corre como \${dom:-desconocido} y ${rawDir} tiene \${t:-desconocido}."`,
+    '  if [ "$dom" = httpd_t ] && [ "$t" != httpd_log_t ]; then',
+    "    if command -v semanage >/dev/null 2>&1; then",
+    `      { semanage fcontext -a -t httpd_log_t ${pattern} 2>/dev/null || semanage fcontext -m -t httpd_log_t ${pattern}; } && restorecon -R ${dir} || falla selinux`,
+    `    else chcon -R -t httpd_log_t ${dir} || falla selinux; fi`,
+    `    echo "Contexto SELinux de ${rawDir}: httpd_log_t (para que ${site.server} pueda escribir)."`,
+    "  fi",
+    "fi",
+  ];
+}
+
+interface StepCtx {
+  action: LogAction;
+  server: ServerInfo;
+  site: Site;
+  log: string;
+  /** Argumentos del parche (ya citados). */
+  args: string;
+}
+
+function stepScript(key: LogStepKey, { action, server, site, log, args }: StepCtx): string[] {
+  const dir = shQuote(logDir(log));
+  const q = shQuote(log);
+  const [validate, reload] = reloadSteps(server);
+  switch (key) {
+    case "check":
+      return [
+        "command -v python3 >/dev/null 2>&1 || falla python",
+        "b=$(mktemp -d) || falla tmp",
+        "edited=; installed=; reloaded=",
+        // Si algo falla o se cancela después de editar y antes de recargar bien, el archivo vuelve a
+        // estar como antes. Sin SIGPIPE: al cancelar, el canal puede cerrarse antes de restaurar.
+        `trap 'if [ -n "$installed" ] && [ -z "$reloaded" ]; then cat "$b/orig" > "$edited" && echo "Se dejó $edited como estaba."; fi; rm -rf "$b"' EXIT`,
+        "trap 'exit 130' TERM INT HUP; trap '' PIPE",
+        // Si la configuración ya tenía un error, se dice así (y no se toca nada).
+        `${validate} > "$b/pre" 2>&1 || { cat "$b/pre"; falla before; }`,
+        "cat <<'__SSHORUS_PATCH__' > \"$b/patch.py\"\n" + PY_LOG_PATCH + "\n__SSHORUS_PATCH__",
+        `python3 "$b/patch.py" ${args} "$b/new" > "$b/out" || falla patch`,
+        `edited=$(sed -n 's/^file=//p' "$b/out"); state=$(sed -n 's/^state=//p' "$b/out")`,
+        'echo "@@estado $state"; echo "El sitio está en $edited"',
+        ...(action === "disable" ? ['[ "$state" = absent ] && exit 0'] : []),
+      ];
+    case "backup":
+      return [
+        'if [ "$state" = changed ]; then',
+        `  mkdir -p ${LOG_BACKUP_DIR} && chmod 700 ${LOG_BACKUP_DIR} || falla backup`,
+        `  bk="${LOG_BACKUP_DIR}/$(basename "$edited").$(date +%Y%m%d-%H%M%S)-$$"`,
+        '  cp -p "$edited" "$bk" && cp -p "$edited" "$b/orig" || falla backup',
+        '  echo "Copia de $edited en $bk"',
+        'else echo "La configuración no cambia: no hace falta copia."; fi',
+      ];
+    case "folder":
+      return [`mkdir -p ${dir} || falla folder`, ...ownerSteps(site, logDir(log), log), ...selinuxSteps(site, logDir(log))];
+    case "edit":
+      return ['if [ "$state" = changed ]; then', '  installed=1; cat "$b/new" > "$edited" || falla edit', '  echo "Editado $edited"', "fi"];
+    case "validate":
+      return [`${validate} 2>&1 || { diag; falla validate; }`];
+    case "reload":
+      return [`${reload} 2>&1 || { diag; falla reload; }`, "reloaded=1"];
+    case "verify":
+      // La recarga de nginx (y la de Caddy por systemd) termina antes de que los procesos nuevos
+      // atiendan: se repite la visita unos segundos hasta que aparece en el registro.
+      return [
+        `s0=$(wc -c < ${q} 2>/dev/null || echo 0)`,
+        "i=0; s1=$s0",
+        "while [ $i -lt 5 ]; do",
+        probeCommand(site),
+        `  sleep 1; s1=$(wc -c < ${q} 2>/dev/null || echo 0); [ "$s1" -gt "$s0" ] && break; i=$((i+1))`,
+        "done",
+        `if [ "$s1" -gt "$s0" ]; then echo '@@verifica ok'; tail -n 1 ${q} | cut -c1-300`,
+        "else echo '@@verifica nada'; diag; fi",
+      ];
+  }
+}
+
+/**
+ * Plan para poner (`enable`) o quitar (`disable`) el registro propio de `site`. Null si no hay forma
+ * de encontrar su bloque (Caddy sin dominio o nginx sin archivo y línea).
+ */
+export function siteLogPlan(server: ServerInfo, site: Site, action: LogAction): SiteLogPlan | null {
+  const t = patchTarget(server, site);
+  if (!t) return null;
+  const logPath = suggestedLogPath(site);
+  const name = site.server === "caddy" ? "Caddy" : "nginx";
+  const label = site.names[0] ?? "sitio por defecto";
+  const keys = STEPS[action];
+  const dir = shQuote(logDir(logPath));
+  const args = [action, site.server, t.where, t.target, logPath, TRAFFIC_LOG_MARK].map(shQuote).join(" ");
+  const ctx: StepCtx = { action, server, site, log: logPath, args };
+  const script = [
+    "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin",
+    'paso() { echo "@@paso $1"; }',
+    'falla() { echo "@@fallo $1"; exit 1; }',
+    "selinux_on() { command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; }",
+    `diag() { ls -ld ${dir} ${shQuote(logPath)} 2>&1; selinux_on && ls -Zd ${dir} ${shQuote(logPath)} 2>&1; selinux_on && command -v ausearch >/dev/null 2>&1 && ausearch -m avc -ts recent 2>/dev/null | grep -E 'comm="(caddy|nginx)"' | tail -n 3 | sed 's/^/@@selinux /'; return 0; }`,
+    ...keys.flatMap((k) => [`paso ${k}`, ...stepScript(k, ctx)]),
+  ].join("\n");
   return {
+    action,
+    title: `${action === "enable" ? "Activar" : "Quitar"} el registro de visitas de ${label} (${name})`,
     logPath,
-    plan: {
-      action: `Activar registro de visitas para ${label} (nginx)`,
-      steps,
-    },
+    steps: keys.map((key) => ({ key, label: STEP_LABEL[key] })),
+    script,
+    brief: script.replace(PY_LOG_PATCH, "# (parche en Python: edita solo el bloque de este sitio)"),
   };
 }

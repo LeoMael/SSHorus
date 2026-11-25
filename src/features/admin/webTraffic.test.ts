@@ -1,10 +1,10 @@
 // Pruebas del monitor de tráfico web: detección de logs (nginx/Caddy), análisis real (Python 3),
-// y planes de activación con copia de respaldo y restauración automática.
-// Ejecutar: npx rolldown src/features/admin/webTraffic.test.ts -p node -f esm -o /tmp/wt.mjs && node /tmp/wt.mjs
+// archivos rotados (.1, .gz) y casos sin datos. El script de activar el registro: webLogSetup.test.ts.
+// Ejecutar: npm test -- webTraffic
 import { parseWeb, type ServerInfo, type Site } from "./web";
 import { detectCaddyAccessLogs, detectNginxAccessLogs } from "./webTrafficLog";
 import { parseTraffic, trafficScript } from "./webTraffic";
-import { enableSiteLogPlan, siteLogSlug, suggestedLogPath, TRAFFIC_LOG_MARK } from "./webTrafficSetup";
+import { siteLogPlan, siteLogSlug, suggestedLogPath } from "./webTrafficSetup";
 
 // Sin @types/node en el proyecto: carga dinámica mínima para ejecutar `sh` en pruebas.
 const CHILD = "node:child_process";
@@ -22,7 +22,10 @@ const fs = (await import(/* @vite-ignore */ FS)) as {
   writeFileSync: (p: string, s: string, o?: { mode?: number }) => void;
   readFileSync: (p: string, enc: "utf8") => string;
   rmSync: (p: string, o: { recursive: boolean; force: boolean }) => void;
+  utimesSync: (p: string, atime: number, mtime: number) => void;
 };
+const ZLIB = "node:zlib";
+const zlib = (await import(/* @vite-ignore */ ZLIB)) as { gzipSync: (s: string) => string };
 const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
 
 let passed = 0;
@@ -61,6 +64,13 @@ function ok(cond: unknown, what: string) {
   // Sin access_log en http ni server -> defecto de nginx (compartido)
   const def = detectNginxAccessLogs([], [sInherit]);
   eq(def[0], { path: "/var/log/nginx/access.log", format: "combined", shared: true }, "nginx por defecto");
+
+  // Un sitio con el registro común y el propio de SSHorus: se elige el propio (lo usa solo él).
+  const sBoth = [...sShared1, dir("access_log", ["/var/log/nginx/c.test.access.log", "combined"], "/etc/nginx/conf.d/a.conf", 9)];
+  const sBothFirst = [dir("access_log", ["/var/log/nginx/d.test.access.log", "combined"], "/etc/nginx/conf.d/b.conf", 2), ...sShared2];
+  const both = detectNginxAccessLogs(http, [sBoth, sBothFirst]);
+  eq(both[0], { path: "/var/log/nginx/c.test.access.log", format: "combined", shared: false }, "nginx: el propio aunque haya uno común");
+  eq(both[1], { path: "/var/log/nginx/d.test.access.log", format: "combined", shared: false }, "nginx: el propio aunque vaya primero");
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -127,6 +137,40 @@ function ok(cond: unknown, what: string) {
   eq(map.get("caddy|srv0|skipped.test"), { path: null, format: "off", shared: false }, "caddy skip_hosts -> off");
   eq(map.get("caddy|srv1|nolog.test"), { path: null, format: "off", shared: false }, "caddy sin bloque logs -> off");
 
+  // Caddy 2.6 (EPEL en Rocky 9) apunta los hosts con puerto si el sitio no usa el habitual, y un
+  // «log» sin salida queda como «» (logger por defecto). Caddy 2.7+ da listas y un sitio puede tener
+  // el log común (de un snippet) y el propio a la vez.
+  const portCfg = {
+    logging: {
+      logs: {
+        log0: { writer: { output: "file", filename: "/var/log/caddy/a.test.log" } },
+        common: { writer: { output: "file", filename: "/var/log/caddy/all.log" } },
+        mine: { writer: { output: "file", filename: "/var/log/caddy/c.test.log" } },
+      },
+    },
+    apps: {
+      http: {
+        servers: {
+          srv0: { logs: { logger_names: { "a.test:8081": "log0", "www.a.test:8081": "log0", "b.test:8081": "" }, skip_hosts: ["z.test:8081"] } },
+          srv1: { logs: { logger_names: { "c.test": ["common", "mine"], "d.test": ["common"] } } },
+        },
+      },
+    },
+  };
+  const portSites = [
+    makeCaddySite("caddy|srv0|a.test,www.a.test", ["a.test", "www.a.test"]),
+    makeCaddySite("caddy|srv0|b.test", ["b.test"]),
+    makeCaddySite("caddy|srv0|z.test", ["z.test"]),
+    makeCaddySite("caddy|srv1|c.test", ["c.test"]),
+    makeCaddySite("caddy|srv1|d.test", ["d.test"]),
+  ];
+  const pm = detectCaddyAccessLogs(portCfg, portSites);
+  eq(pm.get("caddy|srv0|a.test,www.a.test"), { path: "/var/log/caddy/a.test.log", format: "json", shared: false }, "caddy 2.6: host con puerto");
+  eq(pm.get("caddy|srv0|b.test"), { path: null, format: "journal", shared: false }, "caddy 2.6: «log» sin salida va al diario");
+  eq(pm.get("caddy|srv0|z.test"), { path: null, format: "off", shared: false }, "caddy 2.6: skip_hosts con puerto");
+  eq(pm.get("caddy|srv1|c.test"), { path: "/var/log/caddy/c.test.log", format: "json", shared: false }, "caddy: el propio junto al común");
+  eq(pm.get("caddy|srv1|d.test"), { path: "/var/log/caddy/all.log", format: "json", shared: true }, "caddy: solo el común queda compartido");
+
   // Comprobación integrada con parseWeb (nginx + Caddy)
   const webOut = [
     "@@svc",
@@ -176,11 +220,11 @@ function ok(cond: unknown, what: string) {
     file: "/etc/caddy/Caddyfile",
     line: null,
   };
-  eq(enableSiteLogPlan(caddySrv, noNameSite), null, "caddy sin dominio devuelve null");
+  eq(siteLogPlan(caddySrv, noNameSite, "enable"), null, "caddy sin dominio devuelve null");
 
   const nginxSrv: ServerInfo = { server: "nginx", source: "dump", configPath: "/etc/nginx/nginx.conf", status: "active", sites: [], warning: null };
   const noFileNginx: Site = { ...noNameSite, server: "nginx", names: ["x.test"], file: null, line: null };
-  eq(enableSiteLogPlan(nginxSrv, noFileNginx), null, "nginx sin archivo devuelve null");
+  eq(siteLogPlan(nginxSrv, noFileNginx, "enable"), null, "nginx sin archivo devuelve null");
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -332,80 +376,44 @@ try {
   eq(repMiss.totalRequests, 0, "archivo ausente -> 0 peticiones");
   ok(repMiss.meta.note && repMiss.meta.note.includes("aún no existe"), "archivo ausente informa en meta.note");
 
-  // ---------------------------------------------------------------------------------------------
-  // 5. Parcheo real de Caddyfile (con import) y nginx + rollback ante fallo de validación
-  // ---------------------------------------------------------------------------------------------
-  const binOk = `${tmp}/bin-ok`;
-  const binFail = `${tmp}/bin-fail`;
-  fs.mkdirSync(binOk, { recursive: true });
-  fs.mkdirSync(binFail, { recursive: true });
-  fs.writeFileSync(`${binOk}/caddy`, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-  fs.writeFileSync(`${binOk}/nginx`, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-  fs.writeFileSync(`${binOk}/systemctl`, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-  fs.writeFileSync(`${binFail}/caddy`, "#!/bin/sh\necho bad config >&2\nexit 1\n", { mode: 0o755 });
-  fs.writeFileSync(`${binFail}/nginx`, "#!/bin/sh\necho bad nginx >&2\nexit 1\n", { mode: 0o755 });
-  fs.writeFileSync(`${binFail}/systemctl`, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  // Registro recién activado y vacío: «todavía no ha recibido visitas»
+  const emptyLog = `${tmp}/vacio.access.log`;
+  fs.writeFileSync(emptyLog, "");
+  const repEmpty = parseTraffic(runSh(trafficScript({ ...ngxSite, accessLog: { path: emptyLog, format: "combined", shared: false } }, { range: "24h", excludeStatic: true, excludeBots: true })).stdout, false);
+  eq(repEmpty.meta.note, "El registro está vacío: todavía no ha recibido visitas.", "registro vacío avisa de que aún no hay visitas");
 
-  // 5a. Caddy con archivo importado
-  const caddyDir = `${tmp}/etc-caddy`;
-  fs.mkdirSync(`${caddyDir}/sites`, { recursive: true });
-  const mainCaddy = `${caddyDir}/Caddyfile`;
-  const subCaddy = `${caddyDir}/sites/app.caddy`;
-  fs.writeFileSync(mainCaddy, "import sites/*.caddy\n");
-  const origCaddy = "app.test {\n    reverse_proxy 127.0.0.1:3000\n}\n";
-  fs.writeFileSync(subCaddy, origCaddy);
+  // Archivos rotados: logrotate (`.1` y `.2.gz`) y Caddy (`nombre-AAAA-MM-DDT….log.gz`), los más
+  // nuevos que el periodo; uno viejo (mtime fuera del periodo) no se lee.
+  const rotLog = `${tmp}/app.test.access.log`;
+  const line = (ago: number, p: string) => `192.0.2.9 - - [${fmtNgx(now - ago)}] "GET ${p} HTTP/1.1" 200 10 "-" "Mozilla/5.0"`;
+  fs.writeFileSync(rotLog, `${line(60, "/hoy")}\n`);
+  fs.writeFileSync(`${rotLog}.1`, `${line(2 * 86400, "/ayer")}\n`);
+  fs.writeFileSync(`${rotLog}.2.gz`, zlib.gzipSync(`${line(3 * 86400, "/antes")}\n${line(3 * 86400 - 10, "/antes2")}\n`));
+  fs.writeFileSync(`${rotLog}.9.gz`, zlib.gzipSync(`${line(20 * 86400, "/viejo")}\n`));
+  fs.utimesSync(`${rotLog}.1`, now - 2 * 86400, now - 2 * 86400);
+  fs.utimesSync(`${rotLog}.2.gz`, now - 3 * 86400, now - 3 * 86400);
+  fs.utimesSync(`${rotLog}.9.gz`, now - 20 * 86400, now - 20 * 86400);
+  const rotSite: Site = { ...ngxSite, accessLog: { path: rotLog, format: "combined", shared: false } };
+  const repRot = parseTraffic(runSh(trafficScript(rotSite, { range: "7d", excludeStatic: true, excludeBots: true })).stdout, false);
+  eq(repRot.totalRequests, 4, "7 días suma el actual, el .1 y el .2.gz");
+  eq(repRot.meta.rotatedFiles, 2, "lee 2 archivos rotados (el de hace 20 días no)");
+  eq(repRot.recent[0]?.path, "/hoy", "lo más reciente primero aunque venga de varios archivos");
+  const caddyRot = `${tmp}/web.test.log`;
+  fs.writeFileSync(caddyRot, "");
+  fs.writeFileSync(
+    `${tmp}/web.test-2026-01-02T03-04-05.000.log.gz`,
+    zlib.gzipSync(`${JSON.stringify({ ts: now - 3600, status: 200, size: 5, request: { host: "web.test", client_ip: "192.0.2.7", method: "GET", uri: "/", headers: {} } })}\n`),
+  );
+  const repCaddyRot = parseTraffic(
+    runSh(trafficScript({ ...caddySite, names: ["web.test"], accessLog: { path: caddyRot, format: "json", shared: false } }, { range: "24h", excludeStatic: true, excludeBots: true })).stdout,
+    false,
+  );
+  eq([repCaddyRot.totalRequests, repCaddyRot.meta.rotatedFiles], [1, 1], "Caddy: lee el rotado comprimido por lumberjack");
 
-  const caddySrv: ServerInfo = { server: "caddy", source: "api", configPath: mainCaddy, status: "active", sites: [], warning: null };
-  const caddyPlan = enableSiteLogPlan(caddySrv, { ...caddySite, file: mainCaddy });
-  ok(caddyPlan !== null, "enableSiteLogPlan genera plan para Caddy");
-
-  // Redirigimos /var/log/caddy a un directorio temporal para correr sin root
-  const sandboxPlan = (steps: string[]) =>
-    [
-      "set -e",
-      ...steps.map((s) =>
-        s
-          .replace(/\/var\/log\/caddy/g, `${tmp}/log-caddy`)
-          .replace(/\/var\/log\/nginx/g, `${tmp}/log-nginx`)
-          .replace(/chown caddy:caddy [^&]+ && /g, ""),
-      ),
-    ].join("\n");
-
-  // Primero probamos rollback cuando `caddy validate` falla
-  const rCaddyFail = runSh(sandboxPlan(caddyPlan!.plan.steps), binFail);
-  ok(rCaddyFail.status !== 0, "plan Caddy falla si caddy validate falla");
-  eq(fs.readFileSync(subCaddy, "utf8"), origCaddy, "plan Caddy restaura el archivo original si falla");
-
-  // Ahora con validación correcta
-  const rCaddyOk = runSh(sandboxPlan(caddyPlan!.plan.steps), binOk);
-  eq(rCaddyOk.status, 0, `plan Caddy aplica bien (stderr: ${rCaddyOk.stderr})`);
-  const patchedCaddy = fs.readFileSync(subCaddy, "utf8");
-  ok(patchedCaddy.includes(TRAFFIC_LOG_MARK), "Caddyfile incluye marca de SSHorus");
-  ok(patchedCaddy.includes("roll_size 10mb") && patchedCaddy.includes("format json"), "Caddyfile incluye rotación y format json");
-
-  // Re-ejecutar cuando ya hay `log` debe rechazar sin duplicar
-  const rCaddyDup = runSh(sandboxPlan(caddyPlan!.plan.steps), binOk);
-  ok(rCaddyDup.status !== 0, "plan Caddy no duplica un bloque log ya existente");
-  eq(fs.readFileSync(subCaddy, "utf8"), patchedCaddy, "archivo Caddy sin cambios tras rechazo por duplicado");
-
-  // 5b. nginx sustituyendo `access_log off;` y probando rollback
-  const ngxFile = `${tmp}/site.conf`;
-  const origNgx = "server {\n    listen 80;\n    server_name api.test;\n    access_log off;\n    location / { proxy_pass http://127.0.0.1:4000; }\n}\n";
-  fs.writeFileSync(ngxFile, origNgx);
-  const ngxSrv: ServerInfo = { server: "nginx", source: "dump", configPath: ngxFile, status: "active", sites: [], warning: null };
-  const ngxTarget: Site = { ...ngxSite, names: ["api.test"], file: ngxFile, line: 1 };
-  const ngxPlan = enableSiteLogPlan(ngxSrv, ngxTarget);
-  ok(ngxPlan !== null, "enableSiteLogPlan genera plan para nginx");
-
-  const rNgxFail = runSh(sandboxPlan(ngxPlan!.plan.steps), binFail);
-  ok(rNgxFail.status !== 0, "plan nginx falla si nginx -t falla");
-  eq(fs.readFileSync(ngxFile, "utf8"), origNgx, "plan nginx restaura el archivo original si falla");
-
-  const rNgxOk = runSh(sandboxPlan(ngxPlan!.plan.steps), binOk);
-  eq(rNgxOk.status, 0, `plan nginx aplica bien (stderr: ${rNgxOk.stderr})`);
-  const patchedNgx = fs.readFileSync(ngxFile, "utf8");
-  ok(!patchedNgx.includes("access_log off;"), "plan nginx sustituye access_log off;");
-  ok(patchedNgx.includes(`combined; ${TRAFFIC_LOG_MARK}`), "plan nginx inserta access_log combined con marca");
+  // La visita de prueba de SSHorus no cuenta con «Sin bots».
+  fs.writeFileSync(rotLog, `${line(30, "/")}`.replace("Mozilla/5.0", "SSHorus-prueba-del-registro") + "\n");
+  const repProbe = parseTraffic(runSh(trafficScript(rotSite, { range: "24h", excludeStatic: true, excludeBots: true })).stdout, false);
+  eq([repProbe.totalRequests, repProbe.botSkipped], [0, 1], "la visita de prueba se filtra como bot");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

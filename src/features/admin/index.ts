@@ -18,5 +18,7 @@ export * from "./containerPlans";
 export * from "./webTrafficLog";
 export * from "./webTraffic";
 export * from "./webTrafficSetup";
+export * from "./webLogResult";
+export * from "./webLogJob";
 export * from "./userVisibility";
 export * from "./userVisibilityPlans";

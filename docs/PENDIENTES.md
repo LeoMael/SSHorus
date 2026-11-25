@@ -12,25 +12,48 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está en `main` después de la beta.3 saldrá en
 la **1.0.0-beta.4**.
 
-**Estado al cerrar la sesión del 24/11/2026 (para retomar):**
-- En `main` local, **sin subir** (saldrá en la beta.4): Compose (conflicto de nombres, tareas largas, editar el compose
-  de otro usuario), Monitor → Por usuario con los UID de contenedores, barra lateral en árbol con la «S» de sudo,
-  **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
-  auditoría, actualizar imagen, reinicio y Compose) e ideas 9 y 10 anotadas.
-- También en `main` sin subir: **emparejar asistentes de IA** (idea 10, fase 1: `sshorus-mcp pair`, permisos propios
-  por asistente, revocar, puente copiado a `~/.local/bin`) y **fase 2, emparejar por OAuth** (idea 10b) con los
-  arreglos de la revisión de la fase 1. No queda ningún agente en marcha.
-- Pedir en BASE: que `stores/toasts.ts` y `Toaster` admitan un botón (hoy el aviso «Ver» de las tareas es propio de
-  la esquina).
-- **Aprobado por el usuario para la beta.4, sin empezar** (no lanzar más agentes hasta retomar): reglas de calidad
-  automáticas en la CI, ver «Reglas automáticas de calidad» en la sección 3.
-- Después: reglas automáticas de calidad, `/code-review` del lote, probar a mano lo de §2, versión `1.0.0-beta.4` (`bundle.windows.wix.version` →
-  `0.6.0.4`), etiqueta y push (preguntar al usuario antes de subir).
+**Estado al 25/11/2026 (para retomar):**
+- En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
+  TS, clippy `--all-targets -D warnings`, 434 tests Rust): Compose (conflicto de nombres, tareas largas, editar el
+  compose de otro usuario), tareas en segundo plano para toda la app, Monitor → Por usuario con los UID de
+  contenedores, barra lateral en árbol con la «S», emparejar asistentes (idea 10, puente) y por OAuth (10b), arreglos
+  del `/code-review`, vulnerabilidades (epoch de Rocky, «Aún no en tus repos», resultado real de «Arreglar»), ver bases
+  de datos (idea 9), cortafuegos en el mapa (ver y gestionar reglas sin quedarse fuera), registro de visitas de Caddy y
+  nginx, y Contenedores (limpiar y elegir imágenes, arranque solo de proyectos de compose). No queda ningún agente en
+  marcha.
+- **Pendiente de respuesta del usuario:** qué hacer de 5a, 5b, 4c y 4d; si hacer la batería de pruebas por distro
+  (contenedores de Debian, Ubuntu, Alma, Rocky, Fedora, openSUSE, Alpine); qué vio al fallar el registro de visitas
+  (versión de Caddy, sitio) y qué CVE/paquete sigue saliendo en el escáner, si sigue alguno.
+- **Aprobado, sin empezar:** reglas automáticas de calidad en la CI (ver «Reglas automáticas de calidad»).
+- Después: reglas de calidad, otro `/code-review` del lote, probar a mano lo de §2, juntar los commits pequeños de
+  documentación, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
+  (preguntar al usuario antes de subir).
+
+### Plan inmediato para cerrar todos los pendientes (25/11/2026)
+
+Por tandas de ~45–60 min, como mucho **2 agentes compilando Rust a la vez** (la PC tiene 15 GB). Cada tanda termina con
+todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`).
+
+| Tanda | Qué | Agentes | Sale en |
+|---|---|---|---|
+| **1. Revisión y reglas** | `/code-review` del lote nuevo + arreglar lo que salga · reglas automáticas de calidad en la CI (límites entre carpetas, dependencias circulares, tope de 500 líneas con lista de excepciones que solo puede bajar) | 2 | **beta.4** (el usuario prueba en su VPS mientras sigue el plan) |
+| **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` | 1 (solo interfaz) | beta.5 |
+| **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) | 1 (Rust) | beta.5 |
+| **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos `stores` ↔ `connect`/`tmux`/`ui` · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
+| **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
+| **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
+| **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta | 2 | beta.6 |
+| **7. Funciones D** | **5b** despliegue asistido por IA (MCP) | 1 | beta.6 |
+| **8. Ideas menores** | ProxyJump · comparar archivos · historial por servidor · sincronizar carpeta · más administración (systemd, paquetes, cron) · arrastre con archivos virtuales · pulido del mapa | 2 por tanda | beta.7 |
+| **Al final** | Pruebas a mano del usuario (§2) → **1.0.0** (quitar `bundle.windows.wix.version`) | — | **1.0.0** |
+
+Fuera de este plan: **6** app móvil (proyecto aparte), **firmar el instalador de Windows** (necesita un certificado de
+pago) y las pruebas en entornos reales que solo puede hacer el usuario (Windows, 2FA, agente SSH).
 
 ### 1. Hecho en `main` (sin publicar todavía)
 - **Administración → «Qué pueden ver»** + categoría `isolation` en **Auditar servidor** + casilla **«Permitir túneles SSH»** en «Nuevo usuario con clave» (apagada por defecto sin sudo).
 - **Contenedores → «Al reiniciar»** siempre visible (y en Inspeccionar), linger inmediato, soporte de unidades como `podman-compose@*.service`, Podman de otros usuarios en `/tmp/sshorus-run-<uid>` y gestión de permisos en Usuarios → Contenedores.
-- **Sitios web → «Tráfico»**: monitor bajo demanda para Caddy y nginx (`nice`/`ionice`, límite de 8 MB) con activación segura de log dedicado y rotación.
+- **Sitios web → «Tráfico»**: monitor bajo demanda para Caddy y nginx (`nice`/`ionice`, límite de 8 MB, también los rotados) con activación segura de log dedicado y rotación, ya como tarea en segundo plano paso a paso (dueño del log de Caddy, SELinux `httpd_log_t`, `server` correcto en nginx, visita de prueba, «Quitar registro…»). Código: `features/admin/webTrafficSetup.ts`, `webLogPatch.ts`, `webLogResult.ts`, `webLogJob.ts` y `components/Admin/WebLogDialog.tsx`.
 - **«Reiniciar ahora»** (escáner, auditoría, Panel de VPS), **MCP `reboot_server`**, **terminal tras reinicio** (distingue tmux reenganchado vs nuevo), **IA de informes** con reintento sin `temperature`, escritura sin retraso (`TCP_NODELAY`), botón de llave sudo en terminal y ventana de «Aceptar automáticamente».
 - **Mapa de infraestructura**: zoom con rueda del ratón, pellizco táctil y `Ctrl +` / `−` / `0`.
 - **Orden del código (Partes 1, 2 y 3)**: ESLint con 0 errores y 0 warnings, `cargo clippy` con 0 warnings, todos los archivos > 500 líneas divididos en módulos cohesivos (TS/TSX y Rust) y `src/features/` organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz).
@@ -77,6 +100,14 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
 - **Probar a mano en la app real (`npm run tauri dev`) contra VPS reales**:
   - «Qué pueden ver» + arreglos automáticos + categoría `isolation` en Auditoría + crear usuario sin túneles.
   - Contenedores («Al reiniciar», linger, `podman-compose@*.service`) y Sitios web → «Tráfico» (Caddy y nginx con/sin log).
+  - **Sitios web → «Activar registro de visitas» en el VPS Rocky con SELinux en `Enforcing`** (probado solo en
+    contenedores, donde SELinux no actúa): con Caddy y con nginx, activar en un sitio sin log, en uno con log común y
+    en uno de Caddy con `log` al diario; seguir los 7 pasos en la tarea, que la visita de prueba aparezca y que
+    «Tráfico» lea el archivo nuevo. Mirar `ls -Z /var/log/caddy /var/log/nginx` (debe salir `httpd_log_t` si el
+    servicio corre como `httpd_t`: `ps -eZ | grep -E 'caddy|nginx'`) y `sudo ausearch -m avc -ts recent`. Activar dos
+    veces (no duplica), cancelar a mitad (el archivo queda como estaba), «Quitar registro…», y un sitio con un error
+    a propósito en otra parte de la configuración (debe parar en «Revisar»). Preguntar al usuario qué le falló la
+    primera vez (versión de Caddy: `caddy version`; ¿EPEL o el repo oficial?) por si era otra cosa.
   - MCP `reboot_server` y `request_sudo_password` con Claude Code / Claude Desktop reales.
   - MCP `run_with_password` con programas reales: `passwd`, `su` y `mysql -p` (contraseña guardada, otra escrita y
     «No permitir»; contraseña incorrecta: debe pararse sin repetir) y que la salida llegue tapada.
@@ -267,6 +298,9 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **9** | **Ver bases de datos (esquema)** | **Hecha (25/11), falta probar a mano** (ver §2). Pestaña «Bases de datos» + MCP `get_db_schema` | PostgreSQL, MySQL/MariaDB (servidor y contenedores, también de otros usuarios con sudo) y SQLite por ruta: bases, tablas, columnas, índices, claves foráneas, búsqueda, diagrama y «Copiar DDL»; entra sin contraseña (contenedor, `postgres`/root con sudo, tu usuario) o con usuario y contraseña guardables en la bóveda. Solo lectura. Siguiente (si se pide): MongoDB/Redis y ver unas filas de ejemplo. |
 | **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | **Hecha (25/11), falta probar a mano** (ver §2). `sshorus-mcp pair`, permisos propios por asistente, revocar, puente en `~/.local/bin` | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
 | **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | **Hecha (25/11), falta probar a mano** (ver §2) | `claude mcp add --transport http sshorus http://127.0.0.1:<puerto>/mcp` sin token: 401 → metadatos (RFC 9728/8414) → documento de metadatos del cliente o registro dinámico → navegador «Vuelve a SSHorus para aceptar» → el mismo diálogo de la fase 1 → código (PKCE S256, 60 s, un uso) → token de acceso de 1 h ligado al recurso y de renovación que rota. Misma lista de asistentes («HTTP (OAuth)»), «Cambiar permisos» y «Revocar». Código en `mcp/oauth/` (ver ARQUITECTURA). Sin probar aún con Claude Code y Codex reales. |
+| **11** | **Configuración y seguridad del servidor (un panel)** | Idea del usuario (25/11), sin empezar | Ver en un solo sitio cómo está configurado y protegido el servidor, en palabras simples y con «Arreglar» donde se pueda: **SELinux** (modo Enforcing/Permissive, denegaciones recientes `avc: denied` explicadas, booleans y contextos útiles para nginx/Caddy/contenedores) o **AppArmor** en Debian/Ubuntu, `sshd_config` (root, contraseñas, puertos), cortafuegos (enlace al del mapa), actualizaciones automáticas (`dnf-automatic`/`unattended-upgrades`), fail2ban, `sysctl` de red, usuarios con sudo, `hidepid`. La **Auditoría** ya comprueba parte: este panel es para **verlo y cambiarlo**, no solo puntuarlo; reutilizar sus comprobaciones y arreglos sin duplicar. |
+| **12** | **«Cerrar puerto» que haga lo correcto según quién lo abre** | Idea del usuario (25/11), sin empezar | Un puerto expuesto se cierra de formas distintas: (a) **bloquearlo en el cortafuegos** (sigue escuchando pero no se llega desde fuera); (b) **parar o desactivar el servicio** que escucha (systemd); (c) si es un **contenedor**: pararlo, o mejor publicar solo en local (`127.0.0.1:puerto:puerto`) o quitar el `ports:` del compose (con «Editar compose»). Ojo: Docker publica saltándose firewalld, así que ahí bloquear en el cortafuegos no basta; Podman sin root sí respeta el cortafuegos. En Puertos y en el mapa: botón «Cerrar…» que detecta quién abre el puerto y ofrece las opciones que funcionan de verdad, con vista previa de comandos y sin cortar tu SSH. |
+| **13** | **Batería de pruebas por distro** | Propuesta (25/11), falta que el usuario la apruebe | Contenedores locales de Debian, Ubuntu, AlmaLinux, Rocky, Fedora, openSUSE y Alpine para pasarles los scripts de SSHorus (usuarios, puertos, monitor, escáner, auditoría, cortafuegos, sitios web) y comprobar que se entienden bien. Hoy solo se ha probado en real en Rocky; Debian/Ubuntu están contempladas en el código pero sin servidor real. ~1–2 GB de imágenes, borradas al terminar. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |
 | **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |
 | **5** | **Asistente corriendo dentro del VPS (`remote-control`)** | ❌ Descartado (16/11) | Sustituido por el punto 6 (la IA corre fuera del VPS para no gastar RAM ni exponer sesiones a root del VPS). |

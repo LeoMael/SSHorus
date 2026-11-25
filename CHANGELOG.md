@@ -112,6 +112,30 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   nombre (explicado en simple). Va en segundo plano.
 - **Contenedores → «Al reiniciar»: «Sin datos» explica el motivo** (no se pudo leer y por qué, o falta actualizar) en
   vez de quedarse en blanco o con la etiqueta sola.
+- **Sitios web → «Tráfico»: activar el registro de visitas funciona en Caddy y nginx, también con SELinux.**
+  Probado con Caddy 2.6 (EPEL, Rocky 9, systemd), Caddy 2.11 y nginx 1.20 (Rocky 9). Lo que fallaba:
+  - **Caddy 2.7+ que corre como su usuario** (paquete oficial): `caddy validate` (como root) creaba el registro con
+    dueño root y permisos 600, Caddy no podía abrirlo al recargar, se deshacía el cambio con el mensaje equivocado
+    («no pasó la validación») y cada intento volvía a fallar. Ahora la carpeta y el archivo son del usuario de Caddy
+    antes de validar (y se arregla el archivo que dejó un intento anterior).
+  - **«Guardar en archivo…»** en un sitio de Caddy con `log` propio que iba al diario siempre fallaba («ya tiene una
+    directiva log»): ahora se sustituye (y queda comentado para poder volver atrás).
+  - **nginx**: si un `location` tenía `access_log off;` (lo típico para CSS/JS), el registro nuevo se ponía dentro de
+    ese `location` y solo guardaba los estáticos. Ahora va en el `server` del sitio. Activar dos veces ya no repite
+    la línea.
+  - **Detección**: en Caddy 2.6 con puerto propio («sitio:8081») o con un registro común y otro propio a la vez, el
+    sitio seguía saliendo «sin activar» o «compartido» después de activarlo.
+  - El archivo editado conserva su dueño, sus permisos, su contexto SELinux y los enlaces de `sites-enabled` (antes se
+    sustituía por un archivo nuevo).
+  - Con **SELinux** activo, si el servidor web corre como `httpd_t`, la carpeta del registro pasa a `httpd_log_t`
+    (`semanage fcontext` + `restorecon`, o `chcon`). Si algo lo bloquea, el error trae las líneas `avc: denied`.
+  - Ahora es una **tarea en segundo plano** con sus pasos a la vista: revisar (si la configuración ya tenía un error,
+    lo dice y no toca nada), copia en `/var/backups/sshorus`, carpeta, editar, validar, recargar y una **visita de
+    prueba** que comprueba que la petición aparece en el registro. Si algo falla o se cancela antes de recargar, el
+    archivo vuelve a quedar como estaba. El error dice qué paso falló y la línea de `nginx -t` o de Caddy.
+  - Nuevo **«Quitar registro…»**: deja el sitio como estaba (vuelve el `access_log off;` o el `log` de antes).
+  - La lectura del tráfico suma los archivos rotados (`.1`, `.gz` de logrotate y los de Caddy) si caben en el tope
+    de 8 MB, dice «todavía no ha recibido visitas» con el registro vacío y no cuenta la visita de prueba con «Sin bots».
 - **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.
 - **Vulnerabilidades: lo arreglado ya no vuelve a salir en Rocky y AlmaLinux.** A OSV se le preguntaba la versión sin
   epoch y Rocky/Alma escriben la versión arreglada con él («1:3.2.2-6.el9_5»): OSV daba por pendientes, para siempre,

@@ -373,3 +373,12 @@
   border: 0;
   white-space: nowrap;
 }
+
+/* Pasos de «Activar / Quitar registro» antes de lanzarlo. */
+.wt-steps {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}

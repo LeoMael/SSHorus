@@ -178,7 +178,7 @@ export function WebTab() {
           server={activeTraffic.server}
           site={activeTraffic.site}
           onClose={() => setTrafficRef(null)}
-          onLogEnabled={loadWeb}
+          onLogChanged={loadWeb}
         />
       )}
       {plan && reload && (
