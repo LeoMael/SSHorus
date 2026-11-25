@@ -1,7 +1,8 @@
 // Proyecto en la barra lateral: cabecera plegable con sus servidores y marcadores debajo.
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { bookmarkRowKey, serverRowKey, type ProjectEntry } from "./sidebarLogic";
-import { BookmarkRow, ServerRow, type RowApi } from "./SidebarRows";
+import { ServerItems } from "./MachineGroup";
+import { bookmarkRowKey, type ProjectEntry } from "./sidebarLogic";
+import { BookmarkRow, type RowApi } from "./SidebarRows";
 
 interface Props {
   api: RowApi;
@@ -64,9 +65,7 @@ export function ProjectGroup({ api, entry, q, collapsed, toggleProject }: Props)
       </div>
       {open && (
         <>
-          {entry.servers.map((s) => (
-            <ServerRow key={serverRowKey(s.id, p.id)} api={api} s={s} projectId={p.id} />
-          ))}
+          <ServerItems api={api} servers={entry.servers} projectId={p.id} q={q} />
           {entry.bookmarks.map((b) => (
             <BookmarkRow key={bookmarkRowKey(p.id, b)} api={api} p={p} b={b} />
           ))}

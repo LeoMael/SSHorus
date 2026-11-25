@@ -2,10 +2,12 @@
 import { Folder } from "lucide-react";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
 import { serverAddress } from "../../features/profiles/serverMatches";
+import type { SudoBadge } from "../../features/sidebar/machineGroups";
 import { isMac, isModKey } from "../../lib/platform";
 import { connectNew, openOrFocus } from "./sidebarActions";
 import { bookmarkRowKey, serverRowKey, type TabState } from "./sidebarLogic";
 import type { SidebarMenus } from "./sidebarMenus";
+import type { CollapsedMachines } from "./useCollapsedProjects";
 import type { SidebarTree } from "./useSidebarTree";
 
 const MOD = isMac ? "⌘" : "Ctrl";
@@ -24,14 +26,42 @@ export interface RowApi {
   connecting: Record<string, true>;
   tabStates: ReadonlyMap<string, TabState>;
   serverById: ReadonlyMap<string, ServerProfile>;
+  /** Marca de sudo de cada servidor (ver useAccountSudo). */
+  sudoOf: ReadonlyMap<string, SudoBadge | null>;
+  machines: CollapsedMachines;
 }
 
-export function ServerRow({ api, s, projectId }: { api: RowApi; s: ServerProfile; projectId?: string }) {
+const SUDO_TITLE: Record<SudoBadge, string> = {
+  sudo: "Esta cuenta tiene sudo (administrador)",
+  root: "Esta cuenta es root (administrador)",
+};
+
+function SudoMark({ sudo }: { sudo: SudoBadge }) {
+  return (
+    <span className="sb-sudo" role="img" title={SUDO_TITLE[sudo]} aria-label={SUDO_TITLE[sudo]}>
+      S
+    </span>
+  );
+}
+
+interface ServerRowProps {
+  api: RowApi;
+  s: ServerProfile;
+  projectId?: string;
+  /** Cuenta dentro del nodo de su servidor: un nivel más adentro y solo el usuario debajo. */
+  inMachine?: boolean;
+}
+
+/** Sangría según la profundidad en el árbol (0 = «Servidores», 1 = proyecto o servidor, 2 = ambos). */
+const INDENT = ["", " sb-indent", " sb-indent-2"];
+
+export function ServerRow({ api, s, projectId, inMachine }: ServerRowProps) {
   const { tree, menus } = api;
   const key = serverRowKey(s.id, projectId);
   const isConnecting = !!api.connecting[s.id];
   const tabState = api.tabStates.get(s.id);
   const selected = tree.selected === key;
+  const sudo = api.sudoOf.get(s.id);
   return (
     <div
       data-sb-row
@@ -39,7 +69,7 @@ export function ServerRow({ api, s, projectId }: { api: RowApi; s: ServerProfile
       tabIndex={0}
       role="treeitem"
       aria-selected={selected}
-      className={`sb-row${projectId ? " sb-indent" : ""}${selected ? " selected" : ""}`}
+      className={`sb-row${INDENT[Number(!!projectId) + Number(!!inMachine)]}${selected ? " selected" : ""}`}
       title={`${s.name} — ${serverAddress(s)}\n${OPEN_HINT}`}
       onClick={() => tree.setSelected(key)}
       onDoubleClick={(e) => (isModKey(e) ? connectNew(s) : openOrFocus(s))}
@@ -67,7 +97,8 @@ export function ServerRow({ api, s, projectId }: { api: RowApi; s: ServerProfile
         )}
       </span>
       <span className="sb-name">{s.name}</span>
-      <span className="sb-sub">{serverAddress(s)}</span>
+      {sudo && <SudoMark sudo={sudo} />}
+      <span className="sb-sub">{inMachine ? s.username : serverAddress(s)}</span>
     </div>
   );
 }

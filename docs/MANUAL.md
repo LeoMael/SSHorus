@@ -105,6 +105,15 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - En Windows el archivo es `%USERPROFILE%\.ssh\config`.
 - En **Ajustes → Servidores** puedes activar **Mantener ~/.ssh/config sincronizado**. Así tus servidores también funcionan con `ssh`, VS Code o Claude Code.
 
+**Varias cuentas del mismo servidor:**
+
+- Si guardas varios usuarios del mismo servidor (mismo host y puerto), la barra lateral los junta bajo una fila con
+  el host y cuántas cuentas hay. Pulsa la fila (o `→` / `←`) para desplegarla o plegarla; se recuerda.
+- La cuenta con **sudo** sale primero y lleva una **S** (también si entras como root). SSHorus lo sabe al
+  conectarte y lo recuerda para la próxima vez. Si nunca te conectaste, se fía de la **Contraseña de sudo** del
+  servidor (**Guardar** o **La de la conexión**). Sin datos, no hay marca.
+- Clic derecho en la fila del servidor: **Conectar todas las cuentas** y **Ejecutar comando en estas cuentas…**.
+
 ## Terminal
 
 ![Terminal con dos pestañas, una persistente con el símbolo ∞](manual/04-terminal.png)
@@ -639,6 +648,7 @@ en la terminal es de la shell (borrar palabra). Con la vista dividida cierra el 
 | Doble clic o `Enter` | Conectar, o ir a su pestaña si ya está abierta |
 | `Ctrl` + doble clic, `Ctrl+Enter` o clic central | Abrir otra conexión al mismo servidor (⌘ en macOS) |
 | `Shift+F10` | Menú del servidor |
+| `→` / `←` | Desplegar / plegar un proyecto o un servidor con varias cuentas |
 
 **Terminal**
 

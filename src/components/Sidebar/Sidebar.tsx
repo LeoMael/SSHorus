@@ -13,9 +13,12 @@ import "./Sidebar.css";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import { filterProjects, matchesServer, parseTabStates, serverRowKey, tabStatesKey } from "./sidebarLogic";
 import { sidebarMenus } from "./sidebarMenus";
-import { useCollapsedProjects } from "./useCollapsedProjects";
+import { machineKey, machineRowKey } from "../../features/sidebar/machineGroups";
+import { useAccountSudo } from "./useAccountSudo";
+import { useCollapsedMachines, useCollapsedProjects } from "./useCollapsedProjects";
 import { useSidebarTree } from "./useSidebarTree";
-import { ServerRow, type RowApi } from "./SidebarRows";
+import { ServerItems } from "./MachineGroup";
+import type { RowApi } from "./SidebarRows";
 import { ProjectGroup } from "./ProjectGroup";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarInputs } from "./SidebarInputs";
@@ -35,6 +38,7 @@ export function Sidebar() {
 
   const [query, setQuery] = useState("");
   const { collapsed, toggleProject } = useCollapsedProjects();
+  const machines = useCollapsedMachines();
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
@@ -48,18 +52,21 @@ export function Sidebar() {
   const visibleProjects = useMemo(() => filterProjects(projects, serverById, q), [projects, serverById, q]);
   const visibleServers = useMemo(() => (q ? servers.filter((s) => matchesServer(s, q)) : servers), [servers, q]);
   const tree = useSidebarTree();
+  const sudoOf = useAccountSudo(servers);
 
-  /** Selecciona y muestra un servidor: dentro de su proyecto (que se despliega) o en «Servidores». */
+  /** Selecciona y muestra un servidor: dentro de su proyecto (que se despliega) o en «Servidores»; si
+   *  está dentro del nodo de su máquina, también lo despliega. */
   const revealServer = (s: ServerProfile, projectId: string) => {
     const key = serverRowKey(s.id, projectId);
     if (projectId) toggleProject(projectId, true);
+    machines.toggle(machineRowKey(machineKey(s), projectId), true);
     if (q && !matchesServer(s, q)) setQuery("");
     tree.setSelected(key);
     tree.setReveal(key);
   };
 
   const menus = sidebarMenus({ serverById, tabStates, connecting, revealServer, openImport: () => setImportOpen(true) });
-  const api: RowApi = { tree, menus, connecting, tabStates, serverById };
+  const api: RowApi = { tree, menus, connecting, tabStates, serverById, sudoOf, machines };
 
   const isEmpty = loaded && servers.length === 0 && projects.length === 0;
 
@@ -130,9 +137,7 @@ export function Sidebar() {
                   <Plus size={13} />
                 </button>
               </div>
-              {visibleServers.map((s) => (
-                <ServerRow key={serverRowKey(s.id)} api={api} s={s} />
-              ))}
+              <ServerItems api={api} servers={visibleServers} q={q} />
               {servers.length === 0 && <div className="sb-row sb-placeholder">Sin servidores</div>}
             </section>
           )}

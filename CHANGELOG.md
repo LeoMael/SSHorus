@@ -26,6 +26,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   proceso se lee una sola vez). Al elegir la fila, una nota explica qué es, si se puede cerrar y **Ver en
   Contenedores** abre los de ese dueño. En **Procesos**, cada proceso de un contenedor lleva su nombre y «Terminar»
   avisa de que puede dejar el contenedor a medias.
+- **Barra lateral: cuentas del mismo servidor juntas.** Si guardas varios usuarios del mismo servidor (mismo host y
+  puerto), salen bajo un nodo plegable con el host, cuántas cuentas hay y un punto verde si alguna está conectada.
+  La cuenta con sudo (o root) va primero y lleva una **S**; se sabe por la última vez que te conectaste con ella o,
+  si nunca te conectaste, por su contraseña de sudo configurada. También dentro de cada proyecto.
 
 ### Corregido
 - **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.

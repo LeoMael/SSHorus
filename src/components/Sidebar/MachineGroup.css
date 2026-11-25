@@ -1,0 +1,20 @@
+/* Servidor con varias cuentas en la barra lateral y marca «S» de la cuenta con sudo. */
+.sb-indent-2 {
+  padding-left: 44px;
+}
+.sb-machine-name {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+.sb-sudo {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--yellow) 45%, transparent);
+  cursor: default;
+}

@@ -2,6 +2,8 @@
 import {
   Bookmark as BookmarkIcon,
   Bot,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Copy,
   CopyPlus,
   Download,
@@ -164,6 +166,20 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
     ];
   };
 
+  /** Servidor con varias cuentas guardadas. */
+  const machine = (accounts: ServerProfile[], open: boolean, toggle: () => void): MenuItem[] => [
+    open
+      ? { label: "Plegar", icon: <ChevronsDownUp size={14} />, onClick: toggle }
+      : { label: "Desplegar", icon: <ChevronsUpDown size={14} />, onClick: toggle },
+    "separator",
+    { label: "Conectar todas las cuentas", icon: <Plug size={14} />, onClick: () => void connectToMany(accounts) },
+    {
+      label: "Ejecutar comando en estas cuentas…",
+      icon: <SquareTerminal size={14} />,
+      onClick: () => openMultiRun({ profileIds: accounts.map((s) => s.id) }),
+    },
+  ];
+
   const bookmark = (p: Project, b: Bookmark, s: ServerProfile | undefined): MenuItem[] => [
     { label: "Abrir", icon: <Folder size={14} />, disabled: !s, onClick: () => s && connectNew(s, b.path) },
     { label: "Editar proyecto…", icon: <Pencil size={14} />, onClick: () => openProjectEditor(p) },
@@ -187,7 +203,7 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
     ...ASSISTANTS.map((a) => ({ label: a.label, icon: <Bot size={14} />, onClick: () => void launchAssistant(a.tool) })),
   ];
 
-  return { server, project, bookmark, addToProject, newItems };
+  return { server, machine, project, bookmark, addToProject, newItems };
 }
 
 export type SidebarMenus = ReturnType<typeof sidebarMenus>;

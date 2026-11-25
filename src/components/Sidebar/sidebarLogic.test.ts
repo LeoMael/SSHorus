@@ -2,6 +2,7 @@
 // Ejecutar: npx rolldown src/components/Sidebar/sidebarLogic.test.ts -p node -f esm -o /tmp/sb.mjs && node /tmp/sb.mjs
 import type { Project, ServerProfile } from "../../api/types";
 import {
+  bestTabState,
   bookmarkRowKey,
   filterProjects,
   isNavKey,
@@ -53,6 +54,9 @@ const key = tabStatesKey([
 ]);
 eq(key, "a:reconnecting\nb:connected", "mejor estado por servidor, ordenado");
 eq(tabStatesKey([]), "", "sin pestañas");
+eq(bestTabState(["closed", undefined, "connected", "reconnecting"]), "connected", "varias cuentas: conectada si alguna lo está");
+eq(bestTabState(["closed", "reconnecting"]), "reconnecting", "reconectando gana a cerrada");
+eq(bestTabState([undefined]), undefined, "ninguna abierta");
 eq([...parseTabStates(key)], [["a", "reconnecting"], ["b", "connected"]], "ida y vuelta");
 eq([...parseTabStates("")], [], "texto vacío");
 eq([...parseTabStates("id:con:dos-puntos:closed")], [["id:con:dos-puntos", "closed"]], "id con «:»");

@@ -1,11 +1,13 @@
-// Proyectos plegados en la barra lateral (se recuerdan entre sesiones en localStorage).
+// Proyectos y servidores (con varias cuentas) plegados en la barra lateral: se recuerdan entre sesiones
+// en localStorage.
 import { useState } from "react";
 
-const COLLAPSED_KEY = "sshorus.sidebar.collapsedProjects";
+const PROJECTS_KEY = "sshorus.sidebar.collapsedProjects";
+const MACHINES_KEY = "sshorus.sidebar.collapsedMachines";
 
-function readCollapsed(): Record<string, boolean> {
+function readCollapsed(storageKey: string): Record<string, boolean> {
   try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
+    const raw = localStorage.getItem(storageKey);
     const v: unknown = raw ? JSON.parse(raw) : {};
     return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
   } catch {
@@ -13,26 +15,39 @@ function readCollapsed(): Record<string, boolean> {
   }
 }
 
-function writeCollapsed(v: Record<string, boolean>) {
+function writeCollapsed(storageKey: string, v: Record<string, boolean>) {
   try {
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(v));
+    localStorage.setItem(storageKey, JSON.stringify(v));
   } catch {
     /* sin almacenamiento: no pasa nada */
   }
 }
 
-/** `toggleProject(id)` alterna; con `force` true lo despliega y con false lo pliega. */
-export function useCollapsedProjects() {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
+/** `toggle(id)` alterna; con `force` true lo despliega y con false lo pliega. */
+function useCollapsed(storageKey: string) {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => readCollapsed(storageKey));
 
-  const toggleProject = (id: string, force?: boolean) => {
+  const toggle = (id: string, force?: boolean) => {
     setCollapsed((c) => {
+      if (force === true && !c[id]) return c;
       const next = { ...c, [id]: force === undefined ? !c[id] : !force };
       if (!next[id]) delete next[id];
-      writeCollapsed(next);
+      writeCollapsed(storageKey, next);
       return next;
     });
   };
 
-  return { collapsed, toggleProject };
+  return { collapsed, toggle };
 }
+
+export function useCollapsedProjects() {
+  const { collapsed, toggle } = useCollapsed(PROJECTS_KEY);
+  return { collapsed, toggleProject: toggle };
+}
+
+/** Claves: `machineRowKey` (la misma máquina se pliega aparte en cada proyecto y en «Servidores»). */
+export function useCollapsedMachines() {
+  return useCollapsed(MACHINES_KEY);
+}
+
+export type CollapsedMachines = ReturnType<typeof useCollapsedMachines>;

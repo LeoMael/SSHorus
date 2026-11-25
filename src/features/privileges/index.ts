@@ -2,6 +2,8 @@
 export {
   ADMIN_GROUPS,
   DETECT_COMMAND,
+  accountAdmin,
+  type AccountAdmin,
   DETECT_TIMEOUT_SECS,
   canElevate,
   parseNoPasswdCheck,
@@ -20,6 +22,7 @@ export {
   usePrivilege,
   usePrivileges,
 } from "./store";
+export { knownAdminFor, useKnownAdmin, type KnownAdmin } from "./knownAdmin";
 export {
   computeElevation,
   confirmSudo,

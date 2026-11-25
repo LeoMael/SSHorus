@@ -4,6 +4,7 @@ import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import { useTabs, type SessionTab } from "../../stores/tabs";
 import { useLock } from "../lock/lockStore";
+import { recordDetected } from "./knownAdmin";
 import { forgetSudo, resetStoredSudo, useSudo } from "./sudo";
 import {
   DETECT_COMMAND,
@@ -155,9 +156,14 @@ export function initPrivileges(): () => void {
   const unsubLock = useLock.subscribe((s, prev) => {
     if (prev.status?.locked && s.status && !s.status.locked) resetStoredSudo(Object.keys(useSudo.getState().stored), false);
   });
+  // Lo detectado se recuerda por servidor (marca de sudo en la barra lateral sin estar conectado).
+  const unsubKnown = usePrivileges.subscribe((s, prev) => {
+    if (s.bySession !== prev.bySession) recordDetected(s.bySession, prev.bySession);
+  });
   return () => {
     unsub();
     unsubLock();
+    unsubKnown();
     started = false;
   };
 }

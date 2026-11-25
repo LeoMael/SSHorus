@@ -9,13 +9,17 @@ const TAB_STATE_RANK: Record<TabState, number> = { closed: 1, reconnecting: 2, c
  *  así cambiar de pestaña no redibuja la barra; solo abrir, cerrar o cambiar de estado. */
 export function tabStatesKey(tabs: readonly { status: TabState; profileId: string }[]): string {
   const best = new Map<string, TabState>();
-  for (const t of tabs) {
-    const cur = best.get(t.profileId);
-    if (!cur || TAB_STATE_RANK[t.status] > TAB_STATE_RANK[cur]) best.set(t.profileId, t.status);
-  }
+  for (const t of tabs) best.set(t.profileId, bestTabState([best.get(t.profileId), t.status]) ?? t.status);
   return Array.from(best, ([id, st]) => `${id}:${st}`)
     .sort()
     .join("\n");
+}
+
+/** Estado conjunto de varias cuentas (el de un servidor con varias): conectado si alguna lo está. */
+export function bestTabState(states: readonly (TabState | undefined)[]): TabState | undefined {
+  let best: TabState | undefined;
+  for (const st of states) if (st && (!best || TAB_STATE_RANK[st] > TAB_STATE_RANK[best])) best = st;
+  return best;
 }
 
 export function parseTabStates(key: string): Map<string, TabState> {

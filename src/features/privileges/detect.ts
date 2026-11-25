@@ -176,3 +176,13 @@ export function privilegeDescription(info: PrivilegeInfo): string {
 export function canElevate(level: PrivilegeLevel): boolean {
   return level === "root" || level === "sudo-nopasswd" || level === "sudo";
 }
+
+/** Si una cuenta administra el servidor, resumido para recordarlo: root, sudo (o doas) o usuario normal. */
+export type AccountAdmin = "root" | "sudo" | "user";
+
+/** Resumen de un nivel detectado. null si no está claro («puede que tenga sudo» o sin comprobar). */
+export function accountAdmin(level: PrivilegeLevel): AccountAdmin | null {
+  if (level === "root") return "root";
+  if (canElevate(level)) return "sudo";
+  return level === "user" ? "user" : null;
+}

@@ -13,16 +13,18 @@ instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está 
 la **1.0.0-beta.4**.
 
 **Estado al cerrar la sesión del 24/11/2026 (para retomar):**
-- En `main` local, **sin subir**: «Contenedores: conflicto de nombres con arreglo, tareas largas en segundo plano y
-  editar el compose de otro usuario».
-- En marcha con agentes (cada uno en su worktree de `.claude/worktrees/`, un commit al terminar): (1) **tareas en
-  segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner, auditoría, actualizar
-  imagen, reinicio y Compose), (2) **Monitor → Por usuario** con los UID de contenedores atribuidos a su dueño y su
-  contenedor, (3) **barra lateral en árbol** por servidor con la cuenta de sudo primero («S»). Si la sesión se cerró
-  antes de unirlos: mirar `git worktree list` y las ramas `worktree-agent-*`; lo que tenga commit se une con
-  `git cherry-pick`, lo que no, se rehace.
-- Después: unir, comprobar todo, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
-  (preguntar al usuario antes de subir).
+- En `main` local, **sin subir** (saldrá en la beta.4): Compose (conflicto de nombres, tareas largas, editar el compose
+  de otro usuario), Monitor → Por usuario con los UID de contenedores, barra lateral en árbol con la «S» de sudo, e
+  ideas 9 y 10 anotadas.
+- En marcha con agentes al cerrar (cada uno en su worktree de `.claude/worktrees/`, un commit al terminar):
+  (1) **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
+  auditoría, actualizar imagen, reinicio y Compose) y (2) **emparejar asistentes de IA** (idea 10, fase 1 con
+  `sshorus-mcp pair`). Si la sesión se cerró antes de unirlos: `git worktree list` y las ramas `worktree-agent-*`;
+  lo que tenga commit se une con `git cherry-pick`, lo que no, se rehace.
+- **Aprobado por el usuario para la beta.4, sin empezar** (no lanzar más agentes hasta retomar): reglas de calidad
+  automáticas en la CI, ver «Reglas automáticas de calidad» en la sección 3.
+- Después: unir, comprobar todo, `/code-review` del lote, versión `1.0.0-beta.4` (`bundle.windows.wix.version` →
+  `0.6.0.4`), etiqueta y push (preguntar al usuario antes de subir).
 
 ### 1. Hecho en `main` (sin publicar todavía)
 - **Administración → «Qué pueden ver»** + categoría `isolation` en **Auditar servidor** + casilla **«Permitir túneles SSH»** en «Nuevo usuario con clave» (apagada por defecto sin sudo).
@@ -48,6 +50,10 @@ la **1.0.0-beta.4**.
   (reemplaza el viejo sin tocar volúmenes y avisa si hay datos en riesgo), tareas largas en segundo plano (botón
   «Tareas», salida en vivo, aviso «sin salida nueva», Cancelar que para en el servidor) y «Editar compose» de otro
   usuario con sudo (copia `.bak-sshorus-<fecha>` y «Aplicar cambios»).
+- **Barra lateral: cuentas del mismo servidor agrupadas** (mismo host y puerto) bajo un nodo plegable, con la de sudo
+  primero y marca «S». El sudo sale de la conexión abierta, de lo último detectado (guardado por servidor) o de la
+  contraseña de sudo configurada. Pendiente: nombre propio para el nodo (hoy muestra el host) y unir alias de
+  `~/.ssh/config` que apuntan al mismo `HostName` (el perfil no guarda esa información).
 
 Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ronda de orden del código»](historial/PENDIENTES-historial.md#próxima-sesión-anotado-el-13112026).
 
@@ -63,6 +69,11 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   - «Nuevo usuario con clave»: la lista de llaves de `~/.ssh` solo muestra `.pub` válidas.
   - Barra lateral: «mostrar servidor» (también al mover un servidor a un proyecto) y Sitios web → «Comprobar
     configuración» (que no se repita al escribir la contraseña de sudo).
+  - Barra lateral con cuentas agrupadas (TESIS, Leo y Leo_oti en `2.25.131.217`, Portal aparte): nodo con «3 cuentas»
+    y punto verde al conectar una; «S» en la de sudo tras conectarse (y que siga al reiniciar SSHorus); plegar y
+    desplegar (clic, `→`/`←`, se recuerda al reiniciar); buscar «leo» (nodo desplegado); «mostrar servidor» de una
+    cuenta con el nodo plegado (debe desplegarlo); dentro de un proyecto con dos de esas cuentas; menú contextual del
+    nodo y de cada cuenta; doble clic para abrir; tema claro y oscuro.
   - Compose de otro usuario siendo admin (proyecto `seguimiento_siu` en el VPS): «Ver y arreglar» con el contenedor
     `seguimiento-siu-db` repetido, «Actualizar» en segundo plano y Cancelar a mitad (con sudo/`runuser`), «Editar
     compose» y «Aplicar cambios». **Ojo con postgres 18:** guarda los datos en `/var/lib/postgresql/18/docker`; un
@@ -93,6 +104,18 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   [tmux](historial/PENDIENTES-historial.md#76-terminales-persistentes-con-tmux---hecho-v040),
   [PIN y bóveda](historial/PENDIENTES-historial.md#77-pin-bóveda-cifrada-y-bloqueo---hecho-v040),
   [otros pendientes detectados](historial/PENDIENTES-historial.md#4-otros-pendientes-detectados) (2FA, agente, arrastre, cancelar).
+
+#### Reglas automáticas de calidad (aprobadas el 24/11/2026 para la beta.4)
+Para que el orden no dependa de que cada agente se acuerde, la CI debe fallar si se rompe el criterio de
+[`ARQUITECTURA.md` §5](ARQUITECTURA.md#dónde-va-cada-archivo-criterio-de-carpetas):
+1. **Límites entre carpetas con ESLint** (`no-restricted-imports` o `eslint-plugin-boundaries`): `lib/` no importa
+   `features/` ni `components/`; `features/` no importa interfaz salvo `components/ui`; `invoke()` solo en `src/api/`.
+2. **Dependencias circulares** entre carpetas (p. ej. `dependency-cruiser`). Hoy quedan `stores` ↔ `connect`, `tmux`
+   y `ui` (por `stores/sessionState.ts`): arreglarlas o dejarlas como excepción anotada.
+3. **Tope de 500 líneas por archivo** con un script en la CI (también CSS), con lista de excepciones temporales para
+   los que ya lo pasan (ver «Deuda técnica»), que solo puede encoger.
+4. **Revisión de código antes de cada versión** (`/code-review` del lote) y anotar en el CHANGELOG lo que se arregló.
+Documentarlo en `ARQUITECTURA.md` §5 y `dev/REGLAS-AGENTES.md` al hacerlo.
 
 #### Deuda técnica (no bloquea la 1.0.0)
 Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
@@ -146,6 +169,8 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **7.10** | **Historial por servidor** | Idea, sin empezar | Comandos usados en cada servidor y grabación opcional de sesiones (para auditoría). |
 | **8.2+** | **Más Administración** | Idea, sin empezar | Servicios (systemd: iniciar, parar, activar, logs), firewall, paquetes (actualizar, instalar) y tareas programadas (cron/timers). |
 | **9** | **Ver bases de datos (esquema)** | Idea del usuario (24/11), sin empezar | Desde un servidor o un contenedor, ver el esquema de PostgreSQL, MySQL/MariaDB, SQLite (y quizá MongoDB/Redis): bases, tablas, columnas, índices y relaciones, y un diagrama sencillo. Conectar por túnel SSH o con `psql`/`mysql` dentro del contenedor, con la contraseña puesta por SSHorus (la IA nunca la ve). Primero solo lectura. |
+| **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | Aprobada por el usuario (24/11, pedida desde copysse), diseño propuesto, sin empezar | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
+| **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | Recomendado (24/11), fase 2 de la idea 10 | Para asistentes que se conectan por HTTP sin el puente `sshorus-mcp`: flujo de autorización estándar del MCP (OAuth 2.1 con PKCE), donde «autorizar» es el mismo diálogo de SSHorus con permisos por servidor. Más trabajo que la fase 1; no sirve para clientes stdio, que siguen con `sshorus-mcp pair`. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |
 | **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |
 | **5** | **Asistente corriendo dentro del VPS (`remote-control`)** | ❌ Descartado (16/11) | Sustituido por el punto 6 (la IA corre fuera del VPS para no gastar RAM ni exponer sesiones a root del VPS). |
