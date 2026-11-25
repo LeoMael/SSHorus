@@ -10,6 +10,9 @@
 // consumo actual, y busybox no lo admite) se leen los contadores de /proc/[pid]/stat y el % se
 // calcula por diferencia entre dos muestras, igual que `top`. Funciona igual en GNU y en busybox.
 import { splitSections } from "../../lib/remote";
+import { parseDf } from "./disks";
+
+export { parseDf };
 
 export interface CpuTicks {
   /** Suma de todos los campos de la línea "cpu" de /proc/stat. */
@@ -97,6 +100,8 @@ export interface RawSample {
   noProc: boolean;
   /** pid del shell del muestreo. */
   selfPid: number | null;
+  /** Todas las secciones, para quien añade las suyas (`extra`; p. ej. contenedores de cada proceso). */
+  sections: Map<string, string[]>;
 }
 
 /** Tiempo límite de cada muestreo (s). */
@@ -109,6 +114,8 @@ export interface SampleCommandOptions {
   uidPids?: number[];
   /** El dueño de todos los procesos (la primera vez, o si hay muchos nuevos). */
   uidAll?: boolean;
+  /** Partes de script de otros módulos (mismas reglas de comillas), antes de `df`. */
+  extra?: string[];
 }
 
 /** Más pids nuevos que esto: se pregunta el dueño de todos (la lista no cabe en el comando). */
@@ -139,6 +146,8 @@ export function buildSampleCommand(opts: SampleCommandOptions): string {
       'if command -v podman >/dev/null 2>&1; then echo podman=1; fi',
       'echo "hidepid=$(grep " /proc proc " /proc/mounts 2>/dev/null | head -n 1 | grep -o "hidepid=[a-z0-9]*" | cut -d= -f2)"',
       "echo @@passwd; cut -d: -f1,3 /etc/passwd 2>/dev/null",
+      // Rangos de uid de los contenedores de Podman sin root (lo puede leer cualquiera).
+      "echo @@subuid; cat /etc/subuid 2>/dev/null",
     );
   }
   parts.push(
@@ -154,6 +163,7 @@ export function buildSampleCommand(opts: SampleCommandOptions): string {
       `echo @@uid; if command -v stat >/dev/null 2>&1; then stat -c "%u %n" ${paths} 2>/dev/null; else ls -lnd ${paths} 2>/dev/null; fi`,
     );
   }
+  parts.push(...(opts.extra ?? []));
   // df al final: si un montaje de red se cuelga, lo anterior ya llegó.
   parts.push("echo @@df; df -kP 2>/dev/null", "echo @@end");
   return `sh -c '${parts.join("; ")}'`;
@@ -234,42 +244,6 @@ export function parseNetDev(lines: string[]): NetCounter[] {
     out.push({ iface, rx, tx });
   }
   return out;
-}
-
-const PSEUDO_FS = new Set(["tmpfs", "devtmpfs", "shm", "udev", "none", "proc", "sysfs", "cgroup", "cgroup2", "efivarfs", "run", "devfs", "squashfs"]);
-const PSEUDO_MOUNT = /^\/(proc|sys|dev|run|snap)(\/|$)/;
-
-/**
- * `df -kP`. Deja fuera lo que no es disco de verdad: tmpfs/devtmpfs/shm, montajes de /proc, /sys, /dev, /run,
- * los squashfs de snap y `overlay` (salvo si es la raíz: en un contenedor es el único disco que hay).
- * Si el mismo sistema de archivos está montado varias veces (bind mounts), queda el montaje más corto.
- */
-export function parseDf(lines: string[]): DiskUsage[] {
-  const all: DiskUsage[] = [];
-  for (const l of lines) {
-    if (/^Filesystem\s/i.test(l) || /^S\.\s*ficheros/i.test(l)) continue;
-    // El punto de montaje puede tener espacios: los 4 números + "NN%" marcan dónde empieza.
-    const m = /^(.*?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\/.*)$/.exec(l);
-    if (!m) continue;
-    const [, fs, size, used, avail, pct, mount] = m;
-    all.push({ fs, mount, sizeKb: Number(size), usedKb: Number(used), availKb: Number(avail), pct: Number(pct) });
-  }
-  const keep = all.filter((d) => {
-    if (d.sizeKb <= 0) return false;
-    if (PSEUDO_FS.has(d.fs)) return false;
-    if (d.fs === "overlay" && d.mount !== "/") return false;
-    if (/^\/dev\/loop/.test(d.fs) && d.mount.startsWith("/snap")) return false;
-    if (PSEUDO_MOUNT.test(d.mount)) return false;
-    return true;
-  });
-  // Mismos números → el mismo sistema de archivos montado varias veces (bind mounts, raíz de un contenedor).
-  const byKey = new Map<string, DiskUsage>();
-  for (const d of keep) {
-    const key = `${d.sizeKb}|${d.usedKb}`;
-    const prev = byKey.get(key);
-    if (!prev || d.mount.length < prev.mount.length) byKey.set(key, d);
-  }
-  return [...byKey.values()].sort((a, b) => (a.mount === "/" ? -1 : b.mount === "/" ? 1 : a.mount.localeCompare(b.mount)));
 }
 
 /** Línea completa de /proc/[pid]/stat (el nombre puede tener espacios y paréntesis). */
@@ -399,5 +373,6 @@ export function parseSample(stdout: string, at = Date.now()): RawSample {
     complete: s.has("end"),
     noProc: s.has("noproc"),
     selfPid: self,
+    sections: s,
   };
 }

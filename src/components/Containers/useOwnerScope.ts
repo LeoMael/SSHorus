@@ -26,6 +26,7 @@ import { ElevationError } from "../../features/privileges";
 import { loadStoreUsers, useVulnScan } from "../../features/vulnscan/run";
 import { errorMessage } from "../../api/core";
 import { NO_ELEVATION, pickStatus, selfOwnerLabel } from "../../features/containers/panelLogic";
+import { useOwnerNav } from "../../features/containers/ownerNav";
 
 interface Args {
   sessionId: string;
@@ -43,6 +44,14 @@ export function useOwnerScope({ sessionId, profileId, info, elev, result, active
   const [enginePref, setEnginePref] = useState<Engine | null>(() => loadEngine(profileId));
   /** Selector «Usuario»: "self", "root", "u:<usuario>" o "all". */
   const [choice, setChoice] = useState(() => loadOwnerChoice(profileId));
+  // «Ver en Contenedores» desde el Monitor: los contenedores de ese dueño.
+  const ownerNav = useOwnerNav((s) => s.request);
+  useEffect(() => {
+    if (ownerNav?.sessionId !== sessionId) return;
+    useOwnerNav.getState().done(ownerNav.seq);
+    setChoice(ownerNav.owner);
+    saveOwnerChoice(profileId, ownerNav.owner);
+  }, [ownerNav, sessionId, profileId]);
   // Usuarios con contenedores propios: la misma lista (y el mismo script) que el escáner.
   const usersView = useVulnScan((s) => s.users[sessionId] ?? null);
   const [usersLoad, setUsersLoad] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });

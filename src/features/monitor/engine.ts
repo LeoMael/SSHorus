@@ -13,6 +13,7 @@ import { buildContainersCommand, CONTAINERS_TIMEOUT_SECS, parseContainers, type 
 import { deriveMetrics, sustainedCpu, toPoint, type HistoryPoint, type Metrics } from "./derive";
 import { evaluateAlerts, loadAlerts, onAlertsChanged, type ActiveAlert, type AlertConfig } from "./alerts";
 import { CONTAINERS_INTERVAL, HISTORY_MS } from "./prefs";
+import { ContainerAttribution } from "./attribution";
 
 export interface ContainersState {
   result: ContainersResult | null;
@@ -104,6 +105,7 @@ class Sampler {
   /** pid → uid (con su arranque, para no confundir pids reutilizados). */
   private uidCache = new Map<number, { uid: number; start: number }>();
   private wantUids: number[] = [];
+  private attribution = new ContainerAttribution();
   private cpuHist: { uptime: number; cpu: CpuTicks }[] = [];
   private activeAlerts = new Set<string>();
   private alertCfg: AlertConfig;
@@ -186,7 +188,12 @@ class Sampler {
     const full = !this.info || Date.now() - this.lastFullAt > FULL_EVERY_MS;
     const el = this.sampleElevation();
     try {
-      const cmd = buildSampleCommand({ full, uidPids: this.wantUids, uidAll: this.count === 0 || this.elevated !== !!el });
+      const cmd = buildSampleCommand({
+        full,
+        uidPids: this.wantUids,
+        uidAll: this.count === 0 || this.elevated !== !!el,
+        extra: this.attribution.parts(),
+      });
       const r = el
         ? await runScript(this.sessionId, cmd, el, "", SAMPLE_TIMEOUT_SECS)
         : await snippets.exec(this.sessionId, cmd, SAMPLE_TIMEOUT_SECS);
@@ -234,6 +241,7 @@ class Sampler {
       const p = raw.procs.find((x) => x.pid === pid);
       this.uidCache.set(pid, { uid, start: p?.start ?? NaN });
     }
+    this.attribution.absorb(raw);
     const hz = this.info?.hz ?? 100;
     const pageSize = this.info?.pageSize ?? 4096;
     const metrics = deriveMetrics(this.prev, raw, {
@@ -245,11 +253,13 @@ class Sampler {
         return c && (c.start === p.start || Number.isNaN(c.start)) ? c.uid : null;
       },
       userOf: (uid) => this.users.get(uid) ?? null,
+      containerOf: (p, uid) => this.attribution.containerOf(p, uid, (u) => this.users.get(u) ?? null),
     });
     // Limpieza de la caché de uids (procesos que ya no existen) y pids a preguntar la próxima vez.
     const alive = new Set(raw.procs.map((p) => p.pid));
     for (const pid of this.uidCache.keys()) if (!alive.has(pid)) this.uidCache.delete(pid);
     this.wantUids = metrics.procs.filter((p) => p.uid === null).map((p) => p.pid);
+    this.attribution.plan(metrics.procs, !!(this.info?.docker || this.info?.podman));
     this.prev = raw;
     this.count++;
 
@@ -321,7 +331,11 @@ class Sampler {
       const r = await snippets.exec(this.sessionId, buildContainersCommand(), CONTAINERS_TIMEOUT_SECS);
       if (this.disposed) return;
       if (r.timedOut) patchC({ loading: false, error: "Las estadísticas de contenedores tardaron demasiado" });
-      else patchC({ loading: false, error: null, result: parseContainers(r.stdout), at: Date.now() });
+      else {
+        const result = parseContainers(r.stdout);
+        this.attribution.learnNames(result.containers);
+        patchC({ loading: false, error: null, result, at: Date.now() });
+      }
     } catch (e) {
       if (!this.disposed) patchC({ loading: false, error: errorMessage(e) });
     } finally {

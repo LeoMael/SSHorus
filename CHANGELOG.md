@@ -20,6 +20,15 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   encima conservando dueño, grupo y permisos, con copia `.bak-sshorus-<fecha>` la primera vez, y luego **Aplicar
   cambios (up -d)**. **Abrir carpeta** lleva a **Archivos** en la carpeta del proyecto.
 - **Compose: «Actualizar»** tiene la opción de volver a construir las imágenes propias (`up -d --build`).
+- **Monitor → Por usuario: los números de los contenedores dicen qué son.** Los uid sin nombre de Podman sin root
+  (p. ej. `590822`) salen como «Contenedor seguimiento-siu-db · de leo_oti · uid 999 dentro», debajo de su dueño. El
+  dueño sale de `/etc/subuid`, el contenedor del cgroup de cada proceso y el nombre de su `conmon` (sin sudo; cada
+  proceso se lee una sola vez). Al elegir la fila, una nota explica qué es, si se puede cerrar y **Ver en
+  Contenedores** abre los de ese dueño. En **Procesos**, cada proceso de un contenedor lleva su nombre y «Terminar»
+  avisa de que puede dejar el contenedor a medias.
+
+### Corregido
+- **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.
 
 ## [1.0.0-beta.3] - 2026-11-24
 

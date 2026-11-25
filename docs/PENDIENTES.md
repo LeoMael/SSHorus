@@ -67,6 +67,11 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     `seguimiento-siu-db` repetido, «Actualizar» en segundo plano y Cancelar a mitad (con sudo/`runuser`), «Editar
     compose» y «Aplicar cambios». **Ojo con postgres 18:** guarda los datos en `/var/lib/postgresql/18/docker`; un
     volumen en `/var/lib/postgresql/data` no los protege. Revisar el compose antes de reemplazar la base de datos.
+  - Monitor → Por usuario en el VPS Rocky (Podman sin root por usuario): que `590822` y los demás números salgan
+    como «Contenedor … · de leo_oti · uid … dentro» bajo su dueño, con el nombre real del contenedor; la nota al
+    elegir la fila y **Ver en Contenedores** (como `leo_oti`, como admin con sudo y sin sudo); el aviso de
+    «Terminar» en un proceso de contenedor; «tú» separado del nombre; con hidepid y sin sudo, «Sin identificar ·
+    haría falta sudo». Mirar que el muestreo no pese más (1 vCPU).
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
 - **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no

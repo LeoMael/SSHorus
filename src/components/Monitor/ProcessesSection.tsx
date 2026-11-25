@@ -7,6 +7,7 @@ import {
   filterByUser,
   procScope,
   setSampleElevation,
+  userRowText,
   type Metrics,
   type ProcScope,
   type SessionMonitor,
@@ -14,6 +15,7 @@ import {
 import { useElevation, usePrivilege, useStoredSudo } from "../../features/privileges";
 import { ProcessTable } from "./ProcessTable";
 import { UsersSummary } from "./UsersSummary";
+import { UserContainersNote } from "./UserContainersNote";
 
 const SudoDialog = lazy(() => import("../Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
 
@@ -56,6 +58,11 @@ export function ProcessesSection({ sessionId, profileId, m, mon, sort, onSort, l
   const selected = m.users.some((u) => u.uid === picked) ? picked : null;
   const procs = filterByUser(m.procs, selected);
   const selectable = m.users.filter((u) => u.uid !== null);
+  const pickedUser = selected === null ? null : (m.users.find((u) => u.uid === selected) ?? null);
+  const label = (u: (typeof m.users)[number]) => {
+    const t = userRowText(u, { hidepid, elevated: mon.elevated });
+    return t.detail ? `${t.main} · ${t.detail}` : t.main;
+  };
 
   return (
     <>
@@ -71,7 +78,15 @@ export function ProcessesSection({ sessionId, profileId, m, mon, sort, onSort, l
             </button>
           )}
         </div>
-        <UsersSummary users={m.users} myUid={myUid} selected={selected} onSelect={setPicked} />
+        <UsersSummary
+          users={m.users}
+          myUid={myUid}
+          hidepid={hidepid}
+          elevated={mon.elevated}
+          selected={selected}
+          onSelect={setPicked}
+        />
+        {pickedUser && <UserContainersNote sessionId={sessionId} user={pickedUser} myUser={mon.info?.user ?? null} myUid={myUid} />}
       </section>
 
       <section className="mon-section" aria-labelledby="mon-procs-h">
@@ -91,7 +106,7 @@ export function ProcessesSection({ sessionId, profileId, m, mon, sort, onSort, l
                 <option value="">Todos</option>
                 {selectable.map((u) => (
                   <option key={u.uid} value={u.uid ?? ""}>
-                    {u.user}
+                    {label(u)}
                   </option>
                 ))}
               </select>

@@ -4,6 +4,8 @@ export * from "./containers";
 export * from "./kill";
 export * from "./derive";
 export * from "./users";
+export * from "./containerUids";
+export * from "./userLabels";
 export * from "./alerts";
 export * from "./prefs";
 export * from "./engine";

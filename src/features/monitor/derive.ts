@@ -1,5 +1,6 @@
 // Cálculos entre dos muestras (funciones puras): CPU %, memoria, red por segundo, procesos.
 import type { CpuTicks, DiskUsage, MemInfo, ProcStat, RawSample } from "./sample";
+import type { ProcContainer } from "./containerUids";
 import { summarizeUsers, type UserUsage } from "./users";
 
 export interface MemMetrics {
@@ -45,6 +46,8 @@ export interface ProcRow {
   rssKb: number | null;
   /** Segundos desde que arrancó. */
   elapsed: number | null;
+  /** Contenedor al que pertenece (si se sabe). */
+  container?: ProcContainer | null;
 }
 
 export interface Metrics {
@@ -138,6 +141,7 @@ export interface ProcContext {
   memTotalKb: number | null;
   uidOf: (p: ProcStat) => number | null;
   userOf: (uid: number) => string | null;
+  containerOf?: (p: ProcStat, uid: number | null) => ProcContainer | null;
 }
 
 export function procRows(prev: RawSample | null, cur: RawSample, ctx: ProcContext): ProcRow[] {
@@ -161,6 +165,7 @@ export function procRows(prev: RawSample | null, cur: RawSample, ctx: ProcContex
       memPct: rssKb !== null && ctx.memTotalKb ? (rssKb / ctx.memTotalKb) * 100 : null,
       rssKb,
       elapsed: cur.uptime !== null && Number.isFinite(p.start) ? Math.max(0, cur.uptime - p.start / ctx.hz) : null,
+      container: ctx.containerOf?.(p, uid) ?? null,
     };
   });
 }

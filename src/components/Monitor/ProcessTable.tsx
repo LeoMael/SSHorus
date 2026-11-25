@@ -5,7 +5,7 @@ import { confirmDialog } from "../ui/dialogs";
 import { toast } from "../../stores/toasts";
 import { errorMessage } from "../../api/core";
 import { formatBytes } from "../../lib/format";
-import { killProcess, TOP_PROCS, type ProcRow } from "../../features/monitor";
+import { containerLabel, killProcess, TOP_PROCS, type ProcRow } from "../../features/monitor";
 import type { PrivilegeLevel } from "../../features/privileges";
 import { fmtPct, fmtUptime } from "./format";
 
@@ -34,6 +34,11 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
   const canSudo = privilege === "sudo" || privilege === "sudo-nopasswd" || privilege === "maybe-sudo";
   const needsRoot = (p: ProcRow) => myUid !== null && myUid !== 0 && p.uid !== null && p.uid !== myUid;
   const rootHint = (p: ProcRow) => `Proceso de «${p.user ?? p.uid}». Para terminarlo hace falta root o sudo.`;
+  const userHint = (p: ProcRow) => {
+    const c = p.container;
+    if (c && c.innerUid !== null && c.owner) return `uid ${p.uid}: el usuario ${c.innerUid} de dentro de un contenedor de ${c.owner}`;
+    return p.user ?? undefined;
+  };
 
   // `sudo`: proceso de otro usuario, con la contraseña de sudo de SSHorus (no se escribe en la terminal).
   const terminate = async (p: ProcRow, sudo: boolean) => {
@@ -43,6 +48,16 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
         <>
           Se enviará la señal TERM al proceso <strong>{p.pid}</strong>
           {p.user ? <> de {p.user}</> : null}. El programa puede cerrarse de forma ordenada.
+          {p.container && (
+            <>
+              <br />
+              <br />
+              Es un proceso del contenedor <strong>{containerLabel(p.container) ?? "sin identificar"}</strong>
+              {p.container.owner && <> de {p.container.owner}</>}. Terminarlo puede dejar el contenedor a medias o pararlo; si es
+              una base de datos, la aplicación que la usa deja de funcionar. Para parar o reiniciar el contenedor entero, mejor
+              hazlo desde Contenedores.
+            </>
+          )}
           {sudo && (
             <>
               {" "}
@@ -119,12 +134,20 @@ export function ProcessTable({ sessionId, procs, procCount, sort, onSort, myUid,
             return (
               <tr key={p.pid}>
                 <td className="mon-num mono">{p.pid}</td>
-                <td className={mine ? "mon-user" : "mon-user muted"} title={p.user ?? undefined}>
+                <td className={mine ? "mon-user" : "mon-user muted"} title={userHint(p)}>
                   {p.user ?? "…"}
                 </td>
                 <td className="mon-name" title={p.comm}>
                   {p.comm}
                   {p.state === "Z" && <span className="mon-tag">zombi</span>}
+                  {p.container && (
+                    <>
+                      {" "}
+                      <span className="mon-tag" title="Corre dentro de este contenedor">
+                        {containerLabel(p.container) ?? "contenedor"}
+                      </span>
+                    </>
+                  )}
                 </td>
                 <td className="mon-num mono">{p.cpuPct === null ? "—" : fmtPct(p.cpuPct)}</td>
                 <td className="mon-num mono">{p.memPct === null ? "—" : fmtPct(p.memPct)}</td>

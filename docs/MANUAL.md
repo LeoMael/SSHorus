@@ -303,6 +303,10 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 
 - Con alertas activas, el servidor se revisa cada 30 s aunque no mires la pestaña.
 - Avisa una sola vez hasta que el valor vuelva a bajar.
+- En **Por usuario**, las filas con una caja son contenedores de Podman sin root: un número como `590822` es el
+  usuario de dentro de un contenedor (por ejemplo, la base de datos). Pulsa la fila para ver de quién es, en qué
+  contenedor corre y **Ver en Contenedores**. Para pararlo, mejor desde **Contenedores** que con **Terminar**: si
+  es una base de datos, la aplicación que la usa deja de funcionar.
 
 ## Túneles
 

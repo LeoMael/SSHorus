@@ -65,3 +65,53 @@
   margin-left: auto;
   font-size: var(--fs-sm);
 }
+
+/* Uid de contenedores (Podman sin root) bajo su dueño, y la nota al elegir uno */
+.mon-users-help {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.mon-users .mon-tag {
+  margin-left: 2px;
+}
+.mon-users-icon {
+  margin-right: 5px;
+  vertical-align: -2px;
+  color: var(--text-muted);
+}
+.mon-users tbody tr.mon-users-sub td.mon-name {
+  padding-left: 22px;
+}
+.mon-users-detail {
+  font-size: 12px;
+}
+.mon-users-note {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.mon-users-note-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.mon-users-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.mon-users-note-body p {
+  margin: 0;
+}
+.mon-users-note-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
