@@ -21,14 +21,15 @@
 //!
 //! Partes (`core/`): `params` (parámetros de las herramientas), `auto` (Aceptar automáticamente),
 //! `access` (servidor, permisos y aprobación), `listing` (herramientas sin servidor), `catalog`
-//! (Biblioteca), `commands`, `files`, `scans` (escaneos, vulnerabilidades y auditoría) y `output`
-//! (formato de las respuestas).
+//! (Biblioteca), `commands`, `files`, `scans` (escaneos, vulnerabilidades y auditoría), `db_schema`
+//! (esquema de las bases de datos) y `output` (formato de las respuestas).
 
 mod access;
 mod ask;
 mod auto;
 mod catalog;
 mod commands;
+mod db_schema;
 mod elevation;
 mod files;
 mod listing;
@@ -43,6 +44,7 @@ mod sudo_reveal;
 
 pub use auto::{AutoDuration, AutoState};
 pub use catalog::CatalogEntry;
+pub use db_schema::DbSchemaParams;
 #[cfg(test)]
 pub use elevation::SUDO_CANCELED_MSG;
 #[cfg(test)]
@@ -251,6 +253,7 @@ impl<B: Backend> McpCore<B> {
             "list_sites" => self.scan("sites", parse(args)?, rec).await,
             "list_containers" => self.scan("containers", parse(args)?, rec).await,
             "get_infra_map" => self.scan("infra", parse(args)?, rec).await,
+            "get_db_schema" => self.db_schema(parse(args)?, rec).await,
             "get_vuln_report" => self.vuln_report(parse(args)?, rec).await,
             "scan_vulnerabilities" => self.vuln_scan(parse(args)?, rec, cancel).await,
             "get_audit_report" => self.audit_report(parse(args)?, rec).await,

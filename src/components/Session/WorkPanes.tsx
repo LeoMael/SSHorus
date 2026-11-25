@@ -15,6 +15,8 @@ const AdminPanel = preloadable(() => import("../Admin/AdminPanel").then((m) => m
 const MonitorPanel = preloadable(() => import("../Monitor/MonitorPanel").then((m) => m.MonitorPanel));
 /** Contenedores (Podman / Docker) del servidor. */
 const ContainersPanel = preloadable(() => import("../Containers/ContainersPanel").then((m) => m.ContainersPanel));
+/** Bases de datos del servidor (esquema, solo lectura). */
+const DatabasesPanel = preloadable(() => import("../Databases/DatabasesPanel").then((m) => m.DatabasesPanel));
 /** Túneles (port forwarding) de esta conexión. */
 const TunnelsPanel = preloadable(() => import("../Tunnels/TunnelsPanel").then((m) => m.TunnelsPanel));
 
@@ -30,6 +32,7 @@ interface PanelProps {
 const LAZY_PANELS: { id: FixedTab; Panel: ComponentType<PanelProps>; opensFiles?: boolean }[] = [
   { id: "commands", Panel: CommandsPanel },
   { id: "containers", Panel: ContainersPanel },
+  { id: "databases", Panel: DatabasesPanel },
   { id: "monitor", Panel: MonitorPanel },
   { id: "tunnels", Panel: TunnelsPanel },
   { id: "admin", Panel: AdminPanel, opensFiles: true },

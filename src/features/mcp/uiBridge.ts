@@ -7,6 +7,8 @@
 // - audit: «Auditar servidor» (features/audit), sin sudo; se guarda en el historial como desde el botón.
 // - containers: la detección de Podman/Docker y la lista de contenedores (features/containers).
 // - infra: el mapa de infraestructura (features/infra) resumido como grafo.
+// - db-schema: `get_db_schema`, el esquema de las bases de datos (features/databases/mcp.ts); usa la
+//   credencial guardada por stdin y al asistente solo le llega el esquema.
 // - sudo / sudo-rejected: la contraseña de sudo de un comando del asistente ya aprobado (sudoAsk.ts) y el
 //   aviso de que sudo la rechazó. La contraseña va al motor (que la pasa por stdin), nunca al asistente.
 // - sudo-reveal: la contraseña para `request_sudo_password`, que el usuario ya permitió en su diálogo
@@ -144,6 +146,8 @@ async function run(req: McpUiRequest): Promise<unknown> {
       return auditServer(req.payload);
     case "infra":
       return infra(sessionOf(req.payload));
+    case "db-schema":
+      return import("../databases/mcp").then((m) => m.dbSchemaForAssistant(req.payload));
     case "sudo":
       return sudoForAssistant(req.payload);
     case "sudo-reveal":

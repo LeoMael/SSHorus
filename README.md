@@ -50,6 +50,8 @@
 - **Organizar tus servidores** en proyectos, con carpetas favoritas. Importa y exporta `~/.ssh/config`.
 - **Gestionar contenedores** de Podman o Docker sin escribir comandos: levantar, parar, ver logs,
   Compose, y limpiar imágenes que no se usan.
+- **Ver el esquema de tus bases de datos** (PostgreSQL, MySQL/MariaDB y SQLite, en el servidor o en contenedores):
+  tablas, columnas, índices, relaciones y un diagrama sencillo. Solo lectura y sin poner la contraseña en comandos.
 - **Ver el servidor en vivo**: CPU, memoria, discos, red y procesos, con alertas.
 - **Administrar usuarios y grupos** si eres root o tienes sudo. SSHorus lo detecta solo y lo muestra en la pestaña.
   Incluye **«Qué pueden ver»** (aislamiento de usuarios sin sudo: túneles SSH, servicios en `127.0.0.1`, `/proc`,
@@ -239,6 +241,7 @@ Qué puede hacer el asistente (siempre dentro del acceso que le diste):
 | `list_dir`, `stat`, `read_file` | Explorar y leer archivos | Pasa solo |
 | `write_file`, `upload`, `download`, `transfer_status` | Guardar archivos y transferir | Te pregunta (con las diferencias) |
 | `list_ports`, `list_sites`, `list_containers` | Puertos, sitios web y contenedores | Pasa solo |
+| `get_db_schema` | Esquema de las bases de datos (tablas, columnas, índices y relaciones; sin contraseñas) | Pasa solo |
 | `get_vuln_report` | Último análisis de vulnerabilidades guardado, resumido | Pasa solo |
 | `scan_vulnerabilities` | Analizar ahora, sin sudo (tarda minutos; consulta OSV.dev desde tu PC) | Te pregunta la primera vez; puedes elegir «Permitir siempre» |
 | `get_audit_report` | Última auditoría del servidor (notas y problemas con su arreglo) | Pasa solo |

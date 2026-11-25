@@ -14,9 +14,9 @@ use serde_json::Value;
 use super::backend::Backend;
 use super::caller::Caller;
 use super::core::{
-    AuditReportParams, CatalogListParams, CatalogRunParams, ConnectParams, DownloadParams, ListDirParams, McpCore, NoParams,
-    PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams, SudoPasswordParams,
-    TransferStatusParams, UploadParams, VulnReportParams, VulnScanParams, WriteFileParams,
+    AuditReportParams, CatalogListParams, CatalogRunParams, ConnectParams, DbSchemaParams, DownloadParams, ListDirParams,
+    McpCore, NoParams, PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams,
+    SudoPasswordParams, TransferStatusParams, UploadParams, VulnReportParams, VulnScanParams, WriteFileParams,
 };
 
 const INSTRUCTIONS: &str = "SSHorus da acceso a los servidores SSH que el usuario guardó en la app. Nunca \
@@ -91,6 +91,7 @@ pub fn tools() -> Vec<Tool> {
         tool::<ServerParams>("list_sites", "Sitios web de nginx o Caddy del servidor: dominios, puertos, destinos y certificados.", true),
         tool::<ServerParams>("list_containers", "Contenedores de Podman y/o Docker del servidor con su estado, imagen y puertos.", true),
         tool::<ServerParams>("get_infra_map", "Mapa de la infraestructura del servidor como grafo resumido: puertos expuestos, proxy web, sitios, contenedores, servicios y bases de datos, con quién atiende a quién.", true),
+        tool::<DbSchemaParams>("get_db_schema", "Esquema de las bases de datos del servidor, SOLO LECTURA (PostgreSQL y MySQL/MariaDB del sistema o en contenedores, y archivos SQLite con sqlite_path). Sin target lista los destinos encontrados (key); con target y sin database, las bases con su tamaño; con database, tablas y vistas (filas aproximadas, tamaño), columnas (tipo, nulo, por defecto, clave primaria), índices y claves foráneas (schema y table filtran). Entra con la credencial guardada en SSHorus o sin contraseña (socket local o el propio contenedor); nunca verás contraseñas. Si pide credenciales, dile al usuario que las guarde en SSHorus → Bases de datos.", true),
         tool::<VulnReportParams>("get_vuln_report", "Último análisis de vulnerabilidades guardado del servidor (hecho en SSHorus o con scan_vulnerabilities): recuento por gravedad, fuentes y las vulnerabilidades más graves (limit, por defecto 20). No necesita conexión.", true),
         tool::<VulnScanParams>("scan_vulnerabilities", "Analiza ahora las vulnerabilidades del servidor sin sudo (paquetes, programas e imágenes de contenedores; OSV.dev, la herramienta de la distro y Trivy). No cambia el servidor, pero tarda minutos: pide permiso la primera vez. Devuelve el mismo resumen que get_vuln_report y guarda el informe.", true),
         tool::<AuditReportParams>("get_audit_report", "Última auditoría guardada del servidor (hecha en SSHorus o con run_audit): nota general (0-100 y A-F), nota por categoría (SSH, usuarios, red, actualizaciones, certificados, contenedores, sistema, entradas, endurecimiento) y los problemas con el comando para arreglarlos. No necesita conexión.", true),

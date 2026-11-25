@@ -685,7 +685,10 @@ fn sudo_ids_and_kinds() {
     assert_eq!(secrets::sudo_id("abc"), "abc:sudo");
     assert_eq!(secrets::SecretKind::Login.id("abc"), "abc");
     assert_eq!(secrets::SecretKind::Sudo.id("abc"), "abc:sudo");
-    assert_eq!(secrets::server_secret_ids("abc"), ["abc".to_string(), "abc:sudo".to_string()]);
+    assert_eq!(
+        secrets::server_secret_ids("abc"),
+        ["abc".to_string(), "abc:sudo".to_string(), "abc:db".to_string()]
+    );
 }
 
 #[test]
@@ -693,15 +696,18 @@ fn delete_and_copy_server_secrets_in_keyring() {
     let dir = TempDir::new();
     let v = dir.vault(); // sin bóveda: llavero
     let kr = FakeKeyring::default();
-    kr.data.borrow_mut().extend(map(&[("s1", "p1"), ("s1:sudo", "ps1"), ("s2", "p2"), ("s2:sudo", "ps2")]));
+    kr.data
+        .borrow_mut()
+        .extend(map(&[("s1", "p1"), ("s1:sudo", "ps1"), ("s1:db", "{}"), ("s2", "p2"), ("s2:sudo", "ps2")]));
 
     secrets::copy_server_secrets_with(&v, &kr, "s1", "c1").unwrap();
     assert_eq!(secrets::get_with(&v, &kr, "c1").unwrap().as_deref(), Some("p1"));
     assert_eq!(secrets::get_with(&v, &kr, "c1:sudo").unwrap().as_deref(), Some("ps1"));
+    assert_eq!(secrets::get_with(&v, &kr, "c1:db").unwrap().as_deref(), Some("{}"));
 
     secrets::delete_server_secrets_with(&v, &kr, "s1").unwrap();
     let left: Vec<String> = kr.data.borrow().keys().cloned().collect();
-    assert_eq!(left, ["c1", "c1:sudo", "s2", "s2:sudo"].map(String::from).to_vec());
+    assert_eq!(left, ["c1", "c1:db", "c1:sudo", "s2", "s2:sudo"].map(String::from).to_vec());
     // Borrar lo que no existe no es error.
     secrets::delete_server_secrets_with(&v, &kr, "s1").unwrap();
 }

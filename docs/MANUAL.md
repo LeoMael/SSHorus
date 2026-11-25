@@ -16,20 +16,21 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 8. [Comandos](#comandos)
 9. [Ejecutar en varios servidores](#ejecutar-en-varios-servidores)
 10. [Contenedores](#contenedores)
-11. [Monitor y alertas](#monitor-y-alertas)
-12. [Túneles](#túneles)
-13. [Administración](#administración)
-14. [Vulnerabilidades](#vulnerabilidades)
+11. [Bases de datos](#bases-de-datos)
+12. [Monitor y alertas](#monitor-y-alertas)
+13. [Túneles](#túneles)
+14. [Administración](#administración)
+15. [Vulnerabilidades](#vulnerabilidades)
     - [Auditar servidor](#auditar-servidor)
-15. [IA para explicar informes](#ia-para-explicar-informes)
-16. [GitHub](#github)
-17. [PIN y bloqueo](#pin-y-bloqueo)
-18. [Asistentes de IA (MCP)](#asistentes-de-ia-mcp)
-19. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
-20. [Ajustes](#ajustes)
-21. [Atajos de teclado](#atajos-de-teclado)
-22. [Tareas en segundo plano](#tareas-en-segundo-plano)
-23. [Solución de problemas](#solución-de-problemas)
+16. [IA para explicar informes](#ia-para-explicar-informes)
+17. [GitHub](#github)
+18. [PIN y bloqueo](#pin-y-bloqueo)
+19. [Asistentes de IA (MCP)](#asistentes-de-ia-mcp)
+20. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
+21. [Ajustes](#ajustes)
+22. [Atajos de teclado](#atajos-de-teclado)
+23. [Tareas en segundo plano](#tareas-en-segundo-plano)
+24. [Solución de problemas](#solución-de-problemas)
 
 ---
 
@@ -293,6 +294,38 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
   de otro usuario): al guardar conserva dueño, grupo y permisos y la primera vez hace una copia
   `.bak-sshorus-<fecha>`. Después pulsa **Aplicar cambios (up -d)**. **Abrir carpeta** la muestra en **Archivos**
   (el explorador usa tu usuario, sin sudo: si la carpeta es de otro usuario y no puedes entrar, te lo dice).
+
+## Bases de datos
+
+**Para qué sirve:** ver cómo está hecha una base de datos del servidor (tablas, columnas, índices y relaciones) sin
+instalar nada en tu PC. Solo lee: no cambia ni consulta datos.
+
+**Cómo se usa:**
+
+1. Abre la pestaña **Bases de datos**. SSHorus busca PostgreSQL y MySQL/MariaDB en el servidor (por sus puertos y
+   sockets) y en los contenedores (los tuyos; con sudo, también los de root y de otros usuarios).
+2. Para un archivo **SQLite**, pulsa **SQLite…** y escribe su ruta en el servidor (no se busca por el disco).
+3. Elige una base de la lista. SSHorus entra sin contraseña si puede: dentro del contenedor, como `postgres` o root
+   con sudo, o como tu usuario. Si no puede, pulsa **Entrar con usuario y contraseña** y marca **Guardar** si quieres
+   que la recuerde para esa base.
+4. Elige la base de datos arriba (si hay varias) y busca una tabla o columna. Pulsa una tabla para ver sus columnas
+   (tipo, si admite nulo, valor por defecto y clave primaria 🔑), índices y claves foráneas; pulsa una clave foránea
+   para ir a la tabla a la que apunta.
+5. **Diagrama** dibuja las tablas como cajas y una flecha por cada clave foránea. Con una búsqueda, solo esas tablas y
+   las que se relacionan con ellas.
+6. **Copiar DDL** copia la definición de la tabla (`CREATE TABLE …`).
+
+**Notas:**
+
+- Las filas son aproximadas (las estadísticas de la base de datos); contarlas de verdad cargaría el servidor.
+- La contraseña nunca va en la línea de comandos: viaja por la entrada estándar y el programa la recibe por su
+  variable (`PGPASSWORD`, `MYSQL_PWD`). La guardada está en la bóveda (o el llavero) y se borra con el servidor. La
+  papelera de arriba la olvida.
+- Hace falta el programa cliente en el servidor (`psql`, `mysql`/`mariadb` o `sqlite3`); en un contenedor se usa el
+  de la imagen.
+- Con un esquema enorme puede tardar: **Cancelar** lo detiene. Cada consulta tiene un límite de 30 s.
+- Los asistentes de IA pueden pedir el mismo esquema con `get_db_schema` (solo con la contraseña guardada o sin
+  contraseña, y sin sudo).
 
 ## Monitor y alertas
 

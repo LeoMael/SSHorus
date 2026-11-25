@@ -1,5 +1,6 @@
 //! Secretos guardados: contraseña o frase de cada servidor (usuario = id del servidor), su
-//! contraseña de sudo (usuario = "<id>:sudo") y el token de GitHub (usuario "github-token").
+//! contraseña de sudo (usuario = "<id>:sudo"), los usuarios y contraseñas de sus bases de datos
+//! (usuario = "<id>:db", ver `db_secret.rs`) y el token de GitHub (usuario "github-token").
 //!
 //! Dónde se guardan:
 //! - Con la bóveda activa (`storage::vault`): en `vault.json`, cifrados con el PIN o la contraseña. Si está
@@ -102,12 +103,20 @@ impl SecretKind {
     }
 }
 
-/// Todos los ids de secretos de un servidor.
-pub fn server_secret_ids(profile_id: &str) -> [String; 2] {
-    [profile_id.to_string(), sudo_id(profile_id)]
+/// Final del id de las credenciales de bases de datos de un servidor ("<id>:db").
+pub const DB_SUFFIX: &str = ":db";
+
+/// Id (en la bóveda o el llavero) de las credenciales de bases de datos de un servidor.
+pub fn db_id(profile_id: &str) -> String {
+    format!("{profile_id}{DB_SUFFIX}")
 }
 
-/// Borra los secretos de un servidor (conexión y sudo). Intenta todos; devuelve el primer error.
+/// Todos los ids de secretos de un servidor.
+pub fn server_secret_ids(profile_id: &str) -> [String; 3] {
+    [profile_id.to_string(), sudo_id(profile_id), db_id(profile_id)]
+}
+
+/// Borra los secretos de un servidor (conexión, sudo y bases de datos). Intenta todos; devuelve el primer error.
 pub(crate) fn delete_server_secrets_with(vault: &Vault, kr: &dyn Keyring, profile_id: &str) -> AppResult<()> {
     let mut first = Ok(());
     for id in server_secret_ids(profile_id) {
@@ -119,11 +128,11 @@ pub(crate) fn delete_server_secrets_with(vault: &Vault, kr: &dyn Keyring, profil
     first
 }
 
-/// Copia los secretos de un servidor (conexión y sudo) a otro (al duplicar).
+/// Copia los secretos de un servidor (conexión, sudo y bases de datos) a otro (al duplicar).
 pub(crate) fn copy_server_secrets_with(vault: &Vault, kr: &dyn Keyring, from: &str, to: &str) -> AppResult<()> {
-    for kind in [SecretKind::Login, SecretKind::Sudo] {
-        if let Some(secret) = get_with(vault, kr, &kind.id(from))?.map(Zeroizing::new) {
-            set_with(vault, kr, &kind.id(to), &secret)?;
+    for (src, dst) in server_secret_ids(from).iter().zip(server_secret_ids(to).iter()) {
+        if let Some(secret) = get_with(vault, kr, src)?.map(Zeroizing::new) {
+            set_with(vault, kr, dst, &secret)?;
         }
     }
     Ok(())

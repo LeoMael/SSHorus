@@ -7,6 +7,17 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Añadido
+- **Bases de datos (solo lectura)**: pestaña nueva en cada servidor para ver el esquema de **PostgreSQL**,
+  **MySQL/MariaDB** y **SQLite**. Encuentra sola las bases del servidor (por sus puertos y sockets) y las que corren
+  en **contenedores** (los tuyos y, con sudo, los de root y de otros usuarios); los archivos SQLite se añaden con su
+  ruta (no se busca por el disco). Entra sin contraseña cuando puede (dentro del contenedor, como `postgres` o root
+  con sudo, o como tu usuario); si no, pide usuario y contraseña y puede **guardarlos** en la bóveda o el llavero para
+  esa base. Muestra bases con su tamaño, tablas y vistas con filas aproximadas y tamaño, columnas (tipo, nulo, valor
+  por defecto, clave primaria), índices y claves foráneas, con **búsqueda**, un **diagrama** de relaciones y
+  **Copiar DDL**. Las consultas solo leen (`pg_catalog`, `information_schema`, `sqlite_master`) con límite de tiempo,
+  y la contraseña va por la entrada estándar: nunca en la línea de comandos ni en los registros.
+- **Asistentes de IA: `get_db_schema`** devuelve ese mismo esquema (lectura, pasa sola), con la credencial guardada o
+  sin contraseña y sin sudo. La IA nunca ve contraseñas.
 - **Tareas en segundo plano para toda la app**: lo que tarda sigue aunque cierres el diálogo que lo lanzó o cambies de
   pestaña. Abajo a la derecha aparece una ventanita con cuántas hay en marcha («2 tareas»); al pulsarla ves cada una
   (servidor, en qué va, tiempo, progreso si se sabe, **Ver** y **Cancelar**). **Ver** la abre en grande: salida en

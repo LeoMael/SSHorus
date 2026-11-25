@@ -329,6 +329,7 @@ impl Backend for Mock {
             "password-run" | "password-prompt" => Ok(self.password.reply()),
             "ports" => Ok(json!({ "tool": "ss", "ports": [{ "port": 22 }] })),
             "audit" => Ok(serde_json::to_value(audit_fixture()).unwrap()),
+            "db-schema" => Ok(db_schema_flow::fixture()),
             _ => Err(AppError::Invalid("no disponible".into())),
         }
     }
@@ -1211,7 +1212,7 @@ fn vuln_tools_are_announced_as_reads() {
     let reboot = tools.iter().find(|t| t.name == "reboot_server").expect("falta reboot_server");
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.read_only_hint), Some(false));
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.destructive_hint), Some(true));
-    assert_eq!(tools.len(), 25);
+    assert_eq!(tools.len(), 26);
 }
 
 // ───────────────────────── Auditoría del servidor ─────────────────────────
@@ -1855,3 +1856,6 @@ mod password_flow;
 
 #[path = "tests_pairing.rs"]
 mod pairing_flow;
+
+#[path = "tests_db_schema.rs"]
+mod db_schema_flow;

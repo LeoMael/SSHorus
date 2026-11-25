@@ -1,0 +1,446 @@
+/* Pestaña «Bases de datos». Prefijo .db- */
+
+.db-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-size: var(--fs);
+}
+.db-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.db-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.db-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.db-spin {
+  animation: spin 0.8s linear infinite;
+}
+.db-spinner-btn {
+  width: 12px;
+  height: 12px;
+}
+.db-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ───────── Lista de destinos ───────── */
+.db-side {
+  width: 240px;
+  flex: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+  padding: 6px 0 10px;
+}
+.db-group {
+  padding: 8px 12px 4px;
+}
+.db-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px;
+}
+.db-target-row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+.db-target-row:hover {
+  background: var(--surface-2);
+}
+.db-target-row.on {
+  background: var(--accent-bg);
+}
+.db-target-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.db-target-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.db-target-label,
+.db-target-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-target-sub {
+  font-size: var(--fs-sm);
+}
+.db-target-x {
+  opacity: 0;
+}
+.db-target-row:hover .db-target-x,
+.db-target-x:focus-visible {
+  opacity: 1;
+}
+.db-engine {
+  flex: none;
+  color: var(--accent);
+}
+.db-engine-mysql {
+  color: var(--orange);
+}
+.db-engine-sqlite {
+  color: var(--purple);
+}
+.db-note {
+  margin: 6px 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.db-banner {
+  margin: 8px 10px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.db-banner-error {
+  border-color: var(--red);
+}
+
+/* ───────── Destino elegido ───────── */
+.db-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.db-target {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.db-target-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.db-target-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.db-target-title > span {
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-db-select {
+  width: auto;
+  max-width: 260px;
+}
+.db-target-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.db-problem {
+  padding: 16px;
+}
+.db-reason {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  max-height: 160px;
+  overflow: auto;
+}
+.db-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.db-dialog-note {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+}
+
+/* ───────── Esquema ───────── */
+.db-schema {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.db-schema-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  flex-wrap: wrap;
+}
+.db-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 320px;
+}
+.db-count {
+  font-size: var(--fs-sm);
+  margin-left: auto;
+}
+.db-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+.db-tables {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  width: 280px;
+  flex: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.db-table {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.db-table:hover {
+  background: var(--surface-2);
+}
+.db-table.on {
+  background: var(--accent-bg);
+}
+.db-table-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-table-meta {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.db-none {
+  padding: 8px;
+}
+
+/* Detalle de una tabla */
+.db-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 10px 14px 16px;
+}
+.db-split-diagram .db-detail {
+  flex: none;
+  width: 340px;
+  border-left: 1px solid var(--border);
+}
+.db-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.db-detail-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-lg);
+  word-break: break-all;
+}
+.db-detail-facts {
+  font-size: var(--fs-sm);
+}
+.db-comment {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+.db-sub {
+  margin-top: 14px;
+  margin-bottom: 4px;
+}
+.db-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.db-grid th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px 4px 0;
+}
+.db-grid td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px 4px 0;
+  vertical-align: top;
+}
+.db-default {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-pk {
+  color: var(--yellow);
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.db-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+}
+.db-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 3px 0;
+}
+.db-tag {
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  font-size: 11px;
+}
+.db-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: inherit;
+}
+.db-link:hover {
+  text-decoration: underline;
+}
+.db-fk-name {
+  font-size: 11px;
+}
+
+/* ───────── Diagrama ───────── */
+.db-diagram {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--bg);
+}
+.db-edge {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.db-edge.on {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.db-arrow-head {
+  fill: var(--text-faint);
+}
+.db-box {
+  cursor: pointer;
+}
+.db-box:focus {
+  outline: none;
+}
+.db-box-bg {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+}
+.db-box-head {
+  fill: var(--surface-3);
+}
+.db-box.near .db-box-bg {
+  stroke: var(--accent);
+}
+.db-box.on .db-box-bg,
+.db-box:focus-visible .db-box-bg {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.db-box.on .db-box-head {
+  fill: var(--accent-bg);
+}
+.db-box-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.db-box-col {
+  fill: var(--text);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+.db-box-type {
+  fill: var(--text-faint);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+.db-box-pk {
+  color: var(--yellow);
+}
+
+/* Diálogos de Administración (AdmModal / SudoDialog) cuando Admin.css no está cargado */
+.db-root .adm-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+}
+.db-root .adm-modal > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.db-root .adm-spinner-btn {
+  width: 12px;
+  height: 12px;
+}

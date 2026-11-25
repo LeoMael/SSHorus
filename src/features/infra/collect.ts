@@ -1,5 +1,5 @@
 // Mapa de infraestructura: lectura de un servidor conectado. Reutiliza los scripts de Administración
-// (Puertos y Sitios web) y de Contenedores (también los de otros usuarios con sudo). Solo lectura: nada
+// (Puertos y Sitios web) y de Contenedores (`readAllContainers`: también los de otros usuarios con sudo). Solo lectura: nada
 // se instala ni se cambia en el servidor.
 import { errorMessage } from "../../api/core";
 import { PORTS_SCRIPT, WEB_SCRIPT, parsePorts, parseWeb } from "../admin";
@@ -15,7 +15,7 @@ import {
   sudoPasswordNeeded,
   type Elevation,
 } from "../privileges";
-import type { OwnedContainer, ServerSnapshot } from "./graph";
+import type { ServerSnapshot } from "./graph";
 import { NO_SUDO_NOTE } from "./owner";
 import { INFRA_SCRIPT, USER_SERVICES_SCRIPT, configOwnersScript, parseConfigOwners, parseInfra, parseUnits, type HumanUser } from "./parse";
 
@@ -26,55 +26,6 @@ export interface CollectTarget {
   name: string;
   host: string;
   sessionId: string;
-}
-
-/** Contenedores de todos los dueños que se ven (con sudo: root y cada usuario, como en Contenedores). */
-async function readContainers(sessionId: string, el: Elevation | null, me: string | null, isRootConn: boolean, notes: string[]): Promise<OwnedContainer[]> {
-  const c = await import("../containers");
-  const det = await c.runRaw(sessionId, c.DETECT_SCRIPT, NONE, 40);
-  const found = det.result ? c.parseDetect(det.result.stdout) : null;
-  if (!found?.ok) return [];
-  const isRoot = isRootConn || found.uid === 0;
-  const out: OwnedContainer[] = [];
-  let users: Awaited<ReturnType<typeof import("../vulnscan/run").loadStoreUsers>> | null = null;
-  if (el) {
-    try {
-      const { loadStoreUsers } = await import("../vulnscan/run");
-      users = await loadStoreUsers(sessionId, el);
-    } catch {
-      users = null;
-    }
-  }
-  for (const st of [found.podman, found.docker]) {
-    if (!st?.installed) continue;
-    if (st.engine === "docker" && found.dockerIsShim) continue;
-    const engine = st.engine;
-    const owners = el ? c.ownerOptions({ engine, users: users?.users ?? [], me, isRoot }) : [{ kind: "self" } as const];
-    const selfSudo = engine === "docker" && st.needsSudo && !isRoot;
-    const usable = owners.filter((o) => o.kind !== "self" || st.accessible || (selfSudo && !!el));
-    if (usable.length === 0) continue;
-    // Usuario real del contenedor; la caja la decide el mapa (ver owner.ts).
-    const userOf = (o: (typeof owners)[number]) =>
-      o.kind === "user" ? o.user.name : o.kind === "root" || isRoot || (engine === "docker" && !st.rootless) ? "root" : (me ?? "");
-    const runner = {
-      sessionId,
-      engine,
-      fallback: c.OWNER_SELF,
-      resolve: (k: string) => c.findOwner(owners, k),
-      elevationFor: (o: (typeof owners)[number]) => (o.kind === "self" ? (selfSudo ? el : NONE) : el),
-      label: (o: (typeof owners)[number]) => userOf(o),
-    };
-    const per = await c.readOwners(runner, usable, c.scriptFor([c.listContainers(engine)]), 30);
-    for (const o of usable) {
-      const r = per.get(c.ownerKey(o));
-      if (!r?.ok || !r.result) {
-        if (r?.error && o.kind === "self") notes.push(`${engine}: ${r.error.split("\n")[0]}`);
-        continue;
-      }
-      for (const ct of c.parseContainers(r.result.stdout)) out.push({ ...ct, engine, user: userOf(o) });
-    }
-  }
-  return out;
 }
 
 /** Servicios `systemctl --user` de los demás usuarios (con sudo, entrando como cada uno). */
@@ -149,10 +100,12 @@ export async function collectServer(t: CollectTarget, opts: { elevate?: boolean 
     snap.extra = infra ? parseInfra(infra.result.stdout) : null;
     const usedEl = elevated ? el : isRoot ? NONE : null;
     const [containers, configOwners] = await Promise.all([
-      readContainers(t.sessionId, usedEl, info.user, isRoot, snap.notes).catch((e) => {
-        snap.notes.push(`Contenedores: ${errorMessage(e)}`);
-        return [];
-      }),
+      import("../containers/readAll")
+        .then((m) => m.readAllContainers(t.sessionId, usedEl, info.user, isRoot, snap.notes))
+        .catch((e) => {
+          snap.notes.push(`Contenedores: ${errorMessage(e)}`);
+          return [];
+        }),
       readConfigOwners(t.sessionId, snap.web?.servers.map((w) => w.configPath) ?? []),
     ]);
     snap.containers = containers;

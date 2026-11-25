@@ -223,8 +223,8 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano) y `sessionState` (estado de cada sesión abierta) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte |
@@ -251,6 +251,13 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   mismo usuario. Lo puro (lista, historial, texto de estado, salida) está en `features/jobs/state.ts` y `output.ts`;
   el store, en `stores/jobs.ts` (no sabe de ninguna función concreta); la interfaz, en `components/Jobs/` (montada
   una vez en `App`). Un resultado propio se enseña con el `view` de la tarea (p. ej. `Admin/VulnFixJobView.tsx`).
+- **Bases de datos** (solo lectura): la lógica está en `features/databases/` (`discover.ts` qué hay, reutilizando los
+  puertos de Administración, el catálogo de Túneles y `containers/readAll.ts`; `auth.ts` en qué orden se entra;
+  `scripts.ts` el script de `psql`/`mysql`/`sqlite3`/`pg_dump`, en el servidor o con `exec` dentro del contenedor y
+  como su dueño; `queries.ts` el SQL; `records.ts` y `parse.ts` la salida «por registros»; `diagram.ts` el dibujo;
+  `remote.ts` la ejecución y `mcp.ts` la herramienta `get_db_schema`), la interfaz en `components/Databases/` y las
+  credenciales en `storage/db_secret.rs` (un secreto `<id>:db` por servidor, que se borra y se copia con él). La
+  contraseña va por stdin y entra al cliente por `PGPASSWORD`/`MYSQL_PWD`.
 - Si un archivo solo lo usa un dominio, va en la carpeta de ese dominio aunque parezca genérico. Cuando lo use un
   segundo dominio, se mueve a `components/ui/` o a `lib/`.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
@@ -272,7 +279,7 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 | `tunnels/` | Túneles local, remoto y SOCKS (`manager.rs`, `forward.rs`, `watcher.rs`, `socks.rs`, `remote.rs`, `store.rs`) |
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
 | `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), cifrado del Gist (`crypto.rs`), compartir comandos |
-| `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
+| `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
 | `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
@@ -710,7 +717,7 @@ después de que lo apruebes (se pregunta siempre, salvo con «Aceptar automátic
 | Herramientas | Permiso |
 |--------------|---------|
 | `list_servers`, `list_projects`, `list_sessions`, `list_catalog`, `transfer_status` | Lectura (pasa sola) |
-| `list_dir`, `stat`, `read_file`, `list_ports`, `list_sites`, `list_containers`, `get_infra_map` | Lectura (pasa sola) |
+| `list_dir`, `stat`, `read_file`, `list_ports`, `list_sites`, `list_containers`, `get_infra_map`, `get_db_schema` (`mcp/core/db_schema.rs`; lo lee la interfaz: `features/databases/mcp.ts`) | Lectura (pasa sola) |
 | `get_vuln_report` (último informe del escáner, resumido), `get_audit_report` (última auditoría) | Lectura (pasa sola, también en Solo lectura) |
 | `connect`, `download`, `scan_vulnerabilities` (análisis sin sudo, 600 s por defecto, cancelable), `run_audit` (auditoría sin sudo) | Pregunta, con «Permitir siempre»; también en Solo lectura |
 | `run_command`, `run_catalog_command` (los 📊 pasan solos; con sudo, SSHorus pone la contraseña), `write_file`, `upload` | Pregunta; en Solo lectura, rechazado |

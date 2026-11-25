@@ -6,7 +6,7 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 ## Resumen al día
 
-*Actualizado el 24/11/2026.*
+*Actualizado el 25/11/2026.*
 
 Última versión etiquetada: **1.0.0-beta.3** (24/11/2026; Release en **borrador**, lo publica el usuario tras probarlo;
 instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está en `main` después de la beta.3 saldrá en
@@ -59,6 +59,10 @@ la **1.0.0-beta.4**.
   «Ver». Van como tarea: Compose y Descargar imagen, Vulnerabilidades → Arreglar, Actualizar imagen, Auditoría →
   Arreglar / Arreglar todo lo seguro y Reiniciar ahora (sustituye al aviso flotante de abajo a la izquierda). Código:
   `features/jobs/` (lógica y ejecución), `stores/jobs.ts`, `components/Jobs/`.
+- **Bases de datos (idea 9, solo lectura)**: pestaña nueva con el esquema de PostgreSQL, MySQL/MariaDB y SQLite (del
+  servidor o de contenedores, también de otros usuarios con sudo), búsqueda, diagrama, «Copiar DDL» y credenciales
+  guardables en la bóveda; MCP `get_db_schema`. Código: `features/databases/`, `components/Databases/`,
+  `storage/db_secret.rs`, `mcp/core/db_schema.rs`. Falta probar a mano (§2).
 
 Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ronda de orden del código»](historial/PENDIENTES-historial.md#próxima-sesión-anotado-el-13112026).
 
@@ -117,6 +121,15 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     «Ver y arreglar» desde la vista grande lleva a Contenedores. Comprobar que la ventanita no tapa la barra de
     transferencias (plegada y abierta) ni los avisos, en tema claro y oscuro, y que se maneja con el teclado
     (Tab, Enter, Escape).
+  - **Bases de datos (idea 9)** en el VPS Rocky: que aparezcan los PostgreSQL de los contenedores de cada usuario
+    (`seguimiento-siu-db`, `sigpa-db`, `oti-db`…) como admin con sudo, y solo los tuyos sin sudo; entrar sin
+    contraseña (dentro del contenedor, también uno de otro usuario con `runuser`), elegir la base, buscar, abrir una
+    clave foránea, **Diagrama** (tema claro y oscuro, caja elegida y sus flechas), **Copiar DDL** (`pg_dump` de la
+    imagen) y **Cancelar** a mitad. Un PostgreSQL o MariaDB del sistema (con sudo: como `postgres`/root; sin sudo:
+    pedir usuario y contraseña, «Guardar», que la próxima vez entre solo y que la papelera la olvide). Un archivo
+    SQLite (**SQLite…**) y uno sin permiso de lectura. Comprobar en el servidor que la contraseña no sale en
+    `ps aux` mientras corre y que el muestreo no pesa (1 vCPU). MCP: `get_db_schema` sin `target` (lista), con
+    `target` (bases) y con `database`/`table`, y que sin credencial guardada pida guardarla en SSHorus.
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
 - **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no
   admite «-beta»; se quita al pasar a `1.0.0`), CHANGELOG cerrado y etiqueta creada. Falta: comprobar el borrador
@@ -201,7 +214,7 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **7.7** | **Comparar archivos** | Idea, sin empezar | Diferencias entre un archivo local y uno remoto, o entre dos servidores. |
 | **7.10** | **Historial por servidor** | Idea, sin empezar | Comandos usados en cada servidor y grabación opcional de sesiones (para auditoría). |
 | **8.2+** | **Más Administración** | Idea, sin empezar | Servicios (systemd: iniciar, parar, activar, logs), firewall, paquetes (actualizar, instalar) y tareas programadas (cron/timers). |
-| **9** | **Ver bases de datos (esquema)** | Idea del usuario (24/11), sin empezar | Desde un servidor o un contenedor, ver el esquema de PostgreSQL, MySQL/MariaDB, SQLite (y quizá MongoDB/Redis): bases, tablas, columnas, índices y relaciones, y un diagrama sencillo. Conectar por túnel SSH o con `psql`/`mysql` dentro del contenedor, con la contraseña puesta por SSHorus (la IA nunca la ve). Primero solo lectura. |
+| **9** | **Ver bases de datos (esquema)** | **Hecha (25/11), falta probar a mano** (ver §2). Pestaña «Bases de datos» + MCP `get_db_schema` | PostgreSQL, MySQL/MariaDB (servidor y contenedores, también de otros usuarios con sudo) y SQLite por ruta: bases, tablas, columnas, índices, claves foráneas, búsqueda, diagrama y «Copiar DDL»; entra sin contraseña (contenedor, `postgres`/root con sudo, tu usuario) o con usuario y contraseña guardables en la bóveda. Solo lectura. Siguiente (si se pide): MongoDB/Redis y ver unas filas de ejemplo. |
 | **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | **Hecha (25/11), falta probar a mano** (ver §2). `sshorus-mcp pair`, permisos propios por asistente, revocar, puente en `~/.local/bin` | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
 | **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | Recomendado (24/11), fase 2 de la idea 10 | Para asistentes que se conectan por HTTP sin el puente `sshorus-mcp`: flujo de autorización estándar del MCP (OAuth 2.1 con PKCE), donde «autorizar» es el mismo diálogo de SSHorus con permisos por servidor. Más trabajo que la fase 1; no sirve para clientes stdio, que siguen con `sshorus-mcp pair`. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |

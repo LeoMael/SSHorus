@@ -1,16 +1,14 @@
 // Tipos y funciones auxiliares puras del grafo de infraestructura.
 import type { ListenPort, PortsResult } from "../admin/ports";
 import { certStatus, type Site, type WebResult } from "../admin/web";
-import type { Container, Engine } from "../containers/types";
+import type { OwnedContainer } from "../containers/readAll";
+import type { Container } from "../containers/types";
 import { sortOwners, type OwnerContext } from "./owner";
 import type { InfraExtra } from "./parse";
 
 export { SYSTEM_OWNER, UNKNOWN_OWNER, sortOwners } from "./owner";
 
-export interface OwnedContainer extends Container {
-  engine: Engine;
-  user: string;
-}
+export type { OwnedContainer };
 
 export interface ServerSnapshot {
   id: string;
