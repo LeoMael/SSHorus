@@ -98,10 +98,9 @@ impl McpConfig {
         self.approval_timeout_secs = self.approval_timeout_secs.clamp(lo, hi);
         self.access.retain(|k, v| !k.trim().is_empty() && *v != Access::None);
         self.remembered.retain(|k, v| !k.trim().is_empty() && !v.is_empty());
-        // El modo automático solo vale con acceso Completo o Solo lo marcado.
-        let access = self.access.clone();
-        self.auto_accept
-            .retain(|k, v| *v != AutoLevel::Off && access.get(k).is_some_and(|a| a.allows_auto()));
+        // Dónde vale el modo automático depende también de los asistentes emparejados: eso lo decide
+        // `McpCore::auto_allowed` (y `prune_auto_at` lo apaga donde ya nadie puede usarlo).
+        self.auto_accept.retain(|k, v| !k.trim().is_empty() && *v != AutoLevel::Off);
         self.grants = std::mem::take(&mut self.grants)
             .into_iter()
             .map(|(k, g)| (k, g.sanitize()))

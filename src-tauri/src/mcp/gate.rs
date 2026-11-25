@@ -1,10 +1,12 @@
-//! La puerta de la app: si SSHorus está bloqueado, el token general (con caché) y los asistentes emparejados.
+//! La puerta de la app: si SSHorus está bloqueado, el token general (con caché) y los asistentes emparejados
+//! (por el puente y por OAuth).
 
 use std::sync::{Arc, Mutex};
 
 use zeroize::Zeroizing;
 
 use super::http;
+use super::oauth::OAuth;
 use super::pairing::Pairing;
 use crate::storage::secrets;
 use crate::storage::vault::Vault;
@@ -12,11 +14,12 @@ use crate::storage::vault::Vault;
 pub struct AppGate {
     cache: Mutex<Option<Zeroizing<String>>>,
     pairing: Arc<Pairing>,
+    oauth: Arc<OAuth>,
 }
 
 impl AppGate {
-    pub fn new(pairing: Arc<Pairing>) -> Self {
-        AppGate { cache: Mutex::new(None), pairing }
+    pub fn new(pairing: Arc<Pairing>, oauth: Arc<OAuth>) -> Self {
+        AppGate { cache: Mutex::new(None), pairing, oauth }
     }
 
     pub fn forget(&self) {
@@ -57,5 +60,9 @@ impl http::Gate for AppGate {
 
     fn pairing(&self) -> Option<&Pairing> {
         Some(&self.pairing)
+    }
+
+    fn oauth(&self) -> Option<&OAuth> {
+        Some(&self.oauth)
     }
 }

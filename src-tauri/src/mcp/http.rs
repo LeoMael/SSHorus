@@ -1,13 +1,15 @@
-//! Transporte HTTP «streamable» local: solo `127.0.0.1`, rutas `/mcp` (con token) y `/pair`
-//! (emparejar un asistente, ver `pairing::route`).
+//! Transporte HTTP «streamable» local: solo `127.0.0.1`, rutas `/mcp` (con token), `/pair` (emparejar por
+//! el puente, ver `pairing::route`) y las de OAuth (emparejar por HTTP directo, ver `oauth::route`).
 //!
 //! Antes de llegar al SDK, cada petición pasa por aquí:
 //! 1. Con cabecera `Origin` (una página web) → 403. Ningún cliente MCP de escritorio la manda.
-//! 2. Si SSHorus está bloqueado → error JSON-RPC «SSHorus está bloqueado: desbloquéalo para
+//! 2. Cabecera `Host` que no sea `127.0.0.1`, `localhost` o `[::1]` con este puerto → 421 (una página web
+//!    que se haga pasar por otro nombre, «DNS rebinding»).
+//! 3. Si SSHorus está bloqueado → error JSON-RPC «SSHorus está bloqueado: desbloquéalo para
 //!    continuar» (sin bóveda abierta tampoco se puede leer el token para comprobarlo).
-//! 3. `Authorization: Bearer <token>`: el token general o el de un asistente emparejado (`tvc_…`),
-//!    comparados en tiempo constante → si no, 401. Quién es queda en la petición (`Caller`): con eso
-//!    `McpCore` aplica los permisos de ese asistente.
+//! 4. `Authorization: Bearer <token>`: el token general, el de un asistente emparejado por el puente
+//!    (`tvc_…`) o uno de acceso de OAuth (`tvo_…`) → si no, 401 con `WWW-Authenticate` (de ahí arranca
+//!    OAuth). Quién es queda en la petición (`Caller`): con eso `McpCore` aplica los permisos de ese asistente.
 //!
 //! El SDK (`rmcp`) va sin sesiones y responde en JSON: cada petición es independiente, así el
 //! puente stdio solo tiene que reenviar mensajes.
@@ -36,6 +38,8 @@ use super::backend::Backend;
 use super::bridge::wire::PAIR_PATH;
 use super::caller::Caller;
 use super::core::{McpCore, LOCKED_MSG};
+use super::oauth::metadata::{self, Here};
+use super::oauth::{self, OAuth};
 use super::pairing::{self, token, Auth, Pairing};
 use super::server::SshorusMcp;
 
@@ -55,6 +59,10 @@ pub trait Gate: Send + Sync + 'static {
     fn token(&self) -> Option<Zeroizing<String>>;
     /// Asistentes emparejados (None = esta puerta no empareja: `/pair` no existe y solo vale el token general).
     fn pairing(&self) -> Option<&Pairing> {
+        None
+    }
+    /// Emparejar por OAuth (None = sin OAuth: el 401 no dice dónde autorizarse).
+    fn oauth(&self) -> Option<&OAuth> {
         None
     }
 }
@@ -122,22 +130,33 @@ pub fn mcp_service<B: Backend>(
     )
 }
 
-/// Quién es el dueño del token de la petición (o por qué no vale: el texto del 401).
-async fn authenticate<B: Backend>(req: &Request<Incoming>, core: &McpCore<B>, gate: &Arc<dyn Gate>) -> Result<Caller, String> {
-    let given = bearer(req).unwrap_or("");
-    if token::kid_of(given).is_some()
+/// Por qué no vale el token de una petición: el texto del 401 y si se mandó alguno.
+struct Rejected {
+    message: String,
+    sent_token: bool,
+}
+
+/// Quién es el dueño del token. Todo lo que calcula huellas, toca el disco (último uso) o el llavero del
+/// sistema va fuera del hilo async.
+fn authenticate_blocking<B: Backend>(given: &str, here: &Here, core: &McpCore<B>, gate: &dyn Gate) -> Result<Caller, String> {
+    let paired = |auth: Auth| match auth {
+        Auth::Client(grant) => Ok(Caller::paired(grant)),
+        Auth::Revoked(m) => Err(m),
+        Auth::Expired => Err("El token de acceso caducó: el asistente pedirá otro solo.".into()),
+        Auth::Unknown => Err(WRONG_TOKEN_MSG.into()),
+    };
+    let kind = token::parse(given).map(|(k, _)| k);
+    if kind == Some(token::Kind::Bridge)
         && let Some(p) = gate.pairing()
     {
-        return match p.authenticate(given, &core.audit) {
-            Auth::Client(grant) => Ok(Caller::paired(grant)),
-            Auth::Revoked(m) => Err(m),
-            Auth::Unknown => Err(WRONG_TOKEN_MSG.into()),
-        };
+        return paired(p.authenticate(given, &core.audit));
     }
-    // Leer el token general puede tocar el llavero del sistema (bloqueante): fuera del hilo async.
-    let g = gate.clone();
-    let expected = tokio::task::spawn_blocking(move || g.token()).await.ok().flatten();
-    match expected {
+    if kind == Some(token::Kind::Access)
+        && let Some(o) = gate.oauth()
+    {
+        return paired(o.authenticate(given, here, &core.audit));
+    }
+    match gate.token() {
         Some(expected) if same_token(given, &expected) => Ok(Caller::default()),
         Some(_) => Err(WRONG_TOKEN_MSG.into()),
         // Con emparejado no hace falta token general: no se pide generarlo.
@@ -146,18 +165,45 @@ async fn authenticate<B: Backend>(req: &Request<Incoming>, core: &McpCore<B>, ga
     }
 }
 
+async fn authenticate<B: Backend>(req: &Request<Incoming>, here: &Here, core: &Arc<McpCore<B>>, gate: &Arc<dyn Gate>) -> Result<Caller, Rejected> {
+    let given = bearer(req).unwrap_or("").to_string();
+    let sent_token = !given.is_empty();
+    let (here, core, gate) = (here.clone(), core.clone(), gate.clone());
+    tokio::task::spawn_blocking(move || authenticate_blocking(&given, &here, &core, gate.as_ref()))
+        .await
+        .unwrap_or_else(|_| Err(WRONG_TOKEN_MSG.into()))
+        .map_err(|message| Rejected { message, sent_token })
+}
+
+/// 401; con OAuth, `WWW-Authenticate` dice dónde están los metadatos para autorizarse.
+fn unauthorized(why: Rejected, here: &Here, gate: &dyn Gate) -> Response<Body> {
+    let mut r = text_response(StatusCode::UNAUTHORIZED, &why.message);
+    if gate.oauth().is_some()
+        && let Ok(v) = http::HeaderValue::from_str(&metadata::challenge(here, why.sent_token))
+    {
+        r.headers_mut().insert(http::header::WWW_AUTHENTICATE, v);
+    }
+    r
+}
+
 async fn handle<B: Backend>(
     req: Request<Incoming>,
     svc: StreamableHttpService<SshorusMcp<B>, NeverSessionManager>,
     core: Arc<McpCore<B>>,
     gate: Arc<dyn Gate>,
+    port: u16,
 ) -> Result<Response<Body>, Infallible> {
     if req.headers().contains_key(http::header::ORIGIN) {
         return Ok(text_response(StatusCode::FORBIDDEN, "SSHorus no acepta peticiones de páginas web"));
     }
+    let host = req.headers().get(http::header::HOST).and_then(|h| h.to_str().ok()).unwrap_or("");
+    let Some(here) = Here::from_host(host, port) else {
+        return Ok(text_response(StatusCode::MISDIRECTED_REQUEST, "SSHorus solo atiende a 127.0.0.1 o localhost"));
+    };
     match req.uri().path() {
         MCP_PATH => {}
         PAIR_PATH if gate.pairing().is_some() => return Ok(pairing::route::handle(req, &core, gate.as_ref()).await),
+        p if gate.oauth().is_some() && oauth::route::owns(p) => return Ok(oauth::route::handle(req, here, &core, &gate).await),
         _ => return Ok(text_response(StatusCode::NOT_FOUND, "Ruta desconocida: usa /mcp")),
     }
     if gate.locked() {
@@ -171,11 +217,11 @@ async fn handle<B: Backend>(
         return Ok(jsonrpc_error_response(&body, LOCKED_MSG));
     }
     let mut req = req;
-    match authenticate(&req, &core, &gate).await {
+    match authenticate(&req, &here, &core, &gate).await {
         Ok(caller) => {
             req.extensions_mut().insert(caller);
         }
-        Err(why) => return Ok(text_response(StatusCode::UNAUTHORIZED, &why)),
+        Err(why) => return Ok(unauthorized(why, &here, gate.as_ref())),
     }
     let mut svc = svc;
     svc.call(req).await
@@ -184,6 +230,7 @@ async fn handle<B: Backend>(
 /// Atiende conexiones hasta que `ct` se cancele.
 pub async fn serve<B: Backend>(listener: TcpListener, core: Arc<McpCore<B>>, gate: Arc<dyn Gate>, ct: CancellationToken) {
     let svc = mcp_service(core.clone(), ct.child_token());
+    let port = listener.local_addr().map(|a| a.port()).unwrap_or_default();
     loop {
         let (stream, peer) = tokio::select! {
             () = ct.cancelled() => break,
@@ -202,7 +249,7 @@ pub async fn serve<B: Backend>(listener: TcpListener, core: Arc<McpCore<B>>, gat
         let (svc, core, gate) = (svc.clone(), core.clone(), gate.clone());
         let ct = ct.clone();
         tokio::spawn(async move {
-            let service = service_fn(move |req| handle(req, svc.clone(), core.clone(), gate.clone()));
+            let service = service_fn(move |req| handle(req, svc.clone(), core.clone(), gate.clone(), port));
             let conn = http1::Builder::new().serve_connection(TokioIo::new(stream), service);
             tokio::pin!(conn);
             let mut closing = false;

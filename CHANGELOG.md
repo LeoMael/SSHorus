@@ -39,6 +39,14 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   conectados** ves su carpeta y último uso, con **Cambiar permisos** y **Revocar**. Peticiones, respuestas,
   revocaciones e intentos con una llave revocada quedan en el registro del asistente. Límite: una petición
   esperando por asistente y 3 por minuto. La conexión manual con token sigue funcionando igual.
+- **Asistentes de IA por HTTP directo, sin token: emparejar con la autorización estándar de MCP (OAuth).**
+  `claude mcp add --transport http sshorus http://127.0.0.1:<puerto>/mcp` (está listo para copiar en **Asistentes
+  conectados**): al usarlo, el asistente abre el navegador con «Vuelve a SSHorus para aceptar» y SSHorus muestra el
+  mismo aviso de **Conectar un asistente** (con su identidad, el navegador y a dónde vuelve). Si aceptas, recibe un
+  acceso que dura una hora y se renueva solo; si rechazas, se le dice que no. Queda en la misma lista, marcado
+  **HTTP (OAuth)**, con **Cambiar permisos** y **Revocar** (que corta también la renovación). Sirve para clientes con
+  documento de metadatos (Claude Code) y con registro dinámico (Codex y otros). Solo en 127.0.0.1, PKCE obligatorio,
+  códigos de un solo uso (60 s), todo en el registro del asistente, y nada funciona con SSHorus bloqueado.
 - **Puente en ruta fija**: SSHorus copia `sshorus-mcp` a `~/.local/bin` (Windows: `%LOCALAPPDATA%\SSHorus\bin`) al
   abrirse, así las configuraciones no se rompen con la AppImage.
 - **Compose: «Ya existe un contenedor con ese nombre»** ahora tiene arreglo: **Ver y arreglar** muestra el contenedor
@@ -85,6 +93,12 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   volvía a comprobar durante minutos; en la auditoría el arreglo cancelado quedaba como fallido). Compose detiene en
   el servidor lo que se pasa de tiempo. Sin `setsid` en el servidor, **Cancelar** para todo el árbol de procesos (y
   avisa si no pudo). En Auditoría, los resultados de un arreglo ya no se mezclan con otro informe abierto.
+- **Asistentes conectados → Cambiar permisos**: un asistente sin acceso a nada ya no pasa a «Solo lectura» en todos
+  los servidores al darle acceso a uno.
+- **Aceptar automáticamente** se puede usar en un servidor donde un asistente conectado tiene **Completo** aunque la
+  conexión con token no tenga acceso, y vale solo para quien tenga Completo o Solo lo marcado ahí.
+- El servidor MCP rechaza las peticiones que no sabe de quién son (antes usaban los permisos de la conexión con
+  token) y las páginas que se hacen pasar por otro nombre de equipo («DNS rebinding»).
 
 ### Cambiado
 - El aviso flotante de **Reiniciar ahora** (abajo a la izquierda) pasa a ser una tarea más de la ventanita de abajo a

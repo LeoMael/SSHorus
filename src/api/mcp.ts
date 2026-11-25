@@ -103,19 +103,30 @@ export interface McpStatus {
   bridgeStable: boolean;
   /** «sshorus-mcp pair», o con la ruta completa si esa carpeta no está en PATH. */
   pairCommand: string;
+  /** «claude mcp add --transport http sshorus <url>»: sin token, empareja por OAuth al usarlo. */
+  httpPairCommand: string;
   appImage: boolean;
   auditPath: string | null;
 }
 
-/** Un asistente pide emparejarse (lo que vio el puente en este equipo, sin comprobar). */
+/** Cómo se conectó un asistente: por el puente (`sshorus-mcp pair`) o por HTTP directo con OAuth. */
+export type McpVia = "bridge" | "oauth";
+
+/** Un dato del diálogo de emparejado («Programa», «Navegador»…), tal como lo da el propio equipo. */
+export interface McpPairFact {
+  label: string;
+  value: string;
+}
+
+/** Un asistente pide emparejarse. */
 export interface McpPairPrompt {
   id: string;
   clientId: string;
   name: string;
-  program: string;
-  pid: number | null;
-  cwd: string | null;
-  /** Ya estaba emparejado: aceptar reemplaza su token. */
+  via: McpVia;
+  /** Lo que se sabe de quién lo pide (programa, carpeta, navegador…), sin comprobar salvo que lo diga. */
+  facts: McpPairFact[];
+  /** Ya estaba emparejado: aceptar reemplaza su conexión. */
   replaces: boolean;
   /** Permisos que ya tenía (si se reemplaza). */
   current: Record<string, McpAccess>;
@@ -135,6 +146,7 @@ export interface McpPairedClient {
   lastUsed: number | null;
   /** id de servidor → acceso (lo que falta = "none"). */
   access: Record<string, McpAccess>;
+  via: McpVia;
 }
 
 export interface McpClientConfig {

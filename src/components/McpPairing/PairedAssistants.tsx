@@ -1,5 +1,5 @@
-// Ajustes → Asistentes de IA → «Asistentes conectados»: cada IA emparejada con su carpeta, último uso y
-// permisos, con «Cambiar permisos» y «Revocar».
+// Ajustes → Asistentes de IA → «Asistentes conectados»: cada IA emparejada (por el puente o por OAuth) con su
+// carpeta o su cliente, último uso y permisos, con «Cambiar permisos» y «Revocar».
 import { useEffect, useState } from "react";
 import { mcp, type McpAccess, type McpPairedClient } from "../../api/mcp";
 import { formatDate } from "../../lib/format";
@@ -7,7 +7,7 @@ import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { refreshPaired, useMcp } from "../../features/mcp/store";
-import { accessSummary, cleanAccess, initialAccess, sortClients } from "../../features/mcp/pairing";
+import { accessSummary, cleanAccess, initialAccess, sortClients, VIA_LABEL } from "../../features/mcp/pairing";
 import { AccessPicker } from "./AccessPicker";
 import "./McpPairing.css";
 
@@ -47,9 +47,11 @@ function ClientRow({ client, servers }: { client: McpPairedClient; servers: { id
     <div className="mpair-client">
       <div className="mpair-client-head">
         <div className="mpair-client-info">
-          <strong>{client.name}</strong>
+          <strong>
+            {client.name} <span className="mpair-via">{VIA_LABEL[client.via]}</span>
+          </strong>
           <small className="mono" title={client.program}>
-            {client.cwd ?? "—"}
+            {client.cwd ?? client.program}
           </small>
           <small>
             Último uso: {client.lastUsed ? formatDate(client.lastUsed / 1000) : "aún no"} · {accessSummary(client.access, servers)}
@@ -57,7 +59,7 @@ function ClientRow({ client, servers }: { client: McpPairedClient; servers: { id
         </div>
         {!draft && (
           <div className="mpair-client-actions">
-            <button className="btn btn-sm" onClick={() => setDraft(initialAccess(servers.map((s) => s.id), client.access))}>
+            <button className="btn btn-sm" onClick={() => setDraft(initialAccess(servers.map((s) => s.id), client.access, true))}>
               Cambiar permisos
             </button>
             <button className="btn btn-sm btn-danger" onClick={() => void revoke()}>

@@ -1,15 +1,22 @@
 //! Emparejar asistentes de IA con «Aceptar / Rechazar», sin copiar secretos.
 //!
-//! La IA ejecuta `sshorus-mcp pair`; el puente pide `POST /pair` (`route`); aquí se muestra el diálogo, se
-//! espera tu respuesta (hasta 2 min) y, si aceptas, se crea un token SOLO para ese asistente con los
-//! permisos por servidor que elegiste. Varios asistentes a la vez, cada uno con lo suyo, y cada uno se
-//! revoca por separado. El token general (configuración copiada a mano) sigue valiendo.
+//! Dos caminos, un mismo diálogo y una misma lista de asistentes:
+//! - Puente: la IA ejecuta `sshorus-mcp pair`; el puente pide `POST /pair` (`route`) y, si aceptas, recibe
+//!   un token SOLO para ese asistente.
+//! - HTTP directo: el cliente sigue la autorización estándar de MCP (OAuth, `mcp::oauth`), abre tu navegador
+//!   y, si aceptas, recibe tokens de acceso que caducan y se renuevan.
+//!
+//! Cada asistente tiene sus propios permisos por servidor y se revoca por separado. El token general
+//! (configuración copiada a mano) sigue valiendo.
 //!
 //! Partes: `token` (crear y comprobar tokens, puro), `limiter` (límite de peticiones, puro), `model`
-//! (datos), `registry` (lista guardada y comprobación del token), `journal` (registro de actividad),
-//! `notify` (avisos a la interfaz), `route` (HTTP) y `commands` (comandos Tauri).
+//! (datos), `applicant` (quién lo pide), `consent` (el diálogo y su espera), `registry` (lista guardada y
+//! comprobación de tokens), `journal` (registro de actividad), `notify` (avisos a la interfaz), `route`
+//! (HTTP del puente) y `commands` (comandos Tauri).
 
+pub mod applicant;
 pub mod commands;
+pub mod consent;
 mod journal;
 pub mod limiter;
 pub mod model;
@@ -29,14 +36,17 @@ use zeroize::Zeroizing;
 use super::approval::Pending;
 use super::audit::{now_ms, AuditLog, AuditStatus};
 use super::bridge::wire::{self, PairOutcome, PairReply, PairRequest, ServerGrant};
-use super::caller::ClientGrant;
-use super::core::LOCKED_MSG;
+use super::caller::{ClientGrant, PairedAccess};
 use super::policy::Access;
 use crate::error::AppResult;
+use applicant::Applicant;
+use consent::Consent;
+pub use journal::oauth as journal_oauth;
 use limiter::RateLimiter;
-use model::{ClientView, PairDecision, PairPrompt, PairedClient};
+use model::{ClientView, OAuthLink, PairDecision, PairPrompt, PairedClient, Via};
 use notify::PairNotifier;
-use registry::{ClientRegistry, TokenCheck};
+use registry::{ClientRegistry, Revoked, TokenCheck};
+use token::Kind;
 
 /// Lo que la petición necesita saber de la app en ese momento.
 pub struct PairContext<'a> {
@@ -47,12 +57,14 @@ pub struct PairContext<'a> {
     pub locked: &'a (dyn Fn() -> bool + Sync),
 }
 
-/// Quién es el dueño de un token `tvc_…`.
+/// Quién es el dueño de un token de asistente.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Auth {
     Client(ClientGrant),
     /// Era de un asistente revocado: el mensaje lo explica.
     Revoked(String),
+    /// Token de acceso de OAuth caducado (el cliente pide otro con su token de renovación).
+    Expired,
     Unknown,
 }
 
@@ -64,33 +76,8 @@ pub struct Pairing {
     wait: Duration,
 }
 
-/// Libera el hueco del limitador al terminar la petición, pase lo que pase.
-struct Slot<'a> {
-    limiter: &'a Mutex<RateLimiter>,
-    client_id: String,
-}
-
-impl Drop for Slot<'_> {
-    fn drop(&mut self) {
-        lock(self.limiter).finish(&self.client_id);
-    }
-}
-
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|p| p.into_inner())
-}
-
-/// Lo que llega del puente, recortado y con un id válido.
-fn clean_request(mut req: PairRequest) -> Option<PairRequest> {
-    req.client_id = wire::clean_client_id(&req.client_id)?;
-    let clip = |s: &str, n: usize| s.trim().chars().take(n).collect::<String>();
-    req.name = clip(&req.name, 60);
-    if req.name.is_empty() {
-        req.name = req.client_id.clone();
-    }
-    req.program = clip(&req.program, 200);
-    req.cwd = req.cwd.map(|c| clip(&c, 300)).filter(|c| !c.is_empty());
-    Some(req)
 }
 
 /// Permisos con nombre de servidor (los que ya no existen no se muestran).
@@ -101,7 +88,7 @@ pub fn grants(access: &BTreeMap<String, Access>, servers: &BTreeMap<String, Stri
         .collect()
 }
 
-fn grants_text(list: &[ServerGrant]) -> String {
+pub fn grants_text(list: &[ServerGrant]) -> String {
     if list.is_empty() {
         return "sin acceso a ningún servidor".into();
     }
@@ -126,41 +113,23 @@ impl Pairing {
         self
     }
 
-    /// Atiende una petición de emparejado de principio a fin.
+    pub fn registry(&self) -> &ClientRegistry {
+        &self.registry
+    }
+
+    /// Petición del puente (`sshorus-mcp pair`) de principio a fin.
     pub async fn request(&self, req: PairRequest, ctx: &PairContext<'_>) -> PairReply {
-        let Some(req) = clean_request(req) else {
+        let Some(a) = Applicant::from_bridge(&req) else {
             return PairReply::new(PairOutcome::Invalid, "Petición de emparejado no válida.");
         };
-        if let Err(limit) = lock(&self.limiter).begin(&req.client_id, now_ms()) {
-            log::info!("MCP: emparejado de {} rechazado por el límite: {limit:?}", req.client_id);
-            return PairReply::new(PairOutcome::Busy, limit.message());
-        }
-        let _slot = Slot { limiter: &self.limiter, client_id: req.client_id.clone() };
-        let record = journal::PairRecord::start(ctx.audit, &req);
-        let decision = self.ask(&req).await;
-        if (ctx.locked)() {
-            record.finish(AuditStatus::Locked, "SSHorus bloqueado", LOCKED_MSG.into());
-            return PairReply::new(PairOutcome::Locked, LOCKED_MSG);
-        }
-        let d = match decision {
-            None => {
-                record.finish(AuditStatus::Denied, "sin respuesta", "Nadie respondió a tiempo.".into());
-                return PairReply::new(
-                    PairOutcome::Timeout,
-                    "Nadie respondió en SSHorus a tiempo. Vuelve a intentarlo cuando el usuario esté delante.",
-                );
-            }
-            Some(d) if !d.accept => {
-                record.finish(AuditStatus::Denied, "tú: rechazado", "Rechazado.".into());
-                return PairReply::new(PairOutcome::Rejected, "El usuario rechazó el emparejado en SSHorus.");
-            }
-            Some(d) => d,
+        let (access, record) = match self.consent(&a, ctx).await {
+            Consent::Accepted { access, record } => (access, record),
+            Consent::Refused(reply) => return reply,
         };
-        match self.issue(&req, d.access) {
+        match self.issue(&a, access, None) {
             Ok((token, client)) => {
                 let servers = grants(&client.access, &ctx.servers);
                 record.finish(AuditStatus::Ok, "tú: aceptado", format!("Permisos: {}.", grants_text(&servers)));
-                self.notifier.changed(&self.clients());
                 PairReply {
                     outcome: PairOutcome::Accepted,
                     message: format!("SSHorus emparejó a «{}». Cada cambio sigue pidiendo permiso en SSHorus.", client.name),
@@ -175,52 +144,37 @@ impl Pairing {
         }
     }
 
-    /// Muestra el diálogo y espera tu respuesta (None = no hubo a tiempo).
-    async fn ask(&self, req: &PairRequest) -> Option<PairDecision> {
-        let existing = self.registry.get(&req.client_id);
-        let prompt = PairPrompt {
-            id: uuid::Uuid::new_v4().to_string(),
-            client_id: req.client_id.clone(),
-            name: req.name.clone(),
-            program: req.program.clone(),
-            pid: req.pid,
-            cwd: req.cwd.clone(),
-            replaces: existing.is_some(),
-            current: existing.map(|c| c.access).unwrap_or_default(),
-            timeout_secs: self.wait.as_secs(),
-            expires_at: now_ms() + self.wait.as_millis() as u64,
-        };
-        let rx = self.pending.add(prompt.clone());
-        self.notifier.show(&prompt);
-        let answer = tokio::time::timeout(self.wait, rx).await;
-        self.pending.remove(&prompt.id);
-        self.notifier.done(&prompt.id);
-        match answer {
-            Ok(Ok(d)) => Some(d),
-            // Se cerró sin respuesta (SSHorus se bloqueó o se apagó el MCP): rechazado.
-            Ok(Err(_)) => Some(PairDecision::reject()),
-            Err(_) => None,
-        }
-    }
-
-    fn issue(&self, req: &PairRequest, access: BTreeMap<String, Access>) -> AppResult<(Zeroizing<String>, PairedClient)> {
-        let kid = token::new_kid()?;
-        let issued = token::issue(&kid)?;
+    /// Crea (o reemplaza) la ficha de un asistente aceptado y su token: el del puente o, con `oauth`, el de
+    /// renovación. Avisa a la interfaz.
+    pub fn issue(
+        &self,
+        a: &Applicant,
+        access: BTreeMap<String, Access>,
+        oauth: Option<OAuthLink>,
+    ) -> AppResult<(Zeroizing<String>, PairedClient)> {
+        let via = if oauth.is_some() { Via::OAuth } else { Via::Bridge };
+        let kind = if oauth.is_some() { Kind::Refresh } else { Kind::Bridge };
         let now = now_ms();
-        let client = PairedClient {
-            id: req.client_id.clone(),
-            name: req.name.clone(),
-            program: req.program.clone(),
-            pid: req.pid,
-            cwd: req.cwd.clone(),
-            created_at: now,
-            last_used: None,
-            access: model::clean_access(access),
-            kid,
-            token: issued.hash,
-        };
-        self.registry.insert(client.clone(), now)?;
-        Ok((issued.token, client))
+        let (client, token) = self.registry.insert_new(now, |kid| {
+            let issued = token::issue(kind, kid)?;
+            let client = PairedClient {
+                id: a.client_id.clone(),
+                name: a.name.clone(),
+                program: a.program.clone(),
+                pid: a.pid,
+                cwd: a.cwd.clone(),
+                created_at: now,
+                last_used: None,
+                access: model::clean_access(access),
+                kid: kid.to_string(),
+                token: issued.hash,
+                via,
+                oauth,
+            };
+            Ok((client, issued.token))
+        })?;
+        self.notify_changed();
+        Ok((token, client))
     }
 
     /// Respuesta del diálogo. false si ya no estaba pendiente.
@@ -239,20 +193,21 @@ impl Pairing {
         }
     }
 
-    /// Dueño de un token de asistente. Los intentos con uno revocado quedan en el registro.
+    /// Dueño de un token del puente. Calcula una huella y puede escribir en disco: fuera del hilo async.
     pub fn authenticate(&self, tok: &str, audit: &AuditLog) -> Auth {
         let now = now_ms();
-        match self.registry.check(tok, now) {
+        self.auth_of(self.registry.check(tok, Kind::Bridge, now), audit, now)
+    }
+
+    /// `Auth` de una comprobación del registro; los intentos con un token revocado quedan en el registro.
+    pub fn auth_of(&self, check: TokenCheck, audit: &AuditLog, now: u64) -> Auth {
+        match check {
             TokenCheck::Valid(c) => Auth::Client(ClientGrant { id: c.id, name: c.name, access: c.access }),
             TokenCheck::Revoked(r) => {
                 if self.registry.should_log_failure(&r.kid, now) {
                     journal::revoked_token_used(audit, &r.id, &r.name);
                 }
-                Auth::Revoked(format!(
-                    "Este asistente ({}) ya no está emparejado con SSHorus: se revocó o se volvió a emparejar. \
-                     Ejecuta «sshorus-mcp pair» para emparejarlo de nuevo.",
-                    r.name
-                ))
+                Auth::Revoked(revoked_message(&r))
             }
             TokenCheck::Unknown => Auth::Unknown,
         }
@@ -275,16 +230,30 @@ impl Pairing {
         Ok(self.notify_changed())
     }
 
-    /// «Revocar»: su token deja de valer al instante.
+    /// «Revocar»: sus tokens (del puente, o de acceso y de renovación) dejan de valer al instante.
     pub fn revoke(&self, id: &str, audit: &AuditLog) -> AppResult<Vec<ClientView>> {
         let c = self.registry.revoke(id, now_ms())?;
         journal::revoked(audit, &c);
         Ok(self.notify_changed())
     }
 
-    fn notify_changed(&self) -> Vec<ClientView> {
+    pub fn notify_changed(&self) -> Vec<ClientView> {
         let list = self.clients();
         self.notifier.changed(&list);
         list
+    }
+}
+
+fn revoked_message(r: &Revoked) -> String {
+    let again = match r.via {
+        Via::Bridge => "Ejecuta «sshorus-mcp pair» para emparejarlo de nuevo.",
+        Via::OAuth => "Vuelve a conectarlo desde el asistente (te pedirá aceptarlo en SSHorus).",
+    };
+    format!("Este asistente ({}) ya no está emparejado con SSHorus: se revocó o se volvió a emparejar. {again}", r.name)
+}
+
+impl PairedAccess for Pairing {
+    fn allows_auto(&self, server_id: &str) -> bool {
+        self.registry.list().iter().any(|c| c.access.get(server_id).is_some_and(|a| a.allows_auto()))
     }
 }

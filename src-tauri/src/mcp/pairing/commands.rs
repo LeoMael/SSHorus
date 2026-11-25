@@ -2,11 +2,11 @@
 
 use std::collections::BTreeMap;
 
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use super::super::backend::Backend;
 use super::super::policy::Access;
-use super::super::McpState;
+use super::super::{prune_auto, McpState};
 use super::model::{ClientView, PairDecision, PairPrompt};
 use crate::error::AppResult;
 
@@ -38,15 +38,20 @@ pub async fn mcp_paired_clients(state: State<'_, McpState>) -> AppResult<Vec<Cli
 /// «Cambiar permisos» de un asistente emparejado.
 #[tauri::command]
 pub async fn mcp_paired_set_access(
+    app: AppHandle,
     state: State<'_, McpState>,
     client_id: String,
     access: BTreeMap<String, Access>,
 ) -> AppResult<Vec<ClientView>> {
-    state.pairing.set_access(&client_id, access, &state.core.audit, &server_names(&state))
+    let list = state.pairing.set_access(&client_id, access, &state.core.audit, &server_names(&state))?;
+    prune_auto(&app, &state)?;
+    Ok(list)
 }
 
-/// «Revocar»: el token de ese asistente deja de valer al instante.
+/// «Revocar»: los tokens de ese asistente dejan de valer al instante.
 #[tauri::command]
-pub async fn mcp_paired_revoke(state: State<'_, McpState>, client_id: String) -> AppResult<Vec<ClientView>> {
-    state.pairing.revoke(&client_id, &state.core.audit)
+pub async fn mcp_paired_revoke(app: AppHandle, state: State<'_, McpState>, client_id: String) -> AppResult<Vec<ClientView>> {
+    let list = state.pairing.revoke(&client_id, &state.core.audit)?;
+    prune_auto(&app, &state)?;
+    Ok(list)
 }

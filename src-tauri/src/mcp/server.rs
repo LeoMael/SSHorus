@@ -125,13 +125,14 @@ fn client_of(ctx: &RequestContext<RoleServer>) -> Option<String> {
     (!ua.is_empty()).then(|| super::audit::clip(ua, 80))
 }
 
-/// Quién hace la petición: lo dejó `http.rs` al comprobar el token (sin él, el token general).
-fn caller_of(ctx: &RequestContext<RoleServer>) -> Caller {
+/// Quién hace la petición: lo dejó `http.rs` al comprobar el token. Si falta, no se supone nada: la
+/// llamada se rechaza (nunca se le dan los permisos del token general).
+fn caller_of(ctx: &RequestContext<RoleServer>) -> Result<Caller, ErrorData> {
     ctx.extensions
         .get::<http::request::Parts>()
         .and_then(|p| p.extensions.get::<Caller>())
         .cloned()
-        .unwrap_or_default()
+        .ok_or_else(|| ErrorData::invalid_request("SSHorus no pudo identificar al asistente de esta petición.", None))
 }
 
 impl<B: Backend> ServerHandler for SshorusMcp<B> {
@@ -162,7 +163,8 @@ impl<B: Backend> ServerHandler for SshorusMcp<B> {
             return Err(ErrorData::invalid_params(format!("Herramienta desconocida: {}", request.name), None));
         }
         let args = request.arguments.map(Value::Object).unwrap_or(Value::Null);
-        let out = self.core.call_as(&request.name, args, client_of(&context), caller_of(&context), context.ct.clone()).await;
+        let caller = caller_of(&context)?;
+        let out = self.core.call_as(&request.name, args, client_of(&context), caller, context.ct.clone()).await;
         let content = vec![ContentBlock::text(out.text)];
         let result = if out.is_error { CallToolResult::error(content) } else { CallToolResult::success(content) };
         Ok(result.into())

@@ -1,5 +1,5 @@
 //! Asistentes emparejados: `<config>/sshorus/mcp-clients.json` (sin secretos: solo la huella de cada
-//! token) y la comprobación del token de cada petición.
+//! token) y la comprobación de los tokens. Una sola lista para los dos caminos (puente y OAuth).
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -8,8 +8,8 @@ use std::sync::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
 
 use super::super::policy::Access;
-use super::model::{clean_access, PairedClient};
-use super::token;
+use super::model::{clean_access, PairedClient, Via};
+use super::token::{self, Kind, TokenHash};
 use crate::error::{AppError, AppResult};
 use crate::storage::fsutil;
 
@@ -20,6 +20,8 @@ const TOUCH_SAVE_MS: u64 = 60_000;
 const KEEP_REVOKED: usize = 50;
 /// Un mismo token revocado se anota en el registro como mucho una vez por minuto.
 const FAIL_LOG_MS: u64 = 60_000;
+/// Intentos de sacar un `kid` que no esté en uso (con 32 bits, repetir es rarísimo).
+const KID_TRIES: usize = 16;
 
 /// Un asistente que ya no está emparejado.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +31,8 @@ pub struct Revoked {
     pub id: String,
     pub name: String,
     pub at: u64,
+    #[serde(default)]
+    pub via: Via,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +60,14 @@ pub struct ClientRegistry {
 
 fn guard<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// El tipo de token que guarda la ficha de cada camino (el de acceso de OAuth vive solo en memoria).
+fn stored_kind(via: Via) -> Kind {
+    match via {
+        Via::Bridge => Kind::Bridge,
+        Via::OAuth => Kind::Refresh,
+    }
 }
 
 impl ClientRegistry {
@@ -92,14 +104,18 @@ impl ClientRegistry {
         Ok(out)
     }
 
-    /// Guarda un asistente nuevo. Si ya había uno con ese id, lo reemplaza y su token viejo queda revocado.
-    pub fn insert(&self, client: PairedClient, now: u64) -> AppResult<()> {
+    /// Guarda un asistente nuevo con un `kid` que no usa nadie (ni un revocado). `make` crea su ficha y su
+    /// token con ese `kid`. Si ya había uno con ese id, lo reemplaza y sus tokens viejos quedan revocados.
+    pub fn insert_new<T>(&self, now: u64, make: impl FnOnce(&str) -> AppResult<(PairedClient, T)>) -> AppResult<(PairedClient, T)> {
         self.update(|d| {
+            let kid = fresh_kid(d)?;
+            let (client, extra) = make(&kid)?;
             if let Some(old) = take(&mut d.clients, &client.id) {
                 d.revoked.insert(0, revoked_from(&old, now));
             }
-            d.clients.push(client);
-        })
+            d.clients.push(client.clone());
+            Ok((client, extra))
+        })?
     }
 
     pub fn set_access(&self, id: &str, access: BTreeMap<String, Access>) -> AppResult<PairedClient> {
@@ -112,7 +128,7 @@ impl ClientRegistry {
         .ok_or_else(|| not_found(id))
     }
 
-    /// Quita un asistente: su token deja de valer en el acto.
+    /// Quita un asistente: sus tokens dejan de valer en el acto.
     pub fn revoke(&self, id: &str, now: u64) -> AppResult<PairedClient> {
         self.update(|d| {
             let old = take(&mut d.clients, id)?;
@@ -122,24 +138,59 @@ impl ClientRegistry {
         .ok_or_else(|| not_found(id))
     }
 
-    /// Comprueba un token y anota el uso.
-    pub fn check(&self, tok: &str, now: u64) -> TokenCheck {
-        let Some(kid) = token::kid_of(tok) else { return TokenCheck::Unknown };
-        let (client, revoked) = {
-            let d = guard(&self.data);
-            (
-                d.clients.iter().find(|c| c.kid == kid).cloned(),
-                d.revoked.iter().find(|r| r.kid == kid).cloned(),
-            )
-        };
-        match (client, revoked) {
-            (Some(c), _) if token::verify(tok, &c.token) => {
+    fn lookup(&self, kid: &str) -> (Option<PairedClient>, Option<Revoked>) {
+        let d = guard(&self.data);
+        (d.clients.iter().find(|c| c.kid == kid).cloned(), d.revoked.iter().find(|r| r.kid == kid).cloned())
+    }
+
+    /// Comprueba el token guardado de un asistente (el del puente o el de renovación) y anota el uso.
+    pub fn check(&self, tok: &str, kind: Kind, now: u64) -> TokenCheck {
+        let Some(kid) = token::kid_of(tok, kind) else { return TokenCheck::Unknown };
+        match self.lookup(kid) {
+            (Some(c), _) if stored_kind(c.via) == kind && token::verify(tok, &c.token) => {
                 self.touch(&c, now);
                 TokenCheck::Valid(c)
             }
             (None, Some(r)) => TokenCheck::Revoked(r),
             _ => TokenCheck::Unknown,
         }
+    }
+
+    /// Asistente dueño de un `kid` (su token ya se comprobó aparte: el de acceso de OAuth) y anota el uso.
+    pub fn active(&self, kid: &str, now: u64) -> TokenCheck {
+        match self.lookup(kid) {
+            (Some(c), _) => {
+                self.touch(&c, now);
+                TokenCheck::Valid(c)
+            }
+            (None, Some(r)) => TokenCheck::Revoked(r),
+            _ => TokenCheck::Unknown,
+        }
+    }
+
+    /// Cambia el token de renovación de un asistente OAuth por `next`, solo si `tok` es el vigente y `accept`
+    /// da el visto bueno a su ficha (así cada token de renovación vale una sola vez, aunque lleguen dos a la vez).
+    pub fn rotate(
+        &self,
+        tok: &str,
+        next: TokenHash,
+        now: u64,
+        accept: impl FnOnce(&PairedClient) -> bool,
+    ) -> AppResult<TokenCheck> {
+        let Some(kid) = token::kid_of(tok, Kind::Refresh) else { return Ok(TokenCheck::Unknown) };
+        self.update(|d| {
+            if let Some(r) = d.revoked.iter().find(|r| r.kid == kid) {
+                return TokenCheck::Revoked(r.clone());
+            }
+            match d.clients.iter_mut().find(|c| c.kid == kid && c.via == Via::OAuth) {
+                Some(c) if token::verify(tok, &c.token) && accept(c) => {
+                    c.token = next;
+                    c.last_used = Some(now);
+                    TokenCheck::Valid(c.clone())
+                }
+                _ => TokenCheck::Unknown,
+            }
+        })
     }
 
     fn touch(&self, c: &PairedClient, now: u64) {
@@ -167,13 +218,28 @@ impl ClientRegistry {
     }
 }
 
+fn fresh_kid(d: &ClientsFile) -> AppResult<String> {
+    pick_kid(|k| d.clients.iter().any(|c| c.kid == k) || d.revoked.iter().any(|r| r.kid == k), token::new_kid)
+}
+
+/// Un `kid` que no esté en `used` (si sale uno repetido, pide otro a `next`).
+pub(super) fn pick_kid(used: impl Fn(&str) -> bool, mut next: impl FnMut() -> AppResult<String>) -> AppResult<String> {
+    for _ in 0..KID_TRIES {
+        let kid = next()?;
+        if !used(&kid) {
+            return Ok(kid);
+        }
+    }
+    Err(AppError::Invalid("no se pudo crear un identificador de token libre".into()))
+}
+
 fn take(list: &mut Vec<PairedClient>, id: &str) -> Option<PairedClient> {
     let i = list.iter().position(|c| c.id == id)?;
     Some(list.remove(i))
 }
 
 fn revoked_from(c: &PairedClient, now: u64) -> Revoked {
-    Revoked { kid: c.kid.clone(), id: c.id.clone(), name: c.name.clone(), at: now }
+    Revoked { kid: c.kid.clone(), id: c.id.clone(), name: c.name.clone(), at: now, via: c.via }
 }
 
 fn not_found(id: &str) -> AppError {

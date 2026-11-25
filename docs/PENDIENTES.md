@@ -18,7 +18,8 @@ la **1.0.0-beta.4**.
   **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
   auditoría, actualizar imagen, reinicio y Compose) e ideas 9 y 10 anotadas.
 - También en `main` sin subir: **emparejar asistentes de IA** (idea 10, fase 1: `sshorus-mcp pair`, permisos propios
-  por asistente, revocar, puente copiado a `~/.local/bin`). No queda ningún agente en marcha.
+  por asistente, revocar, puente copiado a `~/.local/bin`) y **fase 2, emparejar por OAuth** (idea 10b) con los
+  arreglos de la revisión de la fase 1. No queda ningún agente en marcha.
 - Pedir en BASE: que `stores/toasts.ts` y `Toaster` admitan un botón (hoy el aviso «Ver» de las tareas es propio de
   la esquina).
 - **Aprobado por el usuario para la beta.4, sin empezar** (no lanzar más agentes hasta retomar): reglas de calidad
@@ -111,6 +112,17 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     «El servidor se reinició después de este análisis»; «Volver a comprobar» y que el kernel ya no esté. Mirar
     `uname -r`, `rpm -q kernel-core` y `sudo grubby --default-kernel`. Si algo sigue, anotar el CVE, el paquete y la
     salida de `sudo dnf --refresh check-update <paquete>`.
+  - **Emparejar por OAuth (idea 10b)**: `claude mcp add --transport http sshorus http://127.0.0.1:47821/mcp` (sin
+    token) y `/mcp` → Authenticate: que se abra el navegador con «Vuelve a SSHorus para aceptar», salga el mismo
+    diálogo con identidad «comprobada … claude.ai», navegador y «Vuelve a», y al aceptar el navegador vuelva solo a
+    Claude Code y funcionen las herramientas con SUS permisos; rechazar (Claude Code dice que se denegó); dejar pasar
+    los 2 min; bloquear SSHorus con el diálogo abierto. Que siga funcionando tras 1 h (renueva solo) y tras reiniciar
+    SSHorus. En la lista sale «HTTP (OAuth)»; «Cambiar permisos» se nota al momento; «Revocar» corta al instante y
+    Claude Code vuelve a pedir autorización. Codex: `codex mcp add sshorus --url http://127.0.0.1:47821/mcp` y
+    `codex mcp login sshorus` (registro dinámico: identidad «sin comprobar»). Sin red (sin poder descargar la ficha
+    de claude.ai): que el error se entienda. Con `localhost` en vez de `127.0.0.1`. Que «Aceptar automáticamente» se
+    ofrezca en un servidor donde solo un asistente tiene Completo y no valga para otro con Solo lectura.
+    **«Cambiar permisos»** de un asistente sin acceso a nada: dar acceso a un servidor no da «Solo lectura» al resto.
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Tareas en segundo plano (VPS Rocky de 1 vCPU): Vulnerabilidades → «Arreglar todo lo que tiene solución», cerrar
     el diálogo y seguirla en la ventanita de la esquina (salida de `dnf` en vivo, barra «3/10», aviso «Sin salida
@@ -216,7 +228,7 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **8.2+** | **Más Administración** | Idea, sin empezar | Servicios (systemd: iniciar, parar, activar, logs), firewall, paquetes (actualizar, instalar) y tareas programadas (cron/timers). |
 | **9** | **Ver bases de datos (esquema)** | **Hecha (25/11), falta probar a mano** (ver §2). Pestaña «Bases de datos» + MCP `get_db_schema` | PostgreSQL, MySQL/MariaDB (servidor y contenedores, también de otros usuarios con sudo) y SQLite por ruta: bases, tablas, columnas, índices, claves foráneas, búsqueda, diagrama y «Copiar DDL»; entra sin contraseña (contenedor, `postgres`/root con sudo, tu usuario) o con usuario y contraseña guardables en la bóveda. Solo lectura. Siguiente (si se pide): MongoDB/Redis y ver unas filas de ejemplo. |
 | **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | **Hecha (25/11), falta probar a mano** (ver §2). `sshorus-mcp pair`, permisos propios por asistente, revocar, puente en `~/.local/bin` | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
-| **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | Recomendado (24/11), fase 2 de la idea 10 | Para asistentes que se conectan por HTTP sin el puente `sshorus-mcp`: flujo de autorización estándar del MCP (OAuth 2.1 con PKCE), donde «autorizar» es el mismo diálogo de SSHorus con permisos por servidor. Más trabajo que la fase 1; no sirve para clientes stdio, que siguen con `sshorus-mcp pair`. |
+| **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | **Hecha (25/11), falta probar a mano** (ver §2) | `claude mcp add --transport http sshorus http://127.0.0.1:<puerto>/mcp` sin token: 401 → metadatos (RFC 9728/8414) → documento de metadatos del cliente o registro dinámico → navegador «Vuelve a SSHorus para aceptar» → el mismo diálogo de la fase 1 → código (PKCE S256, 60 s, un uso) → token de acceso de 1 h ligado al recurso y de renovación que rota. Misma lista de asistentes («HTTP (OAuth)»), «Cambiar permisos» y «Revocar». Código en `mcp/oauth/` (ver ARQUITECTURA). Sin probar aún con Claude Code y Codex reales. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |
 | **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |
 | **5** | **Asistente corriendo dentro del VPS (`remote-control`)** | ❌ Descartado (16/11) | Sustituido por el punto 6 (la IA corre fuera del VPS para no gastar RAM ni exponer sesiones a root del VPS). |

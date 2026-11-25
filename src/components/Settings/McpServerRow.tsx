@@ -1,11 +1,13 @@
 // Una fila de «Permisos por servidor» (Ajustes → Asistentes de IA): nivel de acceso, «Solo lo marcado»,
-// usuarios protegidos, «Aceptar automáticamente» y reglas «Permitir siempre».
+// usuarios protegidos, «Aceptar automáticamente» (si alguien tiene ahí Completo o Solo lo marcado: la conexión
+// con token o un asistente conectado) y reglas «Permitir siempre».
 import { useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { mcp, type McpAccess, type McpAutoState, type McpConfig } from "../../api/mcp";
 import type { ServerProfile } from "../../api/types";
 import { toast } from "../../stores/toasts";
-import { refreshAuto } from "../../features/mcp/store";
+import { refreshAuto, useMcp } from "../../features/mcp/store";
+import { autoAllowed } from "../../features/mcp/pairing";
 import { AutoAcceptPicker, autoText } from "../../features/mcp/AutoAccept";
 import { ACCESS, accessOf, allowsAuto, grantsOf, protectedOf, tasksText } from "../../features/mcp/accessInfo";
 import { MarkedEditor } from "../../features/mcp/MarkedEditor";
@@ -33,6 +35,7 @@ export function McpServerRow({ server: s, cfg, onChange, auto, now }: Props) {
   const rules = cfg?.remembered[s.id] ?? [];
   const own = cfg?.protectedUsers?.[s.id] ?? [];
   const prot = protectedOf(cfg, s.id);
+  const canAuto = autoAllowed(s.id, access, useMcp((st) => st.paired));
   const toggle = (p: Panel) => setOpen(open === p ? null : p);
 
   const setAccess = async (next: McpAccess) => {
@@ -73,7 +76,7 @@ export function McpServerRow({ server: s, cfg, onChange, auto, now }: Props) {
           </small>
           {access === "custom" && <small className="faint">Puede: {tasksText(grantsOf(cfg, s.id))}</small>}
           {prot.length > 0 && access !== "none" && <small className="faint">Protegidos: {prot.join(", ")}</small>}
-          {auto && allowsAuto(access) && (
+          {auto && canAuto && (
             <small className={auto.level === "all" ? "mcp-auto-state all" : "mcp-auto-state"}>Automático: {autoText(auto, now)}</small>
           )}
         </div>
@@ -92,7 +95,7 @@ export function McpServerRow({ server: s, cfg, onChange, auto, now }: Props) {
             {own.length ? `Protegidos (${own.length})` : "Protegidos…"}
           </button>
         )}
-        {allowsAuto(access) && (
+        {canAuto && (
           <button
             className="btn btn-sm"
             onClick={() => toggle("auto")}
@@ -131,7 +134,7 @@ export function McpServerRow({ server: s, cfg, onChange, auto, now }: Props) {
           <small className="faint">Además de los de todos los servidores. {PROTECTED_NOTE}</small>
         </div>
       )}
-      {open === "auto" && allowsAuto(access) && <AutoAcceptPicker serverId={s.id} serverName={s.name} onApplied={() => setOpen(null)} />}
+      {open === "auto" && canAuto && <AutoAcceptPicker serverId={s.id} serverName={s.name} onApplied={() => setOpen(null)} />}
       {open === "rules" && rules.length > 0 && (
         <div className="mcp-rules">
           {rules.map((k) => (

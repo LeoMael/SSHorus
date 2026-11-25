@@ -1783,14 +1783,17 @@ async fn auto_durations_with_simulated_clock() {
     // Solo lectura y sin acceso: no se puede activar.
     assert!(c.set_auto_at("s-read", AutoLevel::Changes, AutoDuration::Session, t0).is_err());
     assert!(c.set_auto_at("s-none", AutoLevel::All, AutoDuration::Always, t0).is_err());
-    // Si el servidor deja de tener acceso Completo, lo guardado desaparece.
+    // Si el servidor deja de tener acceso Completo (y ningún asistente lo tiene), no vale y se apaga.
     c.set_auto_at("s-full", AutoLevel::Changes, AutoDuration::Always, t0).unwrap();
     c.config
         .update(|cfg| {
             cfg.access.insert("s-full".into(), Access::Read);
         })
         .unwrap();
+    assert_eq!(c.auto_level_at("s-full", t0), AutoLevel::Off);
+    assert!(c.prune_auto_at(t0).unwrap());
     assert!(c.config.get().auto_accept.is_empty());
+    assert!(!c.prune_auto_at(t0).unwrap());
 }
 
 #[tokio::test]
@@ -1859,3 +1862,5 @@ mod pairing_flow;
 
 #[path = "tests_db_schema.rs"]
 mod db_schema_flow;
+#[path = "tests_oauth.rs"]
+mod oauth_flow;

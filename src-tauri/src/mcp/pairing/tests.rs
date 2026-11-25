@@ -7,9 +7,9 @@ use super::super::caller::{Caller, ClientGrant};
 use super::super::config::McpConfig;
 use super::super::policy::Access;
 use super::limiter::{Limited, RateLimiter, MAX_PER_WINDOW, WINDOW_MS};
-use super::model::{clean_access, PairedClient};
-use super::registry::{ClientRegistry, TokenCheck};
-use super::token;
+use super::model::{clean_access, PairedClient, Via};
+use super::registry::{pick_kid, ClientRegistry, TokenCheck};
+use super::token::{self, Kind};
 
 #[test]
 fn limiter_one_waiting_per_client_and_three_per_minute() {
@@ -33,18 +33,24 @@ fn limiter_one_waiting_per_client_and_three_per_minute() {
 #[test]
 fn tokens_verify_only_themselves() {
     let kid = token::new_kid().unwrap();
-    let a = token::issue(&kid).unwrap();
+    let a = token::issue(Kind::Bridge, &kid).unwrap();
     assert!(a.token.starts_with("tvc_"));
-    assert_eq!(token::kid_of(&a.token), Some(kid.as_str()));
+    assert_eq!(token::kid_of(&a.token, Kind::Bridge), Some(kid.as_str()));
     assert!(token::verify(&a.token, &a.hash));
     // Otro token con el mismo kid no vale.
-    let b = token::issue(&kid).unwrap();
+    let b = token::issue(Kind::Bridge, &kid).unwrap();
     assert!(!token::verify(&b.token, &a.hash));
     // La huella no contiene el token.
     assert!(!a.hash.hash.contains(&a.token[13..]));
     // Formas que no son de asistente.
-    assert_eq!(token::kid_of("tv_abc"), None);
-    assert_eq!(token::kid_of("tvc_123_corto"), None);
+    assert_eq!(token::kid_of("tv_abc", Kind::Bridge), None);
+    assert_eq!(token::kid_of("tvc_123_corto", Kind::Bridge), None);
+    // El tipo va en el prefijo y la huella lo cubre: el mismo secreto con otro prefijo no vale.
+    let refresh = token::issue(Kind::Refresh, &kid).unwrap();
+    assert_eq!(token::parse(&refresh.token), Some((Kind::Refresh, kid.as_str())));
+    assert_eq!(token::kid_of(&refresh.token, Kind::Bridge), None);
+    let swapped = refresh.token.replacen("tvr_", "tvc_", 1);
+    assert!(!token::verify(&swapped, &refresh.hash));
     assert!(token::constant_time_eq(b"abc", b"abc"));
     assert!(!token::constant_time_eq(b"abc", b"abcd"));
 }
@@ -61,14 +67,19 @@ fn client(id: &str, token_hash: token::TokenHash, kid: &str, access: &[(&str, Ac
         access: access.iter().map(|(k, v)| (k.to_string(), *v)).collect(),
         kid: kid.into(),
         token: token_hash,
+        via: Via::Bridge,
+        oauth: None,
     }
 }
 
 fn paired(reg: &ClientRegistry, id: &str, access: &[(&str, Access)]) -> String {
-    let kid = token::new_kid().unwrap();
-    let t = token::issue(&kid).unwrap();
-    reg.insert(client(id, t.hash, &kid, access), 10).unwrap();
-    t.token.to_string()
+    let (_, tok) = reg
+        .insert_new(10, |kid| {
+            let t = token::issue(Kind::Bridge, kid)?;
+            Ok((client(id, t.hash, kid, access), t.token))
+        })
+        .unwrap();
+    tok.to_string()
 }
 
 #[test]
@@ -77,7 +88,7 @@ fn registry_check_revoke_and_replace() {
     let path = dir.join(super::registry::FILE_NAME);
     let reg = ClientRegistry::at(Some(path.clone()));
     let tok = paired(&reg, "claude", &[("s1", Access::Read)]);
-    match reg.check(&tok, 100) {
+    match reg.check(&tok, Kind::Bridge, 100) {
         TokenCheck::Valid(c) => assert_eq!(c.id, "claude"),
         other => panic!("{other:?}"),
     }
@@ -89,17 +100,17 @@ fn registry_check_revoke_and_replace() {
 
     // Volver a emparejar: el token viejo queda revocado.
     let tok2 = paired(&reg, "claude", &[("s1", Access::Full)]);
-    assert!(matches!(reg.check(&tok, 200), TokenCheck::Revoked(r) if r.id == "claude"));
-    assert!(matches!(reg.check(&tok2, 200), TokenCheck::Valid(_)));
+    assert!(matches!(reg.check(&tok, Kind::Bridge, 200), TokenCheck::Revoked(r) if r.id == "claude"));
+    assert!(matches!(reg.check(&tok2, Kind::Bridge, 200), TokenCheck::Valid(_)));
     assert_eq!(reg.list().len(), 1);
 
     // Revocar: deja de valer y se reconoce como revocado.
     reg.revoke("claude", 300).unwrap();
-    assert!(matches!(reg.check(&tok2, 300), TokenCheck::Revoked(_)));
+    assert!(matches!(reg.check(&tok2, Kind::Bridge, 300), TokenCheck::Revoked(_)));
     assert!(reg.revoke("claude", 300).is_err());
     assert!(reg.list().is_empty());
     // Un token inventado no es de nadie.
-    assert_eq!(reg.check(&format!("tvc_0000aaaa_{}", "0".repeat(64)), 1), TokenCheck::Unknown);
+    assert_eq!(reg.check(&format!("tvc_0000aaaa_{}", "0".repeat(64)), Kind::Bridge, 1), TokenCheck::Unknown);
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -110,6 +121,21 @@ fn revoked_token_failures_are_logged_once_a_minute() {
     assert!(!reg.should_log_failure("k1", 59_000));
     assert!(reg.should_log_failure("k2", 59_000));
     assert!(reg.should_log_failure("k1", 60_000));
+}
+
+#[test]
+fn kids_never_repeat() {
+    // Si sale un kid ya usado (por un asistente o un revocado), se pide otro.
+    let mut seq = vec!["aaaa0001", "aaaa0002", "bbbb0003"].into_iter();
+    let used = |k: &str| k.starts_with("aaaa");
+    assert_eq!(pick_kid(used, || Ok(seq.next().unwrap_or("x").to_string())).unwrap(), "bbbb0003");
+    assert!(pick_kid(|_| true, || Ok("aaaa0001".into())).is_err(), "se rinde en vez de repetir");
+    // En la lista real, dos asistentes nunca comparten kid.
+    let reg = ClientRegistry::at(None);
+    paired(&reg, "a", &[]);
+    paired(&reg, "b", &[]);
+    let list = reg.list();
+    assert_ne!(list[0].kid, list[1].kid);
 }
 
 #[test]

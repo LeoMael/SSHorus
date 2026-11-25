@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use super::super::backend::Backend;
-use super::super::policy::{self, AutoGrant, AutoLevel};
+use super::super::policy::{self, Access, AutoGrant, AutoLevel};
 use super::McpCore;
 use crate::error::{AppError, AppResult};
 
@@ -42,25 +42,45 @@ impl<B: Backend> McpCore<B> {
         self.auto_temp.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    /// Nivel automático que vale ahora en un servidor (`now` en Unix ms).
-    pub fn auto_level_at(&self, server_id: &str, now: u64) -> AutoLevel {
+    /// ¿Se puede usar el modo automático en este servidor? Con acceso Completo o Solo lo marcado para la
+    /// conexión con el token general o para algún asistente emparejado.
+    pub fn auto_allowed(&self, server_id: &str) -> bool {
+        self.config.get().access_of(server_id).allows_auto() || self.paired.as_ref().is_some_and(|p| p.allows_auto(server_id))
+    }
+
+    /// Nivel automático que vale ahora en un servidor para quien tiene `access` en él (`now` en Unix ms):
+    /// un asistente con Solo lectura nunca lo usa, aunque otro lo tenga activado ahí.
+    pub fn auto_level_for(&self, server_id: &str, access: Access, now: u64) -> AutoLevel {
         let cfg = self.config.get();
         let temp = self.auto_temp().get(server_id).copied();
-        policy::effective_auto(
-            cfg.access_of(server_id),
-            self.backend.vault_locked(),
-            cfg.auto_accept.get(server_id).copied(),
-            temp,
-            now,
-        )
+        policy::effective_auto(access, self.backend.vault_locked(), cfg.auto_accept.get(server_id).copied(), temp, now)
+    }
+
+    /// Lo mismo para la conexión con el token general.
+    #[cfg(test)]
+    pub fn auto_level_at(&self, server_id: &str, now: u64) -> AutoLevel {
+        self.auto_level_for(server_id, self.config.get().access_of(server_id), now)
+    }
+
+    /// Apaga el modo automático donde ya nadie tiene acceso Completo o Solo lo marcado (tras cambiar
+    /// permisos o revocar un asistente). true si apagó alguno.
+    pub fn prune_auto_at(&self, now: u64) -> AppResult<bool> {
+        let cfg = self.config.get();
+        let ids: Vec<String> = cfg.auto_accept.keys().chain(self.auto_temp().keys()).cloned().collect();
+        let mut changed = false;
+        for id in ids.iter().filter(|id| !self.auto_allowed(id)) {
+            self.set_auto_at(id, AutoLevel::Off, AutoDuration::Session, now)?;
+            changed = true;
+        }
+        Ok(changed)
     }
 
     /// Activa (o apaga con `AutoLevel::Off`) el modo automático de un servidor. Quita lo que hubiera
-    /// antes (temporal y guardado). Solo con acceso Completo.
+    /// antes (temporal y guardado). Solo donde `auto_allowed`.
     pub fn set_auto_at(&self, server_id: &str, level: AutoLevel, duration: AutoDuration, now: u64) -> AppResult<()> {
-        if level != AutoLevel::Off && !self.config.get().access_of(server_id).allows_auto() {
+        if level != AutoLevel::Off && !self.auto_allowed(server_id) {
             return Err(AppError::Invalid(
-                "El modo automático solo se puede usar en servidores con acceso Completo o Solo lo marcado.".into(),
+                "El modo automático solo se puede usar en servidores con acceso Completo o Solo lo marcado (para la conexión con token o para algún asistente conectado).".into(),
             ));
         }
         let sid = server_id.to_string();
@@ -102,7 +122,7 @@ impl<B: Backend> McpCore<B> {
             self.backend.profiles().servers.into_iter().map(|s| (s.id, s.name)).collect();
         let mut out = Vec::new();
         for (id, name) in &names {
-            if !cfg.access_of(id).allows_auto() {
+            if !self.auto_allowed(id) {
                 continue;
             }
             let (level, until, saved) = match temp.get(id) {

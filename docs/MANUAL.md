@@ -579,8 +579,27 @@ pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
    configuración. En Claude Code, reconecta con `/mcp` o abre una conversación nueva.
 5. Cuando quiera cambiar algo, SSHorus te pregunta: **Permitir una vez**, **Permitir siempre…** o **Denegar**.
 
-Puedes conectar varias IA a la vez. En **Asistentes conectados** ves cada una con su carpeta, su último uso y sus
-permisos, con **Cambiar permisos** y **Revocar** (deja de funcionar al instante; las demás siguen igual).
+**Por HTTP directo, sin puente ni token (Claude Code):**
+
+1. Copia **Claude Code (HTTP, sin token)** de **Asistentes conectados** y ejecútalo en una terminal de tu PC. Es así:
+
+```bash
+claude mcp add --transport http sshorus http://127.0.0.1:47821/mcp
+```
+
+2. La primera vez que Claude Code lo use (o con `/mcp` → **Authenticate**), se abre tu navegador con **Vuelve a
+   SSHorus para aceptar**.
+3. En SSHorus sale el mismo aviso **Conectar un asistente**, con su identidad («comprobada» si su ficha está publicada
+   en su sitio, como claude.ai; «sin comprobar» si se registró sola), el navegador y a dónde vuelve. Elige sus permisos
+   y pulsa **Aceptar**. El navegador vuelve solo a Claude Code.
+4. Su acceso dura una hora y se renueva solo; no tienes que volver a aceptarlo. Otros clientes que siguen la
+   autorización estándar de MCP (por ejemplo `codex mcp add sshorus --url http://127.0.0.1:47821/mcp` y luego
+   `codex mcp login sshorus`) funcionan igual.
+
+Puedes conectar varias IA a la vez. En **Asistentes conectados** ves cada una con su carpeta (o su cliente), cómo se
+conectó (**Puente** o **HTTP (OAuth)**), su último uso y sus permisos, con **Cambiar permisos** y **Revocar** (deja de
+funcionar al instante, también la renovación por OAuth; las demás siguen igual). Volver a conectar la misma IA
+reemplaza su conexión anterior.
 
 **Permisos de cada asistente:** un asistente conectado así usa **solo sus propios permisos** por servidor, los que
 elegiste al aceptarlo. La lista **Permisos por servidor** vale para la conexión manual con el token (abajo). «Solo lo
@@ -609,7 +628,7 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - **Permitir que la IA pida ver la contraseña de sudo** está apagado (recomendado). Si lo enciendes, cada vez te pregunta y, si aceptas, la contraseña queda en la conversación con la IA.
 - El botón del **robot** en la barra de pestañas abre **Actividad del asistente**, con todo lo que ha hecho.
 
-**Aceptar automáticamente:** si te cansa aprobar cada paso, en **Ajustes → Asistentes de IA (MCP)** pulsa **Automático…** junto a un servidor con acceso **Completo** (o, en el propio diálogo de permiso, **Aceptar automáticamente en este servidor…**).
+**Aceptar automáticamente:** si te cansa aprobar cada paso, en **Ajustes → Asistentes de IA (MCP)** pulsa **Automático…** junto a un servidor donde la conexión con token o algún asistente conectado tiene acceso **Completo** o **Solo lo marcado** (o, en el propio diálogo de permiso, **Aceptar automáticamente en este servidor…**). Solo vale para quien tenga ese acceso ahí: un asistente con **Solo lectura** sigue sin poder cambiar nada.
 
 - **Cambios normales**: lo que no es peligroso pasa sin preguntar.
 - **Todo (incluido sudo)**: también lo peligroso y los comandos con sudo. Se marca en rojo y se pide confirmación. Si SSHorus tiene la contraseña de sudo (en memoria o guardada) la usa sin preguntar; si no, la pide una vez.
@@ -805,7 +824,7 @@ En la pantalla de bloqueo pulsa **Olvidé mi PIN** y escribe `BORRAR`. Ver [PIN 
 Instala o activa GNOME Keyring o KWallet. Sin llavero, SSHorus te pedirá la contraseña en cada conexión.
 
 **El asistente dice «Abre SSHorus para usar tus servidores» o «SSHorus está bloqueado»**
-SSHorus tiene que estar abierto y desbloqueado. Si dice «no está emparejado» o «ya no está emparejado», pídele que ejecute `sshorus-mcp pair` otra vez. Si dice «Token incorrecto» con la conexión manual, copia otra vez la configuración desde **Ajustes → Asistentes de IA (MCP)**.
+SSHorus tiene que estar abierto y desbloqueado. Si dice «no está emparejado» o «ya no está emparejado», pídele que ejecute `sshorus-mcp pair` otra vez (si lo conectaste por HTTP, vuelve a autorizarlo: en Claude Code, `/mcp` → **Authenticate**). Si dice «Token incorrecto» con la conexión manual, copia otra vez la configuración desde **Ajustes → Asistentes de IA (MCP)**.
 
 **Lentitud o ventana en blanco en Linux**
 Abre SSHorus con `WEBKIT_DISABLE_COMPOSITING_MODE=1 sshorus`.

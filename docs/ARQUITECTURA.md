@@ -280,7 +280,7 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
 | `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), cifrado del Gist (`crypto.rs`), compartir comandos |
 | `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
-| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
+| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
 | `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
 | `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
@@ -639,9 +639,11 @@ Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas 
    o por stdio con el puente `sshorus-mcp`, que reenvía cada mensaje a esa dirección. El puente no tiene lógica:
    lleva el token de la variable `SSHORUS_MCP_TOKEN` o, si el asistente se emparejó, del llavero, y lee el puerto de `mcp.json`; si la app está cerrada,
    contesta él mismo «Abre SSHorus para usar tus servidores» y avisa (`tools/list_changed`) cuando se abre.
-2. **Puerta** (`mcp/http.rs`): cabecera `Origin` → 403; SSHorus bloqueado → error «SSHorus está bloqueado:
-   desbloquéalo para continuar»; token `Bearer` distinto → 401. El token se lee de la bóveda o el llavero
-   (`mcp-token`) y se olvida al bloquear.
+2. **Puerta** (`mcp/http.rs`): cabecera `Origin` → 403; `Host` que no sea `127.0.0.1`/`localhost`/`[::1]` con el
+   puerto de SSHorus → 421 (DNS rebinding); SSHorus bloqueado → error «SSHorus está bloqueado: desbloquéalo para
+   continuar»; token `Bearer` distinto → 401 con `WWW-Authenticate: Bearer resource_metadata=…` (de ahí arranca
+   OAuth). El token general se lee de la bóveda o el llavero (`mcp-token`) y se olvida al bloquear; los de los
+   asistentes (`tvc_` del puente, `tvo_` de OAuth) se comprueban fuera del hilo async (huella Argon2id).
 3. **SDK** (`mcp/server.rs`, crate `rmcp` 3.9): sin sesiones y con respuestas JSON; anuncia 24 herramientas
    con su esquema y pasa cada llamada a `McpCore`.
 4. **Reglas** (`mcp/core.rs` + `mcp/policy.rs`): el servidor tiene que tener acceso (Sin acceso / Solo lectura /
@@ -666,6 +668,30 @@ llavero (`sshorus` / `mcp-client:<id>`) y se registra en el asistente sin token 
 SSHORUS_MCP_CLIENT=claude sshorus -- ~/.local/bin/sshorus-mcp`). En cada petición `http.rs` identifica el token y deja
 un `Caller` en ella: con un asistente emparejado valen **solo sus permisos por servidor**; con el token general, los de
 `mcp.json`. Al arrancar, `install.rs` copia el puente a `~/.local/bin` (o `%LOCALAPPDATA%\SSHorus\bin`).
+El diálogo, su espera, el límite y el registro son una sola pieza (`pairing/consent.rs`) que usan los dos caminos;
+quien pide conectarse se describe igual en ambos (`pairing/applicant.rs`: id, nombre, «Puente» u «OAuth» y los datos
+que ve el diálogo). Un `kid` nunca se repite (ni con revocados). Si un asistente tiene Completo en un servidor,
+«Aceptar automáticamente» se puede activar ahí (`McpCore::auto_allowed`, con `PairedAccess`), pero solo vale para
+quien tenga ese acceso (`auto_level_for` con el acceso de quien llama); `prune_auto_at` lo apaga donde ya nadie puede.
+
+**Emparejar por OAuth** (`mcp/oauth/`): para clientes que se conectan por HTTP directo
+(`claude mcp add --transport http sshorus http://127.0.0.1:<puerto>/mcp`), siguiendo la autorización de MCP
+(2025-11-25 / 2026-07-28: OAuth 2.1, PKCE S256, RFC 9728, RFC 8414, RFC 8707, RFC 9207). SSHorus es a la vez
+servidor de recursos y de autorización, en el mismo `127.0.0.1`. Piezas puras: `metadata` (direcciones según el
+`Host` comprobado y los documentos `/.well-known/oauth-protected-resource[/mcp]` y `oauth-authorization-server`),
+`redirect` (solo vuelta a `http://127.0.0.1|[::1]|localhost`, misma ruta y consulta que lo registrado, cualquier
+puerto: RFC 8252), `pkce`, `clients` (documento de metadatos del cliente, que se descarga por HTTPS sin seguir
+redirecciones, y registro dinámico RFC 7591, ambos solo clientes públicos), `form` y `store` (en memoria: peticiones
+de autorización, códigos de 60 s y un solo uso, tokens de acceso de 1 h; solo huellas). `directory` resuelve el
+`client_id` (caché de documentos; registros en `mcp-oauth-registrations.json`). `authorize` valida `/authorize`,
+guarda la petición y sirve la página «Vuelve a SSHorus para aceptar» (`page`, sin JavaScript ni secretos), que se
+recarga en `/authorize/wait`: ahí se muestra el MISMO diálogo del puente y se vuelve al cliente con `code`, `state` e
+`iss`, o con `error=access_denied`. `grant` canjea el código (mismo cliente, misma dirección de vuelta, verificador
+PKCE, recurso) y crea la ficha del asistente en la lista de siempre (`mcp-clients.json`, `via: oauth`) con la huella
+del token de renovación; cada renovación lo cambia (`ClientRegistry::rotate`, atómico). Un código repetido revoca lo
+que dio. `/revoke` (RFC 7009) con el de renovación desconecta al asistente. `route` es lo único que sabe de HTTP.
+Revocar en Ajustes quita la ficha: los tokens de acceso que queden en memoria dejan de valer porque su `kid` ya no
+es de nadie.
 
 **Aceptar automáticamente** (`policy::decide_auto` y `effective_auto`, `McpCore::set_auto_at`,
 `features/mcp/AutoAccept.tsx`)
@@ -676,8 +702,8 @@ confirmación). Duración: 15 min, 1 h o hasta cerrar SSHorus viven solo en memo
 `until` en Unix ms); «siempre» se guarda en `mcp.json` (`autoAccept`). El temporal manda sobre el guardado.
 Seguridad: con SSHorus bloqueado no vale (`effective_auto` devuelve `off`, y la puerta ya rechaza todo); en
 Solo lectura y Sin acceso no se puede activar y las reglas no cambian (los cambios se siguen rechazando);
-`sanitize` borra el guardado si el servidor deja de tener acceso Completo, y `mcp_set_access` borra también el
-temporal. Una regla «Permitir siempre» sigue anotándose como regla. Cada acción aceptada así lleva en el
+al cambiar permisos (generales o de un asistente) o revocar, `prune_auto_at` apaga el guardado y el temporal donde
+ya nadie tiene Completo o Solo lo marcado. Una regla «Permitir siempre» sigue anotándose como regla. Cada acción aceptada así lleva en el
 registro `auto: true` (y `autoDanger` si era peligrosa o con sudo) y `approvedBy` «automático (…)»; la
 interfaz la marca «automático» en la actividad y avisa con un toast si era peligrosa. Comandos
 `mcp_auto_list`, `mcp_set_auto`, `mcp_auto_off_all` y evento `mcp://auto` (lista `AutoState`), que alimenta el

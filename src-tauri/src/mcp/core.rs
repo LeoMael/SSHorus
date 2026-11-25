@@ -59,14 +59,14 @@ pub use reboot::RebootServerParams;
 pub use sudo_reveal::SudoPasswordParams;
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use super::audit::{AuditEntry, AuditLog, AuditStatus};
-use super::caller::Caller;
+use super::caller::{Caller, PairedAccess};
 use super::backend::Backend;
 use super::config::McpConfigStore;
 use super::policy::{Access, AutoGrant};
@@ -170,6 +170,8 @@ pub struct McpCore<B: Backend> {
     vuln_scans: Mutex<BTreeSet<String>>,
     /// «Aceptar automáticamente» temporal (15 min, 1 h, hasta cerrar SSHorus): solo en memoria.
     auto_temp: Mutex<BTreeMap<String, AutoGrant>>,
+    /// Permisos de los asistentes emparejados (para ofrecer «Aceptar automáticamente»).
+    paired: Option<Arc<dyn PairedAccess>>,
 }
 
 impl<B: Backend> McpCore<B> {
@@ -181,7 +183,15 @@ impl<B: Backend> McpCore<B> {
             catalog: Mutex::new(None),
             vuln_scans: Mutex::new(BTreeSet::new()),
             auto_temp: Mutex::new(BTreeMap::new()),
+            paired: None,
         }
+    }
+
+    /// Con los asistentes emparejados: «Aceptar automáticamente» también se ofrece donde alguno de ellos
+    /// tiene acceso Completo o Solo lo marcado.
+    pub fn with_paired(mut self, paired: Arc<dyn PairedAccess>) -> Self {
+        self.paired = Some(paired);
+        self
     }
 
     /// Ejecuta una herramienta con el token general. `cancel` se dispara si el cliente cancela la petición.

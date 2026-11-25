@@ -17,6 +17,7 @@
 //! - `bridge`: puente stdio (`sshorus-mcp`) y su `pair`, compartido con `src/bin/sshorus-mcp.rs`;
 //!   `install`: copia del puente a una ruta fija.
 //! - `pairing`: emparejar asistentes con «Aceptar / Rechazar», un token y permisos por asistente;
+//!   `oauth`: lo mismo para los que se conectan por HTTP directo, con la autorización estándar de MCP;
 //!   `caller`: quién llama y con qué permisos; `gate`: bloqueo y tokens.
 
 pub mod approval;
@@ -34,6 +35,7 @@ pub mod grants;
 pub mod http;
 pub mod install;
 pub mod local_guard;
+pub mod oauth;
 pub mod pairing;
 pub mod policy;
 pub mod prompt;
@@ -123,6 +125,8 @@ pub struct McpStatus {
     pub bridge_stable: bool,
     /// Orden para emparejar: «sshorus-mcp pair» si la carpeta está en PATH; si no, con la ruta completa.
     pub pair_command: String,
+    /// Orden para conectar Claude Code por HTTP directo, sin token (empareja por OAuth al usarlo).
+    pub http_pair_command: String,
     pub app_image: bool,
     pub audit_path: Option<String>,
 }
@@ -148,16 +152,17 @@ impl McpState {
             let _ = emitter.emit(EV_ACTIVITY, e);
         });
         let backend = TauriBackend { app: app.clone(), pending: pending.clone(), ui: ui.clone() };
-        let core = Arc::new(core::McpCore::new(backend, McpConfigStore::load(), audit));
         let pairing = Arc::new(Pairing::new(
             pairing::registry::ClientRegistry::load(),
             Box::new(pairing::notify::TauriNotifier(app.clone())),
         ));
+        let core = Arc::new(core::McpCore::new(backend, McpConfigStore::load(), audit).with_paired(pairing.clone()));
+        let oauth = Arc::new(oauth::OAuth::load(pairing.clone()));
         McpState {
             core,
             pending,
             ui,
-            gate: Arc::new(AppGate::new(pairing.clone())),
+            gate: Arc::new(AppGate::new(pairing.clone(), oauth)),
             pairing,
             running: Mutex::new(None),
             last_error: Mutex::new(None),
@@ -184,11 +189,13 @@ impl McpState {
         } else {
             format!("{} pair", bridge::register::shell_quote(&bridge_text))
         };
+        let url = format!("http://127.0.0.1:{port}{}", http::MCP_PATH);
         McpStatus {
             enabled: cfg.enabled,
             running: running.is_some(),
             port,
-            url: format!("http://127.0.0.1:{port}{}", http::MCP_PATH),
+            http_pair_command: format!("claude mcp add --transport http sshorus {url}"),
+            url,
             error: self.last_error.lock().unwrap_or_else(|p| p.into_inner()).clone(),
             approval_timeout_secs: cfg.approval_timeout_secs,
             bridge_found: bridge.as_ref().is_some_and(|(p, _)| p.is_file()),
@@ -295,6 +302,15 @@ pub(super) fn emit_auto(app: &AppHandle, state: &McpState) -> Vec<core::AutoStat
     let list = state.core.auto_list_at(audit::now_ms());
     let _ = app.emit(EV_AUTO, &list);
     list
+}
+
+/// Tras cambiar permisos (generales o de un asistente): apaga «Aceptar automáticamente» donde ya nadie
+/// puede usarlo y avisa a la interfaz.
+pub(super) fn prune_auto(app: &AppHandle, state: &McpState) -> AppResult<()> {
+    if state.core.prune_auto_at(audit::now_ms())? {
+        emit_auto(app, state);
+    }
+    Ok(())
 }
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + 'static) -> AppResult<T> {

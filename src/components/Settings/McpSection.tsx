@@ -251,6 +251,11 @@ export function McpSection() {
             hint="Dile a tu IA esto. Te aparecerá un aviso aquí para aceptarlo y elegir sus permisos; no hay que copiar ningún secreto."
             text={`Conéctate a SSHorus ejecutando ${status.pairCommand}`}
           />
+          <CopyBlock
+            title="Claude Code (HTTP, sin token)"
+            hint="Ejecútalo en tu terminal. Al usarlo, Claude Code abre el navegador y te aparecerá aquí el mismo aviso para aceptarlo. Añade «--scope user» para todos tus proyectos."
+            text={status.httpPairCommand}
+          />
           <PairedAssistants />
         </SettingGroup>
       )}
@@ -313,7 +318,7 @@ export function McpSection() {
             hint="Añade «--scope user» para usarlo en todos tus proyectos."
             text={client.claudeCodeStdio}
           />
-          <CopyBlock title="Claude Code (HTTP directo)" hint="Alternativa sin puente." text={client.claudeCodeHttp} />
+          <CopyBlock title="Claude Code (HTTP con token)" hint="Alternativa sin puente ni emparejar." text={client.claudeCodeHttp} />
           <CopyBlock
             title="Claude Desktop"
             hint={

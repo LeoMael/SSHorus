@@ -1,6 +1,7 @@
 //! Emparejado de punta a punta con el motor simulado: `sshorus-mcp pair` (su petición HTTP real) → tu
 //! respuesta en el diálogo (simulada) → el puente usa el token de ese asistente con SUS permisos. También
-//! rechazar, sin respuesta, límite de peticiones, bloqueo, revocar y el puente sin emparejar.
+//! rechazar, sin respuesta, límite de peticiones, bloqueo, revocar y el puente sin emparejar. El mismo
+//! entorno (con OAuth) lo usan las pruebas de `tests_oauth.rs`.
 
 use std::sync::atomic::AtomicUsize;
 
@@ -10,12 +11,14 @@ use crate::mcp::bridge::wire::{PairOutcome, PairReply, PairRequest};
 use crate::mcp::bridge::{offline, PairLookup};
 use crate::mcp::pairing::model::{ClientView, PairDecision, PairPrompt};
 use crate::mcp::pairing::notify::PairNotifier;
+use crate::mcp::oauth::directory::{Directory, StaticDocs};
+use crate::mcp::oauth::OAuth;
 use crate::mcp::pairing::registry::ClientRegistry;
 use crate::mcp::pairing::Pairing;
 
 /// Qué responde el «usuario» a cada asistente.
 #[derive(Clone)]
-enum Reply {
+pub(super) enum Reply {
     Accept(Vec<(&'static str, Access)>),
     Reject,
     /// No responde (vence).
@@ -34,9 +37,10 @@ impl PairNotifier for ChanNotifier {
     fn changed(&self, _: &[ClientView]) {}
 }
 
-struct PairGate {
-    locked: AtomicBool,
-    pairing: Arc<Pairing>,
+pub(super) struct PairGate {
+    pub locked: AtomicBool,
+    pub pairing: Arc<Pairing>,
+    oauth: OAuth,
 }
 
 impl http::Gate for PairGate {
@@ -49,27 +53,42 @@ impl http::Gate for PairGate {
     fn pairing(&self) -> Option<&Pairing> {
         Some(&self.pairing)
     }
+    fn oauth(&self) -> Option<&OAuth> {
+        Some(&self.oauth)
+    }
 }
 
-struct Env {
-    port: u16,
-    core: Arc<McpCore<Mock>>,
-    gate: Arc<PairGate>,
-    /// Diálogos mostrados.
-    shown: Arc<AtomicUsize>,
-    ct: CancellationToken,
+pub(super) struct Env {
+    pub port: u16,
+    pub core: Arc<McpCore<Mock>>,
+    pub gate: Arc<PairGate>,
+    /// Diálogos mostrados (y el último, para ver qué decía).
+    pub shown: Arc<AtomicUsize>,
+    pub last: Arc<Mutex<Option<PairPrompt>>>,
+    pub ct: CancellationToken,
 }
 
 async fn start(replies: Vec<(&'static str, Reply)>) -> Env {
+    start_with(replies, HashMap::new()).await
+}
+
+/// Servidor HTTP real con el motor simulado; el «usuario» responde a cada asistente según `replies`, y los
+/// clientes OAuth con documento de metadatos se resuelven con `docs`.
+pub(super) async fn start_with(replies: Vec<(&'static str, Reply)>, docs: HashMap<String, Vec<u8>>) -> Env {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<PairPrompt>();
-    let pairing = Pairing::new(ClientRegistry::at(None), Box::new(ChanNotifier(tx))).with_wait(Duration::from_millis(400));
-    let gate = Arc::new(PairGate { locked: AtomicBool::new(false), pairing: Arc::new(pairing) });
+    let pairing =
+        Arc::new(Pairing::new(ClientRegistry::at(None), Box::new(ChanNotifier(tx))).with_wait(Duration::from_millis(400)));
+    let oauth = OAuth::new(pairing.clone(), Directory::new(Box::new(StaticDocs(docs)), None));
+    let gate = Arc::new(PairGate { locked: AtomicBool::new(false), pairing, oauth });
     let shown = Arc::new(AtomicUsize::new(0));
+    let last = Arc::new(Mutex::new(None));
+    let seen = last.clone();
     let (g, count) = (gate.clone(), shown.clone());
     let replies: HashMap<&str, Reply> = replies.into_iter().collect();
     tokio::spawn(async move {
         while let Some(p) = rx.recv().await {
             count.fetch_add(1, Ordering::SeqCst);
+            *seen.lock().unwrap() = Some(p.clone());
             let decision = match replies.get(p.client_id.as_str()).cloned().unwrap_or(Reply::Ignore) {
                 Reply::Ignore => continue,
                 Reply::Reject => PairDecision::reject(),
@@ -88,7 +107,7 @@ async fn start(replies: Vec<(&'static str, Reply)>) -> Env {
     let ct = CancellationToken::new();
     let dyn_gate: Arc<dyn http::Gate> = gate.clone();
     tokio::spawn(http::serve(listener, core.clone(), dyn_gate, ct.clone()));
-    Env { port, core, gate, shown, ct }
+    Env { port, core, gate, shown, last, ct }
 }
 
 fn request(id: &str) -> PairRequest {
@@ -116,7 +135,7 @@ async fn list_servers(port: u16, token: &str) -> Value {
     recv(&mut r).await
 }
 
-fn names(v: &Value) -> Vec<String> {
+pub(super) fn names(v: &Value) -> Vec<String> {
     let text = v["result"]["content"][0]["text"].as_str().unwrap_or("[]");
     let list: Vec<Value> = serde_json::from_str(text).unwrap_or_default();
     list.iter().map(|s| s["name"].as_str().unwrap_or("").to_string()).collect()

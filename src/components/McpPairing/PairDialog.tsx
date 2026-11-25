@@ -1,22 +1,23 @@
-// Diálogo «Conectar un asistente»: una IA ejecutó `sshorus-mcp pair` y pide usar SSHorus. Muestra lo que vio
-// el puente (programa, pid, carpeta), deja elegir los permisos por servidor y espera Aceptar o Rechazar.
+// Diálogo «Conectar un asistente»: una IA pide usar SSHorus, por el puente (`sshorus-mcp pair`) o por HTTP
+// directo con OAuth (desde el navegador). Muestra lo que se sabe de quién lo pide (programa y carpeta, o
+// identidad y navegador), deja elegir los permisos por servidor y espera Aceptar o Rechazar.
 // Sin respuesta a tiempo, el motor lo rechaza solo y el diálogo se cierra. Va por encima de Ajustes
 // (McpPairing.css): es fácil que la petición llegue con Ajustes abierto.
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Bot, Info } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { mcp, type McpPairPrompt } from "../../api/mcp";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { dropPairRequest, useMcp } from "../../features/mcp/store";
-import { cleanAccess, initialAccess } from "../../features/mcp/pairing";
+import { cleanAccess, initialAccess, VIA_LABEL, VIA_NOTE } from "../../features/mcp/pairing";
 import { useSecondsLeft } from "../../features/mcp/useSecondsLeft";
 import { AccessPicker } from "./AccessPicker";
 import "./McpPairing.css";
 
 function PairDialog({ req, total }: { req: McpPairPrompt; total: number }) {
   const servers = useProfiles((s) => s.servers);
-  const [access, setAccess] = useState(() => initialAccess(servers.map((s) => s.id), req.current));
+  const [access, setAccess] = useState(() => initialAccess(servers.map((s) => s.id), req.current, req.replaces));
   const [busy, setBusy] = useState(false);
   const left = useSecondsLeft(req.expiresAt);
 
@@ -60,16 +61,17 @@ function PairDialog({ req, total }: { req: McpPairPrompt; total: number }) {
           <Bot size={16} /> <strong>{req.name}</strong> quiere usar tus servidores a través de SSHorus.
         </p>
         <dl className="mpair-facts">
-          <dt>Programa</dt>
-          <dd className="mono">{req.program || "—"}</dd>
-          <dt>PID</dt>
-          <dd className="mono">{req.pid ?? "—"}</dd>
-          <dt>Carpeta</dt>
-          <dd className="mono">{req.cwd ?? "—"}</dd>
+          <dt>Por</dt>
+          <dd>{VIA_LABEL[req.via]}</dd>
+          {req.facts.map((f) => (
+            <Fragment key={f.label}>
+              <dt>{f.label}</dt>
+              <dd className="mono">{f.value}</dd>
+            </Fragment>
+          ))}
         </dl>
         <p className="mpair-note">
-          <Info size={13} /> Estos datos los da el propio equipo (el programa que lo pide). Acepta solo si tú le pediste a tu
-          IA que se conectara.
+          <Info size={13} /> {VIA_NOTE[req.via]}
         </p>
         {req.replaces && (
           <p className="mcp-warn">Este asistente ya estaba conectado: si aceptas, su conexión anterior deja de valer.</p>

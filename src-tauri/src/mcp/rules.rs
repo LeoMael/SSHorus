@@ -8,10 +8,9 @@ use serde::Deserialize;
 use tauri::{AppHandle, State};
 
 use super::config::McpConfig;
-use super::core::AutoDuration;
 use super::grants::{Grants, Template};
-use super::policy::{Access, AutoLevel};
-use super::{audit, emit_auto, McpState};
+use super::policy::Access;
+use super::{prune_auto, McpState};
 use crate::error::AppResult;
 
 /// Lo que se cambia en cada servidor elegido. Lo que es None no se toca.
@@ -56,17 +55,8 @@ pub async fn mcp_apply_rules(
     server_ids: Vec<String>,
     rules: Rules,
 ) -> AppResult<McpConfig> {
-    let cfg = state.core.config.update(|c| apply(c, &server_ids, &rules))?;
-    let mut auto_changed = false;
-    for id in &server_ids {
-        if !cfg.access_of(id).allows_auto() {
-            state.core.set_auto_at(id, AutoLevel::Off, AutoDuration::Session, audit::now_ms())?;
-            auto_changed = true;
-        }
-    }
-    if auto_changed {
-        emit_auto(&app, &state);
-    }
+    state.core.config.update(|c| apply(c, &server_ids, &rules))?;
+    prune_auto(&app, &state)?;
     Ok(state.core.config.get())
 }
 

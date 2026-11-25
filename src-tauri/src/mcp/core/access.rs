@@ -71,7 +71,7 @@ impl<B: Backend> McpCore<B> {
     /// Aplica las reglas y, si hace falta, pregunta en SSHorus.
     pub(super) async fn authorize(&self, rec: &mut Rec, t: &Target, action: Action, title: &str, shown: &str, diff: Option<String>) -> Res<()> {
         let cfg = self.config.get();
-        let auto = self.auto_level_at(&t.server.id, now_ms());
+        let auto = self.auto_level_for(&t.server.id, t.access, now_ms());
         let grants = cfg.grants_of(&t.server.id);
         match policy::decide_rules(&t.server.name, t.access, &grants, &action, &cfg.remembered_of(&t.server.id), auto) {
             Verdict::Allow(why) => {

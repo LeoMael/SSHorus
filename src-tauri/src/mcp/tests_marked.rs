@@ -166,7 +166,9 @@ fn old_mcp_json_still_loads() {
     assert_eq!(cfg.access_of("b"), Access::Read);
     assert_eq!(cfg.access_of("c"), Access::None);
     assert_eq!(cfg.auto_accept.get("a"), Some(&AutoLevel::Changes));
-    assert!(!cfg.auto_accept.contains_key("b"));
+    // Se conserva aunque el token general solo lea ahí: puede valer para un asistente con Completo (no vale
+    // para quien no tenga Completo o Solo lo marcado: `effective_auto`).
+    assert_eq!(cfg.auto_accept.get("b"), Some(&AutoLevel::All));
     assert!(cfg.grants.is_empty() && cfg.protected_users.is_empty() && cfg.protected_global.is_empty());
     assert!(!cfg.allow_sudo_reveal, "ver la contraseña de sudo: apagado salvo que se encienda");
 

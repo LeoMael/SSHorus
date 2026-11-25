@@ -12,7 +12,7 @@ use super::audit::{self, AuditEntry};
 use super::config::McpConfig;
 use super::core::{AutoDuration, AutoState};
 use super::policy::{Access, AutoLevel};
-use super::{emit_auto, ensure_token, regenerate, ClientConfig, McpState, McpStatus};
+use super::{emit_auto, ensure_token, prune_auto, regenerate, ClientConfig, McpState, McpStatus};
 
 #[tauri::command]
 pub async fn mcp_status(state: State<'_, McpState>) -> AppResult<McpStatus> {
@@ -69,10 +69,7 @@ pub async fn mcp_set_access(app: AppHandle, state: State<'_, McpState>, server_i
     state.core.config.update(|c| {
         c.access.insert(server_id.clone(), access);
     })?;
-    if !access.allows_auto() {
-        state.core.set_auto_at(&server_id, AutoLevel::Off, AutoDuration::Session, audit::now_ms())?;
-        emit_auto(&app, &state);
-    }
+    prune_auto(&app, &state)?;
     Ok(state.core.config.get())
 }
 

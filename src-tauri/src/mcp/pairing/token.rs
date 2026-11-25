@@ -1,9 +1,11 @@
 //! Tokens de los asistentes emparejados (funciones puras).
 //!
-//! Forma: `tvc_<kid>_<64 hex>`. `kid` (8 hex) dice de qué asistente es sin revelar nada: así se busca
-//! su ficha y se compara una sola huella, y un token revocado se reconoce en el registro. SSHorus no
-//! guarda el token: solo su huella Argon2id con sal propia. El token tiene 256 bits al azar, así que no
-//! hace falta un cálculo lento: basta un Argon2 barato (ya está en la app para la bóveda).
+//! Forma: `<prefijo><kid>_<64 hex>`. El prefijo dice qué es (`Kind`): el token del puente o los de OAuth
+//! (acceso, renovación y código de autorización). `kid` (8 hex) dice de quién es sin revelar nada: así se
+//! busca su ficha y se compara una sola huella, y un token revocado se reconoce en el registro. SSHorus no
+//! guarda ningún token: solo su huella Argon2id con sal propia (la huella cubre el token entero, prefijo
+//! incluido). El token tiene 256 bits al azar, así que no hace falta un cálculo lento: basta un Argon2
+//! barato (ya está en la app para la bóveda).
 
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
@@ -11,9 +13,34 @@ use zeroize::Zeroizing;
 use crate::error::{AppError, AppResult};
 use crate::storage::cipher::{derive_key, KdfParams};
 
-pub const PREFIX: &str = "tvc_";
 /// Coste bajo a propósito (ver arriba): se calcula en cada petición del asistente.
 const PARAMS: KdfParams = KdfParams { m_kib: 64, t: 1, p: 1 };
+
+/// Qué es un token.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// Token del puente (`sshorus-mcp pair`): vale hasta revocarlo.
+    Bridge,
+    /// OAuth: token de acceso (dura poco).
+    Access,
+    /// OAuth: token de renovación (un solo uso: cada renovación da otro).
+    Refresh,
+    /// OAuth: código de autorización (60 s, un solo uso).
+    Code,
+}
+
+impl Kind {
+    const ALL: [Kind; 4] = [Kind::Bridge, Kind::Access, Kind::Refresh, Kind::Code];
+
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Kind::Bridge => "tvc_",
+            Kind::Access => "tvo_",
+            Kind::Refresh => "tvr_",
+            Kind::Code => "tvx_",
+        }
+    }
+}
 
 /// Huella guardada de un token.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,7 +51,7 @@ pub struct TokenHash {
     pub hash: String,
 }
 
-/// Token recién creado: se entrega una sola vez al puente y se olvida.
+/// Token recién creado: se entrega una sola vez y se olvida.
 pub struct Issued {
     pub token: Zeroizing<String>,
     pub hash: TokenHash,
@@ -48,21 +75,27 @@ pub fn random_hex(n: usize) -> AppResult<Zeroizing<String>> {
     Ok(Zeroizing::new(hex(&b)))
 }
 
-/// Id corto y público de un asistente dentro de su token.
+/// Id corto y público dentro del token (el registro comprueba que no se repita).
 pub fn new_kid() -> AppResult<String> {
     Ok(random_hex(4)?.to_string())
 }
 
-/// `kid` de un token con la forma de los emparejados (None si no la tiene).
-pub fn kid_of(token: &str) -> Option<&str> {
-    let rest = token.strip_prefix(PREFIX)?;
-    let (kid, secret) = rest.split_once('_')?;
-    (kid.len() == 8 && secret.len() == 64).then_some(kid)
+/// Tipo y `kid` de un token con la forma de los emparejados (None si no la tiene).
+pub fn parse(token: &str) -> Option<(Kind, &str)> {
+    Kind::ALL.into_iter().find_map(|kind| {
+        let (kid, secret) = token.strip_prefix(kind.prefix())?.split_once('_')?;
+        (kid.len() == 8 && secret.len() == 64).then_some((kind, kid))
+    })
 }
 
-pub fn issue(kid: &str) -> AppResult<Issued> {
+/// `kid` de un token de este tipo (None si es de otro tipo o no tiene la forma).
+pub fn kid_of(token: &str, kind: Kind) -> Option<&str> {
+    parse(token).filter(|(k, _)| *k == kind).map(|(_, kid)| kid)
+}
+
+pub fn issue(kind: Kind, kid: &str) -> AppResult<Issued> {
     let secret = random_hex(32)?;
-    let token = Zeroizing::new(format!("{PREFIX}{kid}_{}", secret.as_str()));
+    let token = Zeroizing::new(format!("{}{kid}_{}", kind.prefix(), secret.as_str()));
     let salt = random_hex(16)?;
     let hash = digest(&token, &salt)?;
     Ok(Issued { token, hash: TokenHash { salt: salt.to_string(), hash } })

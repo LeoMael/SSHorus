@@ -18,15 +18,27 @@ pub enum Limited {
     TooMany,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RateLimiter {
     /// Inicio (ms) de las peticiones del último minuto.
     recent: VecDeque<u64>,
     /// Asistentes con una petición esperando.
     waiting: BTreeSet<String>,
+    max: usize,
+}
+
+impl Default for RateLimiter {
+    fn default() -> Self {
+        RateLimiter::with_max(MAX_PER_WINDOW)
+    }
 }
 
 impl RateLimiter {
+    /// Otro máximo por minuto (el registro dinámico de clientes OAuth, que no muestra nada).
+    pub fn with_max(max: usize) -> Self {
+        RateLimiter { recent: VecDeque::new(), waiting: BTreeSet::new(), max }
+    }
+
     /// Deja pasar (y la cuenta) o dice por qué no. Si pasa, hay que llamar a `finish` al terminar.
     pub fn begin(&mut self, client_id: &str, now: u64) -> Result<(), Limited> {
         while self.recent.front().is_some_and(|t| now.saturating_sub(*t) >= WINDOW_MS) {
@@ -35,7 +47,7 @@ impl RateLimiter {
         if self.waiting.contains(client_id) {
             return Err(Limited::AlreadyWaiting);
         }
-        if self.recent.len() >= MAX_PER_WINDOW {
+        if self.recent.len() >= self.max {
             return Err(Limited::TooMany);
         }
         self.recent.push_back(now);
