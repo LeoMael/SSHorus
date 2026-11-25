@@ -18,6 +18,23 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   y la contraseña va por la entrada estándar: nunca en la línea de comandos ni en los registros.
 - **Asistentes de IA: `get_db_schema`** devuelve ese mismo esquema (lectura, pasa sola), con la credencial guardada o
   sin contraseña y sin sudo. La IA nunca ve contraseñas.
+- **Mapa: el cortafuegos enseña sus reglas en palabras simples.** Clic en el cortafuegos del mapa: a la derecha
+  ves su estado, qué pasa con lo que no encaja en ninguna regla y cada regla en una frase («Permite entrar por TCP
+  443 (HTTPS) desde cualquier sitio»); clic en la frase para ver la regla original. Sirve para firewalld (zonas,
+  servicios, puertos, reglas enriquecidas, redirecciones y NAT), ufw, nftables e iptables. Las reglas que crean
+  Docker y Podman van aparte («no tocar a mano»). Avisa si un puerto **escucha pero el cortafuegos lo bloquea**, si
+  hay algo **abierto sin nada escuchando** y si Docker publica un puerto saltándose el cortafuegos. Sin sudo
+  explica qué falta y deja escribir la contraseña.
+- **Mapa: cambiar el cortafuegos sin quedarte fuera** (firewalld y ufw; nftables e iptables, de momento solo se
+  ven): **Abrir puerto o servicio** (TCP/UDP, rango y, si quieres, solo para una IP o red), **Quitar** una regla y
+  **Activar** el cortafuegos apagado. Antes de aplicar enseña los comandos exactos. SSHorus no deja quitar la regla
+  por la que entra tu conexión SSH, al activar abre antes el puerto de SSH y, si el cambio toca el acceso, lo aplica
+  **a prueba**: prueba a entrar con una conexión nueva (si no puede, lo deshace enseguida) y, si en 5 minutos no
+  pulsas **Hacer permanente** (firewalld) o **Mantener** (ufw), el servidor lo deshace solo. Va como tarea en
+  segundo plano.
+- **Mapa más claro**: panel de detalles con el icono y el estado del nodo, leyenda plegable con todos los tipos y
+  colores, el cortafuegos apagado también aparece (en amarillo, «apagado») y los nodos se recorren con el teclado
+  (Tab, Intro para ver los detalles, Esc para cerrarlos).
 - **Tareas en segundo plano para toda la app**: lo que tarda sigue aunque cierres el diálogo que lo lanzó o cambies de
   pestaña. Abajo a la derecha aparece una ventanita con cuántas hay en marcha («2 tareas»); al pulsarla ves cada una
   (servidor, en qué va, tiempo, progreso si se sabe, **Ver** y **Cancelar**). **Ver** la abre en grande: salida en

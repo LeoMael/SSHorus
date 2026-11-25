@@ -1,0 +1,232 @@
+/* Cortafuegos en el panel de detalles del mapa y su diálogo de cambios (prefijo fw-). */
+.fw-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.fw-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fw-note {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+/* Cambios a prueba */
+.fw-trials {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fw-trial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--mix-yellow-40);
+  background: var(--mix-yellow-12-surface);
+  border-radius: var(--radius-sm);
+}
+.fw-trial > svg {
+  color: var(--yellow);
+  flex: none;
+}
+.fw-trial-text {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Avisos y políticas */
+.fw-findings,
+.fw-policy,
+.fw-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fw-finding {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--mix-yellow-12-surface);
+  color: var(--text);
+}
+.fw-finding > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--yellow);
+}
+.fw-f-docker-bypass {
+  background: var(--mix-red-12);
+}
+.fw-f-docker-bypass > svg {
+  color: var(--red);
+}
+.fw-policy li {
+  color: var(--text-muted);
+  padding-left: 10px;
+  border-left: 2px solid var(--border-strong);
+}
+
+/* Reglas */
+.fw-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fw-group-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.fw-rule {
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.fw-rule-line {
+  display: flex;
+  align-items: flex-start;
+}
+.fw-rule-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 5px 6px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.fw-rule-main:hover {
+  background: var(--surface-3);
+}
+.fw-rule-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.fw-chev {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-faint);
+  transition: transform 0.12s;
+}
+.fw-chev.open {
+  transform: rotate(90deg);
+}
+.fw-verdict {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+.fw-v-allow .fw-verdict {
+  color: var(--green);
+}
+.fw-v-limit .fw-verdict {
+  color: var(--yellow);
+}
+.fw-v-deny .fw-verdict,
+.fw-v-reject .fw-verdict {
+  color: var(--red);
+}
+.fw-v-nat .fw-verdict,
+.fw-v-jump .fw-verdict {
+  color: var(--purple);
+}
+.fw-rule-text {
+  overflow-wrap: anywhere;
+}
+.fw-comment {
+  color: var(--text-faint);
+}
+.fw-remove {
+  flex: none;
+  margin: 2px;
+}
+.fw-raw {
+  margin: 0;
+  padding: 4px 8px 6px 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+.fw-managed summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.fw-managed > p {
+  margin: 6px 0;
+}
+
+/* Diálogo */
+.fw-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fw-form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.fw-form-row .field {
+  flex: 1;
+}
+.fw-plan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.fw-safe {
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.fw-safe > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--green);
+}
+.fw-undo summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  margin-bottom: 4px;
+}

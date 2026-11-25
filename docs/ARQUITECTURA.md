@@ -260,6 +260,11 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   contraseña va por stdin y entra al cliente por `PGPASSWORD`/`MYSQL_PWD`.
 - Si un archivo solo lo usa un dominio, va en la carpeta de ese dominio aunque parezca genérico. Cuando lo use un
   segundo dominio, se mueve a `components/ui/` o a `lib/`.
+- Una parte grande de un dominio va en una subcarpeta suya. Ejemplo: el **cortafuegos del mapa** (leer firewalld,
+  ufw, nftables e iptables; explicar cada regla en una frase; cruzarlo con los puertos en escucha; y cambiarlo sin
+  quedarse fuera, con cambios «a prueba» que el servidor deshace solo) vive en `features/infra/firewall/` porque
+  solo lo usa el mapa; su interfaz, en `components/InfraMap/Firewall*.tsx`. Si otro dominio lo necesita (p. ej.
+  Administración), se sube a `features/firewall/`.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
 
 **Motor (`src-tauri/src/`):** cada módulo grande separa estado/lógica de sus comandos Tauri (`commands.rs` / `sync_cmds.rs`) y submódulos temáticos:

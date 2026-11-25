@@ -1,77 +1,22 @@
 // Lienzo del mapa de infraestructura: SVG propio (sin dependencias) con disposición por capas, zoom,
 // desplazamiento, ajustar a la pantalla, minimapa, filtros, leyenda, panel de detalles y exportar.
-import { useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
-import {
-  Box,
-  ChevronDown,
-  Cpu,
-  Database,
-  Download,
-  Earth,
-  ExternalLink,
-  Globe,
-  Map as MapIcon,
-  Network,
-  Plug,
-  RefreshCw,
-  Server,
-  Settings2,
-  ShieldCheck,
-  Waypoints,
-  X,
-  type LucideProps,
-} from "lucide-react";
-import {
-  buildGraph,
-  filterGraph,
-  graphOwners,
-  LAYERS,
-  type Health,
-  type NavTarget,
-  type NodeKind,
-  type ServerSnapshot,
-} from "../../features/infra/graph";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronDown, Download, Map as MapIcon, Network, RefreshCw } from "lucide-react";
+import { buildGraph, filterGraph, graphOwners, LAYERS, type NavTarget, type ServerSnapshot } from "../../features/infra/graph";
 import { layoutGraph } from "../../features/infra/layout";
 import { ownerLabel, ROUTE_OWNER } from "../../features/infra/owner";
 import { zoomPercent } from "../../features/infra/viewport";
 import { toMermaid } from "../../features/infra/text";
 import { exportMap, type ExportFormat } from "./exportMap";
 import { FOLD_PREFIX, FoldBox, ScopeSwitch } from "./MapScope";
+import { MapLegend } from "./MapLegend";
 import { MiniMap, UpdatedAgo, ZoomControls } from "./MapOverlays";
+import { KIND_LABEL, NODE_ICON } from "./nodeMeta";
+import { NodeDetails } from "./NodeDetails";
 import { useMapCanvas } from "./useMapCanvas";
 import { useMapScope } from "./useMapScope";
 import { useMapViewport } from "./useMapViewport";
 import "./InfraMap.css";
-
-const ICON: Record<NodeKind, ComponentType<LucideProps>> = {
-  internet: Earth,
-  firewall: ShieldCheck,
-  port: Plug,
-  proxy: Waypoints,
-  site: Globe,
-  container: Box,
-  service: Settings2,
-  process: Cpu,
-  db: Database,
-  system: Server,
-  external: ExternalLink,
-};
-
-const KIND_LABEL: Record<NodeKind, string> = {
-  internet: "Internet",
-  firewall: "Cortafuegos",
-  port: "Puerto expuesto",
-  proxy: "Proxy web",
-  site: "Sitio",
-  container: "Contenedor",
-  service: "Servicio",
-  process: "Proceso",
-  db: "Datos",
-  system: "Sistema",
-  external: "Externo",
-};
-
-const HEALTH_LABEL: Record<Health, string> = { ok: "Bien", warn: "Aviso", bad: "Caído / error", off: "Parado" };
 
 function clip(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
@@ -289,7 +234,7 @@ export function InfraMapView({
                 })}
                 {[...layout.nodes.values()].map((p) => {
                   const n = p.node;
-                  const Icon = ICON[n.kind];
+                  const Icon = NODE_ICON[n.kind];
                   const dim = related && !related.has(n.id);
                   return (
                     <g
@@ -297,6 +242,22 @@ export function InfraMapView({
                       data-node={n.id}
                       className={`im-node im-k-${n.kind}${n.owner === ROUTE_OWNER ? " ghost" : ""}${selected === n.id ? " sel" : ""}${dim ? " dim" : ""}`}
                       transform={`translate(${p.x},${p.y})`}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${KIND_LABEL[n.kind]}: ${n.label}${n.sub ? `, ${n.sub}` : ""}`}
+                      aria-pressed={selected === n.id}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        setSelected(n.id);
+                      }}
+                      onFocus={(e) => {
+                        // Con el teclado, si el nodo queda fuera de la vista se centra en él.
+                        const sx = p.x * view.k + view.x;
+                        const sy = p.y * view.k + view.y;
+                        const out = sx < 0 || sy < 0 || sx + p.w * view.k > size.w || sy + p.h * view.k > size.h;
+                        if (out && e.currentTarget.matches(":focus-visible")) center(p.x + p.w / 2, p.y + p.h / 2);
+                      }}
                     >
                       <title>{`${KIND_LABEL[n.kind]}: ${n.label}${n.sub ? `\n${n.sub}` : ""}`}</title>
                       <rect width={p.w} height={p.h} rx={7} className="im-card" />
@@ -318,72 +279,18 @@ export function InfraMapView({
           )}
           {layout && miniOn && <MiniMap layout={layout} view={view} size={size} onCenter={center} />}
           {layout && <ZoomControls percent={zoomPercent(view.k)} onIn={zoomIn} onOut={zoomOut} onFit={fit} />}
-          <Legend />
+          <MapLegend />
         </div>
         {sel && (
-          <aside className="im-details" aria-label="Detalles">
-            <div className="im-details-head">
-              <span className={`im-dot-html im-h-${sel.health}`} />
-              <div className="im-details-title">
-                <strong>{sel.label}</strong>
-                <span className="faint">
-                  {KIND_LABEL[sel.kind]} · {HEALTH_LABEL[sel.health]}
-                </span>
-              </div>
-              <button className="icon-btn" onClick={() => setSelected(null)} title="Cerrar" aria-label="Cerrar">
-                <X size={14} />
-              </button>
-            </div>
-            <dl className="im-dl">
-              {sel.server && (
-                <div className="im-dl-row">
-                  <dt>Servidor</dt>
-                  <dd>{graph?.servers.find((s) => s.id === sel.server)?.name}</dd>
-                </div>
-              )}
-              {sel.details.map(([k, v], i) => (
-                <div key={i} className="im-dl-row">
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-            {sel.nav && sel.server && onNav && (
-              <button className="btn btn-sm" onClick={() => onNav(sel.server!, sel.nav!)}>
-                {sel.nav.kind === "ports" ? "Ver en Puertos" : sel.nav.kind === "web" ? "Ver en Sitios web" : "Ver en Contenedores"}
-              </button>
-            )}
-          </aside>
+          <NodeDetails
+            node={sel}
+            serverName={graph?.servers.find((x) => x.id === sel.server)?.name ?? null}
+            snapshot={snapshots?.find((x) => x.id === sel.server) ?? null}
+            onNav={onNav}
+            onClose={() => setSelected(null)}
+          />
         )}
       </div>
-    </div>
-  );
-}
-
-function Legend() {
-  const kinds: NodeKind[] = ["port", "proxy", "site", "container", "service", "db"];
-  return (
-    <div className="im-legend" aria-label="Leyenda">
-      {kinds.map((k) => {
-        const Icon = ICON[k];
-        return (
-          <span key={k} className={`im-k-${k}`}>
-            <Icon size={12} className="im-icon" /> {KIND_LABEL[k]}
-          </span>
-        );
-      })}
-      <span>
-        <i className="im-dot-html im-h-ok" /> bien
-      </span>
-      <span>
-        <i className="im-dot-html im-h-warn" /> aviso
-      </span>
-      <span>
-        <i className="im-dot-html im-h-bad" /> caído
-      </span>
-      <span>
-        <i className="im-line-x" /> entre servidores
-      </span>
     </div>
   );
 }

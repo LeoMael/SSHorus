@@ -3,6 +3,7 @@
 import { WELL_KNOWN } from "../admin/ports";
 import { resolveOwner, sortOwners, SYSTEM_OWNER, webServerOwner } from "./owner";
 import { resolveUpstreamsAndCross } from "./graphLinks";
+import { firewallStateText } from "./parse";
 import {
   classify,
   containerFor,
@@ -85,10 +86,13 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
     const ctx = ownerContext(s);
     const ownerOfUser = (user: string | null) => resolveOwner({ kind: "account", user }, ctx);
 
-    const fw = s.extra?.firewall.find((f) => f.active) ?? null;
-    if (s.extra?.firewall.length) srv.firewall = s.extra.firewall.map((f) => `${f.tool} ${f.state}`).join(" · ");
+    // El activo; si no hay, uno instalado pero apagado (para poder ver sus reglas y activarlo).
+    const fws = s.extra?.firewall ?? [];
+    const fw = fws.find((f) => f.active) ?? fws.find((f) => f.tool !== "nftables") ?? null;
+    if (fws.length) srv.firewall = fws.map((f) => `${f.tool} ${firewallStateText(f)}`).join(" · ");
     let entry = internet.id;
     if (fw) {
+      const state = firewallStateText(fw);
       const n = add({
         id: nid("fw"),
         server: sid,
@@ -96,11 +100,11 @@ export function buildGraph(snaps: ServerSnapshot[], now = Date.now()): InfraGrap
         kind: "firewall",
         layer: 1,
         label: fw.tool,
-        sub: fw.state,
-        health: "ok",
+        sub: state,
+        health: fw.active ? "ok" : fw.state === "?" ? "off" : "warn",
         group: null,
         localOnly: false,
-        details: [["Cortafuegos", fw.tool], ["Estado", fw.state]],
+        details: [["Cortafuegos", fw.tool], ["Estado", state]],
         nav: null,
       });
       edge(internet.id, n.id, "", "net");

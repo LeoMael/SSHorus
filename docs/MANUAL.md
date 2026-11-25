@@ -435,8 +435,34 @@ instalar nada en tu PC. Solo lee: no cambia ni consulta datos.
 - Color de cada nodo: verde bien, amarillo aviso (p. ej. certificado que caduca pronto), rojo caído.
 - Arrastra para moverte, rueda para acercar, **Ajustar** para verlo entero. Filtros: **Ocultar locales**,
   **Ocultar sistema** y los usuarios que quieras ver (o **Todos**).
-- Clic en un nodo: sus detalles y un botón para ir a **Puertos**, **Sitios web** o **Contenedores**.
+- Clic en un nodo (o **Tab** hasta él e **Intro**): sus detalles y un botón para ir a **Puertos**, **Sitios
+  web** o **Contenedores**. **Esc** cierra el panel. La **Leyenda** de abajo a la izquierda se puede plegar.
 - **Exportar**: imagen PNG, SVG o texto Mermaid (archivo o copiado).
+
+**Mapa → Cortafuegos:**
+
+- Clic en el cortafuegos (el escudo, después de Internet). Si está apagado también aparece, en amarillo.
+- Arriba ves su estado y qué pasa con lo que no encaja en ninguna regla (por ejemplo «Entrada: lo que no está
+  en la lista se bloquea»). Debajo, cada regla en una frase: «Permite entrar por TCP 443 (HTTPS) desde cualquier
+  sitio». Clic en la frase para ver la regla tal como está en el servidor.
+- Los avisos amarillos cruzan el cortafuegos con los puertos: **escucha pero está bloqueado** (desde fuera no
+  llega), **abierto sin nada escuchando** (sobra la regla) y, en rojo, **lo publica Docker** (se puede llegar
+  aunque el cortafuegos diga que no).
+- **Creadas por Docker/Podman**: las reglas que ponen los contenedores. No las toques a mano: se rehacen solas.
+- Hace falta **sudo** para leer las reglas; sin él sale **Escribir la contraseña de sudo**.
+- Con firewalld o ufw puedes cambiarlo (nftables e iptables, por ahora solo se ven):
+  - **Abrir puerto o servicio…**: puerto o rango (443, 8000-8010), TCP o UDP, o un servicio (`https`) o perfil de
+    ufw (`Nginx Full`). En **Desde** puedes poner una IP o red para abrirlo solo a ella. En firewalld eliges la
+    zona (por defecto, la de la interfaz por la que entras).
+  - La **papelera** de una regla la quita. Si es la que deja entrar tu conexión SSH, está desactivada: te
+    quedarías fuera.
+  - **Activar…** enciende un cortafuegos apagado (pide marcar una casilla) y antes abre el puerto de SSH.
+  - Siempre ves los **comandos exactos** antes de **Aplicar**, y el cambio va como tarea en segundo plano.
+- **A prueba**: en firewalld todo cambio, y en ufw quitar reglas o activarlo, se aplica a prueba. Si toca el
+  acceso, SSHorus prueba a entrar con una conexión SSH nueva y, si no puede, lo deshace enseguida. Después tienes
+  5 minutos para pulsar **Hacer permanente** (firewalld) o **Mantener** (ufw) en el panel o en el aviso de la
+  tarea; si no lo haces, el servidor lo deshace solo (aunque se haya cortado la conexión). **Deshacer ahora** lo
+  quita al momento.
 
 ## Vulnerabilidades
 

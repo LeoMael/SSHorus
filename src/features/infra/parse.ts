@@ -16,7 +16,8 @@ export const INFRA_SCRIPT = [
   "if command -v ip >/dev/null 2>&1; then ip -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1;",
   "else hostname -I 2>/dev/null | tr ' ' '\\n'; fi",
   "echo @@fw",
-  "if command -v ufw >/dev/null 2>&1; then s=$(ufw status 2>/dev/null | head -n1 | awk '{print $2}'); [ -n \"$s\" ] && echo \"ufw $s\"; fi",
+  // Sin root ufw no dice su estado: «ufw ?».
+  "if command -v ufw >/dev/null 2>&1; then s=$(ufw status 2>/dev/null | awk '/^Status:/{print $2; exit}'); echo \"ufw ${s:-?}\"; fi",
   "if command -v firewall-cmd >/dev/null 2>&1; then echo \"firewalld $(firewall-cmd --state 2>/dev/null || echo desconocido)\"; fi",
   "if command -v nft >/dev/null 2>&1; then n=$(nft list ruleset 2>/dev/null | grep -c 'chain '); [ \"$n\" -gt 0 ] 2>/dev/null && echo \"nftables $n\"; fi",
   "echo @@humans",
@@ -113,6 +114,13 @@ export function unmap(ip: string): string {
 
 export function parseEstablished(lines: string[]): EstConn[] {
   return lines.map(parseEstLine).filter((c): c is EstConn => c !== null);
+}
+
+/** Estado en palabras: «activo», «apagado», «sin sudo» (no se pudo leer) o «4 cadenas» (nftables). */
+export function firewallStateText(f: Firewall): string {
+  if (f.tool === "nftables") return f.state;
+  if (f.active) return "activo";
+  return f.state === "?" ? "sin sudo" : "apagado";
 }
 
 export function parseFirewall(lines: string[]): Firewall[] {

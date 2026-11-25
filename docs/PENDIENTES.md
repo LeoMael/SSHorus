@@ -65,6 +65,12 @@ la **1.0.0-beta.4**.
   guardables en la bóveda; MCP `get_db_schema`. Código: `features/databases/`, `components/Databases/`,
   `storage/db_secret.rs`, `mcp/core/db_schema.rs`. Falta probar a mano (§2).
 
+- **Mapa → Cortafuegos**: clic en el cortafuegos y se ven sus reglas en palabras simples (firewalld, ufw, nftables,
+  iptables; las de Docker/Podman aparte), avisos cruzados con los puertos y cambios seguros en firewalld y ufw
+  (abrir, quitar, activar; comandos a la vista, a prueba con vuelta atrás en el servidor y prueba de conexión
+  nueva). Mapa: panel de detalles y leyenda nuevos, nodos con teclado. Código: `features/infra/firewall/`,
+  `components/InfraMap/Firewall*.tsx`.
+
 Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ronda de orden del código»](historial/PENDIENTES-historial.md#próxima-sesión-anotado-el-13112026).
 
 ### 2. Pendiente inmediato (antes de publicar `1.0.0-beta.3`)
@@ -156,6 +162,18 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     SQLite (**SQLite…**) y uno sin permiso de lectura. Comprobar en el servidor que la contraseña no sale en
     `ps aux` mientras corre y que el muestreo no pesa (1 vCPU). MCP: `get_db_schema` sin `target` (lista), con
     `target` (bases) y con `database`/`table`, y que sin credencial guardada pida guardarla en SSHorus.
+  - **Mapa → Cortafuegos** (clic en el escudo del mapa): en el **VPS Rocky con firewalld**, que salgan las zonas
+    en uso, los servicios con su puerto (ssh → TCP 22), las reglas enriquecidas y las de Podman aparte; los avisos
+    «escucha pero bloqueado» / «abierto sin nada escuchando» comparados con Administración → Puertos. «Abrir puerto
+    o servicio» (443/tcp y uno solo para tu IP), ver la tarea, la prueba de conexión nueva y «Hacer permanente»
+    (`sudo firewall-cmd --permanent --list-all` debe tenerlo); otro sin confirmar y comprobar que a los 5 min el
+    servidor lo quita solo (también cerrando SSHorus); «Deshacer ahora». **Antilockout**: la papelera del servicio
+    `ssh` debe estar desactivada con su explicación (y activa si hay otra regla para el 22). En un **Ubuntu con
+    ufw**: reglas `(v6)` juntas, `limit`, perfiles («Nginx Full»), quitar una regla (a prueba, «Mantener»), y con
+    ufw apagado «Activar ufw» (antes añade `ufw allow 22/tcp`; casilla obligatoria). En un **Debian con nftables**
+    (y Docker): frases de cada regla, la cadena a la que se salta, las de Docker en «Creadas por Docker/Podman» y el
+    aviso de solo lectura. Sin sudo: el aviso y «Escribir la contraseña de sudo». Teclado (Tab entre nodos, Intro,
+    Esc), leyenda plegable y tema claro y oscuro.
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
 - **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no
   admite «-beta»; se quita al pasar a `1.0.0`), CHANGELOG cerrado y etiqueta creada. Falta: comprobar el borrador
