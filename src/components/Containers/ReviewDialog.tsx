@@ -75,6 +75,11 @@ export function ReviewDialog({ req, sessionId, exec, elevationOf, render, fullSc
 
   const run = async () => {
     if (!el || blocked) return;
+    if (req.background) {
+      req.background(cmds);
+      onClose();
+      return;
+    }
     setBusy(true);
     setError(null);
     setNeedSudo(false);

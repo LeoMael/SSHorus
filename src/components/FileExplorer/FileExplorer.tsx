@@ -22,6 +22,7 @@ import { useFileActions } from "./useFileActions";
 import { useRowHandlers, type MenuAt } from "./useRowHandlers";
 import { useSelectionOps, useSelectionState } from "./useSelection";
 import { useDropUpload, useUploadRefresh } from "./useUploadEvents";
+import { useExplorerNav } from "../../features/fileExplorer/nav";
 import "./FileExplorer.css";
 
 export interface FileExplorerProps {
@@ -65,6 +66,15 @@ export const FileExplorer = memo(function FileExplorer({
 
   const dir = useDirectory({ sessionId, initialPath, reconnectCount, onPathChange, sel, setFilter, listRef });
   const { cwd, entries, loadingPath, error, hist, cwdRef, load, refresh, goUp, goBack, goForward, goHome } = dir;
+
+  // «Abrir carpeta del proyecto» y similares desde otras vistas de la sesión.
+  const navReq = useExplorerNav((s) => s.request);
+  useEffect(() => {
+    if (!navReq || navReq.sessionId !== sessionId || offline) return;
+    useExplorerNav.getState().done(navReq.seq);
+    void dir.navigate(navReq.path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navReq, sessionId, offline]);
 
   // Al perder la conexión se cierran menús y diálogos de esta vista.
   useEffect(() => {

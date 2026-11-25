@@ -130,10 +130,16 @@ export async function runEngine(sessionId: string, cmds: Cmd[], el: Elevation, t
   }
 }
 
+/** Salida en vivo y cancelación (`snippets.cancelExec(execId)`) de una ejecución larga. */
+export interface LiveExec {
+  execId: string;
+  onOutput: (text: string, stderr: boolean) => void;
+}
+
 /** Ejecuta un script libre (ya citado) como lecturas: varias secciones marcadas. */
-export async function runRaw(sessionId: string, script: string, el: Elevation, timeoutSecs = 30): Promise<EngineRun> {
+export async function runRaw(sessionId: string, script: string, el: Elevation, timeoutSecs = 30, live?: LiveExec): Promise<EngineRun> {
   try {
-    const r = await runScript(sessionId, `${PATH_PREFIX}\n${script}`, el, "", timeoutSecs);
+    const r = await runScript(sessionId, `${PATH_PREFIX}\n${script}`, el, "", timeoutSecs, live?.execId, live?.onOutput);
     if (r.timedOut) return { ok: false, result: r, error: "El comando tardó demasiado y se canceló", needSudo: false };
     return { ok: r.exitCode === 0, result: r, error: r.exitCode === 0 ? null : failureMessage(r), needSudo: false };
   } catch (e) {

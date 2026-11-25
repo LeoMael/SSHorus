@@ -1,7 +1,6 @@
 // Editor de archivos remotos (Monaco local). Ctrl+S guarda directamente en el servidor.
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { AlertTriangle, FileWarning, RotateCw, Save, Settings as SettingsIcon } from "lucide-react";
-import { sftp } from "../../api/sftp";
 import { errorMessage, isApiError } from "../../api/core";
 import { useSettings } from "../../stores/settings";
 import { useUi } from "../../stores/ui";
@@ -12,6 +11,7 @@ import { useAppTheme } from "../Settings/theme";
 import { applyMonacoTheme, monaco } from "./monacoSetup";
 import { detectLanguage, languageLabel, LANGUAGE_CHOICES } from "./languages";
 import "./RemoteEditor.css";
+import { sftpIo, type EditorIo } from "./editorIo";
 import { matchesShortcut, useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 
 export interface RemoteEditorProps {
@@ -23,6 +23,8 @@ export interface RemoteEditorProps {
   offline?: boolean;
   /** Abrir los ajustes (por defecto, el diálogo de la ventana principal). */
   onOpenSettings?: () => void;
+  /** Lectura y guardado propios (por defecto, SFTP con tu usuario). */
+  io?: EditorIo;
   ref?: Ref<RemoteEditorHandle>;
 }
 
@@ -41,7 +43,8 @@ type LoadState =
 
 let modelSeq = 0;
 
-export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline = false, onOpenSettings, ref }: RemoteEditorProps) {
+export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline = false, onOpenSettings, io, ref }: RemoteEditorProps) {
+  const ioRef = useRef<EditorIo>(io ?? sftpIo(sessionId, path));
   const hostRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const modelRef = useRef<monaco.editor.ITextModel | null>(null);
@@ -78,7 +81,7 @@ export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline =
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     try {
-      const text = await sftp.readText(sessionId, path);
+      const text = await ioRef.current.read();
       const model = modelRef.current;
       if (!model) return;
       model.setValue(text.content);
@@ -123,8 +126,8 @@ export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline =
     savingRef.current = true;
     setSaving(true);
     try {
-      try {
-        const st = await sftp.stat(sessionId, path);
+      const st = await ioRef.current.remoteState();
+      if (st.exists) {
         if (remoteModified.current !== null && st.modified !== null && st.modified !== remoteModified.current) {
           const ok = await confirmDialog({
             title: "El archivo cambió en el servidor",
@@ -139,20 +142,16 @@ export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline =
           });
           if (!ok) return false;
         }
-      } catch (e) {
-        if (isApiError(e, "NotFound")) {
-          const ok = await confirmDialog({
-            title: "El archivo ya no existe",
-            message: "Alguien lo borró o movió en el servidor. ¿Crearlo de nuevo con tu versión?",
-            confirmText: "Crear y guardar",
-          });
-          if (!ok) return false;
-        } else {
-          throw e;
-        }
+      } else {
+        const ok = await confirmDialog({
+          title: "El archivo ya no existe",
+          message: "Alguien lo borró o movió en el servidor. ¿Crearlo de nuevo con tu versión?",
+          confirmText: "Crear y guardar",
+        });
+        if (!ok) return false;
       }
       const versionAtSave = model.getAlternativeVersionId();
-      const entry = await sftp.writeText(sessionId, path, model.getValue());
+      const entry = await ioRef.current.write(model.getValue());
       savedVersion.current = versionAtSave;
       remoteModified.current = entry.modified;
       setInfo({ size: entry.size, modified: entry.modified });
@@ -165,7 +164,7 @@ export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline =
       savingRef.current = false;
       setSaving(false);
     }
-  }, [sessionId, path, state.kind, markDirty]);
+  }, [state.kind, markDirty]);
 
   const saveRef = useRef(save);
   saveRef.current = save;

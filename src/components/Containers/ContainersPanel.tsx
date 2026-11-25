@@ -6,6 +6,7 @@
 import { useMemo, useState } from "react";
 import { Boxes, RefreshCw, ShieldAlert } from "lucide-react";
 import { ownerIsRoot, perOwner } from "../../features/containers";
+import { startJob } from "../../features/containers/jobs";
 import { usePrivilege, useElevation, useStoredSudo } from "../../features/privileges";
 import { CtContext, type CtContextValue } from "./context";
 import { NoEngine } from "./NoEngine";
@@ -48,7 +49,8 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
   const { res, stats, reload, ownerErrors } = useResources({ ...scope, active, tab, askSudo });
   const actions = useEngineActions({ ...scope, sessionId, runuser: !!result?.runuser, reload, askSudo });
   const { run, runRawAs, toTerminal, render, ownerLabel } = actions;
-  const { setReview, setLogs, setInspectC, setRunForm } = dialogs;
+  const { setReview, setLogs, setInspectC, setRunForm, setConflict } = dialogs;
+  const { runner } = scope;
   const autostart = useAutostart({
     engine,
     owners: activeOwners,
@@ -79,6 +81,15 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
       run,
       runRawAs,
       review: setReview,
+      startJob: (req) =>
+        startJob(runner, {
+          ...req,
+          onFinished: (j) => {
+            if (j.needSudo) askSudo();
+            req.onFinished?.(j);
+          },
+        }),
+      fixConflict: setConflict,
       askSudo,
       openLogs: setLogs,
       openInspect: setInspectC,
@@ -126,6 +137,8 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
     setLogs,
     setInspectC,
     setRunForm,
+    setConflict,
+    runner,
     autostart,
     scope.reloadUsersIfLoaded,
   ]);

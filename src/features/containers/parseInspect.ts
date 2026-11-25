@@ -11,7 +11,25 @@ export function parseInspect(text: string): { summary: InspectSummary | null; ra
     return { summary: null, raw: null };
   }
   const o = Array.isArray(raw) ? raw[0] : raw;
-  if (!isObj(o)) return { summary: null, raw };
+  return { summary: summarize(o), raw };
+}
+
+/** `inspect --size` de varios contenedores: resumen de cada uno y lo escrito dentro (fuera de volúmenes). */
+export function parseInspectList(text: string): (InspectSummary & { sizeRw: number | null })[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text.trim());
+  } catch {
+    return [];
+  }
+  return (Array.isArray(raw) ? raw : [raw]).flatMap((o) => {
+    const s = summarize(o);
+    return s && isObj(o) ? [{ ...s, sizeRw: num(o.SizeRw) }] : [];
+  });
+}
+
+function summarize(o: unknown): InspectSummary | null {
+  if (!isObj(o)) return null;
   const cfg = isObj(o.Config) ? o.Config : {};
   const host = isObj(o.HostConfig) ? o.HostConfig : {};
   const st = isObj(o.State) ? o.State : {};
@@ -58,24 +76,21 @@ export function parseInspect(text: string): { summary: InspectSummary | null; ra
   const maxRetry = num(rp.MaximumRetryCount);
   const rpName = str(rp.Name);
   return {
-    raw,
-    summary: {
-      id: str(o.Id),
-      name: str(o.Name).replace(/^\//, ""),
-      image: str(o.ImageName) || str(cfg.Image) || str(o.Image),
-      created: str(o.Created),
-      state: str(st.Status),
-      startedAt: str(st.StartedAt),
-      restartPolicy: rpName === "on-failure" && maxRetry ? `${rpName}:${maxRetry}` : rpName,
-      restartCount: num(o.RestartCount),
-      command: cmdParts.join(" "),
-      workingDir: str(cfg.WorkingDir),
-      env,
-      mounts,
-      networks,
-      ports,
-      labels: parseLabels(cfg.Labels),
-    },
+    id: str(o.Id),
+    name: str(o.Name).replace(/^\//, ""),
+    image: str(o.ImageName) || str(cfg.Image) || str(o.Image),
+    created: str(o.Created),
+    state: str(st.Status),
+    startedAt: str(st.StartedAt),
+    restartPolicy: rpName === "on-failure" && maxRetry ? `${rpName}:${maxRetry}` : rpName,
+    restartCount: num(o.RestartCount),
+    command: cmdParts.join(" "),
+    workingDir: str(cfg.WorkingDir),
+    env,
+    mounts,
+    networks,
+    ports,
+    labels: parseLabels(cfg.Labels),
   };
 }
 

@@ -17,6 +17,7 @@ import type {
   VolumeInfo,
 } from "../../features/containers";
 import type { Elevation } from "../../features/privileges";
+import type { CtJob, JobRequest } from "../../features/containers/jobs";
 import type { AutostartState } from "./useAutostart";
 import type { ResourceKind } from "../../features/containers/panelLogic";
 
@@ -63,6 +64,8 @@ export interface ReviewRequest {
   /** Elevación distinta de la del motor (p. ej. systemctl siempre como root). */
   elevationOverride?: Elevation | null;
   onDone?: (r: EngineRun) => void;
+  /** Tareas largas: en vez de esperar aquí, se lanzan en segundo plano (`startJob`) y se cierra. */
+  background?: (cmds: Cmd[]) => void;
 }
 
 export interface LogsTarget {
@@ -98,6 +101,13 @@ export interface CtContextValue {
   /** Script libre (ya citado) como ese dueño, por ejemplo para comprobar una carpeta. */
   runRawAs: (owner: string | undefined, script: string, timeoutSecs?: number) => Promise<EngineRun>;
   review: (req: ReviewRequest) => void;
+  /**
+   * Tarea larga en segundo plano (Compose up/pull/build, descargar una imagen), como el dueño de los
+   * comandos: sigue aunque se cierre el diálogo, con salida en vivo y «Cancelar». Devuelve su id.
+   */
+  startJob: (req: JobRequest) => string;
+  /** Abre el arreglo de «Ya existe un contenedor con ese nombre» de una tarea que falló. */
+  fixConflict: (job: CtJob) => void;
   askSudo: () => void;
   openLogs: (t: LogsTarget) => void;
   openInspect: (c: Container) => void;

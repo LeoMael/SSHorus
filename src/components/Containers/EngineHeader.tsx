@@ -4,6 +4,7 @@ import { RefreshCw, Users } from "lucide-react";
 import { OWNER_ALL, composeFor, ownerKey, type EngineStatus } from "../../features/containers";
 import { engineLabel, ownerOptionLabel } from "../../features/containers/panelLogic";
 import type { OwnerScope } from "./useOwnerScope";
+import { JobsButton } from "./JobsButton";
 
 interface Props {
   scope: OwnerScope;
@@ -68,6 +69,7 @@ export function EngineHeader({ scope, status, elevLabel, detecting, disabled, on
       {needsSudo && <span className="ct-badge ct-badge-warn">{elevation ? elevLabel : "necesita sudo"}</span>}
       {compose && <span className="ct-badge">{compose}</span>}
       <span className="ct-grow" />
+      <JobsButton sessionId={scope.runner.sessionId} />
       <button
         className="icon-btn"
         title="Volver a detectar (y a buscar usuarios)"

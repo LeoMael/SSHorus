@@ -270,6 +270,19 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
   desactivarlo por fila o en lote.
 - Clic en un puerto de un contenedor → **Abrir túnel a mi PC…** para usarlo en tu navegador.
 - En **Imágenes**, el botón de vulnerabilidades te lleva a Administración → Vulnerabilidades.
+- **Levantar**, **Actualizar** (con la opción de volver a construir las imágenes propias) y **Descargar imagen** van
+  **en segundo plano**: puedes cerrar la ventana o ir a otra pestaña. El botón **Tareas** de arriba muestra cada una
+  con su salida en vivo (una línea por capa o contenedor), el tiempo, un aviso si lleva un minuto sin escribir nada y
+  **Cancelar**, que la detiene también en el servidor. Al terminar ves un aviso.
+- Si Compose dice **«Ya existe un contenedor con ese nombre»** (por ejemplo, el proyecto se levantó antes con
+  podman-compose o a mano), la tarea muestra **Ver y arreglar**: ves el contenedor viejo (imagen, estado, de dónde
+  viene y sus volúmenes) y **Reemplazar el contenedor viejo y volver a intentarlo** lo para y lo borra como su dueño,
+  sin borrar volúmenes, y repite la tarea. Si sus datos no están en un volumen con nombre o en una carpeta del
+  servidor, sale un aviso en rojo y hay que marcar una casilla antes.
+- En un proyecto de Compose, **Editar compose** abre el archivo en el editor de SSHorus como su dueño (con sudo si es
+  de otro usuario): al guardar conserva dueño, grupo y permisos y la primera vez hace una copia
+  `.bak-sshorus-<fecha>`. Después pulsa **Aplicar cambios (up -d)**. **Abrir carpeta** la muestra en **Archivos**
+  (el explorador usa tu usuario, sin sudo: si la carpeta es de otro usuario y no puedes entrar, te lo dice).
 
 ## Monitor y alertas
 

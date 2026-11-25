@@ -1,0 +1,141 @@
+/* Tareas en segundo plano, arreglo de nombres repetidos y editor del compose (Contenedores). */
+.ct-job {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.ct-job-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: var(--fs-sm);
+}
+.ct-job-head strong {
+  flex: none;
+  max-width: 50%;
+}
+.ct-job-ok {
+  color: var(--green);
+}
+.ct-job-out {
+  max-height: 320px;
+  min-height: 80px;
+}
+.ct-job-fix {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--yellow);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+}
+.ct-job-fix > span {
+  flex: 1;
+}
+
+/* Botón «Tareas» de la cabecera y su lista */
+.ct-jobs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ct-mb-6 {
+  margin-bottom: 6px;
+}
+.ct-jobs-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 180px;
+  overflow: auto;
+}
+.ct-jobs-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+}
+.ct-jobs-list li + li {
+  border-top: 1px solid var(--border);
+}
+.ct-jobs-list li:hover,
+.ct-jobs-list li.on {
+  background: var(--mix-accent-12);
+}
+
+/* Arreglo de «Ya existe un contenedor con ese nombre» */
+.ct-nc-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: var(--fs-sm);
+}
+.ct-nc-item dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 6px 0;
+}
+.ct-nc-item dt {
+  color: var(--text-muted);
+}
+.ct-nc-item dd {
+  margin: 0;
+  word-break: break-all;
+}
+.ct-nc-mounts {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.ct-nc-risk {
+  padding: 8px 10px;
+  margin: 8px 0;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: rgb(244 63 94 / 0.08);
+  color: var(--red);
+  font-size: var(--fs-sm);
+}
+.ct-nc-risk ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+.ct-nc-keep {
+  color: var(--green);
+}
+
+/* Editor del archivo compose */
+.ct-edit-modal {
+  height: min(820px, 88vh);
+}
+.ct-edit-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.ct-edit-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.ct-edit-host > * {
+  flex: 1;
+  min-width: 0;
+}

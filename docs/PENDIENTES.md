@@ -8,10 +8,21 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 24/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.3** (24/11/2026; la CI deja el Release en borrador y lo publica el usuario tras probarlo). En `main` hay trabajo nuevo
-que saldrá como **1.0.0-beta.3**, verificado con `npm run lint` (0 errores, 0 avisos), `npm run build`, 53/53 suites
-TS (`npm test`), `cargo clippy --lib -- -W clippy::all` (0 avisos) y 380/380 tests Rust (`cargo test --lib`). La batería
-completa con el servidor de pruebas (`--include-ignored`) pasó 426/426 en los «Arreglos tras la revisión».
+Última versión etiquetada: **1.0.0-beta.3** (24/11/2026; Release en **borrador**, lo publica el usuario tras probarlo;
+instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está en `main` después de la beta.3 saldrá en
+la **1.0.0-beta.4**.
+
+**Estado al cerrar la sesión del 24/11/2026 (para retomar):**
+- En `main` local, **sin subir**: «Contenedores: conflicto de nombres con arreglo, tareas largas en segundo plano y
+  editar el compose de otro usuario».
+- En marcha con agentes (cada uno en su worktree de `.claude/worktrees/`, un commit al terminar): (1) **tareas en
+  segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner, auditoría, actualizar
+  imagen, reinicio y Compose), (2) **Monitor → Por usuario** con los UID de contenedores atribuidos a su dueño y su
+  contenedor, (3) **barra lateral en árbol** por servidor con la cuenta de sudo primero («S»). Si la sesión se cerró
+  antes de unirlos: mirar `git worktree list` y las ramas `worktree-agent-*`; lo que tenga commit se une con
+  `git cherry-pick`, lo que no, se rehace.
+- Después: unir, comprobar todo, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
+  (preguntar al usuario antes de subir).
 
 ### 1. Hecho en `main` (sin publicar todavía)
 - **Administración → «Qué pueden ver»** + categoría `isolation` en **Auditar servidor** + casilla **«Permitir túneles SSH»** en «Nuevo usuario con clave» (apagada por defecto sin sudo).
@@ -33,6 +44,10 @@ completa con el servidor de pruebas (`--include-ignored`) pasó 426/426 en los �
   contraseña en un PTY y la tapa en la salida), `request_sudo_password` apagado por defecto (ajuste nuevo
   `allowSudoReveal`), salidas de `run_command`/`read_file` con las contraseñas guardadas tapadas y `upload` sin llaves
   privadas ni la carpeta de SSHorus.
+- **Contenedores → Compose** (después de la beta.3): «Ver y arreglar» cuando un nombre de contenedor ya está en uso
+  (reemplaza el viejo sin tocar volúmenes y avisa si hay datos en riesgo), tareas largas en segundo plano (botón
+  «Tareas», salida en vivo, aviso «sin salida nueva», Cancelar que para en el servidor) y «Editar compose» de otro
+  usuario con sudo (copia `.bak-sshorus-<fecha>` y «Aplicar cambios»).
 
 Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ronda de orden del código»](historial/PENDIENTES-historial.md#próxima-sesión-anotado-el-13112026).
 
@@ -48,6 +63,10 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   - «Nuevo usuario con clave»: la lista de llaves de `~/.ssh` solo muestra `.pub` válidas.
   - Barra lateral: «mostrar servidor» (también al mover un servidor a un proyecto) y Sitios web → «Comprobar
     configuración» (que no se repita al escribir la contraseña de sudo).
+  - Compose de otro usuario siendo admin (proyecto `seguimiento_siu` en el VPS): «Ver y arreglar» con el contenedor
+    `seguimiento-siu-db` repetido, «Actualizar» en segundo plano y Cancelar a mitad (con sudo/`runuser`), «Editar
+    compose» y «Aplicar cambios». **Ojo con postgres 18:** guarda los datos en `/var/lib/postgresql/18/docker`; un
+    volumen en `/var/lib/postgresql/data` no los protege. Revisar el compose antes de reemplazar la base de datos.
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
 - **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no
@@ -121,6 +140,7 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **7.7** | **Comparar archivos** | Idea, sin empezar | Diferencias entre un archivo local y uno remoto, o entre dos servidores. |
 | **7.10** | **Historial por servidor** | Idea, sin empezar | Comandos usados en cada servidor y grabación opcional de sesiones (para auditoría). |
 | **8.2+** | **Más Administración** | Idea, sin empezar | Servicios (systemd: iniciar, parar, activar, logs), firewall, paquetes (actualizar, instalar) y tareas programadas (cron/timers). |
+| **9** | **Ver bases de datos (esquema)** | Idea del usuario (24/11), sin empezar | Desde un servidor o un contenedor, ver el esquema de PostgreSQL, MySQL/MariaDB, SQLite (y quizá MongoDB/Redis): bases, tablas, columnas, índices y relaciones, y un diagrama sencillo. Conectar por túnel SSH o con `psql`/`mysql` dentro del contenedor, con la contraseña puesta por SSHorus (la IA nunca la ve). Primero solo lectura. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |
 | **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |
 | **5** | **Asistente corriendo dentro del VPS (`remote-control`)** | ❌ Descartado (16/11) | Sustituido por el punto 6 (la IA corre fuera del VPS para no gastar RAM ni exponer sesiones a root del VPS). |

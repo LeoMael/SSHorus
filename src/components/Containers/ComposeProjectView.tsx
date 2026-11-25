@@ -1,18 +1,17 @@
-// Vista detallada de un proyecto Compose: acciones (up/pull/restart/down/logs), servicios y salida.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDownToLine, FileText, Play, RotateCw, ScrollText, Square, X } from "lucide-react";
-import {
-  composeCmd,
-  containerAction,
-  stateText,
-  stateTone,
-  withOwner,
-  type Cmd,
-  type ComposeTool,
-  type Container,
-} from "../../features/containers";
+// Vista detallada de un proyecto Compose: acciones (up/pull/build/restart/down/logs), editar el archivo,
+// servicios y la última tarea del proyecto. Lo largo (levantar, actualizar) va en segundo plano.
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { ArrowDownToLine, FilePen, FolderOpen, Play, RotateCw, ScrollText, Square } from "lucide-react";
+import { composeCmd, containerAction, runRaw, withOwner, type Cmd, type ComposeTool, type Container } from "../../features/containers";
+import { useCtJobs } from "../../features/containers/jobs";
+import { useExplorerNav } from "../../features/fileExplorer/nav";
+import { shQuote } from "../../lib/remote";
 import { toast } from "../../stores/toasts";
 import { useCt } from "./context";
+import { ComposeServices } from "./ComposeServices";
+import { JobView } from "./JobView";
+
+const ComposeEditDialog = lazy(() => import("./ComposeEditDialog").then((m) => ({ default: m.ComposeEditDialog })));
 
 export interface ComposeProject {
   key: string;
@@ -43,19 +42,19 @@ export function ComposeProjectView({
   const { run: runCt } = ct;
   const [services, setServices] = useState<string[] | null>(null);
   const [svcError, setSvcError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [output, setOutput] = useState<{ title: string; text: string; ok: boolean } | null>(null);
-  const started = useRef(0);
+  const [editing, setEditing] = useState(false);
+  // La tarea más reciente de este proyecto (en marcha o terminada).
+  const job = useCtJobs((s) => s.jobs.find((j) => j.key === p.key) ?? null);
+  const busy = job?.status === "running";
   const canRun = !!p.dir;
   const fileLabel = !p.dir ? "carpeta desconocida" : p.file ? (p.file.startsWith("/") ? p.file : `${p.dir}/${p.file}`) : `${p.dir}/compose.yml`;
   const ids = p.containers.map((c) => c.name || c.id);
   const anyUp = p.containers.some((c) => c.state === "running" || c.state === "paused" || c.state === "restarting");
   const anyDown = p.containers.some((c) => c.state !== "running" && c.state !== "paused" && c.state !== "restarting");
+  const asWho = ct.allOwners || p.owner !== "self" ? ` · ${ct.ownerLabel(p.owner)}` : "";
 
   const cmd = useCallback(
-    (action: Parameters<typeof composeCmd>[3], opts: { volumes?: boolean; tail?: number } = {}): Cmd =>
-      withOwner(composeCmd(tool, p.dir, p.file, action, opts), p.owner),
+    (action: Parameters<typeof composeCmd>[3], opts: Parameters<typeof composeCmd>[4] = {}): Cmd => withOwner(composeCmd(tool, p.dir, p.file, action, opts), p.owner),
     [tool, p.dir, p.file, p.owner],
   );
 
@@ -80,44 +79,24 @@ export function ComposeProjectView({
     void loadServices();
   }, [loadServices]);
 
-  useEffect(() => {
-    if (!busy) return;
-    const t = window.setInterval(() => setElapsed(Math.floor((Date.now() - started.current) / 1000)), 500);
-    return () => window.clearInterval(t);
-  }, [busy]);
+  /** Tarea en segundo plano de este proyecto (salida en vivo abajo y en «Tareas»). */
+  const launch = (title: string, cmds: Cmd[], success: string) =>
+    ct.startJob({
+      title,
+      detail: `${p.name}${asWho}`,
+      key: p.key,
+      owner: p.owner,
+      cmds: cmds.map((c) => ({ ...c, mergeStderr: true })),
+      success,
+      configCmd: cmd("config"),
+      onFinished: (j) => {
+        if (j.status === "done" && p.file) onUsed(p.dir, p.file);
+        void ct.reload("containers");
+        void loadServices();
+      },
+    });
 
-  const exec = async (label: string, cmds: Cmd[], success: string) => {
-    setBusy(label);
-    started.current = Date.now();
-    setElapsed(0);
-    setOutput(null);
-    const r = await ct.run(
-      cmds.map((c) => ({ ...c, mergeStderr: true })),
-      600,
-    );
-    setBusy(null);
-    const text = (r.result?.stdout ?? "")
-      .split("\n")
-      .filter((l) => !/Executing external compose provider|Please see podman-compose/.test(l))
-      .join("\n")
-      .trim();
-    setOutput({ title: label, text: r.ok ? text : (r.error ?? text), ok: r.ok });
-    if (r.ok) {
-      toast.success(success, p.name);
-      if (p.file) onUsed(p.dir, p.file);
-    } else toast.error(`${label}: falló`, r.error?.split("\n")[0]);
-    void ct.reload("containers");
-    void loadServices();
-  };
-
-  const review = (
-    title: string,
-    message: string,
-    build: (o: Record<string, boolean>) => Cmd[],
-    success: string,
-    options?: { key: string; label: string }[],
-    danger = false,
-  ) =>
+  const review = (title: string, message: string, build: (o: Record<string, boolean>) => Cmd[], success: string, options?: { key: string; label: string }[], danger = false) =>
     ct.review({
       title: `${title} «${p.name}»`,
       message,
@@ -131,12 +110,20 @@ export function ComposeProjectView({
       onDone: () => void loadServices(),
     });
 
-  const svcRows = useMemo(() => {
-    const names = new Set([...(services ?? []), ...p.containers.map((c) => c.composeService ?? "").filter(Boolean)]);
-    const rows = [...names].sort().map((s) => ({ name: s, containers: p.containers.filter((c) => c.composeService === s) }));
-    for (const c of p.containers) if (!c.composeService) rows.push({ name: c.name, containers: [c] });
-    return rows;
-  }, [services, p.containers]);
+  /** El explorador usa tu usuario (SFTP, sin sudo): solo se abre si puedes entrar en la carpeta. */
+  const openFolder = async () => {
+    if (p.owner !== "self" && !ct.ownerIsRoot("self")) {
+      const r = await runRaw(ct.sessionId, `[ -r ${shQuote(p.dir)} ] && [ -x ${shQuote(p.dir)} ] && echo si`, { kind: "none" }, 10);
+      if (!r.result?.stdout.includes("si")) {
+        toast.info(
+          "El explorador no puede entrar en esa carpeta",
+          `Es de ${ct.ownerLabel(p.owner)} y el explorador usa tu usuario, sin sudo. Usa «Editar compose» (con sudo) o conéctate como root para verla.`,
+        );
+        return;
+      }
+    }
+    useExplorerNav.getState().open(ct.sessionId, p.dir);
+  };
 
   return (
     <div className="ct-project">
@@ -161,33 +148,33 @@ export function ComposeProjectView({
       </div>
       {!canRun && <div className="ct-warn">No se sabe en qué carpeta está este proyecto. Añádela a mano en la lista de la izquierda.</div>}
       <div className="ct-toolbar">
-        <button className="btn btn-sm btn-primary" disabled={!canRun || !!busy} onClick={() => void exec("Levantar", [cmd("up")], "Proyecto levantado")}>
-          {busy === "Levantar" ? <span className="spinner ct-spinner-sm" /> : <Play size={13} />} Levantar
+        <button className="btn btn-sm btn-primary" disabled={!canRun || busy} onClick={() => launch("Levantar", [cmd("up")], "Proyecto levantado")}>
+          <Play size={13} /> Levantar
         </button>
         <button
           className="btn btn-sm"
-          disabled={!canRun || !!busy}
+          disabled={!canRun || busy}
           onClick={() =>
-            review(
-              "Actualizar",
-              "Descarga las versiones nuevas de las imágenes y vuelve a crear los contenedores que cambien (cortes de unos segundos).",
-              () => [cmd("pull"), cmd("up")],
-              "Proyecto actualizado",
-            )
+            ct.review({
+              title: `Actualizar «${p.name}»`,
+              message:
+                "Descarga las versiones nuevas de las imágenes y vuelve a crear los contenedores que cambien (cortes de unos segundos). Sigue en segundo plano: puedes cerrar y seguirla en «Tareas».",
+              options: [{ key: "build", label: "Volver a construir también las imágenes propias (build)" }],
+              build: (o) => [cmd("pull"), cmd("up", { build: !!o.build })],
+              runLabel: "Actualizar",
+              success: "Proyecto actualizado",
+              background: (cmds) => launch("Actualizar", cmds, "Proyecto actualizado"),
+            })
           }
         >
           <ArrowDownToLine size={13} /> Actualizar
         </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun || !!busy}
-          onClick={() => review("Reiniciar", "Reinicia todos los servicios del proyecto.", () => [cmd("restart")], "Proyecto reiniciado")}
-        >
+        <button className="btn btn-sm" disabled={!canRun || busy} onClick={() => review("Reiniciar", "Reinicia todos los servicios del proyecto.", () => [cmd("restart")], "Proyecto reiniciado")}>
           <RotateCw size={13} /> Reiniciar
         </button>
         <button
           className="btn btn-sm ct-btn-danger"
-          disabled={!canRun || !!busy}
+          disabled={!canRun || busy}
           onClick={() =>
             review(
               "Bajar",
@@ -217,109 +204,41 @@ export function ComposeProjectView({
         >
           <ScrollText size={13} /> Logs
         </button>
-        <button
-          className="btn btn-sm"
-          disabled={!canRun || !!busy}
-          onClick={async () => {
-            const r = await ct.run([{ bin: ["cat"], args: ["--", p.file || "compose.yml"], cwd: p.dir, owner: p.owner }], 20);
-            setOutput({ title: fileLabel, text: r.ok ? (r.result?.stdout ?? "") : (r.error ?? ""), ok: r.ok });
-          }}
-        >
-          <FileText size={13} /> Ver archivo
+        <button className="btn btn-sm" disabled={!canRun} onClick={() => setEditing(true)} title={`Abrir ${fileLabel} en el editor${asWho ? ` (como ${ct.ownerLabel(p.owner)})` : ""}`}>
+          <FilePen size={13} /> Editar compose
+        </button>
+        <button className="btn btn-sm" disabled={!canRun || ct.disabled} onClick={() => void openFolder()} title="Ver la carpeta del proyecto en «Archivos»">
+          <FolderOpen size={13} /> Abrir carpeta
         </button>
         {p.containers.length > 0 && (
           <>
             <span className="ct-sep" />
             <button
               className="btn btn-sm"
-              disabled={!anyDown || !!busy}
+              disabled={!anyDown || busy}
               title="Arranca los contenedores ya creados (sin Compose)"
-              onClick={() => void exec("Iniciar contenedores", [withOwner(containerAction(ct.engine, "start", ids), p.owner)], "Contenedores iniciados")}
+              onClick={() => launch("Iniciar contenedores", [withOwner(containerAction(ct.engine, "start", ids), p.owner)], "Contenedores iniciados")}
             >
               <Play size={13} /> Iniciar todos
             </button>
             <button
               className="btn btn-sm"
-              disabled={!anyUp || !!busy}
-              onClick={() =>
-                review("Parar", "Para los contenedores del proyecto sin borrarlos.", () => [withOwner(containerAction(ct.engine, "stop", ids), p.owner)], "Contenedores parados")
-              }
+              disabled={!anyUp || busy}
+              onClick={() => review("Parar", "Para los contenedores del proyecto sin borrarlos.", () => [withOwner(containerAction(ct.engine, "stop", ids), p.owner)], "Contenedores parados")}
             >
               <Square size={13} /> Parar todos
             </button>
           </>
         )}
-        {busy && (
-          <span className="faint ct-small">
-            {busy}… {elapsed} s
-          </span>
-        )}
       </div>
 
-      <h4 className="section-label">Servicios</h4>
-      {svcError && (
-        <div className="ct-error ct-error-inline" role="alert">
-          <AlertTriangle size={14} />
-          <pre>{svcError}</pre>
-        </div>
-      )}
-      <table className="ct-table ct-table-auto">
-        <thead>
-          <tr>
-            <th>Servicio</th>
-            <th>Contenedor</th>
-            <th>Estado</th>
-            <th>Imagen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {svcRows.map((s) =>
-            s.containers.length === 0 ? (
-              <tr key={s.name}>
-                <td className="ct-strong">{s.name}</td>
-                <td className="faint">—</td>
-                <td className="faint">
-                  <span className="ct-cell-flex">
-                    <span className="ct-dot ct-off" /> Sin crear
-                  </span>
-                </td>
-                <td />
-              </tr>
-            ) : (
-              s.containers.map((c) => (
-                <tr key={c.id}>
-                  <td className="ct-strong">{s.name}</td>
-                  <td className="mono">{c.name}</td>
-                  <td title={c.status}>
-                    <span className="ct-cell-flex">
-                      <span className={`ct-dot ct-${stateTone(c.state)}`} /> {stateText(c)}
-                    </span>
-                  </td>
-                  <td className="mono faint ct-ellipsis">{c.image}</td>
-                </tr>
-              ))
-            ),
-          )}
-          {svcRows.length === 0 && (
-            <tr>
-              <td colSpan={4} className="ct-norows">
-                {services === null && !svcError && canRun ? "Leyendo servicios…" : "Sin servicios"}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <ComposeServices services={services} error={svcError} containers={p.containers} canRun={canRun} />
 
-      {output && (
-        <div className="ct-outbox">
-          <div className="ct-outbox-head">
-            <span className={output.ok ? "" : "ct-bad-text"}>{output.title}</span>
-            <button className="icon-btn" onClick={() => setOutput(null)} aria-label="Cerrar salida">
-              <X size={13} />
-            </button>
-          </div>
-          <pre className="ct-output">{output.text || "(sin salida)"}</pre>
-        </div>
+      {job && <JobView job={job} />}
+      {editing && (
+        <Suspense fallback={null}>
+          <ComposeEditDialog p={p} onClose={() => setEditing(false)} onApply={() => launch("Aplicar cambios", [cmd("up")], "Cambios aplicados")} />
+        </Suspense>
       )}
     </div>
   );

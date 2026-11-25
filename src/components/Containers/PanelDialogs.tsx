@@ -1,6 +1,7 @@
 // Diálogos del panel de Contenedores (registros, inspeccionar, crear, revisar comandos y sudo) y su estado.
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ownedFullScript, type Container, type OwnerRunner, type RunForm } from "../../features/containers";
+import type { CtJob } from "../../features/containers/jobs";
 import { useStoredSudoState } from "../../features/privileges";
 import { SudoDialog } from "../Admin/SudoDialog";
 import type { LogsTarget, ReviewRequest } from "./context";
@@ -10,6 +11,7 @@ import type { EngineActions } from "./useEngineActions";
 const LogsDialog = lazy(() => import("./LogsDialog").then((m) => ({ default: m.LogsDialog })));
 const InspectDialog = lazy(() => import("./InspectDialog").then((m) => ({ default: m.InspectDialog })));
 const RunDialog = lazy(() => import("./RunDialog").then((m) => ({ default: m.RunDialog })));
+const NameConflictDialog = lazy(() => import("./NameConflictDialog").then((m) => ({ default: m.NameConflictDialog })));
 
 export function usePanelDialogs(sessionId: string, active: boolean, disabled: boolean) {
   const [review, setReview] = useState<ReviewRequest | null>(null);
@@ -22,6 +24,8 @@ export function usePanelDialogs(sessionId: string, active: boolean, disabled: bo
   const [logs, setLogs] = useState<LogsTarget | null>(null);
   const [inspectC, setInspectC] = useState<Container | null>(null);
   const [runForm, setRunForm] = useState<{ prefill?: Partial<RunForm>; owner?: string } | null>(null);
+  /** Tarea que falló por un nombre de contenedor repetido (diálogo de arreglo). */
+  const [conflict, setConflict] = useState<CtJob | null>(null);
   const askSudo = useCallback(() => setSudoOpen(true), []);
 
   return {
@@ -36,6 +40,8 @@ export function usePanelDialogs(sessionId: string, active: boolean, disabled: bo
     setInspectC,
     runForm,
     setRunForm,
+    conflict,
+    setConflict,
   };
 }
 
@@ -58,6 +64,7 @@ export function PanelDialogs({ dialogs: d, actions, runner, sessionId, profileId
         {d.logs && <LogsDialog target={d.logs} onClose={() => d.setLogs(null)} />}
         {d.inspectC && <InspectDialog container={d.inspectC} onClose={() => d.setInspectC(null)} />}
         {d.runForm && <RunDialog prefill={d.runForm.prefill} owner={d.runForm.owner} onClose={() => d.setRunForm(null)} />}
+        {d.conflict && <NameConflictDialog job={d.conflict} onClose={() => d.setConflict(null)} />}
       </Suspense>
       {d.review && (
         <ReviewDialog

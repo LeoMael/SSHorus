@@ -1,22 +1,19 @@
 // Imágenes: listar, descargar (pull), eliminar, crear contenedor y limpiar las que no se usan.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Brush, Bug, Download, Rocket, RefreshCw, Search, TerminalSquare, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Brush, Bug, Download, Rocket, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
   ago,
-  pullImage,
   pruneImages,
   removeImages,
   ownedBy,
-  validateImage,
   withOwner,
   type Container,
   type Engine,
   type ImageInfo,
 } from "../../features/containers";
 import { formatBytes } from "../../lib/format";
-import { toast } from "../../stores/toasts";
-import { AdmModal } from "../ui/AdmModal";
 import { PICK_OWNER_HINT, useCt } from "./context";
+import { PullDialog } from "./PullDialog";
 import { useVulnNav } from "../../features/vulnscan/nav";
 
 /** Normaliza una referencia para comparar («nginx» = «docker.io/library/nginx:latest»). */
@@ -308,111 +305,5 @@ function PruneList({ all, images, containers, engine }: { all: boolean; images: 
         </ul>
       )}
     </div>
-  );
-}
-
-function PullDialog({ initial, owner, onClose }: { initial: string; owner?: string; onClose: () => void }) {
-  const ct = useCt();
-  const who = owner ?? ct.newOwner ?? undefined;
-  const [ref, setRef] = useState(initial);
-  const [busy, setBusy] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [out, setOut] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const started = useRef(0);
-
-  useEffect(() => {
-    if (!busy) return;
-    const t = window.setInterval(() => setElapsed(Math.floor((Date.now() - started.current) / 1000)), 500);
-    return () => window.clearInterval(t);
-  }, [busy]);
-
-  const v = ref.trim();
-  const invalid = v ? validateImage(v) : null;
-  const cmd = withOwner({ ...pullImage(ct.engine, v || "<imagen>"), mergeStderr: true }, who);
-
-  const pull = async () => {
-    if (!v || invalid || busy) return;
-    setBusy(true);
-    setError(null);
-    setOut(null);
-    started.current = Date.now();
-    setElapsed(0);
-    const r = await ct.run([cmd], 600);
-    setBusy(false);
-    if (r.ok) {
-      setOut(r.result?.stdout ?? "");
-      toast.success("Imagen descargada", v);
-      void ct.reload("images", "df");
-    } else setError(r.error);
-  };
-
-  return (
-    <AdmModal
-      title={ct.allOwners || (who && who !== "self") ? `Descargar imagen (como ${ct.ownerLabel(who)})` : "Descargar imagen"}
-      onClose={busy ? () => {} : onClose}
-      width={640}
-    >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void pull();
-        }}
-      >
-        <div className="modal-body">
-          <label className="field">
-            <span>Imagen (registro/nombre:etiqueta)</span>
-            <input
-              className="input mono"
-              value={ref}
-              onChange={(e) => setRef(e.target.value)}
-              placeholder="docker.io/library/nginx:alpine"
-              autoFocus
-              spellCheck={false}
-              disabled={busy}
-            />
-          </label>
-          {invalid && <div className="field-error">{invalid}</div>}
-          {ct.engine === "podman" && v && !v.includes("/") && (
-            <div className="ct-hint-line faint">Consejo: en Podman usa el nombre completo (docker.io/library/{v}) para no depender de los registros configurados.</div>
-          )}
-          <pre className="ct-cmd">{ct.render(cmd)}</pre>
-          {busy && (
-            <div className="ct-progress-line">
-              <span className="spinner ct-spinner-sm" /> Descargando… {elapsed} s
-              <div className="progress ct-indeterminate">
-                <div />
-              </div>
-            </div>
-          )}
-          {out !== null && <pre className="ct-output">{out.split("\n").slice(-30).join("\n") || "Listo"}</pre>}
-          {error && (
-            <div className="ct-error" role="alert">
-              <AlertTriangle size={14} />
-              <pre>{error}</pre>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn ct-footer-left"
-            disabled={!v || !!invalid || busy}
-            title="Ver el progreso detallado en la terminal"
-            onClick={() => {
-              if (ct.toTerminal(withOwner(pullImage(ct.engine, v), who), true)) onClose();
-            }}
-          >
-            <TerminalSquare size={13} /> En la terminal
-          </button>
-          <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            {out !== null ? "Cerrar" : "Cancelar"}
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!v || !!invalid || busy}>
-            {busy ? <span className="spinner ct-spinner-sm" /> : <Download size={13} />} Descargar
-          </button>
-        </div>
-      </form>
-    </AdmModal>
   );
 }

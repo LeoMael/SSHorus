@@ -6,6 +6,21 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Añadido
+- **Contenedores → tareas en segundo plano**: «Levantar», «Actualizar» y «Aplicar cambios» de Compose, y «Descargar
+  imagen», siguen aunque cierres la ventana. El botón **Tareas** muestra la salida en vivo (una línea por capa o por
+  contenedor), el tiempo, un aviso si lleva un minuto sin salida y **Cancelar**, que detiene todo también en el
+  servidor (también si se ejecuta como otro usuario o como root). Al terminar sale un aviso.
+- **Compose: «Ya existe un contenedor con ese nombre»** ahora tiene arreglo: **Ver y arreglar** muestra el contenedor
+  viejo (id, imagen, estado, fecha, de qué proyecto o herramienta viene y sus volúmenes) y los del mismo origen que
+  chocarían después, y **Reemplazar el contenedor viejo y volver a intentarlo** los para y los borra como su dueño
+  (sin borrar volúmenes) y repite la tarea. Si hay datos que se pueden perder (volumen anónimo, datos dentro del
+  contenedor), avisa en rojo y pide marcar una casilla.
+- **Compose: «Editar compose»** abre el archivo en el editor como su dueño (con sudo si es de otro usuario): guarda
+  encima conservando dueño, grupo y permisos, con copia `.bak-sshorus-<fecha>` la primera vez, y luego **Aplicar
+  cambios (up -d)**. **Abrir carpeta** lleva a **Archivos** en la carpeta del proyecto.
+- **Compose: «Actualizar»** tiene la opción de volver a construir las imágenes propias (`up -d --build`).
+
 ## [1.0.0-beta.3] - 2026-11-24
 
 ### Añadido

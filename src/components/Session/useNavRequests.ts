@@ -2,6 +2,7 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useInfraNav } from "../../features/infra/store";
 import { useVulnNav } from "../../features/vulnscan/nav";
+import { useExplorerNav } from "../../features/fileExplorer/nav";
 import { useDetachedEditors } from "../Editor/editorWindows";
 import type { FixedTab } from "./fixedViews";
 
@@ -28,6 +29,12 @@ export function useNavRequests({ sessionId, showFixed, showFile, setFiles }: Nav
       useInfraNav.getState().done(infraNav.seq);
     } else showFixed("admin");
   }, [infraNav, sessionId, showFixed]);
+
+  // «Abrir carpeta del proyecto» (Contenedores → Compose): ir a Archivos; el explorador va a la carpeta.
+  const explorerNav = useExplorerNav((s) => s.request);
+  useEffect(() => {
+    if (explorerNav?.sessionId === sessionId) showFixed("files");
+  }, [explorerNav, sessionId, showFixed]);
 
   // Un archivo vuelve de su ventana con «Volver a la pestaña principal»: mostrarlo.
   const reveal = useDetachedEditors((s) => s.reveal);

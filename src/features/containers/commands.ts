@@ -17,6 +17,8 @@ export const listNetworks = (e: Engine): Cmd => engineCmd(e, "network", "ls", ..
 export const systemDf = (e: Engine): Cmd => engineCmd(e, "system", "df", ...jsonFmt(e));
 export const statsOnce = (e: Engine): Cmd => engineCmd(e, "stats", "--no-stream", ...jsonFmt(e));
 export const inspect = (e: Engine, id: string): Cmd => engineCmd(e, "inspect", id);
+/** Con `--size`: lo escrito dentro de cada contenedor (SizeRw), fuera de sus volúmenes. */
+export const inspectSized = (e: Engine, ids: string[]): Cmd => engineCmd(e, "container", "inspect", "--size", ...ids);
 
 export type ContainerAction = "start" | "stop" | "restart" | "pause" | "unpause";
 
@@ -60,7 +62,7 @@ export const systemPrune = (e: Engine, opts: { all: boolean; volumes: boolean })
 
 export const COMPOSE_FILES = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 
-export type ComposeAction = "up" | "down" | "restart" | "pull" | "logs" | "services" | "ps" | "stop" | "start";
+export type ComposeAction = "up" | "down" | "restart" | "pull" | "logs" | "services" | "config" | "ps" | "stop" | "start";
 
 export interface ComposeOpts {
   volumes?: boolean;
@@ -69,6 +71,8 @@ export interface ComposeOpts {
   project?: string;
   /** Solo estos servicios (up, pull, restart, stop, start). */
   services?: string[];
+  /** up: volver a construir las imágenes propias (`--build`). */
+  build?: boolean;
 }
 
 /** `file`: un archivo, varios (cada uno con `-f`) o "" para el de la carpeta. */
@@ -77,7 +81,7 @@ export function composeCmd(tool: ComposeTool, dir: string, file: string | string
   const base = [...(opts.project ? ["-p", opts.project] : []), ...files.flatMap((f) => ["-f", f])];
   const svc = ["up", "pull", "restart", "stop", "start"].includes(action) ? (opts.services ?? []) : [];
   const args: Record<ComposeAction, string[]> = {
-    up: ["up", "-d"],
+    up: ["up", "-d", ...(opts.build ? ["--build"] : [])],
     down: ["down", ...(opts.volumes ? ["-v"] : [])],
     restart: ["restart"],
     stop: ["stop"],
@@ -85,6 +89,7 @@ export function composeCmd(tool: ComposeTool, dir: string, file: string | string
     pull: ["pull"],
     logs: ["logs", "--no-color", "--tail", String(opts.tail ?? 200)],
     services: ["config", "--services"],
+    config: ["config"],
     ps: ["ps"],
   };
   return { bin: composeBin(tool), args: [...base, ...args[action], ...svc], cwd: dir, mergeStderr: action === "logs" };
