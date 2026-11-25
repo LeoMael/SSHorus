@@ -2,7 +2,8 @@
 import { useCallback, useRef, useState } from "react";
 import { errorMessage } from "../../api/core";
 import type { Finding, Report } from "../../api/vulnscan";
-import { crossReports, crossSummary, fixKind, recheckSystem, UpdateCancel, UpdateCanceled, useVulnScan } from "../../features/vulnscan";
+import { crossReports, crossSummary, fixKind, recheckSystem, runningVulnFix, UpdateCancel, UpdateCanceled, useVulnScan } from "../../features/vulnscan";
+import { openJobCenter, useJobs } from "../../stores/jobs";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 
@@ -13,15 +14,23 @@ export function useVulnFix(sessionId: string, report: Report | null | undefined)
   const [checking, setChecking] = useState<string | null>(null);
   const cancel = useRef<UpdateCancel | null>(null);
 
-  /** Abre «Arreglar» con los arreglables de `findings` (y los de su mismo paquete, que se arreglan juntos). */
+  /**
+   * Abre «Arreglar» con los arreglables de `findings` (y los de su mismo paquete, que se arreglan juntos).
+   * Si ya hay una actualización en marcha en esta conexión, enseña esa (el gestor de paquetes se bloquea).
+   */
   const openFix = useCallback(
     (findings: Finding[]) => {
       if (!report) return;
+      const busy = runningVulnFix(useJobs.getState().jobs, sessionId);
+      if (busy) {
+        openJobCenter({ jobId: busy.id });
+        return;
+      }
       const pkgs = new Set(findings.map((f) => `${f.target}|${f.package}`));
       const scope = report.findings.filter((f) => !f.unimportant && pkgs.has(`${f.target}|${f.package}`) && fixKind(report, f) === "now");
       if (scope.length) setFixScope(scope);
     },
-    [report],
+    [report, sessionId],
   );
 
   const recheck = useCallback(async () => {

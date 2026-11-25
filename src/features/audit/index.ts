@@ -9,3 +9,4 @@ export * from "./fixSafety";
 export * from "./recheck";
 export * from "./priority";
 export * from "./fixRun";
+export * from "./fixJob";

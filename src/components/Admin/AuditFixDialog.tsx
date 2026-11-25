@@ -1,16 +1,18 @@
 // «Arreglar» un problema de la auditoría: enseña el comando exacto, comprueba antes lo que podría dejarte
 // fuera (llave instalada, no entrar como root, puerto de SSH), pide confirmación, lo ejecuta con sudo
-// (cancelable), enseña la salida y vuelve a comprobar para decir si quedó arreglado o por qué no.
+// como tarea en segundo plano (salida en vivo, cancelable) y vuelve a comprobar para decir si quedó
+// arreglado o por qué no.
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Play, ShieldAlert } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import type { AuditReport, Check } from "../../api/audit";
-import { guardOkText, guardProblem, needsGuard, readGuard, type RecheckOutcome } from "../../features/audit";
+import { guardOkText, guardProblem, needsGuard, readGuard } from "../../features/audit";
 import { AdmModal } from "../ui/AdmModal";
 import { FixFooter, NeedSudo, OutcomeLine } from "./AuditFixParts";
 import { useAdmin } from "./context";
 import { elevationText } from "./PlanReview";
 import { useAuditFix } from "./useAuditFix";
+import { JobPanel } from "../Jobs/JobPanel";
 
 const CONFIRM_WORD = "ARREGLAR";
 
@@ -40,16 +42,14 @@ export function AuditFixDialog({
   check,
   report,
   onClose,
-  onUpdated,
 }: {
   check: Check;
   report: AuditReport;
   onClose: () => void;
-  onUpdated: (r: AuditReport, outcomes: RecheckOutcome[]) => void;
 }) {
   const { elevation, disabled } = useAdmin();
   const guard = useGuard(check);
-  const fx = useAuditFix(onUpdated);
+  const fx = useAuditFix();
   const [typed, setTyped] = useState("");
   const fix = check.fix;
   if (!fix) return null;
@@ -59,7 +59,7 @@ export function AuditFixDialog({
     !elevation || disabled || fx.phase !== "idle" || guard?.state === "checking" || guard?.state === "blocked" || (fix.danger && typed !== CONFIRM_WORD);
 
   return (
-    <AdmModal title={`Arreglar: ${check.title}`} onClose={fx.phase === "running" ? () => undefined : onClose} width={620}>
+    <AdmModal title={`Arreglar: ${check.title}`} onClose={onClose} width={620}>
       <div className="modal-body adm-review">
         {fix.note && (
           <div className={fix.danger ? "adm-banner adm-banner-warn" : "faint"}>
@@ -95,19 +95,10 @@ export function AuditFixDialog({
             <input className="input mono" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />
           </label>
         )}
-        {result && result.output && (
-          <pre className={result.ok ? "adm-cmd adm-cmd-sm au-fx-out" : "adm-cmd adm-cmd-sm au-fx-out au-fx-out-bad"} aria-label="Salida del comando">
-            {result.output}
-          </pre>
-        )}
-        {fx.phase === "done" && (
-          <div>
-            <OutcomeLine result={result} outcome={outcome} />
-            {fx.recheckError && <div className="faint">{fx.recheckError}</div>}
-          </div>
-        )}
+        {fx.phase === "done" && <OutcomeLine result={result} outcome={outcome} />}
+        {fx.job && <JobPanel job={fx.job} compact />}
       </div>
-      <FixFooter phase={fx.phase} executing={fx.executing} onCancel={fx.cancel} onClose={onClose}>
+      <FixFooter phase={fx.phase} onClose={onClose}>
         {fx.phase === "idle" && (
           <button className={fix.danger ? "btn btn-danger" : "btn btn-primary"} onClick={() => void fx.start(report, [check])} disabled={blocked} autoFocus={!fix.danger}>
             <Play size={13} /> Arreglar

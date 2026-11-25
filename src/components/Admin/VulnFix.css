@@ -83,13 +83,6 @@
   align-items: center;
   gap: 6px;
 }
-.vf-output {
-  max-height: 260px;
-  min-height: 120px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
 .vf-result {
   display: flex;
   flex-direction: column;

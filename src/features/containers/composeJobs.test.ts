@@ -1,17 +1,14 @@
 // Pruebas de las tareas largas de Compose y del editor del archivo compose: salida en vivo (líneas de
-// progreso juntas), aviso sin salida, «Cancelar» que detiene todo el grupo de procesos y leer/guardar el
-// archivo conservando permisos y con copia. Los scripts se ejecutan de verdad con `sh` en una carpeta temporal.
-import { JobOutput, cleanLine, progressKey, stallText } from "./jobOutput";
-import { jobScript, killJobScript } from "./jobScript";
+// progreso juntas, logs de Podman, ruido) y leer/guardar el archivo conservando permisos y con copia.
+// Los scripts se ejecutan de verdad con `sh` en una carpeta temporal. Lo común de las tareas (salida,
+// «Cancelar» que detiene el grupo de procesos) se prueba en features/jobs/jobs.test.ts.
+import { JobOutput } from "../jobs/output";
+import { COMPOSE_OUTPUT, composeLine, progressKey } from "./composeOutput";
 import { composeFilePath, decodeBase64Text, encodeBase64Text, parseReadFile, parseStatFile, parseWriteFile, readFileScript, statFileScript, writeFileScript } from "./composeFile";
 
 const CHILD = "node:child_process";
 const cp = (await import(/* @vite-ignore */ CHILD)) as {
   spawnSync: (cmd: string, args: string[], opts: { encoding: "utf8"; env?: Record<string, string | undefined> }) => { status: number | null; stdout: string; stderr: string };
-  spawn: (cmd: string, args: string[], opts: { env?: Record<string, string | undefined> }) => {
-    on: (ev: "exit", cb: (code: number | null, sig: string | null) => void) => void;
-    stdout: { on: (ev: "data", cb: (d: { toString(): string }) => void) => void };
-  };
 };
 const FS = "node:fs";
 const fs = (await import(/* @vite-ignore */ FS)) as {
@@ -20,7 +17,6 @@ const fs = (await import(/* @vite-ignore */ FS)) as {
   writeFileSync: (p: string, data: string) => void;
   chmodSync: (p: string, mode: number) => void;
   statSync: (p: string) => { mode: number };
-  existsSync: (p: string) => boolean;
   readdirSync: (p: string) => string[];
   rmSync: (p: string, o: { recursive: boolean; force: boolean }) => void;
 };
@@ -37,15 +33,13 @@ function ok(cond: boolean, what: string) {
 }
 
 // ── Salida en vivo ──
-eq(cleanLine("\x1b[32mhola\x1b[0m"), "hola", "sin colores");
-eq(cleanLine("10%\r50%\r100%"), "100%", "solo el último dibujo con \\r");
 eq(
-  cleanLine('time="2026-11-24T23:11:56-05:00" level=warning msg="StopSignal SIGTERM failed to stop container x in 10 seconds, resorting to SIGKILL"'),
+  composeLine('time="2026-11-24T23:11:56-05:00" level=warning msg="StopSignal SIGTERM failed to stop container x in 10 seconds, resorting to SIGKILL"'),
   "Aviso: StopSignal SIGTERM failed to stop container x in 10 seconds, resorting to SIGKILL",
   "log de Podman en texto llano",
 );
 // Salida real de `podman compose up -d` (con docker-compose) cuando el nombre ya existe.
-const real = new JobOutput();
+const real = new JobOutput(COMPOSE_OUTPUT);
 real.push(
   '\x1b[4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<\n\n\x1b[0m Network nc_default Creating \n Network nc_default Creating \n Network nc_default Created \n Network nc_default Created \n Container sshorus-nc-test-app Creating \n',
 );
@@ -62,7 +56,7 @@ eq(progressKey(" ✔ db Pulled   12.3s"), "service:db", "formato corto");
 eq(progressKey("#5 [2/5] RUN npm ci"), null, "la construcción no se junta");
 eq(progressKey("npm Error something went wrong in the build"), null, "un texto cualquiera no se junta");
 
-const out = new JobOutput();
+const out = new JobOutput(COMPOSE_OUTPUT);
 out.push(" Image docker.io/library/postgres:18 Pulling\n 1a2b3c4d5e6f Downloading [=>  ] 1MB/9MB\n");
 out.push(" 1a2b3c4d5e6f Downloading [==> ] 5MB/9MB\n 1a2b3c4d5e6f Pull complete\n Image docker.io/library/postgres:18 Pulled\n");
 out.push("Executing external compose provider \"/usr/local/lib/docker/cli-plugins/docker-compose\". Please see podman-compose(1)\n");
@@ -74,13 +68,6 @@ eq(
 );
 out.end();
 eq(out.view().length, 4, "al terminar no se repite la última");
-const big = new JobOutput();
-for (let i = 0; i < 2500; i++) big.push(`línea ${i}\n`);
-ok(big.view().length <= 2200 && big.view()[big.view().length - 1] === "línea 2499" && big.dropped > 0, "se guardan solo las últimas");
-
-eq(stallText(30), null, "con salida reciente, sin aviso");
-eq(stallText(65), "Sin salida nueva desde hace 1 min — puede estar descargando o atascado", "aviso al minuto");
-
 // ── Ruta del archivo ──
 eq(composeFilePath("/srv/app/", "compose.yaml"), "/srv/app/compose.yaml", "relativa a la carpeta");
 eq(composeFilePath("/srv/app", "/etc/x.yml"), "/etc/x.yml", "absoluta");
@@ -112,25 +99,6 @@ try {
   eq(parseStatFile(sh(statFileScript(`${tmp}/no.yaml`)).stdout), null, "datos: no existe");
   ok(fs.readdirSync(tmp).every((n) => !n.startsWith("sshorus-edit.")), "no quedan temporales");
 
-  // ── Tarea y «Cancelar» ──
-  const id = "test-job-1234";
-  const job = cp.spawn("sh", ["-c", jobScript(id, "echo empieza; sleep 30 & sleep 30; echo nunca")], { env: { ...env, TMPDIR: tmp } });
-  let jobOut = "";
-  job.stdout.on("data", (d) => (jobOut += d.toString()));
-  const exited = new Promise<number | null>((res) => job.on("exit", (code) => res(code)));
-  await new Promise((res) => setTimeout(res, 600));
-  ok(fs.existsSync(`${tmp}/sshorus-job-${id}.pid`), "la tarea apunta su grupo");
-  const group = fs.readFileSync(`${tmp}/sshorus-job-${id}.pid`, "utf8").trim();
-  const started = Date.now();
-  eq(sh(killJobScript(id)).stdout.trim(), "stopped", "cancelar: detenida");
-  const code = await exited;
-  ok(Date.now() - started < 8000, "cancelar no espera a que acabe sola");
-  ok(code !== 0 && jobOut.includes("empieza") && !jobOut.includes("nunca"), "cancelar: no llega al final");
-  eq(sh(`kill -0 -${group} 2>/dev/null && echo vivo || echo nada`).stdout.trim(), "nada", "no queda nada del grupo (tampoco el «sleep» en segundo plano)");
-  eq(sh(killJobScript(id)).stdout.trim(), "gone", "cancelar otra vez: ya no está");
-  const fine = sh(jobScript("test-job-5678", "echo hola; exit 3"));
-  eq([fine.status, fine.stdout.trim()], [3, "hola"], "una tarea normal devuelve su salida y su código");
-  ok(!fs.existsSync(`${tmp}/sshorus-job-test-job-5678.pid`), "al terminar se borra el archivo del grupo");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

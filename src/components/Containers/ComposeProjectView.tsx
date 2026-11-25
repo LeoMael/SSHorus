@@ -3,13 +3,14 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ArrowDownToLine, FilePen, FolderOpen, Play, RotateCw, ScrollText, Square } from "lucide-react";
 import { composeCmd, containerAction, runRaw, withOwner, type Cmd, type ComposeTool, type Container } from "../../features/containers";
-import { useCtJobs } from "../../features/containers/jobs";
+import { CT_JOB_KIND } from "../../features/containers/jobs";
 import { useExplorerNav } from "../../features/fileExplorer/nav";
 import { shQuote } from "../../lib/remote";
+import { useJobs } from "../../stores/jobs";
 import { toast } from "../../stores/toasts";
+import { JobPanel } from "../Jobs/JobPanel";
 import { useCt } from "./context";
 import { ComposeServices } from "./ComposeServices";
-import { JobView } from "./JobView";
 
 const ComposeEditDialog = lazy(() => import("./ComposeEditDialog").then((m) => ({ default: m.ComposeEditDialog })));
 
@@ -44,7 +45,7 @@ export function ComposeProjectView({
   const [svcError, setSvcError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   // La tarea más reciente de este proyecto (en marcha o terminada).
-  const job = useCtJobs((s) => s.jobs.find((j) => j.key === p.key) ?? null);
+  const job = useJobs((s) => s.jobs.find((j) => j.kind === CT_JOB_KIND && j.key === p.key) ?? null);
   const busy = job?.status === "running";
   const canRun = !!p.dir;
   const fileLabel = !p.dir ? "carpeta desconocida" : p.file ? (p.file.startsWith("/") ? p.file : `${p.dir}/${p.file}`) : `${p.dir}/compose.yml`;
@@ -234,7 +235,7 @@ export function ComposeProjectView({
 
       <ComposeServices services={services} error={svcError} containers={p.containers} canRun={canRun} />
 
-      {job && <JobView job={job} />}
+      {job && <JobPanel job={job} compact />}
       {editing && (
         <Suspense fallback={null}>
           <ComposeEditDialog p={p} onClose={() => setEditing(false)} onApply={() => launch("Aplicar cambios", [cmd("up")], "Cambios aplicados")} />

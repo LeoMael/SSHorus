@@ -14,13 +14,14 @@ la **1.0.0-beta.4**.
 
 **Estado al cerrar la sesión del 24/11/2026 (para retomar):**
 - En `main` local, **sin subir** (saldrá en la beta.4): Compose (conflicto de nombres, tareas largas, editar el compose
-  de otro usuario), Monitor → Por usuario con los UID de contenedores, barra lateral en árbol con la «S» de sudo, e
-  ideas 9 y 10 anotadas.
-- En marcha con agentes al cerrar (cada uno en su worktree de `.claude/worktrees/`, un commit al terminar):
-  (1) **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
-  auditoría, actualizar imagen, reinicio y Compose) y (2) **emparejar asistentes de IA** (idea 10, fase 1 con
-  `sshorus-mcp pair`). Si la sesión se cerró antes de unirlos: `git worktree list` y las ramas `worktree-agent-*`;
-  lo que tenga commit se une con `git cherry-pick`, lo que no, se rehace.
+  de otro usuario), Monitor → Por usuario con los UID de contenedores, barra lateral en árbol con la «S» de sudo,
+  **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
+  auditoría, actualizar imagen, reinicio y Compose) e ideas 9 y 10 anotadas.
+- En marcha con un agente al cerrar (worktree en `.claude/worktrees/`, un commit al terminar): **emparejar
+  asistentes de IA** (idea 10, fase 1 con `sshorus-mcp pair`). Si la sesión se cerró antes de unirlo:
+  `git worktree list` y la rama `worktree-agent-*`; si tiene commit se une con `git cherry-pick`, si no, se rehace.
+- Pedir en BASE: que `stores/toasts.ts` y `Toaster` admitan un botón (hoy el aviso «Ver» de las tareas es propio de
+  la esquina).
 - **Aprobado por el usuario para la beta.4, sin empezar** (no lanzar más agentes hasta retomar): reglas de calidad
   automáticas en la CI, ver «Reglas automáticas de calidad» en la sección 3.
 - Después: unir, comprobar todo, `/code-review` del lote, versión `1.0.0-beta.4` (`bundle.windows.wix.version` →
@@ -54,6 +55,11 @@ la **1.0.0-beta.4**.
   primero y marca «S». El sudo sale de la conexión abierta, de lo último detectado (guardado por servidor) o de la
   contraseña de sudo configurada. Pendiente: nombre propio para el nodo (hoy muestra el host) y unir alias de
   `~/.ssh/config` que apuntan al mismo `HostName` (el perfil no guarda esa información).
+- **Tareas en segundo plano para toda la app** (después de la beta.3): ventanita abajo a la derecha («2 tareas»),
+  vista grande con salida en vivo, pasos, tiempos, Cancelar y «Copiar salida», historial de la sesión y aviso con
+  «Ver». Van como tarea: Compose y Descargar imagen, Vulnerabilidades → Arreglar, Actualizar imagen, Auditoría →
+  Arreglar / Arreglar todo lo seguro y Reiniciar ahora (sustituye al aviso flotante de abajo a la izquierda). Código:
+  `features/jobs/` (lógica y ejecución), `stores/jobs.ts`, `components/Jobs/`.
 
 Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ronda de orden del código»](historial/PENDIENTES-historial.md#próxima-sesión-anotado-el-13112026).
 
@@ -84,6 +90,15 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     «Terminar» en un proceso de contenedor; «tú» separado del nombre; con hidepid y sin sudo, «Sin identificar ·
     haría falta sudo». Mirar que el muestreo no pese más (1 vCPU).
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
+  - Tareas en segundo plano (VPS Rocky de 1 vCPU): Vulnerabilidades → «Arreglar todo lo que tiene solución», cerrar
+    el diálogo y seguirla en la ventanita de la esquina (salida de `dnf` en vivo, barra «3/10», aviso «Sin salida
+    nueva» si se calla); «Cancelar» a mitad y comprobar en el servidor que no queda `dnf` (`pgrep -a dnf`); dejarla
+    pasar de 600 s y ver que también se detiene. Lo mismo con Auditoría → «Arreglar todo lo seguro» y con «Actualizar
+    imagen» (con y sin contenedores creados a mano). «Reiniciar ahora»: la ventanita se abre sola con los tres pasos,
+    «Dejar de esperar» y, si la conexión se cierra, «Reconectar». Compose: botón «Tareas» abre la lista filtrada y
+    «Ver y arreglar» desde la vista grande lleva a Contenedores. Comprobar que la ventanita no tapa la barra de
+    transferencias (plegada y abierta) ni los avisos, en tema claro y oscuro, y que se maneja con el teclado
+    (Tab, Enter, Escape).
   - Las listas paso a paso de cada ronda siguen en el historial («Falta probar en la app» del 16/11 y «Probar a mano en la app» de la Parte 1 del orden del código).
 - **Publicación de la `v1.0.0-beta.3`**: versión subida, `bundle.windows.wix.version` en `0.6.0.3` (el `.msi` no
   admite «-beta»; se quita al pasar a `1.0.0`), CHANGELOG cerrado y etiqueta creada. Falta: comprobar el borrador

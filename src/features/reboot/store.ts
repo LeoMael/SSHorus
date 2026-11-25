@@ -1,6 +1,7 @@
 // «Reiniciar ahora»: confirma, envía la orden con sudo (la contraseña de siempre: guardada, en memoria o
 // el diálogo), avisa al motor para que la reconexión espere al arranque, sigue la caída y la vuelta de
-// la pestaña y, al volver, comprueba que de verdad se reinició y si aún falta reiniciar.
+// la pestaña y, al volver, comprueba que de verdad se reinició y si aún falta reiniciar. El progreso se ve
+// como una tarea en segundo plano (job.ts, centro de tareas de la esquina).
 // Las transiciones están en progress.ts (puras); aquí solo se ejecutan y se escuchan las pestañas.
 import { create } from "zustand";
 import { errorMessage } from "../../api/core";
@@ -15,6 +16,7 @@ import { buildExec, detectPrivilege, getPrivilege } from "../privileges";
 import { execWithSudo, sudoFailureText, sudoRunError } from "../sudoRun";
 import { parseStatus, rebootAccess, rebootCommand, rebootSent, statusScript, type ServerStatus } from "./commands";
 import { confirmReboot } from "./confirm";
+import { dropRebootJob, syncRebootJob } from "./job";
 import { isActive, newRun, REBOOT_WAIT_SECS, rebootStep, serverKey, stillPending, type RebootEvent, type RebootRun } from "./progress";
 
 export const useReboots = create<{ runs: Record<string, RebootRun> }>(() => ({ runs: {} }));
@@ -48,6 +50,11 @@ function getRun(key: string): RebootRun | undefined {
 
 function setRun(run: RebootRun) {
   useReboots.setState((s) => ({ runs: { ...s.runs, [run.key]: run } }));
+  syncRebootJob(
+    run,
+    () => void stopWaiting(run.key),
+    (r) => (r.canReconnect ? [{ label: "Reconectar", primary: true, run: () => void reconnectAfterReboot(r.key) }] : []),
+  );
 }
 
 /** Quita el aviso de un reinicio que ya terminó. */
@@ -142,6 +149,7 @@ async function send(key: string, sessionId: string, command: string) {
       forgetExpectation(sessionId);
       dispatch(key, { type: "stop" });
       dismissReboot(key);
+      dropRebootJob(key);
       toast.info("Reinicio cancelado", "Sin la contraseña de sudo no se reinició.");
       return;
     }

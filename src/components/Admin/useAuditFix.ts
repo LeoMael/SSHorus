@@ -1,57 +1,34 @@
-// Estado de «Arreglar» en la auditoría (uno o varios): ejecución cancelable, resultado de cada arreglo y
-// la comprobación posterior, que actualiza y guarda el informe.
-import { useRef, useState } from "react";
+// Estado de «Arreglar» en la auditoría (uno o varios): los arreglos van como tarea en segundo plano
+// (features/audit/fixJob.ts) y el diálogo solo la sigue; si se cierra, la tarea sigue en la esquina.
+import { useState } from "react";
 import type { AuditReport, Check } from "../../api/audit";
-import { snippets } from "../../api/snippets";
-import { fixAndRecheck, type FixResult, type RecheckOutcome } from "../../features/audit";
+import { auditFixData, startAuditFix } from "../../features/audit";
+import { useJobs } from "../../stores/jobs";
 import { useAdmin } from "./context";
 
 export type FixPhase = "idle" | "running" | "done";
 
-export function useAuditFix(onUpdated: (report: AuditReport, outcomes: RecheckOutcome[]) => void) {
-  const { sessionId, profileId, serverName, elevation } = useAdmin();
-  const [phase, setPhase] = useState<FixPhase>("idle");
-  const [results, setResults] = useState<Record<string, FixResult>>({});
-  const [outcomes, setOutcomes] = useState<Record<string, RecheckOutcome>>({});
-  const [recheckError, setRecheckError] = useState<string | null>(null);
-  const [executing, setExecuting] = useState(false);
-  const execId = useRef<string | null>(null);
-  const canceled = useRef(false);
+export function useAuditFix() {
+  const { sessionId, profileId, serverName, elevation, askSudo } = useAdmin();
+  const [jobId, setJobId] = useState<string | null>(null);
+  const job = useJobs((s) => (jobId ? (s.jobs.find((j) => j.id === jobId) ?? null) : null));
+  const phase: FixPhase = !job ? "idle" : job.status === "running" ? "running" : "done";
+  const data = auditFixData(job);
 
-  const start = async (report: AuditReport, checks: Check[]) => {
+  const start = (report: AuditReport, checks: Check[]) => {
     if (!elevation || phase === "running") return;
-    canceled.current = false;
-    setPhase("running");
-    setResults({});
-    setOutcomes({});
-    setRecheckError(null);
-    const out = await fixAndRecheck({
-      sessionId,
-      profileId,
-      serverName,
-      elevation,
-      report,
-      checks,
-      onExec: (id) => {
-        execId.current = id;
-        setExecuting(id !== null);
-      },
-      canceled: () => canceled.current,
-      onResult: (id, r) => setResults((s) => ({ ...s, [id]: r })),
-    });
-    if (out.recheck) {
-      setOutcomes(Object.fromEntries(out.recheck.outcomes.map((o) => [o.id, o])));
-      onUpdated(out.recheck.report, out.recheck.outcomes);
-    }
-    setRecheckError(out.recheckError);
-    setPhase("done");
+    setJobId(
+      startAuditFix({
+        sessionId,
+        profileId,
+        serverName,
+        elevation,
+        report,
+        checks,
+        actions: (d) => (d.needSudo ? [{ label: "Introducir contraseña de sudo", run: askSudo }] : []),
+      }),
+    );
   };
 
-  /** Para el comando en curso (también en el servidor) y no empieza los siguientes. */
-  const cancel = () => {
-    canceled.current = true;
-    if (execId.current) void snippets.cancelExec(execId.current);
-  };
-
-  return { phase, results, outcomes, recheckError, executing, start, cancel };
+  return { phase, job, results: data.results, outcomes: data.outcomes, recheckError: data.recheckError, start };
 }

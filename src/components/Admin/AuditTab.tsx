@@ -9,8 +9,9 @@ import { audit, type AuditMeta, type AuditReport, type Check } from "../../api/a
 import { localfs } from "../../api/localfs";
 import {
   compare,
+  auditFixData,
+  AUDITFIX_JOB,
   fixLevel,
-  outcomeText,
   problemsByImportance,
   runAudit,
   safeFixes,
@@ -19,6 +20,7 @@ import {
   useAuditRun,
   type RecheckOutcome,
 } from "../../features/audit";
+import { useJobFinished } from "../Jobs/useJobFinished";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { AuditAiDialog } from "./AuditAiDialog";
@@ -101,16 +103,18 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
     why: !latest ? "Abre la última auditoría para arreglar" : disabled ? "Sin conexión" : !elevation && !elev.canAskSudo ? "Necesitas root o sudo" : null,
   };
 
-  /** Tras un arreglo: el informe ya comprobado de nuevo y guardado (mismo id) y la lista del historial. */
-  const onUpdated = (r: AuditReport, done: RecheckOutcome[]) => {
-    setReport(r);
-    setOutcomes((s) => ({ ...s, ...Object.fromEntries(done.map((o) => [o.id, o])) }));
-    void audit.historyList(profileId).then(setMetas).catch(() => undefined);
-    const fixedN = done.filter((o) => o.state === "fixed").length;
-    const rest = done.filter((o) => o.state !== "fixed");
-    if (rest.length === 0) toast.success(fixedN === 1 ? "Arreglado" : `${fixedN} arreglados`, r.score !== null ? `Nota ${r.score}/100 (${r.grade})` : r.summary);
-    else toast.info(`${fixedN} ${fixedN === 1 ? "arreglado" : "arreglados"}, ${rest.length} ${rest.length === 1 ? "sigue" : "siguen"}`, outcomeText(rest[0]));
-  };
+  // Tras unos arreglos (aunque su diálogo ya se cerrara): el informe ya comprobado de nuevo y guardado
+  // (mismo id) y la lista del historial. El aviso del resultado lo da la tarea.
+  useJobFinished(
+    (j) => j.kind === AUDITFIX_JOB && j.sessionId === sessionId,
+    (j) => {
+      const d = auditFixData(j);
+      if (!d.report) return;
+      if (d.report.id === report?.id) setReport(d.report);
+      setOutcomes((s) => ({ ...s, ...d.outcomes }));
+      void audit.historyList(profileId).then(setMetas).catch(() => undefined);
+    },
+  );
 
   const exportAs = async (format: "md" | "html") => {
     if (!report) return;
@@ -233,10 +237,9 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
           safe={safeFixes(problemsByImportance(report.checks))}
           risky={problemsByImportance(report.checks).filter((c) => fixLevel(c) === "confirm")}
           onClose={() => setFixing(null)}
-          onUpdated={onUpdated}
         />
       )}
-      {fixing && fixing !== "all" && report && <AuditFixDialog check={fixing} report={report} onClose={() => setFixing(null)} onUpdated={onUpdated} />}
+      {fixing && fixing !== "all" && report && <AuditFixDialog check={fixing} report={report} onClose={() => setFixing(null)} />}
       {aiOpen && report && <AuditAiDialog report={report} profileId={profileId} onDone={setReport} onClose={() => setAiOpen(false)} />}
     </div>
   );

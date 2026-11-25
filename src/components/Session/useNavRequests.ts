@@ -3,6 +3,7 @@ import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useInfraNav } from "../../features/infra/store";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useExplorerNav } from "../../features/fileExplorer/nav";
+import { useJobNav } from "../../features/jobs/nav";
 import { useDetachedEditors } from "../Editor/editorWindows";
 import type { FixedTab } from "./fixedViews";
 
@@ -35,6 +36,12 @@ export function useNavRequests({ sessionId, showFixed, showFile, setFiles }: Nav
   useEffect(() => {
     if (explorerNav?.sessionId === sessionId) showFixed("files");
   }, [explorerNav, sessionId, showFixed]);
+
+  // «Ir allí» o un botón de una tarea en segundo plano: el panel donde se lanzó.
+  const jobNav = useJobNav((s) => s.request);
+  useEffect(() => {
+    if (jobNav?.sessionId === sessionId) showFixed(jobNav.pane);
+  }, [jobNav, sessionId, showFixed]);
 
   // Un archivo vuelve de su ventana con «Volver a la pestaña principal»: mostrarlo.
   const reveal = useDetachedEditors((s) => s.reveal);

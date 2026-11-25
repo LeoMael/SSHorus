@@ -22,7 +22,7 @@ import type { RemoteEditorHandle } from "../Editor/RemoteEditor";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 import { useCt } from "./context";
 import type { ComposeProject } from "./ComposeProjectView";
-import "./ComposeJobs.css";
+import "./ComposeDialogs.css";
 
 const RemoteEditor = lazy(() => import("../Editor/RemoteEditor"));
 

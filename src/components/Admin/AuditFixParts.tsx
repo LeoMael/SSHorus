@@ -1,8 +1,8 @@
 // Piezas comunes de los diálogos de arreglo de la auditoría: aviso de sudo, resultado de un arreglo y
-// pie con Cancelar / Cerrar.
+// pie con Cerrar.
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, KeyRound, Square, XCircle } from "lucide-react";
-import { outcomeText, useAuditRun, type FixResult, type RecheckOutcome } from "../../features/audit";
+import { AlertTriangle, CheckCircle2, KeyRound, XCircle } from "lucide-react";
+import { outcomeText, type FixResult, type RecheckOutcome } from "../../features/audit";
 import { useAdmin } from "./context";
 import type { FixPhase } from "./useAuditFix";
 
@@ -46,38 +46,13 @@ export function OutcomeLine({ result, outcome }: { result?: FixResult; outcome?:
   return null;
 }
 
-/** Pie: mientras corre, «Cancelar» (para el comando); después, «Cerrar». */
-export function FixFooter({
-  phase,
-  executing,
-  onCancel,
-  onClose,
-  children,
-}: {
-  phase: FixPhase;
-  executing: boolean;
-  onCancel: () => void;
-  onClose: () => void;
-  children?: ReactNode;
-}) {
-  const { sessionId } = useAdmin();
-  const step = useAuditRun((s) => s.running[sessionId]);
+/** Pie: mientras corre, cerrar deja la tarea en segundo plano (su «Cancelar» está en la tarea). */
+export function FixFooter({ phase, onClose, children }: { phase: FixPhase; onClose: () => void; children?: ReactNode }) {
   return (
     <div className="modal-footer">
-      {phase === "running" && (
-        <span className="au-fx-step faint">
-          <span className="spinner adm-spinner-btn" /> {step ?? "Aplicando…"}
-        </span>
-      )}
-      {phase === "running" ? (
-        <button className="btn" onClick={onCancel} disabled={!executing} title="Para el comando en el servidor">
-          <Square size={13} /> Cancelar
-        </button>
-      ) : (
-        <button className="btn" onClick={onClose}>
-          {phase === "done" ? "Cerrar" : "Cancelar"}
-        </button>
-      )}
+      <button className="btn" onClick={onClose}>
+        {phase === "running" ? "Cerrar (sigue en segundo plano)" : phase === "done" ? "Cerrar" : "Cancelar"}
+      </button>
       {children}
     </div>
   );

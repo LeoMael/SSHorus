@@ -7,7 +7,7 @@ import { runChecks, type AuditInput } from "./checks";
 import { ROCKY_SERVER, UBUNTU_SERVER } from "./fixtures";
 import { firewallKeepsPort, fixLevel, guardProblem, parseGuard, safeFixes, sshListenPorts, type GuardInfo } from "./fixSafety";
 import { problemsByImportance, adviceFor } from "./priority";
-import { mergeRecheck, recheckCategories, recheckOutcome, sshdCulprit } from "./recheck";
+import { fixSummary, mergeRecheck, recheckCategories, recheckOutcome, sshdCulprit } from "./recheck";
 import { scoreChecks } from "./score";
 
 declare const process: { exit(code: number): never };
@@ -182,6 +182,10 @@ const AFTER_FIX: Record<string, (s: string) => string> = {
   eq(list[0].weight, 3, "primero, un grave de peso 3");
   ok(list.indexOf(list.find((c) => c.id === "ssh.root")!) < list.indexOf(list.find((c) => c.id === "system.disk")!), "root por SSH antes que el disco");
 }
+
+// ── Resultado en una frase (aviso de la tarea) ──
+eq(fixSummary([{ id: "a", state: "fixed", reason: null }, { id: "b", state: "fixed", reason: null }], { score: 85, grade: "B", summary: "" }), "2 arreglados · Nota 85/100 (B)", "todo arreglado");
+eq(fixSummary([{ id: "a", state: "fixed", reason: null }, { id: "b", state: "same", reason: "sshd no se reinició" }], { score: 70, grade: "C", summary: "" }), "1 arreglado, 1 sigue: Sshd no se reinició", "uno sigue, con su motivo");
 
 console.log(`${passed} pruebas bien, ${failed} mal`);
 if (failed) process.exit(1);

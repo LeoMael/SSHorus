@@ -101,3 +101,12 @@ export function outcomeText(o: RecheckOutcome): string {
   const r = o.reason ?? "";
   return r ? `${r[0].toUpperCase()}${r.slice(1)}` : "Sigue igual";
 }
+
+/** Resultado de unos arreglos en una frase: «2 arreglados · Nota 85/100 (B)», «1 arreglado, 1 sigue: …». */
+export function fixSummary(outcomes: RecheckOutcome[], r: { score: number | null; grade: string | null; summary: string }): string {
+  const fixed = outcomes.filter((o) => o.state === "fixed").length;
+  const rest = outcomes.filter((o) => o.state !== "fixed");
+  const f = `${fixed} ${fixed === 1 ? "arreglado" : "arreglados"}`;
+  if (rest.length === 0) return `${f} · ${r.score !== null ? `Nota ${r.score}/100 (${r.grade ?? "?"})` : r.summary}`;
+  return `${f}, ${rest.length} ${rest.length === 1 ? "sigue" : "siguen"}: ${outcomeText(rest[0])}`;
+}

@@ -83,3 +83,20 @@ export function upgradeCommand(report: Report, binaries: string[]): string | nul
   return make && pkgs.length ? make(pkgs.join(" ")) : null;
 }
 
+
+/** dnf 4 («  Upgrading : openssl-libs-3.0.7 3/10») y dnf 5 («[ 3/10] Upgrading openssl-libs…»). */
+const DNF4_STEP_RE = /^\s*(?:Upgrading|Installing|Reinstalling|Downgrading|Obsoleting|Erasing|Cleanup|Verifying|Running scriptlet|Preparing)\s*:.*?\s(\d+)\/(\d+)\s*$/;
+const DNF5_STEP_RE = /^\s*\[\s*(\d+)\/(\d+)\]\s/;
+
+/** Cuánto lleva la actualización según la última línea con cuenta del trozo de salida (null = no se sabe). */
+export function upgradeProgress(chunk: string): { done: number; total: number } | null {
+  const lines = chunk.split(/[\r\n]+/);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = DNF4_STEP_RE.exec(lines[i]) ?? DNF5_STEP_RE.exec(lines[i]);
+    if (!m) continue;
+    const done = Number(m[1]);
+    const total = Number(m[2]);
+    if (total > 0 && done <= total) return { done, total };
+  }
+  return null;
+}

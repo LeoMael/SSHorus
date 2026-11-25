@@ -3,7 +3,8 @@
 import type { PrivilegeInfo } from "../privileges";
 import { parseStatus, rebootAccess, rebootCommand, rebootedBetween, rebootSent, statusScript, type ServerStatus } from "./commands";
 import { rebootPending } from "./detect";
-import { BACK_LIMIT_MS, DOWN_LIMIT_MS, formatElapsed, isActive, newRun, phaseDetail, rebootStep, resultText, serverKey, stepStates, stillPending, type RebootEvent, type RebootRun } from "./progress";
+import { rebootJobView } from "./job";
+import { BACK_LIMIT_MS, DOWN_LIMIT_MS, isActive, newRun, phaseDetail, rebootStep, resultText, serverKey, stepStates, stillPending, type RebootEvent, type RebootRun } from "./progress";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
@@ -116,7 +117,16 @@ eq([r.phase, isActive(r.phase), stepStates(r)], ["stopped", false, ["done", "err
 r = run([[{ type: "sent" }, T0], [tab("reconnecting"), T0 + 1], [tab("connected", 1), T0 + 2], [{ type: "check-failed", message: "tiempo agotado" }, T0 + 3]]);
 eq([r.phase, r.message], ["done", "Volvió, pero no se pudo comprobar su estado: tiempo agotado"], "volvió sin poder comprobar");
 
-eq([formatElapsed(0), formatElapsed(42_900), formatElapsed(65_000), formatElapsed(725_000)], ["0:00", "0:42", "1:05", "12:05"], "tiempo transcurrido");
 eq(serverKey({ host: " VPS.Example.com ", port: 0 }), "vps.example.com:22", "clave del servidor");
+
+// ── Como tarea en segundo plano ──
+const v0 = rebootJobView(start());
+eq([v0.end, v0.patch.steps?.map((s) => s.state), v0.patch.phase], [null, ["current", "todo", "todo"], "Reiniciando… Enviando la orden de reinicio."], "tarea: en marcha con sus pasos");
+r = run([[{ type: "sent" }, T0], [tab("reconnecting"), T0 + 1], [tab("connected", 1), T0 + 2], [{ type: "checked", status: after }, T0 + 3]]);
+eq(rebootJobView(r).end, { status: "done", summary: "Kernel en uso: 6.8.0-49. Ya no hace falta reiniciar." }, "tarea: terminada con el resultado");
+r = run([[{ type: "sent" }, T0], [tab("reconnecting"), T0 + 1], [{ type: "stop" }, T0 + 2]]);
+eq(rebootJobView(r).end?.status, "canceled", "tarea: dejar de esperar = cancelada");
+r = run([[{ type: "send-failed", message: "Contraseña incorrecta" }, T0 + 10]]);
+eq(rebootJobView(r).end, { status: "failed", error: "Contraseña incorrecta" }, "tarea: falló con el motivo");
 
 console.log(`reboot: ${passed} comprobaciones correctas`);

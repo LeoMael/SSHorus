@@ -1,5 +1,5 @@
 // Botón «Reiniciar ahora» (escáner, auditoría y Panel de VPS). Mientras dura muestra en qué va; el
-// detalle está en el aviso flotante (RebootHost).
+// detalle está en el centro de tareas (esquina de abajo a la derecha).
 import { useEffect, useRef } from "react";
 import { Power } from "lucide-react";
 import { usePrivilege } from "../privileges";
@@ -37,7 +37,7 @@ export function RebootButtonView({ run, disabled, title, onClick }: { run: Reboo
         onClick();
       }}
       disabled={disabled || busy}
-      title={busy ? "Mira el progreso en el aviso de abajo" : (title ?? "Reinicia el servidor, espera a que vuelva y reconecta")}
+      title={busy ? "Mira el progreso en «Tareas» (abajo a la derecha)" : (title ?? "Reinicia el servidor, espera a que vuelva y reconecta")}
     >
       {busy ? <span className="spinner rb-btn-spinner" /> : <Power size={13} />}
       {busy && run ? phaseTitle(run) : "Reiniciar ahora"}

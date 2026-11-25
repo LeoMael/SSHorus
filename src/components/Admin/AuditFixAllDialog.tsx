@@ -1,21 +1,21 @@
 // «Arreglar todo lo seguro»: aplica de una vez los arreglos que no pueden dejarte fuera (los peligrosos,
 // como desactivar la contraseña o activar el cortafuegos, van aparte con su propia comprobación previa).
-// Enseña cada comando antes, avanza uno a uno (cancelable) y al final vuelve a comprobar todo lo tocado.
+// Enseña cada comando antes y lo lanza como tarea en segundo plano: avanza uno a uno (cancelable) y al
+// final vuelve a comprobar todo lo tocado. Se puede cerrar el diálogo: la tarea sigue en la esquina.
 import { CircleDashed, Play, ShieldAlert } from "lucide-react";
 import type { AuditReport, Check } from "../../api/audit";
-import type { RecheckOutcome } from "../../features/audit";
 import { AdmModal } from "../ui/AdmModal";
 import { FixFooter, NeedSudo, OutcomeLine } from "./AuditFixParts";
 import { useAdmin } from "./context";
 import { elevationText } from "./PlanReview";
 import { useAuditFix } from "./useAuditFix";
+import { JobPanel } from "../Jobs/JobPanel";
 
 export function AuditFixAllDialog({
   report,
   safe,
   risky,
   onClose,
-  onUpdated,
 }: {
   report: AuditReport;
   /** Arreglos seguros, en orden de importancia. */
@@ -23,13 +23,12 @@ export function AuditFixAllDialog({
   /** Los que van aparte (pueden cortar el acceso o un servicio). */
   risky: Check[];
   onClose: () => void;
-  onUpdated: (r: AuditReport, outcomes: RecheckOutcome[]) => void;
 }) {
   const { elevation, disabled } = useAdmin();
-  const fx = useAuditFix(onUpdated);
+  const fx = useAuditFix();
 
   return (
-    <AdmModal title={`Arreglar todo lo seguro (${safe.length})`} onClose={fx.phase === "running" ? () => undefined : onClose} width={680}>
+    <AdmModal title={`Arreglar todo lo seguro (${safe.length})`} onClose={onClose} width={680}>
       <div className="modal-body adm-review">
         <div className="faint">Estos arreglos no cortan tu acceso. Se aplican uno tras otro y después se vuelve a comprobar.</div>
         <NeedSudo />
@@ -60,9 +59,9 @@ export function AuditFixAllDialog({
             </span>
           </div>
         )}
-        {fx.recheckError && <div className="faint">{fx.recheckError}</div>}
+        {fx.job && <JobPanel job={fx.job} compact />}
       </div>
-      <FixFooter phase={fx.phase} executing={fx.executing} onCancel={fx.cancel} onClose={onClose}>
+      <FixFooter phase={fx.phase} onClose={onClose}>
         {fx.phase === "idle" && (
           <button className="btn btn-primary" onClick={() => void fx.start(report, safe)} disabled={!elevation || disabled || !safe.length} autoFocus>
             <Play size={13} /> Arreglar {safe.length}

@@ -11,7 +11,7 @@ import type { InspectSummary } from "../../features/containers";
 import { formatBytes } from "../../lib/format";
 import { AdmModal } from "../ui/AdmModal";
 import { useCt } from "./context";
-import "./ComposeJobs.css";
+import "./ComposeDialogs.css";
 
 type Inspected = InspectSummary & { sizeRw: number | null; risk: ReplaceAssessment; later: boolean };
 
@@ -82,15 +82,15 @@ export function NameConflictDialog({ job, onClose }: { job: CtJob; onClose: () =
       setItems(null);
       setError(null);
       // Nombres fijos del compose: los contenedores viejos con esos nombres también chocarían después.
-      const cfg = job.configCmd ? await ct.run([withOwner(job.configCmd, job.owner)], 30) : null;
+      const cfg = job.data.configCmd ? await ct.run([withOwner(job.data.configCmd, job.data.owner)], 30) : null;
       const expected = cfg?.ok ? parseContainerNames(cfg.result?.stdout ?? "") : [];
       // La lista de contenedores sirve solo si es la de ese dueño (o la de «Todos», con dueño en cada fila).
-      const listed = ct.allOwners || ct.newOwner === job.owner ? (ct.res.containers.data ?? []) : [];
-      const { now, later } = conflictTargets(job.conflicts, listed, job.owner, expected);
+      const listed = ct.allOwners || ct.newOwner === job.data.owner ? (ct.res.containers.data ?? []) : [];
+      const { now, later } = conflictTargets(job.data.conflicts, listed, job.data.owner, expected);
       // Los que no están en la lista (lista vieja) se buscan por su id o nombre.
-      const missing = job.conflicts.filter((k) => !now.some((c) => c.name === k.name)).map((k) => k.id ?? k.name);
+      const missing = job.data.conflicts.filter((k) => !now.some((c) => c.name === k.name)).map((k) => k.id ?? k.name);
       const refs = [...new Set([...now.map((c) => c.id), ...missing, ...later.map((c) => c.id)])];
-      const r = await ct.run([withOwner(inspectSized(ct.engine, refs), job.owner)], 60);
+      const r = await ct.run([withOwner(inspectSized(ct.engine, refs), job.data.owner)], 60);
       if (!alive) return;
       const list = r.result ? parseInspectList(r.result.stdout) : [];
       if (!list.length) {
@@ -108,7 +108,7 @@ export function NameConflictDialog({ job, onClose }: { job: CtJob; onClose: () =
 
   const chosen = useMemo(() => (items ?? []).filter((c) => !c.later || withLater), [items, withLater]);
   const risky = chosen.filter((c) => c.risk.risky);
-  const rm = withOwner(removeContainers(ct.engine, chosen.map((c) => c.id.slice(0, 12)), { force: true, volumes: false }), job.owner);
+  const rm = withOwner(removeContainers(ct.engine, chosen.map((c) => c.id.slice(0, 12)), { force: true, volumes: false }), job.data.owner);
   const canRun = chosen.length > 0 && (!risky.length || accept);
 
   const replace = () => {
@@ -117,10 +117,10 @@ export function NameConflictDialog({ job, onClose }: { job: CtJob; onClose: () =
       title: job.title,
       detail: job.detail,
       key: job.key,
-      owner: job.owner,
-      cmds: [rm, ...job.cmds],
-      success: job.success,
-      configCmd: job.configCmd,
+      owner: job.data.owner,
+      cmds: [rm, ...job.data.cmds],
+      success: job.data.success,
+      configCmd: job.data.configCmd,
       onFinished: () => void ct.reload("containers"),
     });
     onClose();

@@ -7,10 +7,19 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Añadido
-- **Contenedores → tareas en segundo plano**: «Levantar», «Actualizar» y «Aplicar cambios» de Compose, y «Descargar
-  imagen», siguen aunque cierres la ventana. El botón **Tareas** muestra la salida en vivo (una línea por capa o por
-  contenedor), el tiempo, un aviso si lleva un minuto sin salida y **Cancelar**, que detiene todo también en el
-  servidor (también si se ejecuta como otro usuario o como root). Al terminar sale un aviso.
+- **Tareas en segundo plano para toda la app**: lo que tarda sigue aunque cierres el diálogo que lo lanzó o cambies de
+  pestaña. Abajo a la derecha aparece una ventanita con cuántas hay en marcha («2 tareas»); al pulsarla ves cada una
+  (servidor, en qué va, tiempo, progreso si se sabe, **Ver** y **Cancelar**). **Ver** la abre en grande: salida en
+  vivo, pasos, hora de inicio y de fin, resultado, **Cancelar** y **Copiar salida**. Las terminadas se recuerdan hasta
+  cerrar SSHorus (o **Vaciar historial**) y al terminar sale un aviso con **Ver**. Si una tarea lleva un minuto sin
+  escribir nada, lo dice. **Cancelar** detiene el proceso también en el servidor, con el mismo usuario que lo lanzó
+  (root con sudo o el dueño de los contenedores).
+- Van como tarea: Compose («Levantar», «Actualizar», «Aplicar cambios») y **Descargar imagen** (el botón **Tareas** de
+  Contenedores abre la lista con solo las de ese servidor); **Vulnerabilidades → Arreglar / Arreglar todo lo que tiene
+  solución** (antes la ventana se quedaba cargando mientras `dnf upgrade` trabajaba; ahora se ve la salida en vivo y,
+  con dnf, cuántos paquetes lleva), **Actualizar imagen** (descarga, Compose y systemd), **Auditoría → Arreglar y
+  Arreglar todo lo seguro**, y **Reiniciar ahora** con sus pasos (reiniciando, esperando a que vuelva, conectado de
+  nuevo) y **Dejar de esperar**.
 - **Compose: «Ya existe un contenedor con ese nombre»** ahora tiene arreglo: **Ver y arreglar** muestra el contenedor
   viejo (id, imagen, estado, fecha, de qué proyecto o herramienta viene y sus volúmenes) y los del mismo origen que
   chocarían después, y **Reemplazar el contenedor viejo y volver a intentarlo** los para y los borra como su dueño
@@ -33,6 +42,12 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Corregido
 - **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.
+
+### Cambiado
+- El aviso flotante de **Reiniciar ahora** (abajo a la izquierda) pasa a ser una tarea más de la ventanita de abajo a
+  la derecha, que se abre sola al empezar.
+- **Cancelar** en «Arreglar» del escáner y de la auditoría ahora detiene de verdad lo que corre como root (antes se
+  cortaba la conexión, pero `dnf` o `apt` podían seguir en el servidor).
 
 ## [1.0.0-beta.3] - 2026-11-24
 

@@ -10,3 +10,5 @@ export * from "./fixPlan";
 export * from "./crossCheck";
 export * from "./restart";
 export * from "./fixRun";
+export * from "./fixJob";
+export * from "./imageUpdateJob";

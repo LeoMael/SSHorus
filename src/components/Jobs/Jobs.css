@@ -1,0 +1,415 @@
+/* Tareas en segundo plano: esquina (indicador, ventanita, avisos), vista grande y panel de una tarea. Prefijo: jb- */
+
+.jb-grow {
+  flex: 1;
+}
+.jb-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jb-nowrap {
+  white-space: nowrap;
+}
+.jb-spinner {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+.jb-ok {
+  flex: none;
+  color: var(--green);
+}
+.jb-bad {
+  flex: none;
+  color: var(--red);
+}
+
+/* ───────── Esquina ───────── */
+/* Encima de la barra de transferencias (34 px plegada, 260 px abierta) y de los diálogos. */
+.jb-corner {
+  position: fixed;
+  right: 16px;
+  bottom: 44px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: min(400px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.jb-corner > * {
+  pointer-events: auto;
+}
+body:has(.tp-root.tp-expanded) .jb-corner {
+  bottom: 270px;
+}
+/* Los avisos generales van encima de la esquina (JobsCorner mide su alto). */
+body:has(.jb-corner) .toaster {
+  bottom: var(--jb-stack, 84px);
+}
+.jb-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.jb-notices:empty {
+  display: none;
+}
+.jb-notice {
+  align-items: center;
+}
+
+.jb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.jb-pill:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.jb-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.jb-pill-busy {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.jb-pill-bad {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.jb-pop {
+  width: 100%;
+  max-height: min(420px, 60vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+}
+.jb-pop-head,
+.jb-pop-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+}
+.jb-pop-head {
+  border-bottom: 1px solid var(--border);
+}
+.jb-pop-foot {
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+}
+.jb-pop-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.jb-pop-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+}
+.jb-pop-row + .jb-pop-row {
+  border-top: 1px solid var(--border);
+}
+.jb-pop-row > .spinner,
+.jb-pop-row > svg {
+  margin-top: 2px;
+}
+.jb-pop-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.jb-pop-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.jb-pop-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.jb-pop-btns {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ───────── Panel de una tarea ───────── */
+.jb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  font-size: var(--fs-sm);
+}
+.jb-panel-compact {
+  margin-top: 10px;
+}
+.jb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+.jb-head strong {
+  flex: none;
+  max-width: 55%;
+}
+.jb-times {
+  font-size: 11.5px;
+}
+.jb-phase {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.jb-warn {
+  padding: 6px 10px;
+  border-left: 3px solid var(--yellow);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.jb-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: rgb(244 63 94 / 0.08);
+  color: var(--red);
+}
+.jb-error > svg {
+  flex: none;
+  margin-top: 1px;
+}
+.jb-error pre {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.jb-summary {
+  padding: 6px 10px;
+  border-left: 3px solid var(--yellow);
+  background: var(--surface-2);
+}
+.jb-summary-ok {
+  border-left-color: var(--green);
+}
+.jb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.jb-out {
+  flex: 1;
+  min-height: 120px;
+  max-height: none;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+.jb-out-sm {
+  flex: none;
+  min-height: 80px;
+  max-height: 280px;
+}
+.jb-out:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.jb-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.jb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-faint);
+}
+.jb-step-done {
+  color: var(--green);
+}
+.jb-step-current {
+  color: var(--text);
+}
+.jb-step-error {
+  color: var(--red);
+}
+.jb-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jb-progress-bar {
+  flex: 1;
+}
+.jb-progress-bar > div {
+  background: var(--accent);
+}
+
+/* ───────── Vista grande ───────── */
+.jb-center {
+  height: min(760px, 88vh);
+}
+.jb-center-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 12px;
+  overflow: hidden;
+}
+.jb-list {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.jb-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.jb-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--mix-accent-12);
+  font-size: var(--fs-sm);
+}
+.jb-filter span {
+  flex: 1;
+}
+.jb-empty {
+  padding: 20px 10px;
+}
+.jb-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.jb-item > .spinner,
+.jb-item > svg {
+  margin-top: 2px;
+}
+.jb-item:hover {
+  background: var(--surface-2);
+}
+.jb-item.on {
+  background: var(--accent-bg);
+}
+.jb-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.jb-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.jb-item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jb-item-top strong {
+  flex: 1;
+}
+.jb-item-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.jb-detail {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.jb-detail > .jb-panel {
+  flex: 1;
+}
+.jb-foot-note {
+  flex: 1;
+  align-self: center;
+  font-size: 11.5px;
+}
+
+@media (max-width: 720px) {
+  .jb-center-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(90px, 30%) 1fr;
+  }
+  .jb-foot-note {
+    display: none;
+  }
+}

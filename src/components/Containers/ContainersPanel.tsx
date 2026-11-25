@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { Boxes, RefreshCw, ShieldAlert } from "lucide-react";
 import { ownerIsRoot, perOwner } from "../../features/containers";
-import { startJob } from "../../features/containers/jobs";
+import { startCtJob } from "../../features/containers/jobs";
 import { usePrivilege, useElevation, useStoredSudo } from "../../features/privileges";
 import { CtContext, type CtContextValue } from "./context";
 import { NoEngine } from "./NoEngine";
@@ -82,14 +82,17 @@ export function ContainersPanel({ sessionId, profileId, active, disabled }: Cont
       runRawAs,
       review: setReview,
       startJob: (req) =>
-        startJob(runner, {
+        startCtJob(runner, {
           ...req,
+          actions: (j) => [
+            ...(j.data.conflicts.length ? [{ label: "Ver y arreglar", primary: true, run: () => setConflict(j) }] : []),
+            ...(j.data.needSudo ? [{ label: "Introducir contraseña de sudo", run: askSudo }] : []),
+          ],
           onFinished: (j) => {
-            if (j.needSudo) askSudo();
+            if (j.data.needSudo) askSudo();
             req.onFinished?.(j);
           },
         }),
-      fixConflict: setConflict,
       askSudo,
       openLogs: setLogs,
       openInspect: setInspectC,

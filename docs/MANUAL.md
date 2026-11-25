@@ -28,7 +28,8 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 19. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
 20. [Ajustes](#ajustes)
 21. [Atajos de teclado](#atajos-de-teclado)
-22. [Solución de problemas](#solución-de-problemas)
+22. [Tareas en segundo plano](#tareas-en-segundo-plano)
+23. [Solución de problemas](#solución-de-problemas)
 
 ---
 
@@ -280,9 +281,9 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - Clic en un puerto de un contenedor → **Abrir túnel a mi PC…** para usarlo en tu navegador.
 - En **Imágenes**, el botón de vulnerabilidades te lleva a Administración → Vulnerabilidades.
 - **Levantar**, **Actualizar** (con la opción de volver a construir las imágenes propias) y **Descargar imagen** van
-  **en segundo plano**: puedes cerrar la ventana o ir a otra pestaña. El botón **Tareas** de arriba muestra cada una
-  con su salida en vivo (una línea por capa o contenedor), el tiempo, un aviso si lleva un minuto sin escribir nada y
-  **Cancelar**, que la detiene también en el servidor. Al terminar ves un aviso.
+  **en segundo plano** (ver [Tareas en segundo plano](#tareas-en-segundo-plano)): puedes cerrar la ventana o ir a otra
+  pestaña. La salida en vivo junta las líneas de progreso (una por capa o contenedor). El botón **Tareas** de arriba
+  abre la lista con solo las de Contenedores de ese servidor.
 - Si Compose dice **«Ya existe un contenedor con ese nombre»** (por ejemplo, el proyecto se levantó antes con
   podman-compose o a mano), la tarea muestra **Ver y arreglar**: ves el contenedor viejo (imagen, estado, de dónde
   viene y sus volúmenes) y **Reemplazar el contenedor viejo y volver a intentarlo** lo para y lo borra como su dueño,
@@ -687,6 +688,31 @@ en la terminal es de la shell (borrar palabra). Con la vista dividida cierra el 
 | `Ctrl+Enter` | Ejecutar y ver el resultado en el panel |
 | `Ctrl+Enter` en «Nuevo comando» o en «Ejecutar en varios servidores» | Guardar / ejecutar (⌘ en macOS) |
 | `Esc` | Volver o cerrar la paleta |
+
+## Tareas en segundo plano
+
+Lo que tarda (actualizar paquetes, levantar un proyecto de Compose, descargar una imagen, reiniciar el servidor…)
+sigue aunque cierres el diálogo que lo lanzó o te vayas a otra pestaña.
+
+- **Abajo a la derecha** aparece una ventanita: «2 tareas» mientras hay alguna en marcha, o «3 terminadas» después.
+  Un punto rojo avisa de que alguna falló.
+- Al pulsarla ves cada tarea: qué es, en qué servidor, en qué va (la última línea de su salida o el paso), cuánto
+  lleva, una barra si se sabe cuánto falta, y los botones **Ver** y **Cancelar**.
+- **Ver** la abre en grande: la salida completa en vivo, los pasos, a qué hora empezó y terminó, el resultado,
+  **Cancelar** y **Copiar salida**. A la izquierda está la lista de todas.
+- **Cancelar** detiene la tarea también en el servidor, con el mismo usuario que la lanzó (root con sudo, o el dueño
+  de los contenedores). Cancelar una actualización de paquetes a mitad puede dejarla a medias: luego pulsa **Volver a
+  comprobar**.
+- Si una tarea lleva un minuto sin escribir nada, sale un aviso: puede seguir trabajando (descargando, instalando) o
+  estar atascada.
+- Al terminar sale un aviso con **Ver**. Las terminadas se quedan en la lista hasta que cierras SSHorus, las quitas con
+  la **X** o pulsas **Vaciar historial**.
+- Algunas tareas traen botones propios al terminar: **Ver y arreglar** (nombre de contenedor repetido),
+  **Introducir contraseña de sudo**, **Reconectar** (tras un reinicio). Te llevan a la pestaña de ese servidor.
+
+Van en segundo plano: Compose (Levantar, Actualizar, Aplicar cambios), Descargar imagen, Vulnerabilidades → Arreglar,
+Actualizar imagen, Auditoría → Arreglar y Arreglar todo lo seguro, y Reiniciar ahora. Las transferencias y
+«Ejecutar en varios servidores» tienen su propio panel.
 
 ## Solución de problemas
 

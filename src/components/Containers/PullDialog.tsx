@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Download, TerminalSquare } from "lucide-react";
 import { pullImage, validateImage, withOwner } from "../../features/containers";
-import { useCtJobs } from "../../features/containers/jobs";
+import { useJobs } from "../../stores/jobs";
 import { AdmModal } from "../ui/AdmModal";
 import { useCt } from "./context";
-import { JobView } from "./JobView";
+import { JobPanel } from "../Jobs/JobPanel";
 
 export function PullDialog({ initial, owner, onClose }: { initial: string; owner?: string; onClose: () => void }) {
   const ct = useCt();
   const who = owner ?? ct.newOwner ?? undefined;
   const [ref, setRef] = useState(initial);
   const [jobId, setJobId] = useState<string | null>(null);
-  const job = useCtJobs((s) => (jobId ? (s.jobs.find((j) => j.id === jobId) ?? null) : null));
+  const job = useJobs((s) => (jobId ? (s.jobs.find((j) => j.id === jobId) ?? null) : null));
   const busy = job?.status === "running";
 
   const v = ref.trim();
@@ -64,7 +64,7 @@ export function PullDialog({ initial, owner, onClose }: { initial: string; owner
             <div className="ct-hint-line faint">Consejo: en Podman usa el nombre completo (docker.io/library/{v}) para no depender de los registros configurados.</div>
           )}
           <pre className="ct-cmd">{ct.render(cmd)}</pre>
-          {job && <JobView job={job} onClose={() => setJobId(null)} />}
+          {job && <JobPanel job={job} compact />}
         </div>
         <div className="modal-footer">
           <button

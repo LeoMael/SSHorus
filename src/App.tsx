@@ -26,7 +26,7 @@ import { initMcp } from "./features/mcp/store";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { SudoAskHost } from "./features/mcp/SudoAskHost";
 import { PasswordRunHost } from "./features/mcp/PasswordRunDialog";
-import { RebootHost } from "./features/reboot";
+import { JobsHost } from "./components/Jobs/JobsHost";
 import { McpActivity } from "./components/McpActivity/McpActivity";
 import { useUi } from "./stores/ui";
 import { closeLocalTab, initLocalTabs, isLocalTabId, useLocalTabs } from "./features/localterm/store";
@@ -314,7 +314,7 @@ export default function App() {
       <ChoiceDialogHost />
       <SudoAskHost />
       <PasswordRunHost />
-      <RebootHost />
+      <JobsHost />
     </>
   );
 }

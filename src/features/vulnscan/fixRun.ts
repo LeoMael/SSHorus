@@ -1,5 +1,6 @@
-// «Arreglar» y «Volver a comprobar»: ejecución en el servidor. Lo puro (grupos, comando, cruce de
-// informes, servicios a reiniciar) está en fixPlan.ts, crossCheck.ts y restart.ts.
+// «Arreglar» y «Volver a comprobar»: ejecución en el servidor (la actualización en sí va como tarea en
+// segundo plano, fixJob.ts). Lo puro (grupos, comando, cruce de informes, servicios a reiniciar) está en
+// fixPlan.ts, crossCheck.ts y restart.ts.
 //
 // Volver a comprobar = fases 1–3 del análisis otra vez (detectar, inventario y herramienta de la distro,
 // sin sudo) + OSV con las versiones de AHORA; el motor cambia el sistema del informe por lo nuevo y lo
@@ -18,11 +19,6 @@ export const FIX_TIMEOUT_SECS = 600;
 
 function raw(r: ExecResult) {
   return { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode, timedOut: r.timedOut, truncated: r.truncated };
-}
-
-/** Ejecuta el comando de arreglo como root, con la salida en vivo. */
-export function runFix(sessionId: string, command: string, el: Elevation, c: UpdateCancel, onOutput: (text: string) => void): Promise<ExecResult> {
-  return runCancellable(sessionId, command, el, FIX_TIMEOUT_SECS, c, onOutput);
 }
 
 /** Qué servicios hay que reiniciar y si el servidor pide reiniciarse (como root: ven todos los procesos). */

@@ -17,7 +17,7 @@ import type {
   VolumeInfo,
 } from "../../features/containers";
 import type { Elevation } from "../../features/privileges";
-import type { CtJob, JobRequest } from "../../features/containers/jobs";
+import type { JobRequest } from "../../features/containers/jobs";
 import type { AutostartState } from "./useAutostart";
 import type { ResourceKind } from "../../features/containers/panelLogic";
 
@@ -103,11 +103,10 @@ export interface CtContextValue {
   review: (req: ReviewRequest) => void;
   /**
    * Tarea larga en segundo plano (Compose up/pull/build, descargar una imagen), como el dueño de los
-   * comandos: sigue aunque se cierre el diálogo, con salida en vivo y «Cancelar». Devuelve su id.
+   * comandos: sigue aunque se cierre el diálogo, con salida en vivo y «Cancelar» (centro de tareas de
+   * la esquina). Devuelve su id.
    */
   startJob: (req: JobRequest) => string;
-  /** Abre el arreglo de «Ya existe un contenedor con ese nombre» de una tarea que falló. */
-  fixConflict: (job: CtJob) => void;
   askSudo: () => void;
   openLogs: (t: LogsTarget) => void;
   openInspect: (c: Container) => void;

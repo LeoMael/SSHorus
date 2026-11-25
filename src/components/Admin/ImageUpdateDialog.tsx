@@ -1,11 +1,12 @@
 // «Actualizar imagen» (escáner → hallazgo de una imagen de Podman o Docker).
 // 1. Lee en el momento (inspect, como el dueño) qué contenedores usan la imagen y cómo se crearon.
 // 2. Muestra el plan y los comandos exactos; no se ejecuta nada sin confirmar.
-// 3. Ejecuta paso a paso (descarga, Compose, systemd), con su salida y «Cancelar».
+// 3. Los pasos automáticos (descarga, Compose, systemd) van como tarea en segundo plano
+//    (features/vulnscan/imageUpdateJob.ts): salida en vivo, «Cancelar», y se puede cerrar el diálogo.
 // 4. Contenedores creados con `run`: formulario «Nuevo contenedor» relleno, en modo «reemplazar».
 // 5. Vuelve a analizar la imagen y dice si siguen las vulnerabilidades.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, CircleSlash, KeyRound, Loader2, Play, RefreshCw, SkipForward, Square } from "lucide-react";
+import { AlertTriangle, Check, KeyRound, Loader2, Play, RefreshCw, SkipForward, Square } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import type { ExecResult } from "../../api/types";
 import type { Report, Target, UserCtx } from "../../api/vulnscan";
@@ -14,6 +15,7 @@ import { renderCmd } from "../../features/containers/shell";
 import { wrapScript, ElevationError } from "../../features/privileges";
 import {
   elevationFor,
+  imageUpdateData,
   ownerCtx,
   ownerIsRoot,
   ownerLabel,
@@ -27,32 +29,29 @@ import {
   rescanMessage,
   runAsOwner,
   runFormFrom,
+  startImageUpdate,
   stepScript,
   UpdateCancel,
   UpdateCanceled,
   updatableTag,
   useVulnScan,
+  watchImageUpdate,
   type Group,
   type ImageConfig,
   type RescanResult,
   type UpdatePlan,
 } from "../../features/vulnscan";
+import { useJobs } from "../../stores/jobs";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
-import { RunFormFields } from "../Containers/RunFormFields";
+import { JobPanel } from "../Jobs/JobPanel";
 import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
+import { ImageUpdatePlan } from "./ImageUpdatePlan";
+import { ImageUpdateReplace } from "./ImageUpdateReplace";
 import "../Containers/Containers.css";
 
 type Stage = "read" | "review" | "running" | "replace" | "rescan" | "done";
-type StepStatus = "pending" | "running" | "ok" | "error" | "skipped";
-
-interface StepView {
-  label: string;
-  status: StepStatus;
-  output: string;
-}
-
 type RunGroup = Extract<Group, { kind: "run" }>;
 
 /** Últimas líneas de la salida de un comando. */
@@ -60,50 +59,6 @@ function tail(r: ExecResult | null, lines = 40): string {
   if (!r) return "";
   const text = [r.stdout.trim(), r.stderr.trim()].filter(Boolean).join("\n");
   return text.split("\n").slice(-lines).join("\n");
-}
-
-function StepIcon({ s }: { s: StepStatus }) {
-  switch (s) {
-    case "ok":
-      return <Check size={13} className="vs-ph-ok" />;
-    case "running":
-      return <Loader2 size={13} className="adm-spin" />;
-    case "error":
-      return <AlertTriangle size={13} className="vs-ph-error" />;
-    case "skipped":
-      return <CircleSlash size={13} className="faint" />;
-    default:
-      return <span className="vs-ph-dot" />;
-  }
-}
-
-function GroupLine({ g }: { g: Group }) {
-  switch (g.kind) {
-    case "compose":
-      return (
-        <li>
-          <strong>Compose</strong> «{g.project}» <span className="faint mono">({g.dir})</span>: se recrean {g.containers.join(", ")}
-        </li>
-      );
-    case "systemd":
-      return (
-        <li>
-          <strong>systemd</strong> «{g.unit}»{g.user ? " (de usuario)" : ""}: se reinicia y recrea {g.containers.join(", ")}
-        </li>
-      );
-    case "run":
-      return (
-        <li>
-          <strong>Creado a mano</strong>: {g.container.name}. Después de descargar se abre el formulario para revisarlo y confirmar.
-        </li>
-      );
-    case "manual":
-      return (
-        <li className="vs-up-manual">
-          <strong>A mano</strong>: {g.containers.join(", ")}. {g.reason}.
-        </li>
-      );
-  }
 }
 
 export function ImageUpdateDialog({ report, target, onClose }: { report: Report; target: Target; onClose: () => void }) {
@@ -123,7 +78,8 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
   const [full, setFull] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [needSudo, setNeedSudo] = useState(false);
-  const [steps, setSteps] = useState<StepView[]>([]);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const job = useJobs((s) => (jobId ? (s.jobs.find((j) => j.id === jobId) ?? null) : null));
   const [runIdx, setRunIdx] = useState(0);
   const [imageCfg, setImageCfg] = useState<ImageConfig | null>(null);
   const [form, setForm] = useState<RunForm>(emptyRunForm);
@@ -135,7 +91,9 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
   const [replaced, setReplaced] = useState<string[]>([]);
 
   // El informe nuevo se pone en pantalla al cerrar: si se pusiera antes, el hallazgo (de la imagen
-  // vieja) desaparece y con él este diálogo.
+  // vieja) desaparece y con él este diálogo. Lo mismo con el de la tarea (watchImageUpdate), que va
+  // antes: si luego se volvió a escanear aquí, ese informe es el más nuevo y se pone el último.
+  useEffect(() => (jobId ? watchImageUpdate(jobId) : undefined), [jobId]);
   const newReport = useRef<Report | null>(null);
   useEffect(
     () => () => {
@@ -186,7 +144,7 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [el?.kind, disabled, stage === "read"]);
 
-  // 5. Volver a analizar.
+  // 5. Volver a analizar (tras reemplazar los creados a mano, o a mano con «Volver a escanear»).
   const rescan = useCallback(async () => {
     if (!el) return;
     setStage("rescan");
@@ -195,19 +153,7 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     const c = new UpdateCancel();
     cancel.current = c;
     try {
-      const r = await rescanImage({
-        sessionId,
-        report,
-        target,
-        tag,
-        engine,
-        user,
-        el,
-        useOsv: settings.useOsv,
-        useTrivy: settings.useTrivy,
-        cancel: c,
-        onProgress: setProgress,
-      });
+      const r = await rescanImage({ sessionId, report, target, tag, engine, user, el, useOsv: settings.useOsv, useTrivy: settings.useTrivy, cancel: c, onProgress: setProgress });
       newReport.current = r.report;
       setResult(r);
       if (r.remaining > 0) toast.info("Imagen actualizada", rescanMessage(r.remaining));
@@ -235,37 +181,42 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     setStage("replace");
   };
 
-  // 3. Pasos automáticos.
-  const start = async () => {
+  // 3. Pasos automáticos, en segundo plano.
+  const start = () => {
     if (!plan || !el) return;
-    setStage("running");
     setError(null);
     setNeedSudo(false);
-    const c = new UpdateCancel();
-    cancel.current = c;
-    const views: StepView[] = plan.steps.map((s) => ({ label: s.label, status: "pending", output: "" }));
-    setSteps(views);
-    const patch = (i: number, v: Partial<StepView>) => setSteps((ss) => ss.map((s, j) => (j === i ? { ...s, ...v } : s)));
-    for (let i = 0; i < plan.steps.length; i++) {
-      patch(i, { status: "running" });
-      try {
-        const r = await runAsOwner(sessionId, engine, user, el, stepScript(plan.steps[i]), 900, c);
-        if (r.exitCode !== 0 || r.timedOut) {
-          patch(i, { status: "error", output: tail(r) });
-          setError(failureMessage(r));
-          for (let j = i + 1; j < plan.steps.length; j++) patch(j, { status: "skipped" });
-          return;
-        }
-        patch(i, { status: "ok", output: tail(r, 12) });
-      } catch (e) {
-        patch(i, { status: "error" });
-        for (let j = i + 1; j < plan.steps.length; j++) patch(j, { status: "skipped" });
-        fail(e);
-        return;
-      }
-    }
-    openReplace(0);
+    setStage("running");
+    setJobId(
+      startImageUpdate({
+        sessionId,
+        report,
+        target,
+        plan,
+        tag,
+        engine,
+        user,
+        el,
+        who,
+        useOsv: settings.useOsv,
+        useTrivy: settings.useTrivy,
+        actions: (d) => (d.needSudo ? [{ label: "Introducir contraseña de sudo", run: askSudo }] : []),
+      }),
+    );
   };
+
+  // Al terminar la tarea (con el diálogo abierto): seguir con los creados a mano o enseñar el resultado.
+  const jobStatus = job?.status;
+  useEffect(() => {
+    if (stage !== "running" || !job || jobStatus === "running") return;
+    const d = imageUpdateData(job);
+    if (jobStatus === "done" && d?.pendingRun.length) openReplace(0);
+    else {
+      if (d?.rescan) setResult(d.rescan);
+      setStage("done");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobStatus]);
 
   // 4. Reemplazar un contenedor creado con `run`.
   const replace = async () => {
@@ -292,14 +243,10 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     }
   };
 
-  const running = busy || stage === "rescan" || ((stage === "running" || stage === "read") && !!el && !error);
-  const close = () => {
-    if (running) return;
-    onClose();
-  };
+  const jobRunning = jobStatus === "running";
+  const running = busy || stage === "rescan" || (stage === "read" && !!el && !error);
   const shownCmds = plan ? plan.steps.flatMap((s) => s.cmds) : [];
-  const shown =
-    owner.kind === "root" && el ? displayCmds(shownCmds, el) : shownCmds.map((c) => renderCmd(c));
+  const shown = owner.kind === "root" && el ? displayCmds(shownCmds, el) : shownCmds.map((c) => renderCmd(c));
   const howText =
     owner.kind === "user"
       ? `Se ejecutará como «${who}» (SSHorus entra como ese usuario con sudo, igual que al analizar):`
@@ -307,10 +254,13 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
         ? "Se ejecutará como root:"
         : "Se ejecutará con tu usuario:";
   const errors = validateRunForm(form);
-  const replacePreview = current ? replaceScript(engine, current.container.name, current.container.running, form) : "";
 
   return (
-    <AdmModal title={stage === "replace" && current ? `Reemplazar contenedor «${current.container.name}»` : "Actualizar imagen"} onClose={close} width={stage === "replace" ? 760 : 640}>
+    <AdmModal
+      title={stage === "replace" && current ? `Reemplazar contenedor «${current.container.name}»` : "Actualizar imagen"}
+      onClose={() => !running && onClose()}
+      width={stage === "replace" ? 760 : job ? 720 : 640}
+    >
       <div className="modal-body vs-up">
         <div className="vs-up-head">
           <span className="mono">{tag}</span>
@@ -334,27 +284,7 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
           </div>
         )}
 
-        {plan && (stage === "review" || stage === "running") && (
-          <>
-            {plan.groups.length > 0 && (
-              <ul className="vs-up-groups">
-                {plan.groups.map((g, i) => (
-                  <GroupLine key={i} g={g} />
-                ))}
-              </ul>
-            )}
-            {plan.recreated.length > 0 && (
-              <p className="vs-up-recreate">
-                Se recrean: <strong>{plan.recreated.join(", ")}</strong>
-              </p>
-            )}
-            {plan.notes.map((n) => (
-              <p key={n} className="vs-d-note">
-                {n}
-              </p>
-            ))}
-          </>
-        )}
+        {plan && (stage === "review" || stage === "running") && <ImageUpdatePlan plan={plan} />}
 
         {plan && stage === "review" && (
           <>
@@ -369,18 +299,13 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
           </>
         )}
 
-        {steps.length > 0 && (stage === "running" || stage === "replace" || stage === "rescan" || stage === "done") && (
+        {jobRunning && <p className="vs-d-note faint">Puedes cerrar esta ventana: sigue en segundo plano y verás un aviso al terminar.</p>}
+        {job && stage !== "replace" && <JobPanel job={job} compact />}
+
+        {replaced.length > 0 && (
           <ul className="vs-up-steps" aria-live="polite">
-            {steps.map((s, i) => (
-              <li key={i} className={`vs-ph-${s.status}`}>
-                <div className="vs-up-step">
-                  <StepIcon s={s.status} /> <span>{s.label}</span>
-                </div>
-                {s.output && (s.status === "error" || stage === "running") && <pre className="ct-cmd ct-cmd-sm">{s.output}</pre>}
-              </li>
-            ))}
             {replaced.map((n) => (
-              <li key={`r-${n}`} className="vs-ph-ok">
+              <li key={n} className="vs-ph-ok">
                 <div className="vs-up-step">
                   <Check size={13} /> <span>Reemplazado: {n}</span>
                 </div>
@@ -390,42 +315,19 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
         )}
 
         {stage === "replace" && current && (
-          <form
-            className="ct-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void replace();
-            }}
-          >
-            <p className="vs-d-note">
-              Revisa lo que se copió del contenedor. Al confirmar: el viejo pasa a llamarse «{current.container.name}-viejo» y se para; se crea
-              el nuevo con el nombre original. Si el nuevo arranca bien se borra el viejo; si falla, se borra el nuevo y vuelve el viejo.
-            </p>
-            {warnings.length > 0 && (
-              <div className="ct-warn">
-                <strong>No se copia (revísalo):</strong>
-                <ul className="ct-list">
-                  {warnings.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <RunFormFields
-              f={form}
-              setF={setForm}
-              engine={engine}
-              errors={errors}
-              touched={touched}
-              imageTags={target.image?.tags ?? []}
-              volumeNames={current.container.mounts.filter((m) => m.type === "volume" && m.name).map((m) => m.name)}
-              networkNames={current.container.networks}
-              lingerHint={engine === "podman" && owner.kind !== "root" && !connectedAsRoot}
-              nameLocked
-            />
-            <div className="ct-review-label">{howText}</div>
-            <pre className="ct-cmd ct-cmd-sm">{replacePreview}</pre>
-          </form>
+          <ImageUpdateReplace
+            group={current}
+            form={form}
+            setForm={setForm}
+            warnings={warnings}
+            errors={errors}
+            touched={touched}
+            engine={engine}
+            imageTags={target.image?.tags ?? []}
+            lingerHint={engine === "podman" && owner.kind !== "root" && !connectedAsRoot}
+            howText={howText}
+            onSubmit={() => void replace()}
+          />
         )}
 
         {stage === "rescan" && (
@@ -472,19 +374,19 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
             <button className="btn" onClick={onClose}>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={() => void start()} disabled={!el || disabled} autoFocus>
+            <button className="btn btn-primary" onClick={start} disabled={!el || disabled} autoFocus>
               <Play size={13} /> Actualizar imagen
             </button>
           </>
         ) : (
           <>
-            {(stage === "done" || (stage === "running" && error)) && (
+            {stage === "done" && (
               <button className="btn" onClick={() => void rescan()} disabled={!el || disabled} title="Vuelve a analizar solo esta imagen">
                 <RefreshCw size={13} /> Volver a escanear
               </button>
             )}
             <button className="btn btn-primary" onClick={onClose}>
-              Cerrar
+              {jobRunning ? "Cerrar (sigue en segundo plano)" : "Cerrar"}
             </button>
           </>
         )}

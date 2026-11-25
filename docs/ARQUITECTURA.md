@@ -223,9 +223,9 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `fileExplorer`, `fleet`, `github`, `infra`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
-| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui` y `sessionState` (estado de cada sesión abierta) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
+| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano) y `sessionState` (estado de cada sesión abierta) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte |
 | `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida y `lib/remote/` (lo común a los scripts remotos) |
@@ -244,6 +244,13 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 
 - **Ejecutar con elevación** (`runScript`, `readElevated`, `ElevationError`, `succeeded`, `failureText`) vive en
   `features/privileges/run.ts`: lo usan Administración, Contenedores, Auditoría, el escáner y el resto.
+- **Tareas en segundo plano** (lo que tarda y sigue aunque se cierre su diálogo): cada función describe su tarea con
+  `startJob({ kind, sessionId, title, steps, run(ctx) })` (o `trackJob` si avanza por fuera, como un reinicio) en su
+  propio `features/<x>/…Job.ts`; dentro de `run` usa `ctx.output`, `ctx.phase`, `ctx.step`, `ctx.onCancel` y
+  `runKillable`/`runElevated` (`features/jobs/remote.ts`) para que «Cancelar» mate el proceso en el servidor con el
+  mismo usuario. Lo puro (lista, historial, texto de estado, salida) está en `features/jobs/state.ts` y `output.ts`;
+  el store, en `stores/jobs.ts` (no sabe de ninguna función concreta); la interfaz, en `components/Jobs/` (montada
+  una vez en `App`). Un resultado propio se enseña con el `view` de la tarea (p. ej. `Admin/VulnFixJobView.tsx`).
 - Si un archivo solo lo usa un dominio, va en la carpeta de ese dominio aunque parezca genérico. Cuando lo use un
   segundo dominio, se mueve a `components/ui/` o a `lib/`.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).

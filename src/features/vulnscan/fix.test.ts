@@ -5,7 +5,7 @@
 import type { Finding, Report, Target } from "../../api/vulnscan";
 import { byReason, crossReports, crossSummary } from "./crossCheck";
 import { fixSuggestion, kernelSuggestion } from "./fixCommand";
-import { fixKind, groupFindings, packageChoices, upgradeCommand } from "./fixPlan";
+import { fixKind, groupFindings, packageChoices, upgradeCommand, upgradeProgress } from "./fixPlan";
 import { parseRestart, restartCommand } from "./restart";
 
 let passed = 0;
@@ -152,6 +152,12 @@ eq(dnf, { tool: "needs-restarting", services: ["chronyd.service"], reboot: true 
 eq(parseRestart("@@tool\n@@services\n@@reboot\n@@end\n"), { tool: null, services: [], reboot: false }, "sin herramienta");
 eq(restartCommand("nginx.service"), "systemctl restart nginx.service", "reiniciar un servicio");
 eq(restartCommand("x;reboot"), null, "nombre raro");
+
+// ── Progreso de la actualización (tarea en segundo plano) ──
+eq(upgradeProgress("  Upgrading        : openssl-libs-1:3.0.7-27.el9.x86_64        3/10 \n"), { done: 3, total: 10 }, "dnf 4");
+eq(upgradeProgress("[ 4/12] Upgrading openssl-libs-0:3.2.2 100% |  10.0 MiB/s\n[ 5/12] Upgrading curl"), { done: 5, total: 12 }, "dnf 5: la última del trozo");
+eq(upgradeProgress("Setting up openssl (3.0.2-0ubuntu1.18) ...\n"), null, "apt: no se sabe");
+eq(upgradeProgress("Verifying : x 11/10"), null, "una cuenta rara no vale");
 
 console.log(`fix.test.ts: ${passed} comprobaciones correctas`);
 
