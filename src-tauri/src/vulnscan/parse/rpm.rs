@@ -44,7 +44,8 @@ pub fn parse_qa(text: &str) -> Vec<(Package, Option<String>)> {
                 name: name.to_string(),
                 source,
                 version,
-                // A OSV se manda SIN epoch (con «1:» delante AlmaLinux perdía avisos).
+                // A OSV se manda SIN epoch (con «1:» delante se perdían avisos cuyo dato no lo trae); luego
+                // cada aviso se vuelve a comprobar con el epoch de `version` (ver `rpmver.rs`).
                 source_version: vr,
                 arch: Some(f[4].trim().to_string()).filter(|a| !a.is_empty()),
             },

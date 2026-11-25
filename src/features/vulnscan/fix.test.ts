@@ -2,8 +2,8 @@
 // cruce del informe viejo con el nuevo y servicios a reiniciar.
 // Ejecutar: npx rolldown src/features/vulnscan/fix.test.ts -p node -f esm -o /tmp/fx.mjs && node /tmp/fx.mjs
 // (también con `npx vitest run`: las comprobaciones corren al cargar el archivo y cuentan como una prueba).
-import type { Finding, Report, Target } from "../../api/vulnscan";
 import { byReason, crossReports, crossSummary } from "./crossCheck";
+import { finding, report } from "./fixtures";
 import { fixSuggestion, kernelSuggestion } from "./fixCommand";
 import { fixKind, groupFindings, packageChoices, upgradeCommand, upgradeProgress } from "./fixPlan";
 import { parseRestart, restartCommand } from "./restart";
@@ -12,67 +12,6 @@ let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
   if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: esperaba ${JSON.stringify(want)}, llegó ${JSON.stringify(got)}`);
   passed++;
-}
-
-function finding(p: Partial<Finding>): Finding {
-  const f: Finding = {
-    key: "",
-    id: "CVE-2026-0001",
-    aliases: [],
-    advisories: [],
-    package: "openssl",
-    binaries: ["libssl3", "openssl"],
-    installed: "3.0.11-1",
-    fixed: "3.0.15-1",
-    hasFix: true,
-    severity: "high",
-    distroSeverity: null,
-    cvss: null,
-    cvssVector: null,
-    unimportant: false,
-    status: null,
-    summary: null,
-    target: "system",
-    sources: ["osv"],
-    kernel: false,
-    ecosystem: null,
-    upstream: false,
-    ...p,
-  };
-  return { ...f, key: p.key ?? `${f.id}|${f.package}|${f.target}` };
-}
-
-const targets: Target[] = [
-  { key: "system", kind: "system", label: "Sistema", user: null, ecosystem: null, packages: 1, image: null, sources: [], error: null },
-  { key: "runtime", kind: "runtime", label: "Programas sueltos", user: null, ecosystem: null, packages: 1, image: null, sources: [], error: null },
-  { key: "image:podman::abc", kind: "image", label: "Imagen", user: null, ecosystem: null, packages: 1, image: null, sources: [], error: null },
-];
-
-function report(osId: string, pm: Report["host"]["packageManager"], findings: Finding[], tools: string[] = []): Report {
-  return {
-    id: "r1",
-    serverId: "s1",
-    createdAt: "2026-11-16T10:00:00Z",
-    durationMs: 1,
-    elevated: false,
-    host: {
-      os: { id: osId, idLike: [], versionId: "", version: "", versionCodename: "", prettyName: "", name: "" },
-      kernel: "",
-      arch: "x86_64",
-      packageManager: pm,
-      ecosystem: null,
-      inContainer: false,
-      tools,
-    },
-    sources: [],
-    targets,
-    programs: [],
-    findings,
-    summary: { critical: 0, high: 0, medium: 0, low: 0, unknown: 0, total: 0, withFix: 0, unimportant: 0 },
-    notes: [],
-    ai: null,
-    osvSample: [],
-  };
 }
 
 // ── Grupos ──
@@ -86,7 +25,7 @@ const deb = report("debian", "dpkg", [ssl, zlib, kern, img, node, hidden]);
 const g = groupFindings(deb, deb.findings);
 eq(
   Object.fromEntries(Object.entries(g).map(([k, v]) => [k, v.map((f) => f.id)])),
-  { now: ["CVE-2026-0001"], reboot: ["CVE-2026-0003"], nofix: ["CVE-2026-0002"], image: ["CVE-2026-0004"], manual: ["CVE-2026-0005"] },
+  { now: ["CVE-2026-0001"], reboot: ["CVE-2026-0003"], nofix: ["CVE-2026-0002"], norepo: [], image: ["CVE-2026-0004"], manual: ["CVE-2026-0005"] },
   "cada hallazgo en su grupo (y los «sin importancia» fuera)",
 );
 eq(fixKind(report("arch", null, []), ssl), "manual", "gestor de paquetes desconocido: a mano");

@@ -8,5 +8,5 @@ import "./VulnFix.css";
 export function VulnFixJobView({ job }: { job: Job }) {
   const d = job.data as VulnFixData | undefined;
   if (!d?.result || !d.report || !job.sessionId) return null;
-  return <FixResult sessionId={job.sessionId} result={d.result} restart={d.restart} report={d.report} el={d.el} />;
+  return <FixResult sessionId={job.sessionId} result={d.result} outcomes={d.outcomes ?? null} restart={d.restart} report={d.report} el={d.el} />;
 }

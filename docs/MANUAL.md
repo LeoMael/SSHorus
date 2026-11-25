@@ -407,6 +407,10 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 3. Filtra con la búsqueda o con **Solo con arreglo**.
 4. Pulsa una fila para ver el **detalle**: versión instalada, versión arreglada, enlaces y **Cómo arreglarlo**.
 5. Usa **Copiar** o **Insertar en terminal** con el comando de arreglo. Revísalo y pulsa `Enter` tú.
+   O pulsa **Arreglar** (o **Arreglar todo lo que tiene solución**): enseña el comando, lo ejecuta como root al
+   confirmar y luego vuelve a comprobar. El resultado sale **paquete por paquete**: *Arreglado*, *Instalado, falta
+   reiniciar* (servicios o el servidor), *Sin versión corregida en tus repos todavía* o *Falló* con la línea de
+   `dnf`/`apt` que lo explica.
 6. El botón **Historial de análisis** abre los 20 últimos análisis. **Exportar** lo guarda en JSON o Markdown.
 
 **Con y sin sudo:**
@@ -420,6 +424,12 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - La lista sale de OSV.dev, de la herramienta de tu distro y de Trivy si está instalado. Nunca de una IA.
 - A OSV.dev solo se envían nombres y versiones de paquetes. **ver qué se envía** te lo enseña.
 - **Cancelar** detiene el análisis también en el servidor. SSHorus nunca ejecuta arreglos solo.
+- **Aún no en tus repos**: la distro ya publicó la versión corregida, pero los repositorios de tu servidor todavía no
+  la traen (Rocky y AlmaLinux suelen ir unos días detrás de Red Hat). Actualizar ahora no la quita; vuelve a
+  comprobar en unos días.
+- **¿Sigue apareciendo?** Abre el detalle: **Por qué sigue apareciendo** lo explica (falta reiniciar, el servidor
+  arranca con el kernel viejo, tus repositorios aún no la tienen, viene de una imagen…). Si el servidor se reinició
+  después del análisis, arriba sale un aviso: pulsa **Volver a comprobar**.
 
 ## Auditar servidor
 

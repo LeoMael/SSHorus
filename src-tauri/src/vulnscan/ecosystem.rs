@@ -65,6 +65,12 @@ pub fn rpm_query_both(eco: &str) -> bool {
     eco.starts_with("Rocky Linux:") || eco.starts_with("AlmaLinux:") || eco.starts_with("openSUSE:")
 }
 
+/// Rocky y AlmaLinux escriben el epoch en la versión arreglada, pero se les pregunta sin él: cada aviso
+/// se vuelve a comprobar con la versión completa (ver `rpmver.rs`).
+pub fn rpm_epoch_matters(eco: &str) -> bool {
+    eco.starts_with("Rocky Linux:") || eco.starts_with("AlmaLinux:")
+}
+
 /// Por qué la distro no tiene ecosistema (para el aviso del informe).
 pub fn no_osv_reason(os: &OsRelease) -> String {
     match os.id.as_str() {

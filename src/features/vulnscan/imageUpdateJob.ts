@@ -66,12 +66,14 @@ async function runSteps(ctx: JobCtx, req: ImageUpdateRequest): Promise<void> {
       wrap: (s) => ownerScript(req.engine, req.user, s),
       exec: (s, run) => runScript(req.sessionId, s, req.el, "", run?.timeoutSecs ?? 30, run?.execId, run ? ctx.output : undefined),
       timedOut: (x) => x.timedOut,
+      stdout: (x) => x.stdout,
     });
     if (r.exitCode !== 0 || r.timedOut) throw new Error(failureMessage(r));
   }
 }
 
 async function rescan(ctx: JobCtx, req: ImageUpdateRequest): Promise<RescanResult> {
+  ctx.check();
   ctx.step(req.plan.steps.length);
   const c = new UpdateCancel();
   const off = ctx.onCancel(() => c.cancel());

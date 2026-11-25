@@ -226,6 +226,44 @@ ok(ran[1].script.startsWith("COMO_DUEÑO\n") && ran[1].script.includes("kill -TE
 eq(getJob(id4)?.status, "canceled", "remota cancelada");
 ok(new JobCanceled().message === "Cancelado", "error de cancelada");
 
+// Al cancelar, el canal termina «bien» (el grupo murió, código 143): no debe seguir con lo de después.
+let after = false;
+let release5: (v: { code: number }) => void = () => undefined;
+const id5 = startJob({
+  kind: "prueba",
+  sessionId: null,
+  title: "Carrera al cancelar",
+  run: async (ctx: JobCtx) => {
+    await runKillable(ctx, "dnf upgrade -y", 600, {
+      exec: (_s, run) => (run ? new Promise<{ code: number }>((r) => (release5 = r)) : Promise.resolve({ code: 0 })),
+      stdout: () => "partial",
+    });
+    after = true;
+  },
+});
+await tick();
+await cancelJob(id5);
+release5({ code: 143 });
+await tick(5);
+eq([after, getJob(id5)?.status], [false, "canceled"], "cancelada: no sigue con lo de después aunque el canal acabe bien");
+ok(getJob(id5)?.lines.some((l) => l.includes("no se pudo detener todo")) ?? false, "si el servidor no pudo parar todo, se avisa");
+
+// Si se pasa de tiempo, también se mata el grupo en el servidor.
+const ran6: boolean[] = [];
+const id6 = startJob({
+  kind: "prueba",
+  sessionId: null,
+  title: "Tiempo",
+  run: async (ctx: JobCtx) => {
+    await runKillable(ctx, "sleep 100", 1, {
+      exec: (_s, run) => (ran6.push(!!run), Promise.resolve({ timedOut: !!run })),
+      timedOut: (r) => r.timedOut,
+    });
+  },
+});
+await tick(5);
+eq([ran6, getJob(id6)?.status], [[true, false], "done"], "pasado de tiempo: se para el grupo");
+
 // ── Script de la tarea y «Cancelar» de verdad con sh ──
 const tmp = fs.mkdtempSync("/tmp/sshorus-jobs-");
 const sh = (script: string) => cp.spawnSync("sh", ["-c", script], { encoding: "utf8", env: { ...env, TMPDIR: tmp } });
@@ -248,6 +286,17 @@ try {
   const fine = sh(jobScript("test-job-5678", "echo hola; exit 3"));
   eq([fine.status, fine.stdout.trim()], [3, "hola"], "una tarea normal devuelve su salida y su código");
   ok(!fs.existsSync(`${tmp}/sshorus-job-test-job-5678.pid`), "al terminar se borra el archivo del grupo");
+
+  // Sin setsid (el shell de la tarea no es jefe de grupo): se para su árbol de procesos.
+  const lone = "test-job-9012";
+  const pf = `${tmp}/sshorus-job-${lone}.pid`;
+  const noGroup = cp.spawn("sh", ["-c", `echo $$ >"${pf}"; exec sh -c 'sleep 31 & sleep 32; echo nunca'`], { env: { ...env, TMPDIR: tmp } });
+  const gone = new Promise<number | null>((res) => noGroup.on("exit", (c) => res(c)));
+  await tick(600);
+  const shell = fs.readFileSync(pf, "utf8").trim();
+  eq(sh(killJobScript(lone)).stdout.trim(), "stopped", "sin grupo propio: detenida");
+  await gone;
+  eq(sh(`pgrep -P ${shell} >/dev/null 2>&1 && echo vivo; pgrep -f 'sleep 3[12]$' >/dev/null && echo vivo || echo nada`).stdout.trim(), "nada", "sin grupo propio: no quedan hijos");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

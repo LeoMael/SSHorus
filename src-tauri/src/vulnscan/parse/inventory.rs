@@ -35,6 +35,10 @@ pub struct Detect {
     pub docker_ok: bool,
     /// La distro pide reiniciar (`/var/run/reboot-required` en Debian y Ubuntu).
     pub reboot_required: bool,
+    /// Kernel con el que arranca por defecto (grubby), sin «/boot/vmlinuz-».
+    pub boot_kernel: Option<String>,
+    /// Identificador del arranque actual.
+    pub boot_id: Option<String>,
     /// La salida llegó entera (con `@@end`).
     pub complete: bool,
 }
@@ -70,6 +74,9 @@ pub fn parse_detect(text: &str) -> Detect {
     d.pro_attached = section(&secs, "pro").and_then(|l| l.first()).is_some_and(|s| s.trim() == "attached");
     d.docker_ok = section(&secs, "docker").and_then(|l| l.first()).is_some_and(|s| s.trim() == "ok");
     d.reboot_required = section(&secs, "reboot").and_then(|l| l.first()).is_some_and(|s| s.trim() == "required");
+    let first = |name: &str| section(&secs, name).and_then(|l| l.first()).map(|s| s.trim()).filter(|s| !s.is_empty());
+    d.boot_id = first("bootid").map(str::to_string);
+    d.boot_kernel = first("bootkernel").and_then(|s| s.rsplit_once("vmlinuz-")).map(|(_, k)| k.to_string()).filter(|k| !k.is_empty());
     d
 }
 

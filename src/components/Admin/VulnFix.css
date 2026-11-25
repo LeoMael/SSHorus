@@ -35,6 +35,9 @@
 .vf-chip-reboot > svg {
   color: var(--orange);
 }
+.vf-chip-norepo > svg {
+  color: var(--orange);
+}
 .vf-chip-nofix > svg,
 .vf-chip-manual > svg,
 .vf-chip-image > svg {
@@ -105,6 +108,44 @@
 }
 .vf-result-head.warn > svg {
   color: var(--orange);
+}
+.vf-outcomes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+.vf-outcomes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.vf-outcomes li:last-child {
+  border-bottom: none;
+}
+.vf-outcomes li.ok > strong {
+  color: var(--green);
+}
+.vf-outcomes li.warn > strong {
+  color: var(--orange);
+}
+.vf-outcome-detail {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.vs-why > summary {
+  cursor: pointer;
+}
+.vs-why > summary > h4 {
+  display: inline;
 }
 .vf-reasons,
 .vf-services ul {

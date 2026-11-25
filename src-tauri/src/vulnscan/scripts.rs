@@ -64,6 +64,9 @@ echo @@docker
 if command -v docker >/dev/null 2>&1 && docker info --format '{{{{.ServerVersion}}}}' >/dev/null 2>&1; then echo ok; else echo no; fi
 echo @@reboot
 if [ -f /var/run/reboot-required ]; then echo required; fi
+echo @@bootid; cat /proc/sys/kernel/random/boot_id 2>/dev/null
+echo @@bootkernel
+if command -v grubby >/dev/null 2>&1; then grubby --default-kernel 2>/dev/null | head -n1; fi
 echo @@end
 "#
     )
@@ -171,6 +174,11 @@ echo @@end
     )
 }
 
+/// Qué versiones nuevas ofrecen los repositorios (`repo.rs`): 100 = hay, 0 = ninguna, otro = error.
+fn check_update(cmd: &str) -> String {
+    format!("echo @@upgrades\n{cmd} -q check-update 2>/dev/null\necho \"@@uprc $?\"")
+}
+
 /// Fase 3: herramienta de seguridad de la distro (`codename` solo para debsecan). Sin root.
 pub fn distro_script(tool: DistroTool, codename: &str) -> String {
     let body = match tool {
@@ -179,12 +187,15 @@ pub fn distro_script(tool: DistroTool, codename: &str) -> String {
             let sec = if tool == DistroTool::Yum { "security" } else { "--security" };
             format!(
                 "echo @@list\n{cmd} -q updateinfo list {sec} 2>/dev/null\necho \"@@rc $?\"\n\
-                 echo @@info\n{cmd} -q updateinfo info {sec} 2>/dev/null\necho \"@@rc $?\""
+                 echo @@info\n{cmd} -q updateinfo info {sec} 2>/dev/null\necho \"@@rc $?\"\n{CHECK_UPDATE}",
+                CHECK_UPDATE = check_update(cmd)
             )
         }
-        DistroTool::Dnf5 => "echo @@list\ndnf -q advisory list --security --json 2>/dev/null\necho \"@@rc $?\"\n\
-             echo @@info\ndnf -q advisory info --security --json 2>/dev/null\necho \"@@rc $?\""
-            .to_string(),
+        DistroTool::Dnf5 => format!(
+            "echo @@list\ndnf -q advisory list --security --json 2>/dev/null\necho \"@@rc $?\"\n\
+             echo @@info\ndnf -q advisory info --security --json 2>/dev/null\necho \"@@rc $?\"\n{}",
+            check_update("dnf")
+        ),
         DistroTool::Debsecan => {
             let suite = if codename.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') && !codename.is_empty() {
                 format!(" --suite {codename}")

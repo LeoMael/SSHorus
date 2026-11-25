@@ -11,6 +11,8 @@
 //! - `osv` + `cache`: cliente de OSV.dev (lotes de 1000, paginación, detalle con caché).
 //! - `severity`: gravedad de la distro → CVSS → sin clasificar.
 //! - `analyze`: junta las fuentes y quita duplicados por CVE; `kernel`: qué kernel cuenta y si hay que reiniciar.
+//! - `rpmver`: versiones RPM (epoch, `~`, `^`) y rangos de OSV; `repo`: si tus repositorios ya traen la
+//!   versión corregida (`dnf check-update`).
 //! - `recheck`: «Volver a comprobar» el sistema tras arreglar (quita lo arreglado del informe).
 //! - `store`: historial por servidor; `export`: JSON y Markdown.
 //! - `commands`: comandos Tauri; `scan`: análisis completo sin sudo desde el motor (pruebas, MCP).
@@ -31,6 +33,8 @@ pub mod osv;
 mod osv_model;
 pub mod parse;
 pub mod recheck;
+pub mod repo;
+pub mod rpmver;
 // Lo usan el servidor MCP (`scan_vulnerabilities`) y las pruebas.
 pub mod scan;
 pub mod scripts;
@@ -43,6 +47,9 @@ mod tests;
 
 #[cfg(test)]
 mod tests_recheck;
+
+#[cfg(test)]
+mod tests_repo;
 
 #[cfg(all(test, unix))]
 mod tests_runtime;

@@ -8,6 +8,7 @@ use super::osv::{OsvVuln, Query};
 use super::parse::inventory::Inventory;
 use super::parse::trivy::TrivyFinding;
 use super::parse::{debsecan, dnf, section, sections, ubuntu_pro, zypper, ToolFinding};
+use super::rpmver;
 use super::severity;
 
 /// Para qué sirve cada consulta a OSV (una consulta puede servir a varios objetivos).
@@ -17,6 +18,8 @@ pub(super) struct QueryUse {
     pub target: String,
     pub package: String,
     pub installed: String,
+    /// Versión completa (con epoch en RPM) para volver a comprobar lo que dice OSV (`rpmver.rs`).
+    pub evr: String,
     pub binaries: Vec<String>,
     pub upstream: bool,
     pub reboot: bool,
@@ -42,6 +45,10 @@ pub(super) fn package_queries(t: &PkgTarget<'_>, extra_eco: Option<&str>, out: &
     let ecos: Vec<&str> = std::iter::once(t.eco).chain(extra_eco).collect();
     for ((source, sv), bins) in groups {
         let binaries: Vec<String> = bins.iter().map(|b| b.name.clone()).collect();
+        let evr = match (t.pm, bins.first()) {
+            (PackageManager::Rpm, Some(b)) => rpmver::with_epoch(&b.version, &sv),
+            _ => sv.clone(),
+        };
         for eco in &ecos {
             let mut names = vec![source.clone()];
             if t.pm != PackageManager::Rpm
@@ -62,6 +69,7 @@ pub(super) fn package_queries(t: &PkgTarget<'_>, extra_eco: Option<&str>, out: &
                     target: t.key.to_string(),
                     package: source.clone(),
                     installed: sv.clone(),
+                    evr: evr.clone(),
                     binaries: binaries.clone(),
                     upstream: false,
                     reboot: false,
@@ -201,7 +209,15 @@ fn new_finding(
     }
 }
 
+/// ¿OSV dio este aviso por la versión sin epoch aunque la instalada ya está arreglada? (`rpmver.rs`)
+pub(super) fn already_fixed(u: &QueryUse, v: &OsvVuln) -> bool {
+    ecosystem::rpm_epoch_matters(&u.query.ecosystem) && v.rpm_affects(&u.query.ecosystem, &u.query.name, &u.evr) == Some(false)
+}
+
 pub(super) fn osv_findings(u: &QueryUse, v: &OsvVuln, merger: &mut Merger, system_target: bool) {
+    if already_fixed(u, v) {
+        return;
+    }
     let eco = &u.query.ecosystem;
     let name = &u.query.name;
     let cves = v.cves();
@@ -346,6 +362,7 @@ pub(super) fn programs(inv: &Inventory, os: &OsRelease, out_q: &mut Vec<QueryUse
                 query: Query { ecosystem: eco, name, version: v.clone() },
                 target: "runtime".into(),
                 package: p.name.clone(),
+                evr: v.clone(),
                 installed: v,
                 binaries: vec![p.path.clone()],
                 upstream: true,

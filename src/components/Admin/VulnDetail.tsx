@@ -8,6 +8,7 @@ import { canUpdateImage, fixKind, fixSuggestion, kernelSuggestion, targetOf, typ
 import { toast } from "../../stores/toasts";
 import { useAdmin } from "./context";
 import { CommandActions, findingLinks, originLabel, SevTag, SOURCE_LABEL } from "./vulnUi";
+import { VulnWhy } from "./VulnWhy";
 
 const ImageUpdateDialog = lazy(() => import("./ImageUpdateDialog").then((m) => ({ default: m.ImageUpdateDialog })));
 
@@ -191,6 +192,7 @@ export function VulnDetail({
             fix={fix}
             action={onFix && fixable.length > 0 ? <FixButton label="Actualizar el kernel" onClick={() => onFix(fixable)} /> : undefined}
           />
+          {kernel.length > 0 && <VulnWhy report={report} f={kernel.find((k) => k.needsReboot) ?? kernel[0]} />}
         </div>
       </aside>
     );
@@ -253,6 +255,7 @@ export function VulnDetail({
           update={target && canUpdateImage(target) ? <ImageUpdate report={report} target={target} /> : undefined}
           action={onFix && fixKind(report, f) === "now" ? <FixButton label={`Arreglar ${f.package}`} onClick={() => onFix([f])} /> : undefined}
         />
+        <VulnWhy report={report} f={f} />
         <section className="vs-d-sec">
           <h4>Descripción</h4>
           {loading && <span className="spinner adm-spinner-btn" aria-label="Cargando" />}

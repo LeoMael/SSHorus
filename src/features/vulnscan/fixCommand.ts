@@ -3,6 +3,7 @@
 // de contenedores (ver imageUpdate.ts), que muestra los comandos exactos y pide confirmación antes.
 // Funciones puras, sin React ni Tauri.
 import type { Finding, Report, Target } from "../../api/vulnscan";
+import { noRepoText, repoFix } from "./repo";
 
 /** Cómo se eleva en el servidor: "sudo", "doas" o "" (ya es root). */
 export type SudoTool = "sudo" | "doas" | "";
@@ -150,6 +151,9 @@ export function fixSuggestion(report: Report, f: Finding, tool: SudoTool = "sudo
   const command = systemCommand(report, f, tool);
   const notes: string[] = [];
   if (!command) notes.push("No se conoce el gestor de paquetes de este sistema: actualiza el paquete a mano.");
+  if (repoFix(report, f) === "no") {
+    notes.push(`Aún no hay versión corregida en tus repositorios: ${noRepoText(report, f)} Actualizar ahora no la quita.`);
+  }
   if (f.kernel) notes.push(...kernelNotes(report));
   return { command, notes };
 }

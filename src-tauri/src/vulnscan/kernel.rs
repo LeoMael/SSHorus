@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::ecosystem::is_kernel;
-use super::model::{Finding, Package, PackageManager};
+use super::model::{Finding, HostInfo, NoteLevel, Package, PackageManager, ScanNote};
 use super::osv::cmp_versions;
 
 #[derive(Debug, Default, PartialEq)]
@@ -120,6 +120,53 @@ fn matches_flavor(pm: PackageManager, src: &str, uname_r: &str) -> bool {
         PackageManager::Apk => src.strip_prefix("linux-").is_some_and(|f| uname_r.ends_with(&format!("-{f}"))),
         PackageManager::Rpm => src == "kernel",
         _ => false,
+    }
+}
+
+/// Avisos del informe sobre el kernel: versiones viejas que no cuentan, reiniciar y arranque por defecto.
+pub fn notes(k: &KernelSplit, host: &HostInfo) -> Vec<ScanNote> {
+    let mut out = Vec::new();
+    if !k.stale.is_empty() {
+        out.push(ScanNote::new(
+            "inventory",
+            NoteLevel::Info,
+            format!("Kernels viejos instalados que no se usan (no se cuentan): {}", k.stale.join(", ")),
+        ));
+    }
+    if host.reboot_required {
+        out.push(ScanNote::new("inventory", NoteLevel::Warn, match &k.reboot_to {
+            Some(v) => format!("Hay un kernel nuevo instalado ({v}): reinicia el servidor para usarlo"),
+            None => "La distro pide reiniciar el servidor para terminar de aplicar actualizaciones".to_string(),
+        }));
+    }
+    if !host.in_container
+        && let Some(n) = boot_note(k.reboot_to.as_deref(), host.boot_kernel.as_deref(), &host.kernel)
+    {
+        out.push(ScanNote::new("inventory", if k.reboot_to.is_some() { NoteLevel::Warn } else { NoteLevel::Info }, n));
+    }
+    out
+}
+
+/// Aviso si al reiniciar NO se usará el kernel que toca: el arranque por defecto (`grubby
+/// --default-kernel`) es otro. Pasa en VPS cuyo cargador de arranque no se actualizó.
+pub fn boot_note(reboot_to: Option<&str>, boot_kernel: Option<&str>, uname_r: &str) -> Option<String> {
+    let boot = boot_kernel?;
+    let arch = uname_r.rsplit_once('.').map(|(_, a)| a).filter(|a| ARCHES.contains(a));
+    match reboot_to {
+        Some(v) if !boot.starts_with(v) => {
+            let image = match arch {
+                Some(a) => format!("/boot/vmlinuz-{v}.{a}"),
+                None => format!("/boot/vmlinuz-{v}…"),
+            };
+            Some(format!(
+                "Al reiniciar arrancará otra vez el kernel {boot} (el predeterminado), no el nuevo {v}: \
+                 cámbialo con «sudo grubby --set-default {image}» y reinicia"
+            ))
+        }
+        None if !uname_r.is_empty() && boot != uname_r => {
+            Some(format!("El kernel predeterminado al arrancar ({boot}) no es el que está en uso ({uname_r}): al reiniciar cambiará"))
+        }
+        _ => None,
     }
 }
 

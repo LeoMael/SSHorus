@@ -148,6 +148,14 @@ export interface HostInfo {
   rebootRequired?: boolean;
   /** Kernel que se usará al reiniciar. */
   rebootKernel?: string | null;
+  /** Kernel con el que arranca por defecto (grubby), sin «/boot/vmlinuz-». */
+  bootKernel?: string | null;
+  /** Identificador del arranque (si cambia, el servidor se reinició después del análisis). */
+  bootId?: string | null;
+  /** Lo más nuevo que ofrecen los repositorios por paquete binario (null/ausente = no se sabe). */
+  repoUpgrades?: Record<string, string> | null;
+  /** Hallazgos (clave) con versión corregida publicada que los repositorios aún no ofrecen. */
+  noRepoFix?: string[];
 }
 
 export interface SourceInfo {

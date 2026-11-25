@@ -12,6 +12,7 @@ import type { ExecResult } from "../../api/types";
 import { vulnscan, type Report, type ScanInput, type ScanNote, type VulnScanSettings } from "../../api/vulnscan";
 import type { Elevation } from "../privileges";
 import { parseRestart, restartCommand, RESTART_CHECK_SCRIPT, type RestartInfo } from "./restart";
+import { BOOT_CHECK_SCRIPT, parseBootCheck, type BootNow } from "./stale";
 import { runCancellable, scanScript, UpdateCancel, UpdateCanceled } from "./updateRun";
 
 /** Límite del canal exec (el motor no deja más): una actualización grande puede no caber. */
@@ -33,6 +34,12 @@ export async function restartService(sessionId: string, unit: string, el: Elevat
   if (!cmd) throw new Error(`Nombre de servicio no válido: ${unit}`);
   const r = await runCancellable(sessionId, cmd, el, 120, new UpdateCancel());
   if (r.exitCode !== 0 || r.timedOut) throw new Error(r.stderr.trim() || `systemctl terminó con código ${r.exitCode ?? "?"}`);
+}
+
+/** Arranque y kernel de ahora (sin sudo), para saber si el informe es de antes de un reinicio. */
+export async function bootNow(sessionId: string): Promise<BootNow> {
+  const r = await runCancellable(sessionId, BOOT_CHECK_SCRIPT, { kind: "none" }, 15, new UpdateCancel());
+  return parseBootCheck(r.stdout);
 }
 
 /**

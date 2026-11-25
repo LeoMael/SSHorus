@@ -3,6 +3,8 @@
 //! El informe (`Report`) es lo que se guarda en el historial, se exporta y ve la interfaz
 //! (`src/api/vulnscan.ts` tiene los mismos tipos en TypeScript).
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 // ───────────── Entrada: salidas en bruto de las fases del servidor ─────────────
@@ -347,6 +349,17 @@ pub struct HostInfo {
     pub reboot_required: bool,
     /// Versión del kernel nuevo que se usará al reiniciar (si se sabe).
     pub reboot_kernel: Option<String>,
+    /// Kernel con el que arranca por defecto (`grubby --default-kernel`, sin «/boot/vmlinuz-»).
+    pub boot_kernel: Option<String>,
+    /// Identificador del arranque actual (`/proc/sys/kernel/random/boot_id`): si cambia, el servidor
+    /// se reinició después de este análisis.
+    pub boot_id: Option<String>,
+    /// Lo más nuevo que ofrecen los repositorios del servidor por paquete binario (`dnf check-update`).
+    /// None = no se sabe (otra distro, o no se pudo leer).
+    pub repo_upgrades: Option<BTreeMap<String, String>>,
+    /// Hallazgos (clave) con versión corregida publicada que los repositorios aún no ofrecen
+    /// (ver `repo.rs`). Solo tiene sentido con `repo_upgrades`.
+    pub no_repo_fix: Vec<String>,
 }
 
 /// Programa clave encontrado (sudo, OpenSSH, nginx…, y runtimes de $HOME).

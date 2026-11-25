@@ -77,6 +77,8 @@ async function runGroups(ctx: JobCtx, runner: OwnerRunner, req: JobRequest): Pro
     const r = await runKillable<EngineRun>(ctx, scriptFor(g.cmds), req.timeoutSecs ?? JOB_TIMEOUT_SECS, {
       wrap: (s) => ownerWrap(runner.engine, o, s),
       exec: (s, run) => runRaw(runner.sessionId, s, el, run?.timeoutSecs ?? 30, run ? { execId: run.execId, onOutput: ctx.output } : undefined),
+      timedOut: (x) => x.result?.timedOut ?? false,
+      stdout: (x) => x.result?.stdout ?? "",
     });
     text += `${r.result?.stdout ?? ""}\n${r.result?.stderr ?? ""}\n`;
     if (!r.ok) return { ok: false, error: r.error, needSudo: r.needSudo, text };

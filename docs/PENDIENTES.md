@@ -98,6 +98,15 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     `~/.local/bin/sshorus-mcp` se cree al abrir la AppImage y se actualice con una versión nueva; en Windows y macOS
     (detección del programa y ruta `%LOCALAPPDATA%\SSHorus\bin`); el puente sin emparejar enseña
     `sshorus_emparejar` y, tras emparejar, la llamada a esa herramienta trae las herramientas sin reiniciar.
+  - **Escáner: «Arreglar» dice la verdad (VPS Rocky)**: antes de nada, «Volver a comprobar» y ver que openssl,
+    vim, grub2 y demás paquetes con epoch ya no salen si están al día (era el fallo del epoch). Después, «Arreglar»
+    con un paquete que tenga actualización pendiente de verdad (`sudo dnf check-update`) y leer el resultado por
+    paquete (Arreglado / falta reiniciar / Sin versión corregida en tus repos / Falló con la línea de dnf). Probar
+    uno que esté en el grupo «Aún no en tus repos» (no debe ofrecer «Arreglar»; su detalle, «Por qué sigue
+    apareciendo»). Actualizar el kernel, reiniciar desde fuera de SSHorus, volver a abrir la pestaña: debe salir
+    «El servidor se reinició después de este análisis»; «Volver a comprobar» y que el kernel ya no esté. Mirar
+    `uname -r`, `rpm -q kernel-core` y `sudo grubby --default-kernel`. Si algo sigue, anotar el CVE, el paquete y la
+    salida de `sudo dnf --refresh check-update <paquete>`.
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Tareas en segundo plano (VPS Rocky de 1 vCPU): Vulnerabilidades → «Arreglar todo lo que tiene solución», cerrar
     el diálogo y seguirla en la ventanita de la esquina (salida de `dnf` en vivo, barra «3/10», aviso «Sin salida

@@ -28,16 +28,38 @@ export function jobScript(jobId: string, body: string): string {
   ].join("\n");
 }
 
-/** Detiene la tarea (como su dueño): TERM a todo el grupo, espera hasta 10 s y luego KILL. */
+/** Lo que escribe la parada si no pudo detener los procesos hijos (ver `killJobScript`). */
+export const PARTIAL_STOP = "partial";
+
+/**
+ * Detiene la tarea (como su dueño): TERM a todo el grupo, espera hasta 10 s y luego KILL. Sin `setsid`
+ * el comando no tiene grupo propio: entonces se para su árbol de procesos (hijos con `pgrep -P` o
+ * leyendo /proc) y, si no hay forma de listarlos, solo el shell de la tarea, avisando con «partial».
+ */
 export function killJobScript(jobId: string): string {
   return [
     `pf=${pidFile(jobId)}`,
     'p=$(cat "$pf" 2>/dev/null) || { echo gone; exit 0; }',
     "case $p in ''|*[!0-9]*) echo gone; exit 0 ;; esac",
-    "kill -TERM -$p 2>/dev/null || kill -TERM $p 2>/dev/null",
-    "i=0; while [ $i -lt 10 ] && kill -0 -$p 2>/dev/null; do sleep 1; i=$((i+1)); done",
-    "kill -KILL -$p 2>/dev/null",
+    "if kill -TERM -$p 2>/dev/null; then",
+    "  i=0; while [ $i -lt 10 ] && kill -0 -$p 2>/dev/null; do sleep 1; i=$((i+1)); done",
+    "  kill -KILL -$p 2>/dev/null",
+    '  rm -f "$pf"; echo stopped; exit 0',
+    "fi",
+    "lists=; { command -v pgrep >/dev/null 2>&1 || [ -r /proc/self/status ]; } && lists=1",
+    "kids() {",
+    '  if command -v pgrep >/dev/null 2>&1; then pgrep -P "$1"',
+    '  elif [ -n "$lists" ]; then for d in /proc/[0-9]*; do',
+    `    [ "$(sed -n 's/^PPid:[[:space:]]*//p' "$d/status" 2>/dev/null)" = "$1" ] && echo "\${d#/proc/}"`,
+    "  done; fi",
+    "}",
+    'tree() { for c in $(kids "$1"); do tree "$c"; done; echo "$1"; }',
+    'all=$(tree "$p")',
+    "alive() { for x in $all; do kill -0 $x 2>/dev/null && return 0; done; return 1; }",
+    "kill -TERM $all 2>/dev/null",
+    "i=0; while [ $i -lt 10 ] && alive; do sleep 1; i=$((i+1)); done",
+    "kill -KILL $all 2>/dev/null",
     'rm -f "$pf"',
-    "echo stopped",
+    `if [ -n "$lists" ]; then echo stopped; else echo ${PARTIAL_STOP}; fi`,
   ].join("\n");
 }

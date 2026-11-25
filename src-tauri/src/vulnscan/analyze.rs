@@ -12,6 +12,7 @@ use super::analyze_merge::{
 use super::cache::OsvCache;
 use super::ecosystem;
 use super::kernel;
+use super::repo;
 use super::model::*;
 use super::osv::{self, OsvApi, Query};
 use super::parse::inventory::{self, Detect, ImageRead};
@@ -49,7 +50,7 @@ pub async fn analyze<A: OsvApi>(
     let pm = inv.pm.or(detect.pm);
     // Solo el kernel más nuevo cuenta; el que está en uso, si es más viejo, va aparte.
     let ksplit = kernel::split(&inv.packages, pm, &detect.kernel, detect.in_container);
-    let host = HostInfo {
+    let mut host = HostInfo {
         os: os.clone(),
         kernel: detect.kernel.clone(),
         arch: detect.arch.clone(),
@@ -59,6 +60,9 @@ pub async fn analyze<A: OsvApi>(
         tools: detect.tools.clone(),
         reboot_required: detect.reboot_required || ksplit.reboot_to.is_some(),
         reboot_kernel: ksplit.reboot_to.clone(),
+        boot_kernel: detect.boot_kernel.clone(),
+        boot_id: detect.boot_id.clone(),
+        ..HostInfo::default()
     };
     if detect.in_container {
         notes.push(ScanNote::new("detect", NoteLevel::Info, "Es un contenedor: el kernel es el del anfitrión y no se analiza"));
@@ -110,19 +114,7 @@ pub async fn analyze<A: OsvApi>(
     if inv.packages.is_empty() {
         system.error = Some("No se pudo leer la lista de paquetes".into());
     }
-    if !ksplit.stale.is_empty() {
-        notes.push(ScanNote::new(
-            "inventory",
-            NoteLevel::Info,
-            format!("Kernels viejos instalados que no se usan (no se cuentan): {}", ksplit.stale.join(", ")),
-        ));
-    }
-    if host.reboot_required {
-        notes.push(ScanNote::new("inventory", NoteLevel::Warn, match &ksplit.reboot_to {
-            Some(v) => format!("Hay un kernel nuevo instalado ({v}): reinicia el servidor para usarlo"),
-            None => "La distro pide reiniciar el servidor para terminar de aplicar actualizaciones".to_string(),
-        }));
-    }
+    notes.extend(kernel::notes(&ksplit, &host));
     if !skip.is_empty() {
         notes.push(ScanNote::new(
             "inventory",
@@ -141,6 +133,7 @@ pub async fn analyze<A: OsvApi>(
     // ── Herramienta de la distro ──
     let mut tool_label: Option<(DistroTool, Option<String>)> = None;
     if let (Some(tool), Some(out)) = (input.distro_tool, &input.distro_output) {
+        host.repo_upgrades = repo::upgrades(tool, out);
         match parse_tool(tool, out) {
             Ok(items) => {
                 let n = items.len();
@@ -327,6 +320,7 @@ pub async fn analyze<A: OsvApi>(
     // ── Juntar ──
     progress("merge", 0, 1, "Juntando resultados");
     let findings = kernel::add_reboot_only(merger.finish(), reboot_merger.finish(), ksplit.reboot_to.as_deref());
+    notes.extend(repo::apply(&mut host, &findings));
     let mut all_targets = vec![system];
     if !program_list.is_empty() {
         all_targets.push(Target {

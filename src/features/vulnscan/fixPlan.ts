@@ -3,15 +3,18 @@
 // (-y / --non-interactive): no hay terminal para contestar. Funciones puras, sin React ni Tauri.
 import type { Finding, Report, Severity } from "../../api/vulnscan";
 import { distroFamily, packagesOf, targetOf } from "./fixCommand";
+import { repoFix } from "./repo";
 
 /**
  * - `now`: tiene versión corregida y la trae el gestor de paquetes de la distro.
  * - `reboot`: el kernel nuevo ya está instalado; solo falta reiniciar.
  * - `nofix`: aún no hay versión corregida.
+ * - `norepo`: ya se publicó la versión corregida, pero los repositorios del servidor aún no la traen
+ *   (`dnf upgrade` respondería «Nothing to do»): no se ofrece «Arreglar».
  * - `image`: está dentro de una imagen de contenedor («Actualizar imagen»).
  * - `manual`: programa suelto o gestor de paquetes desconocido (a mano).
  */
-export type FixKind = "now" | "reboot" | "nofix" | "image" | "manual";
+export type FixKind = "now" | "reboot" | "nofix" | "norepo" | "image" | "manual";
 
 export type FixGroups = Record<FixKind, Finding[]>;
 
@@ -39,12 +42,13 @@ export function fixKind(report: Report, f: Finding): FixKind {
   if (t?.kind === "image") return "image";
   if (t?.kind === "runtime" || f.upstream) return "manual";
   if (!f.hasFix) return "nofix";
+  if (repoFix(report, f) === "no") return "norepo";
   return canUpgrade(report) && packagesOf(f).length > 0 ? "now" : "manual";
 }
 
 /** Reparte los hallazgos (sin los «sin importancia», como el resumen). */
 export function groupFindings(report: Report, findings: Finding[]): FixGroups {
-  const g: FixGroups = { now: [], reboot: [], nofix: [], image: [], manual: [] };
+  const g: FixGroups = { now: [], reboot: [], nofix: [], norepo: [], image: [], manual: [] };
   for (const f of findings) if (!f.unimportant) g[fixKind(report, f)].push(f);
   return g;
 }

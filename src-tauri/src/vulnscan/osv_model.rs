@@ -154,6 +154,20 @@ impl OsvVuln {
             .or_else(|| self.affected.iter().find(|a| a.package.as_ref().is_some_and(|p| p.ecosystem == eco)))
     }
 
+    /// RPM: ¿la versión completa instalada (`installed`, con epoch) está afectada según sus rangos?
+    /// None = no hay rangos del paquete que comprobar (se cree a OSV). Ver `rpmver.rs`.
+    pub fn rpm_affects(&self, eco: &str, name: &str, installed: &str) -> Option<bool> {
+        let mut verdict = None;
+        for a in self.affected.iter().filter(|a| a.package.as_ref().is_some_and(|p| p.ecosystem == eco && p.name == name)) {
+            match super::rpmver::affected_by(&a.ranges, installed) {
+                Some(true) => return Some(true),
+                Some(false) => verdict = Some(false),
+                None => {}
+            }
+        }
+        verdict
+    }
+
     /// Versión que lo arregla (de entre los `fixed` del ecosistema, la menor por encima de la instalada).
     pub fn fixed_for(&self, eco: &str, name: &str, installed: &str) -> Option<String> {
         let a = self.affected_for(eco, name)?;

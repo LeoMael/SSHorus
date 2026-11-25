@@ -52,6 +52,28 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Corregido
 - **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.
+- **Vulnerabilidades: lo arreglado ya no vuelve a salir en Rocky y AlmaLinux.** A OSV se le preguntaba la versión sin
+  epoch y Rocky/Alma escriben la versión arreglada con él («1:3.2.2-6.el9_5»): OSV daba por pendientes, para siempre,
+  los avisos de todo paquete con epoch (openssl, vim, grub2, shadow-utils, perl, bind…) aunque ya estuvieran
+  actualizados, también después de reiniciar. Ahora cada aviso se vuelve a comprobar con la versión completa
+  instalada, comparada como lo hace `rpm` (epoch, `~`, `^`, «el9_4» < «el9_5»).
+- **Vulnerabilidades: el resultado de «Arreglar» dice la verdad, paquete por paquete**: Arreglado / Instalado, falta
+  reiniciar servicios / Instalado, falta reiniciar el servidor / Sin versión corregida en tus repos todavía /
+  Actualizado, pero sigue afectado / Falló, con la línea de dnf que lo explica (excluido, conflicto, no encontrado).
+  «Nothing to do» (código 0) ya no cuenta como arreglado: si no se instaló nada, la tarea termina como fallida.
+- **Vulnerabilidades: «Aún no en tus repos»**: con dnf/yum el análisis mira también `check-update`; lo que tiene
+  versión corregida publicada pero que tus repositorios todavía no traen va en su propio grupo y no ofrece
+  «Arreglar» como si fuera a funcionar (el comando sigue en el detalle para copiarlo).
+- **Vulnerabilidades: «Por qué sigue apareciendo»** en el detalle de cada una: kernel nuevo instalado pero en uso el
+  viejo, arranque por defecto que no cambió (con el comando de `grubby`), versión que tus repositorios aún no
+  traen (y cómo comprobarlo), imagen de contenedor, programa suelto o informe de antes.
+- **Vulnerabilidades: informe de antes de un reinicio**: si el servidor se reinició (o cambió el kernel en uso)
+  después del análisis que se ve, sale un aviso con **Volver a comprobar**. El análisis avisa también si al reiniciar
+  arrancaría otra vez el kernel viejo (`grubby --default-kernel`).
+- **Tareas en segundo plano**: al **Cancelar**, la tarea ya no sigue con lo de después (en «Arreglar» del escáner
+  volvía a comprobar durante minutos; en la auditoría el arreglo cancelado quedaba como fallido). Compose detiene en
+  el servidor lo que se pasa de tiempo. Sin `setsid` en el servidor, **Cancelar** para todo el árbol de procesos (y
+  avisa si no pudo). En Auditoría, los resultados de un arreglo ya no se mezclan con otro informe abierto.
 
 ### Cambiado
 - El aviso flotante de **Reiniciar ahora** (abajo a la izquierda) pasa a ser una tarea más de la ventanita de abajo a

@@ -110,8 +110,11 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
     (j) => {
       const d = auditFixData(j);
       if (!d.report) return;
-      if (d.report.id === report?.id) setReport(d.report);
-      setOutcomes((s) => ({ ...s, ...d.outcomes }));
+      // Si ahora hay otro informe abierto, sus resultados no van en él (solo se refresca el historial).
+      if (d.report.id === report?.id) {
+        setReport(d.report);
+        setOutcomes((s) => ({ ...s, ...d.outcomes }));
+      }
       void audit.historyList(profileId).then(setMetas).catch(() => undefined);
     },
   );
