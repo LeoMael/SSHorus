@@ -1,57 +1,40 @@
-// Imágenes: listar, descargar (pull), eliminar, crear contenedor y limpiar las que no se usan.
-import { useMemo, useState } from "react";
-import { AlertTriangle, Brush, Bug, Download, Rocket, RefreshCw, Search, Trash2, X } from "lucide-react";
+// Imágenes: listar, elegir (casillas), ver detalles, descargar (pull), eliminar, crear contenedor y limpiar
+// las que no se usan. Con «Todos», cada acción va como el dueño de cada imagen.
+import { useEffect, useMemo, useReducer, useState, type KeyboardEvent } from "react";
+import { Brush, Download, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
-  ago,
-  pruneImages,
-  removeImages,
-  ownedBy,
-  withOwner,
-  type Container,
-  type Engine,
+  allSelected,
+  imageKey,
+  inUseCount,
+  pruneBlockedReason,
+  selectionReducer,
+  someSelected,
   type ImageInfo,
 } from "../../features/containers";
-import { formatBytes } from "../../lib/format";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { PullDialog } from "./PullDialog";
-import { useVulnNav } from "../../features/vulnscan/nav";
-
-/** Normaliza una referencia para comparar («nginx» = «docker.io/library/nginx:latest»). */
-export function normRef(ref: string): string {
-  let r = ref.trim().toLowerCase();
-  if (!r) return r;
-  const lastSlash = r.lastIndexOf("/");
-  if (!r.slice(lastSlash + 1).includes(":") && !r.includes("@")) r += ":latest";
-  r = r.replace(/^docker\.io\/library\//, "").replace(/^docker\.io\//, "").replace(/^library\//, "");
-  return r;
-}
-
-/** Contenedores que usan la imagen (por etiqueta o por id), del mismo dueño. */
-export function usersOf(img: ImageInfo, containers: Container[]): Container[] {
-  const tags = new Set(img.tags.map(normRef));
-  return ownedBy(containers, img.owner).filter((c) => {
-    const ref = c.image.replace(/^sha256:/, "").toLowerCase();
-    if (ref.length >= 12 && /^[0-9a-f]+$/.test(ref) && img.id.startsWith(ref)) return true;
-    return tags.has(normRef(c.image));
-  });
-}
-
-function inUseCount(img: ImageInfo, containers: Container[]): number {
-  return Math.max(img.containers ?? 0, usersOf(img, containers).length);
-}
+import { ImageDetailsDialog } from "./ImageDetailsDialog";
+import { ImageRow } from "./ImageRow";
+import { askPruneImages, askRemoveImages } from "./imageActions";
+import "./Images.css";
 
 type SortKey = "name" | "owner" | "size" | "created";
 
 export function ImagesTab() {
   const ct = useCt();
-  const { engine, res } = ct;
+  const { res } = ct;
   const images = useMemo(() => res.images.data ?? [], [res.images.data]);
   const containers = useMemo(() => res.containers.data ?? [], [res.containers.data]);
   const [search, setSearch] = useState("");
   const [showDangling, setShowDangling] = useState(false);
   /** null = cerrado; si no, imagen precargada y con qué usuario se descarga. */
   const [pull, setPull] = useState<{ ref: string; owner?: string } | null>(null);
+  const [details, setDetails] = useState<ImageInfo | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 });
+  const [selected, dispatch] = useReducer(selectionReducer, new Set<string>());
+
+  // Tras recargar, se olvidan las que ya no existen.
+  useEffect(() => dispatch({ type: "retain", keys: images.map(imageKey) }), [images]);
 
   const rows = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -80,54 +63,31 @@ export function ImagesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images, search, showDangling, sort, ct.allOwners, ct.ownerLabel]);
 
+  const rowKeys = useMemo(() => rows.map(imageKey), [rows]);
+  // Solo las visibles: lo que se ve es lo que se borra.
+  const sel = rows.filter((i) => selected.has(imageKey(i)));
   const dangling = images.filter((i) => i.dangling).length;
+  const pruneReason = pruneBlockedReason({ loaded: res.images.data !== null, error: res.images.error, images, containers });
 
-  const remove = (img: ImageInfo) => {
-    const users = usersOf(img, containers);
-    const count = inUseCount(img, containers);
-    const ref = img.tags.length === 1 ? img.tags[0] : img.id;
-    ct.review({
-      title: `Eliminar imagen ${img.tags[0] ?? img.shortId}`,
-      message:
-        count > 0 ? (
-          <span className="ct-warn-text">
-            <AlertTriangle size={13} /> Esta imagen la usa{count > 1 ? "n" : ""} {count} contenedor{count > 1 ? "es" : ""}
-            {users.length ? `: ${users.map((u) => u.name).join(", ")}` : ""}. Elimínalos antes o marca «Forzar» (también los borra en Podman).
-          </span>
-        ) : img.tags.length > 1 ? (
-          `Tiene ${img.tags.length} etiquetas; se borran todas.`
-        ) : (
-          "Se borra la imagen del servidor. Podrás volver a descargarla."
-        ),
-      options: count > 0 ? [{ key: "force", label: "Forzar el borrado aunque esté en uso (-f)" }] : img.tags.length > 1 ? [{ key: "force", label: "Forzar (necesario con varias etiquetas)", initial: true }] : undefined,
-      build: (o) => [withOwner(removeImages(engine, [ref], !!o.force), img.owner)],
-      danger: true,
-      runLabel: "Eliminar",
-      success: "Imagen eliminada",
-      reload: ["images", "containers", "df"],
-    });
-  };
+  const remove = (list: ImageInfo[]) => askRemoveImages(ct, list, containers, () => dispatch({ type: "clear" }));
 
-  const prune = () => {
-    if (res.df.loadedAt === 0) void ct.reload("df");
-    ct.review({
-      title: "Limpiar imágenes sin usar",
-      message: "Libera espacio borrando imágenes que no usa ningún contenedor (ni parado). Podrás volver a descargarlas.",
-      options: [
-        {
-          key: "all",
-          label: "Incluir también las que tienen nombre (-a)",
-          hint: "Si no, solo las «colgantes» (sin nombre, restos de compilaciones y actualizaciones)",
-        },
-      ],
-      details: (o) => <PruneList all={!!o.all} images={images} containers={containers} engine={engine} />,
-      build: (o) => [pruneImages(engine, !!o.all)],
-      danger: true,
-      runLabel: "Limpiar",
-      timeoutSecs: 300,
-      success: (r) => `Imágenes sin usar eliminadas\n${reclaimed(r.result?.stdout ?? "")}`,
-      reload: ["images", "df"],
-    });
+  const onRowKey = (e: KeyboardEvent<HTMLTableRowElement>, img: ImageInfo) => {
+    if (e.target !== e.currentTarget) return;
+    const tr = e.currentTarget;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      ((e.key === "ArrowDown" ? tr.nextElementSibling : tr.previousElementSibling) as HTMLElement | null)?.focus();
+    } else if (e.key === " ") {
+      e.preventDefault();
+      dispatch({ type: "toggle", key: imageKey(img) });
+    } else if (e.key === "Enter") {
+      setDetails(img);
+    } else if (e.key === "Delete") {
+      remove(selected.has(imageKey(img)) && sel.length > 1 ? sel : [img]);
+    } else if (e.key.toLowerCase() === "a" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      dispatch({ type: "toggleAll", keys: rowKeys });
+    }
   };
 
   const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key ? ((-s.dir) as 1 | -1) : key === "name" ? 1 : -1 }));
@@ -160,13 +120,30 @@ export function ImagesTab() {
         <button className="icon-btn" onClick={() => void ct.reload("images", "containers")} title="Actualizar" aria-label="Actualizar" disabled={res.images.loading}>
           <RefreshCw size={14} className={res.images.loading ? "ct-spin" : undefined} />
         </button>
-        <button className="btn btn-sm" onClick={prune} disabled={!images.length || !ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
+        <button className="btn btn-sm" onClick={() => askPruneImages(ct, images, containers)} disabled={!!pruneReason} aria-describedby={pruneReason ? "ct-prune-why" : undefined}>
           <Brush size={13} /> Limpiar sin usar
         </button>
         <button className="btn btn-sm btn-primary" onClick={() => setPull({ ref: "" })} disabled={!ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
           <Download size={13} /> Descargar imagen
         </button>
       </div>
+      {(pruneReason || !ct.newOwner) && (
+        <div className="faint ct-small ct-img-why" id="ct-prune-why">
+          {pruneReason && <>«Limpiar sin usar» está desactivado porque {pruneReason}. </>}
+          {!ct.newOwner && <>Para descargar una imagen, elige arriba con qué usuario.</>}
+        </div>
+      )}
+      {sel.length > 0 && (
+        <div className="ct-batch" role="toolbar" aria-label="Imágenes elegidas">
+          <strong>{sel.length === 1 ? "1 elegida" : `${sel.length} elegidas`}</strong>
+          <button className="btn btn-sm ct-btn-danger" onClick={() => remove(sel)}>
+            <Trash2 size={13} /> Eliminar…
+          </button>
+          <button className="btn btn-sm" onClick={() => dispatch({ type: "clear" })}>
+            Quitar selección
+          </button>
+        </div>
+      )}
       {res.images.error && (
         <div className="ct-error ct-error-inline" role="alert">
           <pre>{res.images.error}</pre>
@@ -185,6 +162,18 @@ export function ImagesTab() {
           <table className="ct-table">
             <thead>
               <tr>
+                <th className="ct-col-chk">
+                  <input
+                    type="checkbox"
+                    aria-label="Elegir todas las imágenes visibles"
+                    checked={allSelected(selected, rowKeys)}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected(selected, rowKeys);
+                    }}
+                    onChange={() => dispatch({ type: "toggleAll", keys: rowKeys })}
+                    disabled={!rows.length}
+                  />
+                </th>
                 {th("name", "Imagen", "ct-col-name")}
                 {ct.allOwners && th("owner", "Usuario", "ct-col-owner")}
                 <th className="ct-col-id">ID</th>
@@ -197,65 +186,22 @@ export function ImagesTab() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((img) => {
-                const n = inUseCount(img, containers);
-                const users = usersOf(img, containers);
-                return (
-                  <tr key={`${img.owner ?? ""}/${img.id}`} tabIndex={0} onKeyDown={(e) => e.target === e.currentTarget && e.key === "Delete" && remove(img)}>
-                    <td className="ct-col-name mono" title={img.tags.join("\n") || "<sin nombre>"}>
-                      <span className="ct-cell-flex">
-                        <span className="ct-ellipsis">{img.tags[0] ?? <span className="faint">&lt;sin nombre&gt;</span>}</span>
-                        {img.tags.length > 1 && <span className="ct-tag">+{img.tags.length - 1}</span>}
-                      </span>
-                    </td>
-                    {ct.allOwners && <td className="ct-col-owner ct-ellipsis">{ct.ownerLabel(img.owner)}</td>}
-                    <td className="ct-col-id mono faint">{img.shortId}</td>
-                    <td className="ct-col-num mono">{img.size !== null ? formatBytes(img.size) : "—"}</td>
-                    <td className="ct-col-created faint">{ago(img.created)}</td>
-                    <td className="ct-col-state" title={users.map((u) => u.name).join("\n")}>
-                      {n > 0 ? <span className="ct-yes">Sí ({n})</span> : <span className="faint">No</span>}
-                    </td>
-                    <td className="ct-col-actions">
-                      <span className="ct-actions">
-                        <button
-                          className="icon-btn ct-go"
-                          title="Crear contenedor con esta imagen"
-                          aria-label="Crear contenedor"
-                          onClick={() => ct.openRunForm({ image: img.tags[0] ?? img.id }, img.owner)}
-                          tabIndex={-1}
-                        >
-                          <Rocket size={13} />
-                        </button>
-                        <button
-                          className="icon-btn"
-                          title="Actualizar (volver a descargar)"
-                          aria-label="Actualizar imagen"
-                          disabled={!img.tags[0] || img.tags[0].startsWith("localhost/")}
-                          onClick={() => setPull({ ref: img.tags[0] ?? "", owner: img.owner })}
-                          tabIndex={-1}
-                        >
-                          <Download size={13} />
-                        </button>
-                        <button
-                          className="icon-btn"
-                          title="Ver vulnerabilidades (Administración → Vulnerabilidades)"
-                          aria-label="Ver vulnerabilidades de la imagen"
-                          onClick={() => useVulnNav.getState().open(ct.sessionId, img.id, img.tags[0] ?? img.shortId)}
-                          tabIndex={-1}
-                        >
-                          <Bug size={13} />
-                        </button>
-                        <button className="icon-btn ct-danger" title="Eliminar" aria-label="Eliminar imagen" onClick={() => remove(img)} tabIndex={-1}>
-                          <Trash2 size={13} />
-                        </button>
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map((img) => (
+                <ImageRow
+                  key={imageKey(img)}
+                  img={img}
+                  inUse={inUseCount(img, containers)}
+                  selected={selected.has(imageKey(img))}
+                  onToggle={() => dispatch({ type: "toggle", key: imageKey(img) })}
+                  onKeyDown={(e) => onRowKey(e, img)}
+                  onDetails={() => setDetails(img)}
+                  onPull={() => setPull({ ref: img.tags[0] ?? "", owner: img.owner })}
+                  onRemove={() => remove([img])}
+                />
+              ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={ct.allOwners ? 7 : 6} className="ct-norows">
+                  <td colSpan={ct.allOwners ? 8 : 7} className="ct-norows">
                     {images.length ? "Ninguna imagen coincide" : "No hay imágenes. Descarga una con «Descargar imagen»."}
                   </td>
                 </tr>
@@ -265,45 +211,7 @@ export function ImagesTab() {
         )}
       </div>
       {pull !== null && <PullDialog initial={pull.ref} owner={pull.owner} onClose={() => setPull(null)} />}
-    </div>
-  );
-}
-
-/** «Total reclaimed space: 1.2GB» → texto en español. */
-export function reclaimed(stdout: string): string {
-  const m = /total reclaimed space:\s*(.+)/i.exec(stdout);
-  if (m) return `Espacio liberado: ${m[1].trim()}`;
-  const n = stdout.split("\n").filter((l) => /^[0-9a-f]{12,}$|^deleted:|^untagged:/i.test(l.trim())).length;
-  return n ? `${n} elementos eliminados` : "No había nada que limpiar";
-}
-
-function PruneList({ all, images, containers, engine }: { all: boolean; images: ImageInfo[]; containers: Container[]; engine: Engine }) {
-  const ct = useCt();
-  const list = images.filter((i) => inUseCount(i, containers) === 0 && (all || i.dangling));
-  const sum = list.reduce((s, i) => s + (i.size ?? 0), 0);
-  const df = ct.res.df.data?.find((d) => d.type.toLowerCase() === "images");
-  return (
-    <div>
-      <div className="ct-summary">
-        <strong>{list.length}</strong> imágenes · hasta <strong>{formatBytes(sum)}</strong>
-        {df && df.reclaimable !== null && (
-          <span className="faint">
-            {" "}
-            · según «{engine} system df», recuperable: {formatBytes(df.reclaimable)}
-          </span>
-        )}
-      </div>
-      <div className="faint ct-small">Las capas compartidas entre imágenes solo se liberan si nadie más las usa, así que el espacio real puede ser menor.</div>
-      {list.length > 0 && (
-        <ul className="ct-list ct-list-scroll">
-          {list.slice(0, 200).map((i) => (
-            <li key={i.id} className="mono">
-              {i.tags[0] ?? `<sin nombre> ${i.shortId}`} <span className="faint">{i.size !== null ? formatBytes(i.size) : ""}</span>
-            </li>
-          ))}
-          {list.length > 200 && <li className="faint">… y {list.length - 200} más</li>}
-        </ul>
-      )}
+      {details && <ImageDetailsDialog image={details} onClose={() => setDetails(null)} />}
     </div>
   );
 }

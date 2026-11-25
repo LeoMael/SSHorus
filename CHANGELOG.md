@@ -69,7 +69,32 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   La cuenta con sudo (o root) va primero y lleva una **S**; se sabe por la última vez que te conectaste con ella o,
   si nunca te conectaste, por su contraseña de sudo configurada. También dentro de cada proyecto.
 
+- **Contenedores → Imágenes: elegir varias.** Casillas en cada fila y «Elegir todas» (también con el teclado:
+  `Espacio` marca, `Ctrl+A` todas las visibles, `Supr` elimina, `Intro` abre los detalles). **Eliminar** las elegidas
+  muestra la lista antes; las que usa algún contenedor (aunque esté parado) se quedan, salvo que marques **Forzar**,
+  que avisa de lo que pasa (en Podman también borra esos contenedores). Las imágenes con varios nombres se borran sin
+  `-f`. **Detalles** de cada imagen: sistema, con qué arranca, puertos, variables, etiquetas y **qué contenedores la
+  usan** (con atajo a Inspeccionar).
+- **Contenedores: «Que arranque solo» para proyectos de podman-compose.** Antes, un contenedor como
+  `seguimiento-siu-db` (de `podman-compose@seguimiento_siu.service`) acababa en «No hay nada que cambiar desde aquí».
+  Ahora SSHorus mira, como el dueño y por sus archivos (aunque su systemd de usuario esté parado), si están la
+  plantilla `podman-compose@.service`, el registro del proyecto (`~/.config/containers/compose/projects/<p>.env`), el
+  servicio habilitado y el linger, y te propone el camino: **activar el servicio** (`systemctl --user enable --now`,
+  más linger con sudo si falta) o **prepararlo** antes (`podman-compose systemd -a create-unit` en la carpeta de
+  servicios del usuario y `-a register` desde la carpeta del proyecto). Si no hay podman-compose (solo el plugin
+  docker-compose) o sus contenedores no están en un pod, propone la otra forma: **política de reinicio** +
+  `podman-restart.service` + linger, con **Editar compose…** para poner `restart:` en el archivo (con copia). Se ven
+  los comandos exactos antes, va en segundo plano y al terminar se vuelve a leer y se dice el estado nuevo.
+
 ### Corregido
+- **Contenedores → Imágenes: «Limpiar sin usar» ya no se queda gris sin decir por qué.** Con «Todos» (admin viendo
+  los contenedores de otros usuarios) el botón estaba desactivado y el motivo solo salía en un aviso flotante que no
+  aparece en un botón desactivado. Ahora funciona también con «Todos» (limpia como cada usuario) y, si de verdad no se
+  puede, lo dice debajo («Desactivado porque todas las imágenes las usa algún contenedor»…). Antes de limpiar enseña qué
+  se borra y cuánto espacio se libera; por defecto solo las «sin nombre», con la opción de incluir las que tienen
+  nombre (explicado en simple). Va en segundo plano.
+- **Contenedores → «Al reiniciar»: «Sin datos» explica el motivo** (no se pudo leer y por qué, o falta actualizar) en
+  vez de quedarse en blanco o con la etiqueta sola.
 - **Monitor → Por usuario**: la marca «tú» ya no queda pegada al nombre («leotú») y la tabla explica sus columnas.
 - **Vulnerabilidades: lo arreglado ya no vuelve a salir en Rocky y AlmaLinux.** A OSV se le preguntaba la versión sin
   epoch y Rocky/Alma escriben la versión arreglada con él («1:3.2.2-6.el9_5»): OSV daba por pendientes, para siempre,

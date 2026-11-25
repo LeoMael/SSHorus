@@ -39,6 +39,8 @@ export function useAutostart({ engine, owners, status, active, containers, runRa
   }, [engine, owners, isRoot, rootless, needsSudo]);
 
   const [facts, setFacts] = useState<Map<string, OwnerAutostart>>(() => new Map());
+  /** Por dueño: por qué no se pudo leer (para «Sin datos» en la columna). */
+  const [errors, setErrors] = useState<Map<string, string>>(() => new Map());
   const [loading, setLoading] = useState(false);
 
   const scopeKey = `${engine}|${[...ownerInfo.keys()].join(",")}`;
@@ -46,20 +48,28 @@ export function useAutostart({ engine, owners, status, active, containers, runRa
   const scopeRef = useRef(scopeKey);
   scopeRef.current = scopeKey;
 
-  useEffect(() => setFacts(new Map()), [scopeKey]);
+  useEffect(() => {
+    setFacts(new Map());
+    setErrors(new Map());
+  }, [scopeKey]);
 
-  const reload = useCallback(async () => {
+  /** Vuelve a leer y devuelve lo leído (para enseñar el estado nuevo tras un cambio). */
+  const reload = useCallback(async (): Promise<Map<string, OwnerAutostart>> => {
     const key = scopeKey;
     setLoading(true);
     const read = await Promise.all(
       [...ownerInfo.values()].map(async (o) => {
         const r = await runRawAs(o.key, autostartScript(o.scope), 30);
-        return [o.key, r.ok && r.result ? parseAutostart(r.result.stdout) : null] as const;
+        const f = r.ok && r.result ? parseAutostart(r.result.stdout) : null;
+        return { key: o.key, f, error: f ? null : (r.error ?? "el servidor no respondió") };
       }),
     );
-    if (scopeRef.current !== key) return;
+    const next = new Map(read.flatMap((x) => (x.f ? [[x.key, x.f] as const] : [])));
+    if (scopeRef.current !== key) return next;
     setLoading(false);
-    setFacts(new Map(read.filter((x): x is [string, OwnerAutostart] => x[1] !== null)));
+    setFacts(next);
+    setErrors(new Map(read.flatMap((x) => (x.error ? [[x.key, x.error] as const] : []))));
+    return next;
   }, [scopeKey, ownerInfo, runRawAs]);
 
   const hasContainers = !!containers && containers.length > 0;
@@ -78,10 +88,35 @@ export function useAutostart({ engine, owners, status, active, containers, runRa
     [facts, ownerInfo, version],
   );
 
+  /** Por qué no hay datos de un contenedor (null = los hay, o se están leyendo). */
+  const noDataOf = useCallback(
+    (c: Container): string | null => {
+      if (loading) return null;
+      const k = c.owner ?? "";
+      const err = errors.get(k);
+      if (err) return `no se pudo leer cómo arranca (${err})`;
+      if (!facts.has(k)) return "todavía no se ha leído; pulsa «Actualizar»";
+      return infoOf(c) ? null : "el contenedor no salió en la lectura (puede que se acabe de crear); pulsa «Actualizar»";
+    },
+    [loading, errors, facts, infoOf],
+  );
+
   const ownerOf = useCallback((k: string) => ownerInfo.get(k) ?? null, [ownerInfo]);
   const factsOf = useCallback((k: string) => facts.get(k) ?? null, [facts]);
+  /** Decide con unos datos dados (p. ej. los que devuelve `reload`). */
+  const decideWith = useCallback(
+    (all: Map<string, OwnerAutostart>, id: string, owner: string): AutostartInfo | null => {
+      const f = all.get(owner);
+      const o = ownerInfo.get(owner);
+      return f && o ? decideAutostart(id, f, o.scope, version) : null;
+    },
+    [ownerInfo, version],
+  );
 
-  return useMemo(() => ({ infoOf, ownerOf, factsOf, loading, reload }), [infoOf, ownerOf, factsOf, loading, reload]);
+  return useMemo(
+    () => ({ infoOf, noDataOf, ownerOf, factsOf, decideWith, loading, reload }),
+    [infoOf, noDataOf, ownerOf, factsOf, decideWith, loading, reload],
+  );
 }
 
 export type AutostartState = ReturnType<typeof useAutostart>;

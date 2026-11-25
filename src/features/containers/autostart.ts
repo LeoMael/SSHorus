@@ -10,6 +10,7 @@
 import { splitMarked } from "./parse";
 import { q } from "./shell";
 import { OWNER_ROOT, OWNER_SELF, ownerKey, type CtOwner } from "./owner";
+import { composeFactsLines, composeServiceGaps, composeServiceReady, composeUnitProject, parseComposeFacts, type ComposeFacts } from "./composeAutostart";
 import type { Engine } from "./types";
 
 /** Servicio que arranca los contenedores al encender. */
@@ -90,6 +91,7 @@ export function autostartScript(s: AutostartScope): string {
       // `systemctl --user` dirá LoadState=not-found: miramos también el gestor del sistema (solo lectura, sin sudo).
       "echo @@tv:sysunits",
       'if [ -n "$units" ]; then systemctl show -p Id -p LoadState -p UnitFileState -p WantedBy -p RequiredBy $units 2>/dev/null; fi',
+      ...(e === "podman" ? composeFactsLines() : []),
       "echo @@tv:linger",
       `u=${s.machineUser ? q(s.machineUser) : '"$(id -un)"'}`,
       'if [ -e "/var/lib/systemd/linger/$u" ]; then echo yes',
@@ -120,6 +122,8 @@ export interface OwnerAutostart {
   units: Map<string, UnitInfo>;
   /** Linger del usuario (null = no aplica o no se sabe). */
   linger: boolean | null;
+  /** podman-compose del usuario: plantilla, proyectos registrados y habilitados (null = no se leyó). */
+  compose: ComposeFacts | null;
 }
 
 const ENABLED = new Set(["enabled", "enabled-runtime"]);
@@ -170,7 +174,8 @@ export function parseAutostart(stdout: string): OwnerAutostart {
       if ((!cur || cur.loadState === "not-found") && sys.loadState !== "not-found") units.set(id, sys);
     }
   }
-  return { policies, service, units, linger: l === "yes" ? true : l === "no" ? false : null };
+  const compose = s.has("pcompose") ? parseComposeFacts(s.get("pcompose") ?? "") : null;
+  return { policies, service, units, linger: l === "yes" ? true : l === "no" ? false : null, compose };
 }
 
 // ───────── Decisión ─────────
@@ -198,7 +203,8 @@ export function canUpdateRestart(engine: Engine, version: string | null): boolea
 }
 
 export type AutostartVerdict = "yes" | "no" | "unknown";
-export type AutostartMissing = "policy" | "service" | "linger" | "unit";
+/** «compose»: su servicio podman-compose@ hay que prepararlo o habilitarlo (ver composeAutostart.ts). */
+export type AutostartMissing = "policy" | "service" | "linger" | "unit" | "compose";
 
 export interface AutostartInfo {
   verdict: AutostartVerdict;
@@ -257,13 +263,18 @@ export function decideAutostart(id: string, f: OwnerAutostart, scope: AutostartS
   if (p.unit) {
     const u = f.units.get(p.unit) ?? null;
     const found = u && u.loadState !== "not-found" ? u : null;
-    const wanted = found ? found.wanted : null;
+    // podman-compose de usuario: se decide por sus archivos (vale aunque su gestor de systemd esté parado).
+    const project = composeUnitProject(p.unit);
+    const pc = project && scope.userMode && !found?.system ? f.compose : null;
+    const wanted = pc && project ? composeServiceReady(pc, project) || found?.wanted === true : found ? found.wanted : null;
     const needsLinger = scope.userMode && !found?.system;
     const unitLinger = needsLinger ? f.linger : true;
     const unitLingerMissing: AutostartMissing[] = needsLinger && f.linger === false ? ["linger"] : [];
     const why = [`Lo gestiona el servicio «${p.unit}» (systemd${found?.system ? " del sistema" : scope.userMode ? " de usuario" : ""}).`];
     if (wanted === true) {
       why.push("El servicio está habilitado: arranca con el servidor.");
+    } else if (pc && project) {
+      why.push(...composeServiceGaps(pc, project));
     } else if (wanted === false) {
       why.push(
         found?.fileState === "generated"
@@ -274,7 +285,8 @@ export function decideAutostart(id: string, f: OwnerAutostart, scope: AutostartS
       why.push("No se pudo comprobar si el servicio está habilitado.");
     }
     if (needsLinger) why.push(lingerLine(f.linger));
-    const missing: AutostartMissing[] = [...(wanted === false && canToggleUnit(found) ? (["unit"] as const) : []), ...unitLingerMissing];
+    const unitMissing: AutostartMissing[] = wanted !== false ? [] : pc ? ["compose"] : canToggleUnit(found) ? ["unit"] : [];
+    const missing: AutostartMissing[] = [...unitMissing, ...unitLingerMissing];
     return { verdict: verdictOf([wanted, unitLinger]), policy: p.policy, unit: p.unit, unitInfo: found, why, missing };
   }
 

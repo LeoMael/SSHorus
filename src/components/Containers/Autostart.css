@@ -1,0 +1,12 @@
+/* Arranque solo: icono de «Sin datos» y la revisión de un proyecto de podman-compose. */
+.ct-auto {
+  gap: 3px;
+}
+.ct-auto-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ct-auto-choice .ct-auto-notes {
+  margin-top: 0;
+}

@@ -1,12 +1,11 @@
 // Volúmenes: listar, crear, eliminar y limpiar los que no usa ningún contenedor.
 import { useMemo, useState } from "react";
 import { Brush, Copy, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import { ago, createVolume, ownedBy, pruneVolumes, removeVolumes, validateObjName, type VolumeInfo } from "../../features/containers";
+import { ago, createVolume, ownedBy, pruneVolumes, reclaimed, removeVolumes, toggleKey, validateObjName, type VolumeInfo } from "../../features/containers";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { promptDialog } from "../ui/dialogs";
 import { PICK_OWNER_HINT, useCt } from "./context";
-import { reclaimed } from "./ImagesTab";
 
 /** Clave única (con «Todos», dos usuarios pueden tener un volumen con el mismo nombre). */
 const volKey = (v: VolumeInfo) => `${v.owner ?? ""}/${v.name}`;
@@ -122,13 +121,7 @@ export function VolumesTab() {
       reload: ["volumes", "df"],
     });
 
-  const toggle = (name: string) =>
-    setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(name)) n.delete(name);
-      else n.add(name);
-      return n;
-    });
+  const toggle = (name: string) => setSelected((s) => toggleKey(s, name));
 
   return (
     <div className="ct-tab-body">

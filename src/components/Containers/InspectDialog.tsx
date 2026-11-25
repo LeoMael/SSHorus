@@ -114,7 +114,7 @@ export function InspectDialog({ container, onClose }: { container: Container; on
                 </dd>
                 <dt>Al reiniciar el servidor</dt>
                 <dd>
-                  <AutostartBadge info={autoInfo} loading={ct.autostart.loading} />
+                  <AutostartBadge info={autoInfo} loading={ct.autostart.loading} noData={ct.autostart.noDataOf(container)} />
                   {autoInfo && (
                     <ul className="ct-auto-why">
                       {autoInfo.why.map((line) => (

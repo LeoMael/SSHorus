@@ -215,7 +215,7 @@ export function ContainerRow({
         </span>
       </td>
       <td className="ct-col-auto">
-        <AutostartBadge info={auto.infoOf(c)} loading={auto.loading} />
+        <AutostartBadge info={auto.infoOf(c)} loading={auto.loading} noData={auto.noDataOf(c)} />
       </td>
       <td className="ct-col-created faint" title={c.created ? new Date(c.created * 1000).toLocaleString() : ""}>
         {ago(c.created)}

@@ -278,7 +278,18 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - La columna **Al reiniciar** (también en **Inspeccionar**) indica si cada contenedor volverá a arrancar solo al
   reiniciar el servidor (**Activado** / **No activado**), comprobando su política de reinicio, `podman-restart.service`
   o `docker.service`, unidades systemd/Quadlet (como `podman-compose@*.service`) y *linger*. Puedes activarlo o
-  desactivarlo por fila o en lote.
+  desactivarlo por fila o en lote. Si sale **Sin datos**, pasa el ratón por encima: dice qué no se pudo leer y por qué.
+- **Proyectos de podman-compose** (como `seguimiento_siu`): **Hacer que arranque solo…** propone lo que falta, como el
+  dueño del proyecto: habilitar su servicio `podman-compose@<proyecto>` o, si todavía no existe, crear la plantilla y
+  registrar el proyecto antes, con *linger* para el usuario. Si no hay podman-compose (solo el plugin docker-compose),
+  propone la otra forma: cada contenedor con la política de reinicio y `podman-restart.service`, y **Editar compose…**
+  para poner `restart: always` (o `unless-stopped`) en el archivo, para que no se pierda al volver a crearlos. Primero
+  ves los comandos exactos; luego va en segundo plano y al terminar dice si ya arranca solo.
+- En **Imágenes** marca las casillas (o `Espacio`; `Ctrl+A` todas) y pulsa **Eliminar…**: las que usa un contenedor
+  se quedan salvo que marques **Forzar**. **Detalles** (o `Intro`) muestra la imagen y qué contenedores la usan.
+- **Limpiar sin usar** (Imágenes) enseña antes qué se borra y cuánto se libera. Por defecto solo borra las **sin
+  nombre** (restos de compilaciones y de versiones viejas); con **Incluir también las que tienen nombre** borra todas
+  las que no usa ningún contenedor (luego habría que volver a descargarlas). Si el botón está gris, debajo dice por qué.
 - Clic en un puerto de un contenedor → **Abrir túnel a mi PC…** para usarlo en tu navegador.
 - En **Imágenes**, el botón de vulnerabilidades te lleva a Administración → Vulnerabilidades.
 - **Levantar**, **Actualizar** (con la opción de volver a construir las imágenes propias) y **Descargar imagen** van

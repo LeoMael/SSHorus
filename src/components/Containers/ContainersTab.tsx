@@ -25,6 +25,7 @@ import {
   renameContainer,
   stateTone,
   statsFor,
+  toggleKey,
   validateObjName,
   withOwner,
   type Container,
@@ -270,13 +271,7 @@ export function ContainersTab() {
     setMenu({ ...pos, items: rowMenu(c) });
   };
 
-  const toggle = (id: string) =>
-    setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
+  const toggle = (id: string) => setSelected((s) => toggleKey(s, id));
 
   const onRowKey = (e: KeyboardEvent<HTMLTableRowElement>, c: Container) => {
     if (e.target !== e.currentTarget) return;

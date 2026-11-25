@@ -17,6 +17,7 @@ export const listNetworks = (e: Engine): Cmd => engineCmd(e, "network", "ls", ..
 export const systemDf = (e: Engine): Cmd => engineCmd(e, "system", "df", ...jsonFmt(e));
 export const statsOnce = (e: Engine): Cmd => engineCmd(e, "stats", "--no-stream", ...jsonFmt(e));
 export const inspect = (e: Engine, id: string): Cmd => engineCmd(e, "inspect", id);
+export const inspectImage = (e: Engine, id: string): Cmd => engineCmd(e, "image", "inspect", id);
 /** Con `--size`: lo escrito dentro de cada contenedor (SizeRw), fuera de sus volúmenes. */
 export const inspectSized = (e: Engine, ids: string[]): Cmd => engineCmd(e, "container", "inspect", "--size", ...ids);
 

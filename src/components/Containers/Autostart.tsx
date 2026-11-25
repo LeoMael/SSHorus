@@ -1,9 +1,11 @@
 // Etiqueta «Activado» / «No activado» de arranque al reiniciar el servidor y revisión de comandos para
 // activarlo o desactivarlo (uno o varios, cada uno como su dueño).
+import { Info } from "lucide-react";
 import {
   AUTOSTART_SERVICE,
   autostartPlan,
   autostartPolicy,
+  composeGroups,
   stateTone,
   type AutostartInfo,
   type AutostartTarget,
@@ -12,6 +14,8 @@ import {
 import { toast } from "../../stores/toasts";
 import type { CtContextValue } from "./context";
 import type { AutostartState } from "./useAutostart";
+import { askComposeAutostart } from "./ComposeAutostart";
+import "./Autostart.css";
 
 const TEXT = { yes: "Activado", no: "No activado", unknown: "Sin datos" } as const;
 const ARIA = {
@@ -20,11 +24,24 @@ const ARIA = {
   unknown: "Sin datos: no se pudo comprobar si arranca solo al reiniciar el servidor",
 } as const;
 
-export function AutostartBadge({ info, loading }: { info: AutostartInfo | null; loading: boolean }) {
-  if (!info) return loading ? <span className="ct-auto faint">…</span> : null;
+/** `noData`: por qué no hay datos de este contenedor (se enseña como «Sin datos» con el motivo). */
+export function AutostartBadge({ info, loading, noData }: { info: AutostartInfo | null; loading: boolean; noData?: string | null }) {
+  if (!info) {
+    if (loading) return <span className="ct-auto faint">…</span>;
+    if (!noData) return null;
+    const text = `Sin datos: ${noData}`;
+    return (
+      <span className="ct-auto ct-auto-unknown" title={text} aria-label={text}>
+        <Info size={10} /> {TEXT.unknown}
+      </span>
+    );
+  }
+  // «Sin datos» dice qué no se pudo comprobar, no solo la etiqueta.
+  const unknown = info.verdict === "unknown" ? info.why.filter((l) => /no se pudo/i.test(l)) : [];
+  const aria = unknown.length ? `${ARIA.unknown}. ${unknown.join(" ")}` : ARIA[info.verdict];
   return (
-    <span className={`ct-auto ct-auto-${info.verdict}`} title={info.why.join("\n")} aria-label={ARIA[info.verdict]}>
-      {TEXT[info.verdict]}
+    <span className={`ct-auto ct-auto-${info.verdict}`} title={info.why.join("\n")} aria-label={aria}>
+      {unknown.length > 0 && <Info size={10} />} {TEXT[info.verdict]}
     </span>
   );
 }
@@ -54,6 +71,13 @@ export function askAutostart(ct: CtContextValue, auto: AutostartState, on: boole
   });
   if (!targets.length) {
     toast.info(on ? "Ya arrancan solos" : "Ya no arrancan solos", cs.length === 1 ? cs[0].name : undefined);
+    return;
+  }
+  // Proyectos de podman-compose cuyo servicio hay que preparar: tienen su propio camino.
+  const compose = on ? composeGroups(targets, cs) : [];
+  if (compose.length) {
+    const g = compose[0];
+    askComposeAutostart(ct, auto, g, targets.filter((t) => !g.targets.includes(t)));
     return;
   }
   const plan = autostartPlan(on, targets, { engine: ct.engine, version: ct.status.version, owner: auto.ownerOf, facts: auto.factsOf });

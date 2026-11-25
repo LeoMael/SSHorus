@@ -1,10 +1,9 @@
 // Limpieza general: espacio usado (`system df`) y «Limpiar todo lo que no se usa» (`system prune`).
 import { useMemo } from "react";
 import { Box, Brush, HardDrive, Image as ImageIcon, Layers, Network, RefreshCw, Sparkles } from "lucide-react";
-import { pruneContainers, pruneImages, pruneNetworks, pruneVolumes, systemPrune, type DfRow } from "../../features/containers";
+import { pruneContainers, pruneImages, pruneNetworks, pruneVolumes, reclaimed, systemPrune, usersOf, type DfRow } from "../../features/containers";
 import { formatBytes } from "../../lib/format";
 import { useCt } from "./context";
-import { reclaimed, usersOf } from "./ImagesTab";
 
 const ICONS: Record<string, typeof Box> = {
   images: ImageIcon,

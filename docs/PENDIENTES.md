@@ -88,6 +88,20 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     `seguimiento-siu-db` repetido, «Actualizar» en segundo plano y Cancelar a mitad (con sudo/`runuser`), «Editar
     compose» y «Aplicar cambios». **Ojo con postgres 18:** guarda los datos en `/var/lib/postgresql/18/docker`; un
     volumen en `/var/lib/postgresql/data` no los protege. Revisar el compose antes de reemplazar la base de datos.
+  - **Arranque solo de `seguimiento_siu` (admin, «Usuario: leo_oti» y «Todos»)**: «Hacer que arranque solo…» en
+    `seguimiento-siu-db` debe proponer el servicio (o prepararlo: plantilla + `register`) en vez del callejón sin
+    salida; mirar los comandos en la revisión, lanzarlo y comprobar que al final dice «arrancará solo» y que
+    `systemctl --user status podman-compose@seguimiento_siu` (como `leo_oti`) está activo. Comprobar que
+    `podman-compose systemd -a create-unit` de la versión del VPS imprime la plantilla (sin root no puede escribir
+    en `/etc/systemd/user`) y que el servicio arranca el pod `pod_seguimiento_siu` (si los contenedores no están en
+    un pod debe recomendar la política de reinicio). Probar también la otra forma (casilla «Usar en su lugar la
+    política de reinicio») y **Editar compose…** desde esa revisión. Reiniciar el VPS y ver que la base arranca sola.
+    Con linger apagado, que lo active antes (sudo) y espere a su systemd de usuario. «Sin datos» con su motivo al
+    pasar el ratón.
+  - **Imágenes de `leo_oti` como admin (con «Todos» y con su usuario)**: «Limpiar sin usar» ya no gris (o con su
+    motivo debajo), vista previa (sin nombre / todas) con tamaño, tarea en segundo plano; elegir varias (casillas,
+    `Espacio`, `Ctrl+A`), **Eliminar…** con una en uso (se queda; con **Forzar**, aviso) y **Detalles** (contenedores
+    que la usan).
   - Monitor → Por usuario en el VPS Rocky (Podman sin root por usuario): que `590822` y los demás números salgan
     como «Contenedor … · de leo_oti · uid … dentro» bajo su dueño, con el nombre real del contenedor; la nota al
     elegir la fila y **Ver en Contenedores** (como `leo_oti`, como admin con sudo y sin sudo); el aviso de
@@ -162,6 +176,12 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   [tmux](historial/PENDIENTES-historial.md#76-terminales-persistentes-con-tmux---hecho-v040),
   [PIN y bóveda](historial/PENDIENTES-historial.md#77-pin-bóveda-cifrada-y-bloqueo---hecho-v040),
   [otros pendientes detectados](historial/PENDIENTES-historial.md#4-otros-pendientes-detectados) (2FA, agente, arrastre, cancelar).
+
+- **Contenedores con «Todos» (admin viendo los de otros usuarios):** las limpiezas de **Volúmenes** y **Redes** siguen
+  desactivadas con «Todos», igual que estaba «Limpiar imágenes» (ya arreglado): hacer lo mismo (limpiar como cada dueño
+  y explicar el motivo cuando no se puede).
+- **CSS de `ui/AdmModal`:** varias pantallas copian reglas de `.adm-modal` (Contenedores, MCP, Bases de datos); moverlas
+  a un CSS propio de `components/ui/AdmModal`.
 
 #### Reglas automáticas de calidad (aprobadas el 24/11/2026 para la beta.4)
 Para que el orden no dependa de que cada agente se acuerde, la CI debe fallar si se rompe el criterio de
