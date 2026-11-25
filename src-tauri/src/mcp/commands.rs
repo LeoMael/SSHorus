@@ -7,21 +7,12 @@ use crate::error::{AppError, AppResult};
 use crate::storage::vault::Vault;
 
 use super::approval::{ApprovalRequest, Decision};
+use super::bridge::register::shell_quote;
 use super::audit::{self, AuditEntry};
 use super::config::McpConfig;
 use super::core::{AutoDuration, AutoState};
 use super::policy::{Access, AutoLevel};
 use super::{emit_auto, ensure_token, regenerate, ClientConfig, McpState, McpStatus};
-
-fn shell_arg(s: &str) -> String {
-    if s.bytes().all(|b| b.is_ascii_alphanumeric() || b"_-./:=@\\".contains(&b)) {
-        s.to_string()
-    } else if cfg!(windows) {
-        format!("\"{s}\"")
-    } else {
-        format!("'{}'", s.replace('\'', r"'\''"))
-    }
-}
 
 #[tauri::command]
 pub async fn mcp_status(state: State<'_, McpState>) -> AppResult<McpStatus> {
@@ -165,7 +156,7 @@ pub async fn mcp_client_config(state: State<'_, McpState>) -> AppResult<ClientCo
         claude_code_stdio: format!(
             "claude mcp add --env SSHORUS_MCP_TOKEN={} --transport stdio sshorus -- {}",
             token.as_str(),
-            shell_arg(&bridge)
+            shell_quote(&bridge)
         ),
         claude_code_http: format!(
             "claude mcp add --transport http sshorus {} --header \"Authorization: Bearer {}\"",

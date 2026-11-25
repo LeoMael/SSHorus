@@ -944,14 +944,18 @@ fn same_token_compares_everything() {
 
 /// Lanza el puente con tuberías en memoria. Devuelve (escritor de stdin, lector de stdout).
 fn spawn_bridge(port: u16, token: Option<&str>) -> (tokio::io::DuplexStream, tokio::io::Lines<BufReader<tokio::io::DuplexStream>>) {
-    let (client_in, bridge_in) = tokio::io::duplex(1 << 20);
-    let (bridge_out, client_out) = tokio::io::duplex(1 << 20);
-    let cfg = bridge::BridgeConfig {
+    spawn_bridge_with(bridge::BridgeConfig {
         port,
         token: token.map(str::to_string),
         version: "0.0.0".into(),
         poll: Duration::from_millis(50),
-    };
+        pairing: None,
+    })
+}
+
+fn spawn_bridge_with(cfg: bridge::BridgeConfig) -> (tokio::io::DuplexStream, tokio::io::Lines<BufReader<tokio::io::DuplexStream>>) {
+    let (client_in, bridge_in) = tokio::io::duplex(1 << 20);
+    let (bridge_out, client_out) = tokio::io::duplex(1 << 20);
     tokio::spawn(bridge::run(cfg, BufReader::new(bridge_in), bridge_out));
     (client_in, BufReader::new(client_out).lines())
 }
@@ -1039,7 +1043,7 @@ async fn bridge_when_app_is_closed() {
 
 #[test]
 fn sse_parser() {
-    let mut p = bridge::SseParser::default();
+    let mut p = bridge::forward::SseParser::default();
     assert!(p.push(b"data: {\"a\":").is_empty());
     let out = p.push(b"1}\n\nevent: message\r\ndata: {\"b\":2}\r\n\r\ndata: {\"c\"");
     assert_eq!(out, vec![r#"{"a":1}"#.to_string(), r#"{"b":2}"#.to_string()]);
@@ -1048,7 +1052,7 @@ fn sse_parser() {
     // Un carácter UTF-8 partido entre dos trozos no se estropea.
     let msg = "data: {\"t\":\"ñandú\"}\n\n".as_bytes();
     let cut = msg.iter().position(|&b| b == 0xC3).unwrap() + 1;
-    let mut p = bridge::SseParser::default();
+    let mut p = bridge::forward::SseParser::default();
     assert!(p.push(&msg[..cut]).is_empty());
     assert_eq!(p.push(&msg[cut..]), vec![r#"{"t":"ñandú"}"#.to_string()]);
 }
@@ -1848,3 +1852,6 @@ mod reboot_flow;
 
 #[path = "tests_password.rs"]
 mod password_flow;
+
+#[path = "tests_pairing.rs"]
+mod pairing_flow;

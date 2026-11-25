@@ -8,11 +8,16 @@ import {
   EV_MCP_APPROVAL,
   EV_MCP_APPROVAL_DONE,
   EV_MCP_STATUS,
+  EV_MCP_PAIR_DONE,
+  EV_MCP_PAIR_REQUEST,
+  EV_MCP_PAIRED,
   EV_MCP_UI_REQUEST,
   mcp,
   type AuditEntry,
   type McpApprovalRequest,
   type McpAutoState,
+  type McpPairedClient,
+  type McpPairPrompt,
   type McpStatus,
   type McpUiRequest,
 } from "../../api/mcp";
@@ -31,6 +36,10 @@ interface McpUiState {
   activityOpen: boolean;
   /** Servidores con «Aceptar automáticamente» activo. */
   auto: McpAutoState[];
+  /** Asistentes que piden emparejarse, el más antiguo primero. */
+  pairRequests: McpPairPrompt[];
+  /** Asistentes emparejados. */
+  paired: McpPairedClient[];
 }
 
 export const useMcp = create<McpUiState>(() => ({
@@ -39,7 +48,22 @@ export const useMcp = create<McpUiState>(() => ({
   activity: [],
   activityOpen: false,
   auto: [],
+  pairRequests: [],
+  paired: [],
 }));
+
+export async function refreshPaired() {
+  try {
+    useMcp.setState({ paired: await mcp.pairedClients() });
+  } catch {
+    /* el motor aún arranca: llegará el evento */
+  }
+}
+
+/** Quita una petición de emparejado de la cola (respondida o vencida). */
+export function dropPairRequest(id: string) {
+  useMcp.setState((s) => ({ pairRequests: s.pairRequests.filter((p) => p.id !== id) }));
+}
 
 export async function refreshAuto() {
   try {
@@ -126,6 +150,18 @@ export function initMcp() {
   void refreshAuto();
   void listen<McpStatus>(EV_MCP_STATUS, (e) => useMcp.setState({ status: e.payload }));
   void listen<McpUiRequest>(EV_MCP_UI_REQUEST, (e) => void handleUiRequest(e.payload));
+  void listen<McpPairPrompt>(EV_MCP_PAIR_REQUEST, (e) => {
+    useMcp.setState((s) =>
+      s.pairRequests.some((p) => p.id === e.payload.id) ? s : { pairRequests: [...s.pairRequests, e.payload] },
+    );
+  });
+  void listen<string>(EV_MCP_PAIR_DONE, (e) => dropPairRequest(e.payload));
+  void listen<McpPairedClient[]>(EV_MCP_PAIRED, (e) => useMcp.setState({ paired: e.payload }));
+  void refreshPaired();
+  void mcp
+    .pairPending()
+    .then((pairRequests) => useMcp.setState({ pairRequests }))
+    .catch(() => {});
   void refreshStatus();
   void refreshActivity();
   void mcp

@@ -17,14 +17,13 @@ la **1.0.0-beta.4**.
   de otro usuario), Monitor → Por usuario con los UID de contenedores, barra lateral en árbol con la «S» de sudo,
   **tareas en segundo plano para toda la app** (ventanita en la esquina, ver en grande, cancelar; escáner,
   auditoría, actualizar imagen, reinicio y Compose) e ideas 9 y 10 anotadas.
-- En marcha con un agente al cerrar (worktree en `.claude/worktrees/`, un commit al terminar): **emparejar
-  asistentes de IA** (idea 10, fase 1 con `sshorus-mcp pair`). Si la sesión se cerró antes de unirlo:
-  `git worktree list` y la rama `worktree-agent-*`; si tiene commit se une con `git cherry-pick`, si no, se rehace.
+- También en `main` sin subir: **emparejar asistentes de IA** (idea 10, fase 1: `sshorus-mcp pair`, permisos propios
+  por asistente, revocar, puente copiado a `~/.local/bin`). No queda ningún agente en marcha.
 - Pedir en BASE: que `stores/toasts.ts` y `Toaster` admitan un botón (hoy el aviso «Ver» de las tareas es propio de
   la esquina).
 - **Aprobado por el usuario para la beta.4, sin empezar** (no lanzar más agentes hasta retomar): reglas de calidad
   automáticas en la CI, ver «Reglas automáticas de calidad» en la sección 3.
-- Después: unir, comprobar todo, `/code-review` del lote, versión `1.0.0-beta.4` (`bundle.windows.wix.version` →
+- Después: reglas automáticas de calidad, `/code-review` del lote, probar a mano lo de §2, versión `1.0.0-beta.4` (`bundle.windows.wix.version` →
   `0.6.0.4`), etiqueta y push (preguntar al usuario antes de subir).
 
 ### 1. Hecho en `main` (sin publicar todavía)
@@ -89,6 +88,16 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     elegir la fila y **Ver en Contenedores** (como `leo_oti`, como admin con sudo y sin sudo); el aviso de
     «Terminar» en un proceso de contenedor; «tú» separado del nombre; con hidepid y sin sudo, «Sin identificar ·
     haría falta sudo». Mirar que el muestreo no pese más (1 vCPU).
+  - **Emparejar asistentes (idea 10)**: con la app real, pedir a Claude Code «conéctate a SSHorus ejecutando
+    `sshorus-mcp pair`» (diálogo encima de Ajustes, datos de programa/PID/carpeta, Aceptar con permisos; que se
+    registre solo con `claude mcp add -s user` y funcione tras `/mcp`); lo mismo con Codex (su sandbox sin red: que
+    el aviso se entienda y funcione fuera del sandbox); dos IA a la vez con permisos distintos (cada una ve solo lo
+    suyo en `list_servers`); «Cambiar permisos» y «Revocar» (la revocada recibe «ya no está emparejado» al instante y
+    queda en Actividad); con SSHorus bloqueado (rechazo sin diálogo) y bloqueándolo con el diálogo abierto; límite
+    (dos `pair` seguidos del mismo asistente → el segundo «espera»; más de 3 por minuto → 429 sin diálogos); que
+    `~/.local/bin/sshorus-mcp` se cree al abrir la AppImage y se actualice con una versión nueva; en Windows y macOS
+    (detección del programa y ruta `%LOCALAPPDATA%\SSHorus\bin`); el puente sin emparejar enseña
+    `sshorus_emparejar` y, tras emparejar, la llamada a esa herramienta trae las herramientas sin reiniciar.
   - Escáner («Arreglar todo», «Actualizar imagen»), Auditoría («Arreglar todo lo seguro»), terminal tras reinicio, IA sin `temperature` y flujos tocados por el refactor (barra lateral, explorador, pestañas, ajustes, transferencias).
   - Tareas en segundo plano (VPS Rocky de 1 vCPU): Vulnerabilidades → «Arreglar todo lo que tiene solución», cerrar
     el diálogo y seguirla en la ventanita de la esquina (salida de `dnf` en vivo, barra «3/10», aviso «Sin salida
@@ -184,7 +193,7 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
 | **7.10** | **Historial por servidor** | Idea, sin empezar | Comandos usados en cada servidor y grabación opcional de sesiones (para auditoría). |
 | **8.2+** | **Más Administración** | Idea, sin empezar | Servicios (systemd: iniciar, parar, activar, logs), firewall, paquetes (actualizar, instalar) y tareas programadas (cron/timers). |
 | **9** | **Ver bases de datos (esquema)** | Idea del usuario (24/11), sin empezar | Desde un servidor o un contenedor, ver el esquema de PostgreSQL, MySQL/MariaDB, SQLite (y quizá MongoDB/Redis): bases, tablas, columnas, índices y relaciones, y un diagrama sencillo. Conectar por túnel SSH o con `psql`/`mysql` dentro del contenedor, con la contraseña puesta por SSHorus (la IA nunca la ve). Primero solo lectura. |
-| **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | Aprobada por el usuario (24/11, pedida desde copysse), diseño propuesto, sin empezar | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
+| **10** | **Emparejar asistentes de IA con «Aceptar / Rechazar»** | **Hecha (25/11), falta probar a mano** (ver §2). `sshorus-mcp pair`, permisos propios por asistente, revocar, puente en `~/.local/bin` | Conectar Claude Code, Codex, etc. al MCP sin copiar el token: registro sin secretos (`claude mcp add -s user sshorus -- sshorus-mcp`), la primera conexión pide permiso en SSHorus (quién es, carpeta, acceso por servidor), si se acepta SSHorus da un token propio de ese cliente que el puente guarda en el llavero; lista de asistentes emparejados con «Revocar» en Ajustes; solo 127.0.0.1, límite de peticiones, nada con SSHorus bloqueado, todo en `mcp-audit.jsonl`. Contexto: copysse usará SSHorus (ver `~/LEO/Projects/CLAUDE_COPY/docs/HOJA_DE_RUTA.md` §2). |
 | **10b** | **Emparejar por OAuth (estándar del MCP) para clientes HTTP** | Recomendado (24/11), fase 2 de la idea 10 | Para asistentes que se conectan por HTTP sin el puente `sshorus-mcp`: flujo de autorización estándar del MCP (OAuth 2.1 con PKCE), donde «autorizar» es el mismo diálogo de SSHorus con permisos por servidor. Más trabajo que la fase 1; no sirve para clientes stdio, que siguen con `sshorus-mcp pair`. |
 | **—** | **Arrastre: archivos virtuales** | Solo si hace falta | Al arrastrar archivos grandes al escritorio, no copiarlos dos veces (`CFSTR_FILECONTENTS` en Windows, `NSFilePromiseProvider` en macOS). Quedarían fuera del motor de transferencias. |
 | **—** | **Mapa de infraestructura (pulido visual)** | Opcional | El zoom y navegación ya están hechos; solo pulido estético si se desea. |

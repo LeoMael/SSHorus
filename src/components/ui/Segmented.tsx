@@ -1,5 +1,6 @@
 // Grupo de botones de opción única (filtros). Se recorre con las flechas, como un grupo de radio.
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import "./Segmented.css";
 
 export interface SegOption<T extends string> {
   value: T;

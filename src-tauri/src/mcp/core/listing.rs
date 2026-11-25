@@ -7,15 +7,16 @@ use serde_json::{json, Value};
 use super::super::backend::Backend;
 use super::super::policy::Access;
 use super::output::{access_code, enum_text, pretty};
+use super::super::caller::Caller;
 use super::{McpCore, Res, TransferStatusParams};
 use crate::types::TransferJob;
 
 impl<B: Backend> McpCore<B> {
-    pub(super) async fn list_servers(&self) -> Res<String> {
+    pub(super) async fn list_servers(&self, caller: &Caller) -> Res<String> {
         let sessions = self.backend.sessions().await;
         let cfg = self.config.get();
         let list: Vec<Value> = self
-            .visible_servers()
+            .visible_servers(caller)
             .into_iter()
             .map(|(s, a)| {
                 let ids: Vec<&str> = sessions.iter().filter(|x| x.profile_id == s.id).map(|x| x.id.as_str()).collect();
@@ -40,9 +41,9 @@ impl<B: Backend> McpCore<B> {
         Ok(pretty(&list))
     }
 
-    pub(super) fn list_projects(&self) -> Res<String> {
+    pub(super) fn list_projects(&self, caller: &Caller) -> Res<String> {
         let visible: BTreeMap<String, String> =
-            self.visible_servers().into_iter().map(|(s, _)| (s.id, s.name)).collect();
+            self.visible_servers(caller).into_iter().map(|(s, _)| (s.id, s.name)).collect();
         let list: Vec<Value> = self
             .backend
             .profiles()
@@ -60,8 +61,8 @@ impl<B: Backend> McpCore<B> {
         Ok(pretty(&list))
     }
 
-    pub(super) async fn list_sessions(&self) -> Res<String> {
-        let visible: BTreeSet<String> = self.visible_servers().into_iter().map(|(s, _)| s.id).collect();
+    pub(super) async fn list_sessions(&self, caller: &Caller) -> Res<String> {
+        let visible: BTreeSet<String> = self.visible_servers(caller).into_iter().map(|(s, _)| s.id).collect();
         let list: Vec<Value> = self
             .backend
             .sessions()
@@ -82,8 +83,8 @@ impl<B: Backend> McpCore<B> {
         Ok(pretty(&list))
     }
 
-    pub(super) async fn transfer_status(&self, p: TransferStatusParams) -> Res<String> {
-        let visible: BTreeSet<String> = self.visible_servers().into_iter().map(|(s, _)| s.id).collect();
+    pub(super) async fn transfer_status(&self, p: TransferStatusParams, caller: &Caller) -> Res<String> {
+        let visible: BTreeSet<String> = self.visible_servers(caller).into_iter().map(|(s, _)| s.id).collect();
         let sessions: BTreeSet<String> = self
             .backend
             .sessions()

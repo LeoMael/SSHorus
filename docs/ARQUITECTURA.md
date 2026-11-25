@@ -273,7 +273,7 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
 | `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), cifrado del Gist (`crypto.rs`), compartir comandos |
 | `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
-| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `server.rs`, `core/`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`, `bridge.rs`) |
+| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
 | `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
 | `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
@@ -630,7 +630,7 @@ Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas 
 
 1. **Transporte.** El cliente habla HTTP «streamable» con `http://127.0.0.1:<puerto>/mcp` (47821 por defecto),
    o por stdio con el puente `sshorus-mcp`, que reenvía cada mensaje a esa dirección. El puente no tiene lógica:
-   lleva el token en la variable `SSHORUS_MCP_TOKEN` y lee el puerto de `mcp.json`; si la app está cerrada,
+   lleva el token de la variable `SSHORUS_MCP_TOKEN` o, si el asistente se emparejó, del llavero, y lee el puerto de `mcp.json`; si la app está cerrada,
    contesta él mismo «Abre SSHorus para usar tus servidores» y avisa (`tools/list_changed`) cuando se abre.
 2. **Puerta** (`mcp/http.rs`): cabecera `Origin` → 403; SSHorus bloqueado → error «SSHorus está bloqueado:
    desbloquéalo para continuar»; token `Bearer` distinto → 401. El token se lee de la bóveda o el llavero
@@ -648,6 +648,17 @@ Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas 
    del escáner (sección 16b).
 6. **Registro** (`mcp/audit.rs`): cada acción, también las rechazadas, va a `mcp-audit.jsonl` y al panel
    «Actividad del asistente» (evento `mcp://activity`).
+
+**Emparejar asistentes** (`mcp/pairing/`, `mcp/bridge/pair.rs`, `components/McpPairing/`): la IA ejecuta
+`sshorus-mcp pair`; el puente mira su cadena de procesos padre (`bridge/caller.rs`: `/proc` en Linux, `ps` en macOS,
+PowerShell en Windows) para saber qué asistente es (`bridge/clients.rs`, una tabla) y pide `POST /pair`. La app
+(solo 127.0.0.1, sin `Origin`, nada si está bloqueada; una petición esperando por asistente y 3 por minuto) abre el
+diálogo `mcp://pair-request` encima de Ajustes y espera hasta 2 min. Si aceptas, crea un token `tvc_<kid>_<secreto>`
+solo para ese asistente y guarda su huella Argon2id con sus permisos en `mcp-clients.json`; el puente lo guarda en el
+llavero (`sshorus` / `mcp-client:<id>`) y se registra en el asistente sin token (`claude mcp add -s user -e
+SSHORUS_MCP_CLIENT=claude sshorus -- ~/.local/bin/sshorus-mcp`). En cada petición `http.rs` identifica el token y deja
+un `Caller` en ella: con un asistente emparejado valen **solo sus permisos por servidor**; con el token general, los de
+`mcp.json`. Al arrancar, `install.rs` copia el puente a `~/.local/bin` (o `%LOCALAPPDATA%\SSHorus\bin`).
 
 **Aceptar automáticamente** (`policy::decide_auto` y `effective_auto`, `McpCore::set_auto_at`,
 `features/mcp/AutoAccept.tsx`)

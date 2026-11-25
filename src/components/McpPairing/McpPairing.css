@@ -1,0 +1,128 @@
+/* Emparejar asistentes de IA: diálogo «Conectar un asistente», selector de permisos y lista en Ajustes. */
+
+/* Encima de Ajustes (1000) y de los avisos de conexión (1010): la petición suele llegar con Ajustes abierto.
+   Debajo de confirmDialog (1020). */
+.modal-backdrop:has(> .mpair-dialog) {
+  z-index: 1015;
+}
+
+.mpair-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mpair-lead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+.mpair-lead > svg {
+  color: var(--purple);
+}
+.mpair-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: var(--fs-sm);
+}
+.mpair-facts dt {
+  color: var(--text-muted);
+}
+.mpair-facts dd {
+  margin: 0;
+  word-break: break-all;
+  user-select: text;
+}
+.mpair-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.mpair-note > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.mpair-muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+/* ───── Permisos por servidor ───── */
+.mpair-access {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+}
+.mpair-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.mpair-access-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+.mpair-server {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ───── Lista en Ajustes ───── */
+.mpair-client {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mpair-client:last-child {
+  border-bottom: none;
+}
+.mpair-client-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mpair-client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mpair-client-info small {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mpair-client-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.mpair-edit {
+  margin-top: 8px;
+}
+.mpair-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}

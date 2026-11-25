@@ -24,6 +24,7 @@ import { initPrivileges } from "./features/privileges";
 import { PinDialogHost } from "./features/lock/PinDialog";
 import { initMcp } from "./features/mcp/store";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
+import { PairDialogHost } from "./components/McpPairing/PairDialog";
 import { SudoAskHost } from "./features/mcp/SudoAskHost";
 import { PasswordRunHost } from "./features/mcp/PasswordRunDialog";
 import { JobsHost } from "./components/Jobs/JobsHost";
@@ -311,6 +312,7 @@ export default function App() {
       <PinDialogHost />
       <McpActivity />
       <ApprovalDialogHost />
+      <PairDialogHost />
       <ChoiceDialogHost />
       <SudoAskHost />
       <PasswordRunHost />

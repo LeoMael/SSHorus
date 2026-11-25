@@ -5,21 +5,22 @@ use std::collections::BTreeSet;
 use super::super::approval::Decision;
 use super::super::audit::now_ms;
 use super::super::backend::Backend;
+use super::super::caller::Caller;
 use super::super::policy::{self, Access, Action, AutoLevel, Verdict};
 use super::super::protect;
 use super::{ask, Fail, McpCore, Rec, Res, Target};
 use crate::types::ServerProfile;
 
 impl<B: Backend> McpCore<B> {
-    /// Servidores a los que el asistente tiene acceso.
-    pub(super) fn visible_servers(&self) -> Vec<(ServerProfile, Access)> {
+    /// Servidores a los que tiene acceso quien llama.
+    pub(super) fn visible_servers(&self, caller: &Caller) -> Vec<(ServerProfile, Access)> {
         let cfg = self.config.get();
         self.backend
             .profiles()
             .servers
             .into_iter()
             .filter_map(|s| {
-                let a = cfg.access_of(&s.id);
+                let a = caller.access_of(&cfg, &s.id);
                 (a != Access::None).then_some((s, a))
             })
             .collect()
@@ -49,7 +50,7 @@ impl<B: Backend> McpCore<B> {
         };
         rec.entry.server_id = Some(found.id.clone());
         rec.entry.server_name = Some(found.name.clone());
-        let access = self.config.get().access_of(&found.id);
+        let access = rec.caller.access_of(&self.config.get(), &found.id);
         if access == Access::None {
             return Err(Fail::Denied(policy::no_access_msg(&found.name)));
         }

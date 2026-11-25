@@ -63,7 +63,8 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
-use super::audit::{now_ms, AuditEntry, AuditLog, AuditStatus};
+use super::audit::{AuditEntry, AuditLog, AuditStatus};
+use super::caller::Caller;
 use super::backend::Backend;
 use super::config::McpConfigStore;
 use super::policy::{Access, AutoGrant};
@@ -135,6 +136,8 @@ type Res<T> = Result<T, Fail>;
 struct Rec {
     entry: AuditEntry,
     started: Instant,
+    /// Quién llama: decide el nivel de acceso a cada servidor.
+    caller: Caller,
 }
 
 /// Servidor sobre el que se actúa.
@@ -179,27 +182,24 @@ impl<B: Backend> McpCore<B> {
         }
     }
 
-    /// Ejecuta una herramienta. `cancel` se dispara si el cliente cancela la petición.
+    /// Ejecuta una herramienta con el token general. `cancel` se dispara si el cliente cancela la petición.
+    #[cfg(test)]
     pub async fn call(&self, tool: &str, args: Value, client: Option<String>, cancel: CancellationToken) -> ToolOutput {
-        let mut rec = Rec {
-            entry: AuditEntry {
-                id: uuid::Uuid::new_v4().to_string(),
-                at: now_ms(),
-                tool: tool.to_string(),
-                server_id: None,
-                server_name: None,
-                detail: String::new(),
-                status: AuditStatus::Running,
-                approved_by: None,
-                message: None,
-                duration_ms: None,
-                client,
-                exec_id: None,
-                auto: false,
-                auto_danger: false,
-            },
-            started: Instant::now(),
-        };
+        self.call_as(tool, args, client, Caller::default(), cancel).await
+    }
+
+    /// Ejecuta una herramienta para `caller` (sus permisos por servidor; ver `caller.rs`). `label` es el
+    /// User-Agent del puente o cliente.
+    pub async fn call_as(&self, tool: &str, args: Value, label: Option<String>, caller: Caller, cancel: CancellationToken) -> ToolOutput {
+        let mut entry = AuditEntry::start(tool);
+        match &caller.client {
+            Some(c) => {
+                entry.client = Some(c.name.clone());
+                entry.client_id = Some(c.id.clone());
+            }
+            None => entry.client = label,
+        }
+        let mut rec = Rec { entry, started: Instant::now(), caller };
         let out = match self.gate() {
             Err(f) => Err(f),
             Ok(()) => self.dispatch(tool, args, &mut rec, &cancel).await,
@@ -233,9 +233,9 @@ impl<B: Backend> McpCore<B> {
 
     async fn dispatch(&self, tool: &str, args: Value, rec: &mut Rec, cancel: &CancellationToken) -> Res<String> {
         match tool {
-            "list_servers" => self.list_servers().await,
-            "list_projects" => self.list_projects(),
-            "list_sessions" => self.list_sessions().await,
+            "list_servers" => self.list_servers(&rec.caller).await,
+            "list_projects" => self.list_projects(&rec.caller),
+            "list_sessions" => self.list_sessions(&rec.caller).await,
             "list_catalog" => self.list_catalog(parse(args)?).await,
             "connect" => self.connect(parse(args)?, rec).await,
             "run_command" => self.run_command(parse(args)?, rec, cancel).await,
@@ -246,7 +246,7 @@ impl<B: Backend> McpCore<B> {
             "write_file" => self.write_file(parse(args)?, rec).await,
             "upload" => self.upload(parse(args)?, rec).await,
             "download" => self.download(parse(args)?, rec).await,
-            "transfer_status" => self.transfer_status(parse(args)?).await,
+            "transfer_status" => self.transfer_status(parse(args)?, &rec.caller).await,
             "list_ports" => self.scan("ports", parse(args)?, rec).await,
             "list_sites" => self.scan("sites", parse(args)?, rec).await,
             "list_containers" => self.scan("containers", parse(args)?, rec).await,

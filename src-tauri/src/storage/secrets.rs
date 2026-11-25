@@ -14,13 +14,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use keyring::{Entry, Error as KrError};
+use keyring::Error as KrError;
 use serde::{Deserialize, Serialize};
 
 use base64ct::{Base64, Encoding};
 use zeroize::Zeroizing;
 
 use super::cipher::KdfParams;
+use super::keyring_store;
 use super::vault::{DeviceKeyStore, PinKind, Vault, DEVICE_KEY_USER};
 use crate::error::{AppError, AppResult};
 
@@ -322,59 +323,19 @@ pub(crate) fn disable_vault(vault: &Vault, kr: &dyn Keyring, pin: &str) -> AppRe
 
 // ───────── Implementación parametrizada por servicio (los tests usan "sshorus-test") ─────────
 
-fn entry(service: &str, user: &str) -> AppResult<Entry> {
-    check_user(user)?;
-    Entry::new(service, user).map_err(map_err)
-}
-
 pub(crate) fn get_secret_in(service: &str, user: &str) -> AppResult<Option<String>> {
-    let e = entry(service, user)?;
-    match e.get_password() {
-        Ok(s) => Ok(Some(s)),
-        Err(KrError::NoEntry) => Ok(None),
-        // Varias entradas iguales (p. ej. creadas por otra app): usamos la primera legible.
-        Err(KrError::Ambiguous(entries)) => {
-            for c in entries {
-                if let Ok(s) = c.get_password() {
-                    return Ok(Some(s));
-                }
-            }
-            Ok(None)
-        }
-        Err(err) => Err(map_err(err)),
-    }
+    check_user(user)?;
+    keyring_store::get(service, user).map_err(map_err)
 }
 
 pub(crate) fn set_secret_in(service: &str, user: &str, secret: &str) -> AppResult<()> {
-    let e = entry(service, user)?;
-    match e.set_password(secret) {
-        Ok(()) => Ok(()),
-        Err(KrError::Ambiguous(entries)) => {
-            // Limpiamos duplicados y volvemos a guardar.
-            for c in entries {
-                let _ = c.delete_credential();
-            }
-            e.set_password(secret).map_err(map_err)
-        }
-        Err(err) => Err(map_err(err)),
-    }
+    check_user(user)?;
+    keyring_store::set(service, user, secret).map_err(map_err)
 }
 
 pub(crate) fn delete_secret_in(service: &str, user: &str) -> AppResult<()> {
-    let e = entry(service, user)?;
-    match e.delete_credential() {
-        Ok(()) | Err(KrError::NoEntry) => Ok(()),
-        Err(KrError::Ambiguous(entries)) => {
-            for c in entries {
-                match c.delete_credential() {
-                    Ok(()) | Err(KrError::NoEntry) => {}
-                    Err(err) => return Err(map_err(err)),
-                }
-            }
-            Ok(())
-        }
-        Err(err) => Err(map_err(err)),
-    }
+    check_user(user)?;
+    keyring_store::delete(service, user).map_err(map_err)
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]

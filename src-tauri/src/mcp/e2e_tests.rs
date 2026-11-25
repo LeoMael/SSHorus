@@ -334,6 +334,7 @@ async fn stdio_bridge_end_to_end() {
         port: env.port,
         token: Some(TOKEN.into()),
         version: "e2e".into(),
+        pairing: None,
         poll: Duration::from_millis(100),
     };
     tokio::spawn(bridge::run(cfg, BufReader::new(bridge_in), bridge_out));

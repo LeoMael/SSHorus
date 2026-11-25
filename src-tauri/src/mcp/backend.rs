@@ -148,12 +148,17 @@ impl TauriBackend {
 
     /// Trae la ventana principal al frente para que veas el diálogo.
     fn bring_to_front(&self) {
-        if let Some(w) = self.app.get_webview_window("main") {
-            let _ = w.unminimize();
-            let _ = w.show();
-            let _ = w.set_focus();
-            let _ = w.request_user_attention(Some(tauri::UserAttentionType::Critical));
-        }
+        bring_to_front(&self.app);
+    }
+}
+
+/// Trae la ventana al frente para que veas una petición del asistente.
+pub(crate) fn bring_to_front(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        let _ = w.request_user_attention(Some(tauri::UserAttentionType::Critical));
     }
 }
 

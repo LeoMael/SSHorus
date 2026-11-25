@@ -20,6 +20,16 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   con dnf, cuántos paquetes lleva), **Actualizar imagen** (descarga, Compose y systemd), **Auditoría → Arreglar y
   Arreglar todo lo seguro**, y **Reiniciar ahora** con sus pasos (reiniciando, esperando a que vuelva, conectado de
   nuevo) y **Dejar de esperar**.
+- **Asistentes de IA: conectar con «Aceptar / Rechazar», sin copiar secretos.** Dile a tu IA «conéctate a SSHorus
+  ejecutando `sshorus-mcp pair`»: SSHorus muestra quién lo pide (programa, PID y carpeta), eliges sus permisos por
+  servidor (Sin acceso / Solo lectura / Completo) y aceptas. La IA guarda su llave en el llavero del sistema y se
+  apunta sola en su configuración (Claude Code, Codex y Gemini CLI; para OpenCode y Antigravity muestra el bloque
+  exacto). Varias IA a la vez, cada una con **sus propios permisos**, y en **Ajustes → Asistentes de IA → Asistentes
+  conectados** ves su carpeta y último uso, con **Cambiar permisos** y **Revocar**. Peticiones, respuestas,
+  revocaciones e intentos con una llave revocada quedan en el registro del asistente. Límite: una petición
+  esperando por asistente y 3 por minuto. La conexión manual con token sigue funcionando igual.
+- **Puente en ruta fija**: SSHorus copia `sshorus-mcp` a `~/.local/bin` (Windows: `%LOCALAPPDATA%\SSHorus\bin`) al
+  abrirse, así las configuraciones no se rompen con la AppImage.
 - **Compose: «Ya existe un contenedor con ese nombre»** ahora tiene arreglo: **Ver y arreglar** muestra el contenedor
   viejo (id, imagen, estado, fecha, de qué proyecto o herramienta viene y sus volúmenes) y los del mismo origen que
   chocarían después, y **Reemplazar el contenedor viejo y volver a intentarlo** los para y los borra como su dueño

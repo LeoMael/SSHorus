@@ -46,22 +46,52 @@ pub enum Decision {
     Deny,
 }
 
-/// Peticiones esperando respuesta.
-#[derive(Default)]
-pub struct PendingApprovals {
-    map: Mutex<HashMap<String, (ApprovalRequest, oneshot::Sender<Decision>)>>,
+/// Algo que espera la respuesta del usuario en un diálogo (permiso, emparejado…).
+pub trait Pendable: Clone {
+    fn id(&self) -> &str;
+    /// Unix ms en que vence (ordena la cola: la más antigua primero).
+    fn expires_at(&self) -> u64;
 }
 
-impl PendingApprovals {
-    pub fn add(&self, req: ApprovalRequest) -> oneshot::Receiver<Decision> {
+impl Pendable for ApprovalRequest {
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn expires_at(&self) -> u64 {
+        self.expires_at
+    }
+}
+
+/// Peticiones esperando respuesta: la interfaz las lista y responde por id.
+pub struct Pending<R, D> {
+    map: Mutex<HashMap<String, (R, oneshot::Sender<D>)>>,
+}
+
+/// Permisos del asistente esperando tu respuesta.
+pub type PendingApprovals = Pending<ApprovalRequest, Decision>;
+
+type Entries<R, D> = HashMap<String, (R, oneshot::Sender<D>)>;
+
+impl<R, D> Default for Pending<R, D> {
+    fn default() -> Self {
+        Pending { map: Mutex::new(HashMap::new()) }
+    }
+}
+
+impl<R: Pendable, D> Pending<R, D> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, Entries<R, D>> {
+        self.map.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    pub fn add(&self, req: R) -> oneshot::Receiver<D> {
         let (tx, rx) = oneshot::channel();
-        self.map.lock().unwrap_or_else(|p| p.into_inner()).insert(req.id.clone(), (req, tx));
+        self.lock().insert(req.id().to_string(), (req, tx));
         rx
     }
 
     /// Responde. false si ya no estaba pendiente (respondida o vencida).
-    pub fn reply(&self, id: &str, decision: Decision) -> bool {
-        let entry = self.map.lock().unwrap_or_else(|p| p.into_inner()).remove(id);
+    pub fn reply(&self, id: &str, decision: D) -> bool {
+        let entry = self.lock().remove(id);
         match entry {
             Some((_, tx)) => tx.send(decision).is_ok(),
             None => false,
@@ -69,26 +99,31 @@ impl PendingApprovals {
     }
 
     pub fn remove(&self, id: &str) {
-        self.map.lock().unwrap_or_else(|p| p.into_inner()).remove(id);
+        self.lock().remove(id);
     }
 
     /// Pendientes, de la más antigua a la más nueva.
-    pub fn list(&self) -> Vec<ApprovalRequest> {
-        let mut v: Vec<ApprovalRequest> =
-            self.map.lock().unwrap_or_else(|p| p.into_inner()).values().map(|(r, _)| r.clone()).collect();
-        v.sort_by_key(|r| r.expires_at);
+    pub fn list(&self) -> Vec<R> {
+        let mut v: Vec<R> = self.lock().values().map(|(r, _)| r.clone()).collect();
+        v.sort_by_key(Pendable::expires_at);
         v
     }
 
-    /// Deniega todo lo pendiente (al bloquear SSHorus o apagar el MCP).
-    pub fn deny_all(&self) -> Vec<String> {
-        let all: Vec<(String, (ApprovalRequest, oneshot::Sender<Decision>))> =
-            self.map.lock().unwrap_or_else(|p| p.into_inner()).drain().collect();
+    /// Responde `answer` a todo lo pendiente (al bloquear SSHorus o apagar el MCP). Devuelve los ids.
+    pub fn answer_all(&self, answer: impl Fn() -> D) -> Vec<String> {
+        let all: Vec<(String, (R, oneshot::Sender<D>))> = self.lock().drain().collect();
         all.into_iter()
             .map(|(id, (_, tx))| {
-                let _ = tx.send(Decision::Deny);
+                let _ = tx.send(answer());
                 id
             })
             .collect()
+    }
+}
+
+impl PendingApprovals {
+    /// Deniega todo lo pendiente.
+    pub fn deny_all(&self) -> Vec<String> {
+        self.answer_all(|| Decision::Deny)
     }
 }

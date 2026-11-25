@@ -13,6 +13,12 @@ export const EV_MCP_STATUS = "mcp://status";
 export const EV_MCP_AUTO = "mcp://auto";
 /** Payload: `McpUiRequest`. El motor pide algo a la interfaz. */
 export const EV_MCP_UI_REQUEST = "mcp://ui-request";
+/** Payload: `McpPairPrompt`. Un asistente pide emparejarse. */
+export const EV_MCP_PAIR_REQUEST = "mcp://pair-request";
+/** Payload: id. La petición de emparejado ya no está pendiente. */
+export const EV_MCP_PAIR_DONE = "mcp://pair-done";
+/** Payload: `McpPairedClient[]`. Cambió la lista de asistentes emparejados. */
+export const EV_MCP_PAIRED = "mcp://paired";
 
 /** Acceso del asistente a un servidor. «custom» = Solo lo marcado (casillas por tarea). */
 export type McpAccess = "none" | "read" | "full" | "custom";
@@ -90,10 +96,45 @@ export interface McpStatus {
   url: string;
   error: string | null;
   approvalTimeoutSecs: number;
+  /** Puente para las configuraciones: el de la ruta fija si ya está copiado; si no, el del paquete. */
   bridgePath: string;
   bridgeFound: boolean;
+  /** `bridgePath` es la ruta fija (~/.local/bin o %LOCALAPPDATA%\SSHorus\bin): no cambia con la AppImage. */
+  bridgeStable: boolean;
+  /** «sshorus-mcp pair», o con la ruta completa si esa carpeta no está en PATH. */
+  pairCommand: string;
   appImage: boolean;
   auditPath: string | null;
+}
+
+/** Un asistente pide emparejarse (lo que vio el puente en este equipo, sin comprobar). */
+export interface McpPairPrompt {
+  id: string;
+  clientId: string;
+  name: string;
+  program: string;
+  pid: number | null;
+  cwd: string | null;
+  /** Ya estaba emparejado: aceptar reemplaza su token. */
+  replaces: boolean;
+  /** Permisos que ya tenía (si se reemplaza). */
+  current: Record<string, McpAccess>;
+  timeoutSecs: number;
+  /** Unix ms en que se rechaza solo. */
+  expiresAt: number;
+}
+
+/** Un asistente emparejado: sus permisos por servidor son los únicos que valen para él. */
+export interface McpPairedClient {
+  id: string;
+  name: string;
+  program: string;
+  cwd: string | null;
+  /** Unix ms. */
+  createdAt: number;
+  lastUsed: number | null;
+  /** id de servidor → acceso (lo que falta = "none"). */
+  access: Record<string, McpAccess>;
 }
 
 export interface McpClientConfig {
@@ -137,6 +178,8 @@ export interface AuditEntry {
   message: string | null;
   durationMs: number | null;
   client: string | null;
+  /** Asistente emparejado que lo hizo (falta con el token general). */
+  clientId?: string | null;
   execId?: string | null;
   /** La aceptó el modo «Aceptar automáticamente». */
   auto?: boolean;
@@ -176,4 +219,12 @@ export const mcp = {
     call<McpAutoState[]>("mcp_set_auto", { serverId, level, duration }),
   autoOffAll: () => call<McpAutoState[]>("mcp_auto_off_all"),
   clearActivity: () => call<void>("mcp_activity_clear"),
+  pairPending: () => call<McpPairPrompt[]>("mcp_pair_pending"),
+  /** Respuesta del diálogo de emparejado. false si ya no estaba pendiente. */
+  pairReply: (id: string, accept: boolean, access: Record<string, McpAccess>) =>
+    call<boolean>("mcp_pair_reply", { id, accept, access }),
+  pairedClients: () => call<McpPairedClient[]>("mcp_paired_clients"),
+  pairedSetAccess: (clientId: string, access: Record<string, McpAccess>) =>
+    call<McpPairedClient[]>("mcp_paired_set_access", { clientId, access }),
+  pairedRevoke: (clientId: string) => call<McpPairedClient[]>("mcp_paired_revoke", { clientId }),
 };

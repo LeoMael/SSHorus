@@ -14,20 +14,27 @@
 //! - `vuln`: resumen de los informes del escáner de vulnerabilidades para el asistente.
 //! - `pty_run`, `prompt` y `redact`: `run_with_password` (escribir la contraseña en el terminal de un
 //!   programa) y tapar contraseñas en lo que ve la IA.
-//! - `bridge`: puente stdio (`sshorus-mcp`), compartido con `src/bin/sshorus-mcp.rs`.
+//! - `bridge`: puente stdio (`sshorus-mcp`) y su `pair`, compartido con `src/bin/sshorus-mcp.rs`;
+//!   `install`: copia del puente a una ruta fija.
+//! - `pairing`: emparejar asistentes con «Aceptar / Rechazar», un token y permisos por asistente;
+//!   `caller`: quién llama y con qué permisos; `gate`: bloqueo y tokens.
 
 pub mod approval;
 pub mod audit;
 pub mod backend;
 #[allow(dead_code)] // el binario `sshorus-mcp` sí lo usa todo
 pub mod bridge;
+pub mod caller;
 pub mod commands;
 pub mod config;
 pub mod core;
 pub mod diff;
+pub mod gate;
 pub mod grants;
 pub mod http;
+pub mod install;
 pub mod local_guard;
+pub mod pairing;
 pub mod policy;
 pub mod prompt;
 pub mod protect;
@@ -60,6 +67,8 @@ use approval::PendingApprovals;
 use audit::AuditLog;
 use backend::TauriBackend;
 use config::{McpConfig, McpConfigStore};
+use gate::AppGate;
+use pairing::Pairing;
 use ui::UiBridge;
 
 /// Id del token en la bóveda o el llavero.
@@ -73,64 +82,12 @@ pub const EV_AUTO: &str = "mcp://auto";
 
 /// Nombre del programa puente.
 pub fn bridge_file_name() -> String {
-    format!("sshorus-mcp{}", std::env::consts::EXE_SUFFIX)
+    bridge::paths::file_name()
 }
 
-/// Token nuevo: «tv_» + 64 caracteres hexadecimales (32 bytes al azar).
+/// Token general nuevo: «tv_» + 64 caracteres hexadecimales (32 bytes al azar).
 pub fn new_token() -> AppResult<Zeroizing<String>> {
-    let mut b = Zeroizing::new([0u8; 32]);
-    getrandom::fill(&mut b[..]).map_err(|e| AppError::Invalid(format!("no se pudo generar el token: {e}")))?;
-    let mut s = Zeroizing::new(String::with_capacity(67));
-    s.push_str("tv_");
-    for byte in b.iter() {
-        s.push_str(&format!("{byte:02x}"));
-    }
-    Ok(s)
-}
-
-// ───────────────────────── Puerta: bloqueo y token ─────────────────────────
-
-#[derive(Default)]
-pub struct AppGate {
-    cache: Mutex<Option<Zeroizing<String>>>,
-}
-
-impl AppGate {
-    pub fn forget(&self) {
-        *self.cache.lock().unwrap_or_else(|p| p.into_inner()) = None;
-    }
-
-    fn set(&self, token: Zeroizing<String>) {
-        *self.cache.lock().unwrap_or_else(|p| p.into_inner()) = Some(token);
-    }
-}
-
-impl http::Gate for AppGate {
-    fn locked(&self) -> bool {
-        let locked = Vault::global().status().locked;
-        if locked {
-            self.forget();
-        }
-        locked
-    }
-
-    fn token(&self) -> Option<Zeroizing<String>> {
-        if let Some(t) = self.cache.lock().unwrap_or_else(|p| p.into_inner()).clone() {
-            return Some(t);
-        }
-        match secrets::get_secret(TOKEN_ID) {
-            Ok(Some(t)) if !t.is_empty() => {
-                let t = Zeroizing::new(t);
-                self.set(t.clone());
-                Some(t)
-            }
-            Ok(_) => None,
-            Err(e) => {
-                log::warn!("MCP: no se pudo leer el token: {e}");
-                None
-            }
-        }
-    }
+    Ok(Zeroizing::new(format!("tv_{}", pairing::token::random_hex(32)?.as_str())))
 }
 
 // ───────────────────────── Estado de la app ─────────────────────────
@@ -145,6 +102,7 @@ pub struct McpState {
     pub pending: Arc<PendingApprovals>,
     pub ui: Arc<UiBridge>,
     pub gate: Arc<AppGate>,
+    pub pairing: Arc<Pairing>,
     running: Mutex<Option<Running>>,
     last_error: Mutex<Option<String>>,
 }
@@ -158,8 +116,13 @@ pub struct McpStatus {
     pub url: String,
     pub error: Option<String>,
     pub approval_timeout_secs: u32,
+    /// Puente que se usa en las configuraciones: el de la ruta fija si ya está copiado; si no, el del paquete.
     pub bridge_path: String,
     pub bridge_found: bool,
+    /// `bridge_path` es la ruta fija (no cambia aunque la AppImage cambie de carpeta).
+    pub bridge_stable: bool,
+    /// Orden para emparejar: «sshorus-mcp pair» si la carpeta está en PATH; si no, con la ruta completa.
+    pub pair_command: String,
     pub app_image: bool,
     pub audit_path: Option<String>,
 }
@@ -186,11 +149,16 @@ impl McpState {
         });
         let backend = TauriBackend { app: app.clone(), pending: pending.clone(), ui: ui.clone() };
         let core = Arc::new(core::McpCore::new(backend, McpConfigStore::load(), audit));
+        let pairing = Arc::new(Pairing::new(
+            pairing::registry::ClientRegistry::load(),
+            Box::new(pairing::notify::TauriNotifier(app.clone())),
+        ));
         McpState {
             core,
             pending,
             ui,
-            gate: Arc::new(AppGate::default()),
+            gate: Arc::new(AppGate::new(pairing.clone())),
+            pairing,
             running: Mutex::new(None),
             last_error: Mutex::new(None),
         }
@@ -204,7 +172,18 @@ impl McpState {
         let cfg = self.config();
         let running = self.running.lock().unwrap_or_else(|p| p.into_inner()).as_ref().map(|r| r.port);
         let port = running.unwrap_or(cfg.port);
-        let bridge = bridge_path();
+        let bridge = install::preferred_path();
+        let stable = bridge.as_ref().is_some_and(|(_, s)| *s);
+        let in_path = stable
+            && bridge.as_ref().and_then(|(p, _)| p.parent()).is_some_and(|d| {
+                bridge::paths::dir_in_path(d, std::env::var_os("PATH").as_deref())
+            });
+        let bridge_text = bridge.as_ref().map(|(p, _)| p.display().to_string()).unwrap_or_else(bridge_file_name);
+        let pair_command = if in_path {
+            "sshorus-mcp pair".to_string()
+        } else {
+            format!("{} pair", bridge::register::shell_quote(&bridge_text))
+        };
         McpStatus {
             enabled: cfg.enabled,
             running: running.is_some(),
@@ -212,8 +191,10 @@ impl McpState {
             url: format!("http://127.0.0.1:{port}{}", http::MCP_PATH),
             error: self.last_error.lock().unwrap_or_else(|p| p.into_inner()).clone(),
             approval_timeout_secs: cfg.approval_timeout_secs,
-            bridge_found: bridge.as_ref().is_some_and(|p| p.is_file()),
-            bridge_path: bridge.map(|p| p.display().to_string()).unwrap_or_else(bridge_file_name),
+            bridge_found: bridge.as_ref().is_some_and(|(p, _)| p.is_file()),
+            bridge_path: bridge_text,
+            bridge_stable: stable,
+            pair_command,
             app_image: std::env::var_os("APPIMAGE").is_some(),
             audit_path: self.core.audit.path().map(|p| p.display().to_string()),
         }
@@ -232,6 +213,7 @@ impl McpState {
         for id in self.pending.deny_all() {
             let _ = app.emit(backend::EV_APPROVAL_DONE, id);
         }
+        self.pairing.reject_all();
     }
 
     /// Enciende el servidor en el puerto de los ajustes (lo reinicia si ya estaba).
@@ -269,14 +251,9 @@ impl McpState {
     }
 }
 
-/// Ruta esperada del puente: junto al programa de SSHorus.
-pub fn bridge_path() -> Option<std::path::PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    Some(exe.with_file_name(bridge_file_name()))
-}
-
-/// Al arrancar la app: si el MCP estaba encendido, se enciende.
-pub fn start_if_enabled(app: &AppHandle) {
+/// Al arrancar la app: el puente a su ruta fija y, si el MCP estaba encendido, se enciende.
+pub fn on_app_start(app: &AppHandle) {
+    install::install_in_background();
     let Some(state) = app.try_state::<McpState>() else { return };
     if state.config().enabled
         && let Err(e) = state.start(app)
@@ -293,6 +270,7 @@ pub fn on_vault_change(app: &AppHandle) {
         for id in state.pending.deny_all() {
             let _ = app.emit(backend::EV_APPROVAL_DONE, id);
         }
+        state.pairing.reject_all();
     }
 }
 

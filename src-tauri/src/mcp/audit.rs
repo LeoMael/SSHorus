@@ -57,8 +57,11 @@ pub struct AuditEntry {
     /// Resumen del resultado o motivo del error.
     pub message: Option<String>,
     pub duration_ms: Option<u64>,
-    /// Cliente que lo pidió (si se sabe), p. ej. «claude-code».
+    /// Cliente que lo pidió (si se sabe): el nombre del asistente emparejado o el User-Agent del puente.
     pub client: Option<String>,
+    /// Id del asistente emparejado (None = token general).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
     /// Ejecución en curso que se puede detener desde el panel (`exec_cancel`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exec_id: Option<String>,
@@ -72,6 +75,29 @@ pub struct AuditEntry {
 
 fn is_false(b: &bool) -> bool {
     !*b
+}
+
+impl AuditEntry {
+    /// Entrada nueva «en marcha» con id propio y hora de ahora.
+    pub fn start(tool: &str) -> Self {
+        AuditEntry {
+            id: uuid::Uuid::new_v4().to_string(),
+            at: now_ms(),
+            tool: tool.to_string(),
+            server_id: None,
+            server_name: None,
+            detail: String::new(),
+            status: AuditStatus::Running,
+            approved_by: None,
+            message: None,
+            duration_ms: None,
+            client: None,
+            client_id: None,
+            exec_id: None,
+            auto: false,
+            auto_danger: false,
+        }
+    }
 }
 
 pub fn now_ms() -> u64 {

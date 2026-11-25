@@ -522,26 +522,44 @@ pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
 
 ![Ajustes → Asistentes de IA (MCP) con permisos por servidor y la configuración para copiar](manual/18-mcp.png)
 
-**Para qué sirve:** que un asistente como Claude Code o Claude Desktop te ayude con tus servidores a través de SSHorus, sin ver nunca tus contraseñas ni tus llaves.
+**Para qué sirve:** que un asistente como Claude Code, Codex o Claude Desktop te ayude con tus servidores a través de SSHorus, sin ver nunca tus contraseñas ni tus llaves.
 
-**Cómo se usa:**
+**Cómo se usa (lo más fácil: emparejar):**
 
 1. Ve a **Ajustes → Asistentes de IA (MCP)** y activa **Activar el servidor MCP**.
-2. En **Permisos por servidor** elige para cada uno **Sin acceso**, **Solo lectura** o **Completo**.
-3. En **Conectar tu asistente**, pulsa **Copiar** en **Claude Code (puente stdio)**.
-4. Pégalo en una terminal de tu PC y pulsa `Enter`. Es un comando así:
+2. Dile a tu IA (Claude Code, Codex, Gemini CLI…): «conéctate a SSHorus ejecutando `sshorus-mcp pair`». La orden
+   exacta está en **Asistentes conectados → Conectar un asistente** (con la ruta completa si hace falta).
+3. SSHorus muestra **Conectar un asistente** con lo que pide conectarse (programa, PID y carpeta). Elige para cada
+   servidor **Sin acceso**, **Solo lectura** (por defecto) o **Completo** y pulsa **Aceptar**. Si no respondes en
+   2 minutos, se rechaza solo.
+4. La IA termina sola: guarda su llave en el llavero del sistema (nunca la ves ni la copias) y se apunta en su
+   configuración. En Claude Code, reconecta con `/mcp` o abre una conversación nueva.
+5. Cuando quiera cambiar algo, SSHorus te pregunta: **Permitir una vez**, **Permitir siempre…** o **Denegar**.
+
+Puedes conectar varias IA a la vez. En **Asistentes conectados** ves cada una con su carpeta, su último uso y sus
+permisos, con **Cambiar permisos** y **Revocar** (deja de funcionar al instante; las demás siguen igual).
+
+**Permisos de cada asistente:** un asistente conectado así usa **solo sus propios permisos** por servidor, los que
+elegiste al aceptarlo. La lista **Permisos por servidor** vale para la conexión manual con el token (abajo). «Solo lo
+marcado», los usuarios protegidos, «Permitir siempre» y «Aceptar automáticamente» son de cada servidor y valen para
+todos.
+
+**Conexión manual (con token):** para asistentes que no pueden emparejarse solos (por ejemplo Claude Desktop).
+
+1. En **Conexión manual (con token)**, pulsa **Copiar** en **Claude Code (puente stdio)**.
+2. Pégalo en una terminal de tu PC y pulsa `Enter`. Es un comando así:
 
 ```bash
 claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /ruta/a/sshorus-mcp
 ```
 
-5. Deja SSHorus abierto y pídele algo al asistente.
-6. Cuando quiera cambiar algo, SSHorus te pregunta: **Permitir una vez**, **Permitir siempre…** o **Denegar**.
-
 **Notas:**
 
-- `sshorus-mcp` es el puente que se instala con SSHorus. Añade `--scope user` al comando para usarlo en todos tus proyectos.
-- Con la AppImage, usa **Claude Code (HTTP directo)**: la ruta del puente cambia en cada arranque.
+- `sshorus-mcp` es el puente que trae SSHorus. Al abrirse, SSHorus lo copia a `~/.local/bin/sshorus-mcp`
+  (Windows: `%LOCALAPPDATA%\SSHorus\bin\sshorus-mcp.exe`), una ruta que no cambia aunque uses la AppImage.
+- Si la IA ejecuta los comandos en un entorno aislado sin red (sandbox, p. ej. Codex), tendrá que pedirte permiso
+  para ejecutar `sshorus-mcp pair` fuera de él.
+- Sin llavero del sistema (Linux sin GNOME Keyring ni KWallet) no se puede emparejar: usa la conexión manual.
 - Para Claude Desktop, copia el bloque **Claude Desktop** en `claude_desktop_config.json` y reinicia Claude Desktop.
 - Lo que solo lee pasa solo. Lo peligroso (`rm -rf`, `sudo`, `reboot`, `reboot_server`…) se pregunta siempre. Si no respondes a tiempo, se deniega.
 - **La IA nunca ve tus contraseñas.** Con `sudo …` SSHorus pone la contraseña por ella. Si un programa la pide por su cuenta (`passwd`, `su`, `mysql -p`…), la IA usa `run_with_password`: SSHorus te pregunta qué contraseña usar (la guardada, otra que escribas o ninguna), la escribe en el programa y a la IA le llega la salida con la contraseña tapada (`••••`).
@@ -744,7 +762,7 @@ En la pantalla de bloqueo pulsa **Olvidé mi PIN** y escribe `BORRAR`. Ver [PIN 
 Instala o activa GNOME Keyring o KWallet. Sin llavero, SSHorus te pedirá la contraseña en cada conexión.
 
 **El asistente dice «Abre SSHorus para usar tus servidores» o «SSHorus está bloqueado»**
-SSHorus tiene que estar abierto y desbloqueado. Si dice «Token incorrecto», copia otra vez la configuración desde **Ajustes → Asistentes de IA (MCP)**.
+SSHorus tiene que estar abierto y desbloqueado. Si dice «no está emparejado» o «ya no está emparejado», pídele que ejecute `sshorus-mcp pair` otra vez. Si dice «Token incorrecto» con la conexión manual, copia otra vez la configuración desde **Ajustes → Asistentes de IA (MCP)**.
 
 **Lentitud o ventana en blanco en Linux**
 Abre SSHorus con `WEBKIT_DISABLE_COMPOSITING_MODE=1 sshorus`.

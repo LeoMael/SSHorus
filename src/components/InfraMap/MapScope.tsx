@@ -2,7 +2,7 @@
 import { othersText, type MapScope } from "../../features/infra/scope";
 import type { Box } from "../../features/infra/layout";
 import { Segmented } from "../ui/Segmented";
-// Estilos del selector (.adm-seg): el mapa de un proyecto se abre sin Administración cargada.
+// Estilos de Administración que usa el mapa (p. ej. .adm-spin): se abre sin Administración cargada.
 import "../Admin/Admin.css";
 import "./MapScope.css";
 

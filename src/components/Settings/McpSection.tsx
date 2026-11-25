@@ -1,4 +1,5 @@
-// Ajustes → Asistentes de IA (MCP): encender el servidor, puerto, token, permisos por servidor (con «Solo lo
+// Ajustes → Asistentes de IA (MCP): encender el servidor, puerto, token, asistentes conectados (emparejados con
+// «Aceptar / Rechazar», cada uno con sus permisos), permisos por servidor de la conexión manual (con «Solo lo
 // marcado» y usuarios protegidos), resumen, aplicar a varios servidores, reglas «Permitir siempre» y la
 // configuración lista para copiar en Claude Code o Claude Desktop.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -15,6 +16,7 @@ import { PROTECTED_NOTE, ProtectedInput } from "../../features/mcp/ProtectedUser
 import { McpBulk } from "../../features/mcp/McpBulk";
 import { McpSummary } from "../../features/mcp/McpSummary";
 import { McpServerRow } from "./McpServerRow";
+import { PairedAssistants } from "../McpPairing/PairedAssistants";
 import "../../features/mcp/Mcp.css";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 
@@ -239,7 +241,24 @@ export function McpSection() {
         </Row>
       </SettingGroup>
 
-      <SettingGroup title="Permisos por servidor" hint="Lo peligroso (rm -rf, sudo, reboot…) se pregunta siempre.">
+      {enabled && status && (
+        <SettingGroup
+          title="Asistentes conectados"
+          hint="Cada asistente conectado usa SOLO sus propios permisos por servidor. Revocar uno no afecta a los demás."
+        >
+          <CopyBlock
+            title="Conectar un asistente"
+            hint="Dile a tu IA esto. Te aparecerá un aviso aquí para aceptarlo y elegir sus permisos; no hay que copiar ningún secreto."
+            text={`Conéctate a SSHorus ejecutando ${status.pairCommand}`}
+          />
+          <PairedAssistants />
+        </SettingGroup>
+      )}
+
+      <SettingGroup
+        title="Permisos por servidor"
+        hint="Valen para la conexión manual con el token (abajo). Lo peligroso (rm -rf, sudo, reboot…) se pregunta siempre. «Solo lo marcado», usuarios protegidos y «Aceptar automáticamente» valen también para los asistentes conectados."
+      >
         <Row label="Usuarios protegidos en todos los servidores" hint={PROTECTED_NOTE}>
           <ProtectedInput
             value={cfg?.protectedGlobal ?? []}
@@ -264,7 +283,7 @@ export function McpSection() {
       </SettingGroup>
 
       {servers.length > 0 && (
-        <SettingGroup title="Resumen" hint="Qué puede hacer el asistente en cada servidor.">
+        <SettingGroup title="Resumen" hint="Qué puede hacer la conexión manual (token) en cada servidor.">
           <McpSummary cfg={cfg} />
         </SettingGroup>
       )}
@@ -276,14 +295,17 @@ export function McpSection() {
       )}
 
       {enabled && client && status && (
-        <SettingGroup title="Conectar tu asistente" hint="SSHorus debe estar abierto. Lleva el token: no lo compartas.">
+        <SettingGroup
+          title="Conexión manual (con token)"
+          hint="Para asistentes que no pueden emparejarse solos. SSHorus debe estar abierto. Lleva el token: no lo compartas."
+        >
           {!status.bridgeFound && (
             <p className="st-block mcp-warn">
               No se encontró el programa puente en {status.bridgePath}. Usa la opción por HTTP o instala SSHorus con su
               instalador.
             </p>
           )}
-          {status.appImage && (
+          {status.appImage && !status.bridgeStable && (
             <p className="st-block mcp-warn">Con la AppImage la ruta del puente cambia en cada arranque: usa la opción por HTTP.</p>
           )}
           <CopyBlock

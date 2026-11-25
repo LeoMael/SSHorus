@@ -71,7 +71,7 @@ pub fn run() {
             dragout::clean_on_start(app.handle());
             // Servidor MCP para asistentes de IA (apagado por defecto).
             app.manage(mcp::McpState::new(app.handle()));
-            mcp::start_if_enabled(app.handle());
+            mcp::on_app_start(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -231,6 +231,11 @@ pub fn run() {
             mcp::mcp_ui_reply,
             mcp::mcp_activity,
             mcp::mcp_activity_clear,
+            mcp::pairing::commands::mcp_pair_pending,
+            mcp::pairing::commands::mcp_pair_reply,
+            mcp::pairing::commands::mcp_paired_clients,
+            mcp::pairing::commands::mcp_paired_set_access,
+            mcp::pairing::commands::mcp_paired_revoke,
             // escáner de vulnerabilidades (Administración → Vulnerabilidades)
             vulnscan::vulnscan_script,
             vulnscan::vulnscan_plan,

@@ -12,6 +12,7 @@ use rmcp::{ErrorData, RoleServer, ServerHandler};
 use serde_json::Value;
 
 use super::backend::Backend;
+use super::caller::Caller;
 use super::core::{
     AuditReportParams, CatalogListParams, CatalogRunParams, ConnectParams, DownloadParams, ListDirParams, McpCore, NoParams,
     PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams, SudoPasswordParams,
@@ -20,7 +21,9 @@ use super::core::{
 
 const INSTRUCTIONS: &str = "SSHorus da acceso a los servidores SSH que el usuario guardó en la app. Nunca \
 verás contraseñas ni llaves: SSHorus las usa por ti. No pidas contraseñas en el chat ni las pongas en los \
-comandos. Empieza con list_servers. Para trabajar en un servidor hace falta una \
+comandos. Empieza con list_servers: solo verás los servidores a los que el usuario te dio acceso (cada asistente \
+conectado tiene sus propios permisos; si falta uno, pídele que lo cambie en SSHorus → Ajustes → Asistentes de IA). \
+Para trabajar en un servidor hace falta una \
 conexión abierta (connect abre una pestaña en SSHorus). Las lecturas pasan solas; todo lo que cambia algo \
 (run_command, write_file, upload…) muestra un diálogo en SSHorus y espera a que el usuario lo permita. \
 Prefiere run_catalog_command con comandos de solo lectura (ver list_catalog) para diagnosticar. \
@@ -121,6 +124,15 @@ fn client_of(ctx: &RequestContext<RoleServer>) -> Option<String> {
     (!ua.is_empty()).then(|| super::audit::clip(ua, 80))
 }
 
+/// Quién hace la petición: lo dejó `http.rs` al comprobar el token (sin él, el token general).
+fn caller_of(ctx: &RequestContext<RoleServer>) -> Caller {
+    ctx.extensions
+        .get::<http::request::Parts>()
+        .and_then(|p| p.extensions.get::<Caller>())
+        .cloned()
+        .unwrap_or_default()
+}
+
 impl<B: Backend> ServerHandler for SshorusMcp<B> {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
@@ -149,7 +161,7 @@ impl<B: Backend> ServerHandler for SshorusMcp<B> {
             return Err(ErrorData::invalid_params(format!("Herramienta desconocida: {}", request.name), None));
         }
         let args = request.arguments.map(Value::Object).unwrap_or(Value::Null);
-        let out = self.core.call(&request.name, args, client_of(&context), context.ct.clone()).await;
+        let out = self.core.call_as(&request.name, args, client_of(&context), caller_of(&context), context.ct.clone()).await;
         let content = vec![ContentBlock::text(out.text)];
         let result = if out.is_error { CallToolResult::error(content) } else { CallToolResult::success(content) };
         Ok(result.into())

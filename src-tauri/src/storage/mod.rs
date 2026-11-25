@@ -11,6 +11,7 @@
 pub(crate) mod cipher;
 pub mod commands;
 pub(crate) mod fsutil;
+pub(crate) mod keyring_store;
 pub mod lock;
 pub mod secrets;
 pub mod ssh_config;
