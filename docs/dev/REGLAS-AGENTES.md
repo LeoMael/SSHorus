@@ -9,7 +9,7 @@ El usuario habla español: **todo texto visible en la app va en español**. Cali
 
 - **Solo edita los archivos que tu tarea dice que son tuyos.** Puedes crear archivos nuevos dentro de tus carpetas.
 - **Archivos BASE (no editar):**
-  `src-tauri/src/{lib.rs,error.rs,types.rs,ssh/mod.rs}`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`,
+  `src-tauri/src/{lib.rs,error.rs,types/,ssh/mod.rs}`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`,
   `src-tauri/capabilities/*`, `package.json`, `src/main.tsx`, `src/api/*`, `src/lib/*`, `src/styles/*.css`,
   `src/components/ui/*`, `src/stores/{tabs,settings,toasts,ui}.ts`.
   Si de verdad necesitas un cambio en BASE o una dependencia nueva: no lo hagas; arréglatelas y pídelo en tu informe final.
@@ -65,7 +65,8 @@ npm run check                                                                   
   El trait `russh::client::Handler` usa `async fn` nativo (sin `async_trait`).
 - Errores: devuelve `AppResult<T>` y usa las variantes de `AppError` (`src-tauri/src/error.rs`) con mensajes en español.
   Ya existen `From` para `io::Error`, `russh::Error`, `russh_sftp::client::error::Error`, `serde_json::Error`.
-- Tipos compartidos en `src-tauri/src/types.rs` (espejo de `src/api/types.ts`). Eventos: constantes `EV_*`.
+- Tipos compartidos en `src-tauri/src/types/` (por temas, re-exportados en `types/mod.rs`: se usan como
+  `crate::types::X`; espejo de `src/api/types.ts`). Eventos: constantes `EV_*`.
 - Sin `unwrap()`/`expect()` en rutas de ejecución normales. Nada de bloquear el runtime async
   (usa `tokio::task::spawn_blocking` para E/S de disco pesada si hace falta).
 
@@ -73,7 +74,7 @@ npm run check                                                                   
 
 - Llama al motor SOLO por `src/api/*`: hay un archivo por módulo del motor (`ssh.ts`, `terminal.ts`, `sftp.ts`,
   `transfers.ts`, `profiles.ts`, `mcp.ts`, `vulnscan.ts`, `audit.ts`…), más `core.ts` (llamada y errores),
-  `types.ts` (espejo de `types.rs`) e `index.ts`.
+  `types.ts` (espejo de `src-tauri/src/types/`) e `index.ts`.
   Los errores llegan como `ApiError` con `.kind` (ver `isApiError`).
 - Estado: `zustand`. Compartidos: `useTabs` (pestañas), `useSettings` (ajustes), `toast` (avisos), `useUi` (diálogos globales).
 - Diálogos: `confirmDialog()` / `promptDialog()` (`src/components/ui/dialogs.tsx`), `Modal`.
@@ -111,7 +112,13 @@ npm run check                                                                   
   - No dejes archivos sueltos en la raíz de `src/features/`: cada dominio tiene su carpeta (`src/features/<dominio>/`).
   - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*` (ESLint lo
     impide).
-  - En Rust, separa el estado/lógica de los comandos `#[tauri::command]` (`commands.rs`) cuando un módulo supera ~350 líneas.
+  - **Comandos Tauri (Rust), criterio fijo:** cada módulo con comandos tiene su `commands.rs` (si son muchos, la
+    carpeta `commands/` con un archivo por tema, como `storage/commands/`) y ahí van **todos** sus
+    `#[tauri::command]`, solo como envoltorios finos: validar la entrada, sacar el estado (`State`, `AppHandle`),
+    llamar a la lógica y convertir el error. La lógica va en otros archivos del módulo, sin Tauri, y lleva pruebas.
+    `lib.rs` registra cada comando como `modulo::commands::nombre` (sin `pub use commands::*`). Un módulo de un solo
+    archivo que gana comandos pasa a carpeta (`localfs/{mod.rs,commands.rs}`). El nombre de la función es el del
+    comando: no lo cambies. Detalle en `docs/ARQUITECTURA.md` §5.
 - **Sin duplicar**: antes de escribir algo, busca si ya existe (diálogos, selectores, llamadas a sudo) y reutilízalo.
 - Nombres claros, sin código muerto ni comentarios que repiten el código; comentarios solo para el «por qué».
 - Mantén `npm run check` y `cargo clippy --all-targets -- -D warnings` siempre en verde.

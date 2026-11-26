@@ -1,4 +1,4 @@
-//! Lectura de las salidas del servidor (scripts de `scripts.rs` y herramientas de la distro).
+//! Lectura de las salidas del servidor (scripts de `scripts/` y herramientas de la distro).
 //!
 //! Todos los parsers son tolerantes: una línea que no se entiende se salta, nunca hace fallar el
 //! análisis entero.

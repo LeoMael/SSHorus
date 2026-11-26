@@ -1,7 +1,6 @@
 //! Contraseña de sudo de un servidor: cuál toca según su ajuste y, para escribirla en la terminal,
 //! con el PIN o la contraseña de SSHorus comprobados antes. Nunca va a disco ni a logs.
 
-use tauri::State;
 use zeroize::Zeroizing;
 
 use super::secrets::{self, SecretKind};
@@ -56,15 +55,13 @@ pub(super) async fn resolve(
     blocking(move || secrets::get_secret(&secret_id)).await
 }
 
-/// Para escribirla en la terminal (botón de la llave): exige que SSHorus tenga PIN o contraseña y lo
-/// comprueba antes; cuenta como intento, con la misma espera tras fallos que al desbloquear.
-/// None = el servidor no tiene ninguna guardada.
-#[tauri::command]
-pub async fn profiles_reveal_sudo_password(
-    store: State<'_, ProfileStore>,
-    sessions: State<'_, SessionStore>,
-    id: String,
-    session_id: Option<String>,
+/// Para escribirla en la terminal: exige que SSHorus tenga PIN o contraseña y lo comprueba antes
+/// (cuenta como intento, con la misma espera tras fallos que al desbloquear). None = no hay guardada.
+pub(super) async fn reveal(
+    store: &ProfileStore,
+    sessions: &SessionStore,
+    id: &str,
+    session_id: Option<&str>,
     pin: String,
 ) -> AppResult<Option<String>> {
     let pin = Zeroizing::new(pin);
@@ -78,7 +75,7 @@ pub async fn profiles_reveal_sudo_password(
         v.check_pin(&pin)
     })
     .await?;
-    resolve(&store, &sessions, &id, session_id.as_deref()).await
+    resolve(store, sessions, id, session_id).await
 }
 
 #[cfg(test)]

@@ -3,6 +3,7 @@
 //! línea pública y la ruta de la privada. Lo usan el asistente «Nuevo usuario con clave», las llaves
 //! de GitHub y la lista de llaves privadas (`sshkeys`).
 
+pub mod commands;
 mod pubkeys;
 
 use std::fs;
@@ -120,29 +121,6 @@ pub fn generate_ed25519(dir: &Path, name: &str, comment: &str, passphrase: &str)
         public_path: public_path.to_string_lossy().into_owned(),
         public_line,
     })
-}
-
-/// Llaves públicas válidas de ~/.ssh (las mismas que `gh_local_pubkeys`).
-#[tauri::command]
-pub async fn local_ssh_public_keys() -> AppResult<Vec<LocalPublicKey>> {
-    let dir = ssh_dir()?;
-    tokio::task::spawn_blocking(move || list_public_keys(&dir))
-        .await
-        .map_err(|e| AppError::Io(e.to_string()))
-}
-
-/// Genera ~/.ssh/<name> (ed25519, frase opcional) y devuelve la parte pública.
-#[tauri::command]
-pub async fn local_ssh_generate_key(
-    name: String,
-    comment: String,
-    passphrase: Option<String>,
-) -> AppResult<GeneratedKey> {
-    let dir = ssh_dir()?;
-    let passphrase = Zeroizing::new(passphrase.unwrap_or_default());
-    tokio::task::spawn_blocking(move || generate_ed25519(&dir, name.trim(), comment.trim(), &passphrase))
-        .await
-        .map_err(|e| AppError::Io(e.to_string()))?
 }
 
 #[cfg(test)]

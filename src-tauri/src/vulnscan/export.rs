@@ -1,9 +1,20 @@
 //! Exportar un informe: JSON (el mismo formato del historial) y Markdown (resumen + tabla por gravedad).
 
 use super::model::{Report, Severity, SourceId, TargetKind};
+use crate::error::{AppError, AppResult};
 
 /// Nombre genérico cuando se pide quitar el del servidor.
 pub const ANON_SERVER: &str = "servidor-1";
+
+/// Texto del informe en `format`: "json" | "markdown" (o "md"). `server_name` None = no ponerlo
+/// («servidor-1»).
+pub fn render(report: &Report, format: &str, server_name: Option<&str>) -> AppResult<String> {
+    match format {
+        "json" => Ok(to_json(report, server_name.is_none())),
+        "markdown" | "md" => Ok(to_markdown(report, server_name)),
+        _ => Err(AppError::Invalid("Formato desconocido (usa json o markdown)".into())),
+    }
+}
 
 /// JSON del informe. Con `hide_server`, el id del servidor se sustituye por «servidor-1».
 pub fn to_json(report: &Report, hide_server: bool) -> String {

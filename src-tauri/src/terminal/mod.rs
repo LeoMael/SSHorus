@@ -5,19 +5,16 @@
 //! Cuando la shell termina: evento global `EV_TERMINAL_EXIT` con `TerminalExit`.
 
 mod batch;
+pub mod commands;
+mod open;
 pub mod shell;
 pub mod tmux;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{AppHandle, Emitter, Manager, State};
-
 use crate::error::{AppError, AppResult};
-use crate::ssh::SessionStore;
 use crate::ssh::SshSession;
-use crate::types::{TermOpened, TerminalExit, TmuxList, TmuxOpen, EV_TERMINAL_EXIT};
 
 pub use shell::{spawn_terminal, ShellStart, TerminalHandle};
 use tmux::{ProbeResult, TmuxProbe};
@@ -70,6 +67,26 @@ impl TerminalStore {
         self.lock().remove(term_id).map(|e| e.handle)
     }
 
+    /// Envía lo que el usuario teclea.
+    pub fn write(&self, term_id: &str, data: Vec<u8>) -> AppResult<()> {
+        self.get(term_id)?.write(data)
+    }
+
+    pub fn resize(&self, term_id: &str, cols: u32, rows: u32) -> AppResult<()> {
+        self.get(term_id)?.resize(cols, rows)
+    }
+
+    /// Cierra la terminal `term_id`.
+    pub fn close(&self, term_id: &str) -> AppResult<()> {
+        match self.remove(term_id) {
+            Some(handle) => {
+                handle.close();
+                Ok(())
+            }
+            None => Err(AppError::NotFound(format!("terminal {term_id}"))),
+        }
+    }
+
     /// Cierra todas las terminales de una sesión.
     pub fn close_session(&self, session_id: &str) {
         {
@@ -99,146 +116,5 @@ impl TerminalStore {
         };
         self.tmux_cache().insert(session_id.to_string(), cached);
         Ok(r)
-    }
-}
-
-/// Decide cómo arrancar la terminal según la petición de tmux y lo que hay en el servidor.
-async fn choose_start(
-    terms: &TerminalStore,
-    session_id: &str,
-    session: &SshSession,
-    req: Option<TmuxOpen>,
-    rows: u32,
-    opened: &mut TermOpened,
-) -> AppResult<ShellStart> {
-    let Some(req) = req else { return Ok(ShellStart::Shell) };
-    if !tmux::valid_name(&req.name) {
-        return Err(AppError::Invalid(format!("nombre de sesión tmux no válido: {}", req.name)));
-    }
-    match terms.probe_tmux(session_id, session).await {
-        Ok(ProbeResult::Found(p)) if p.supported() => {
-            if req.check_existing {
-                opened.tmux_reattached = tmux::has_session(session, &p, &req.name).await;
-            }
-            let cmd = tmux::attach_command(&p, &req.name, rows, req.replay)?;
-            opened.tmux = Some(req.name);
-            Ok(ShellStart::Exec(cmd))
-        }
-        Ok(ProbeResult::Found(p)) => {
-            opened.tmux_problem = Some(format!(
-                "la versión de tmux del servidor ({}) es muy antigua: hace falta la 1.8 o una más nueva",
-                p.version_text
-            ));
-            Ok(ShellStart::Shell)
-        }
-        Ok(ProbeResult::NotInstalled) => {
-            opened.tmux_missing = true;
-            opened.tmux_problem = Some("tmux no está instalado en el servidor".into());
-            Ok(ShellStart::Shell)
-        }
-        Err(e) => {
-            log::info!("terminal: no se pudo comprobar tmux: {e}");
-            opened.tmux_problem = Some(format!("no se pudo comprobar si hay tmux: {e}"));
-            Ok(ShellStart::Shell)
-        }
-    }
-}
-
-/// Abre una shell interactiva.
-/// Con `tmux`, la abre dentro de esa sesión tmux (o se engancha si ya existe); si el servidor no
-/// tiene tmux se abre una shell normal y `TermOpened` lo indica.
-#[tauri::command]
-#[allow(clippy::too_many_arguments)] // firma del comando (la interfaz la llama así)
-pub async fn term_open(
-    app: AppHandle,
-    sessions: State<'_, SessionStore>,
-    terms: State<'_, TerminalStore>,
-    session_id: String,
-    cols: u32,
-    rows: u32,
-    tmux: Option<TmuxOpen>,
-    on_data: Channel<InvokeResponseBody>,
-) -> AppResult<TermOpened> {
-    let session = sessions.get(&session_id).await?;
-    let term_id = uuid::Uuid::new_v4().to_string();
-    let mut opened = TermOpened {
-        term_id: term_id.clone(),
-        tmux: None,
-        tmux_reattached: false,
-        tmux_missing: false,
-        tmux_problem: None,
-    };
-    let start = choose_start(&terms, &session_id, &session, tmux, rows, &mut opened).await?;
-
-    let exit_id = term_id.clone();
-    let handle = spawn_terminal(
-        session,
-        start,
-        cols,
-        rows,
-        move |bytes| {
-            if let Err(e) = on_data.send(InvokeResponseBody::Raw(bytes)) {
-                log::debug!("terminal: no se pudo enviar a la interfaz: {e}");
-            }
-        },
-        move |code| {
-            app.state::<TerminalStore>().remove(&exit_id);
-            let _ = app.emit(
-                EV_TERMINAL_EXIT,
-                TerminalExit {
-                    term_id: exit_id,
-                    code,
-                },
-            );
-        },
-    )
-    .await?;
-
-    terms.insert(term_id, session_id, handle);
-    Ok(opened)
-}
-
-/// Sesiones tmux de SSHorus que siguen vivas en el servidor.
-#[tauri::command]
-pub async fn term_tmux_list(sessions: State<'_, SessionStore>, session_id: String) -> AppResult<TmuxList> {
-    let session = sessions.get(&session_id).await?;
-    tmux::list(session).await
-}
-
-/// Termina sesiones tmux de SSHorus (cerrar la terminal a propósito o limpiar las que quedaron).
-#[tauri::command]
-pub async fn term_tmux_kill(
-    sessions: State<'_, SessionStore>,
-    session_id: String,
-    names: Vec<String>,
-) -> AppResult<()> {
-    let session = sessions.get(&session_id).await?;
-    tmux::kill(session, &names).await
-}
-
-/// Envía lo que el usuario teclea (texto UTF-8 tal cual lo da xterm.js `onData`).
-#[tauri::command]
-pub async fn term_write(terms: State<'_, TerminalStore>, term_id: String, data: String) -> AppResult<()> {
-    terms.get(&term_id)?.write(data.into_bytes())
-}
-
-#[tauri::command]
-pub async fn term_resize(
-    terms: State<'_, TerminalStore>,
-    term_id: String,
-    cols: u32,
-    rows: u32,
-) -> AppResult<()> {
-    terms.get(&term_id)?.resize(cols, rows)
-}
-
-#[tauri::command]
-pub async fn term_close(terms: State<'_, TerminalStore>, term_id: String) -> AppResult<()> {
-    match terms.remove(&term_id) {
-        Some(handle) => {
-            handle.close();
-            Ok(())
-        }
-        None => Err(AppError::NotFound(format!("terminal {term_id}"))),
     }
 }

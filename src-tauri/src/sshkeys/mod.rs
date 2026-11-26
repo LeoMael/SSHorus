@@ -4,14 +4,16 @@
 //! `localkeys`.)
 
 mod comment;
+pub mod commands;
 mod detect;
 mod hosts;
 #[cfg(test)]
 mod tests;
 
+use std::path::Path;
+
 use serde::Serialize;
 
-use crate::error::{AppError, AppResult};
 use crate::storage::ssh_config::{key_hosts::key_hosts, SshEnv};
 
 pub use detect::{LocalPrivateKey, list_private_keys};
@@ -26,18 +28,12 @@ pub struct LocalKeys {
     pub default_comment: String,
 }
 
-/// Llaves privadas de ~/.ssh y el comentario sugerido para crear una.
-#[tauri::command]
-pub async fn local_ssh_private_keys() -> AppResult<LocalKeys> {
-    let dir = crate::localkeys::ssh_dir()?;
-    tokio::task::spawn_blocking(move || {
-        let mut keys = list_private_keys(&dir);
-        // Sin ~/.ssh/config legible, las llaves se listan igual (sin sus `Host`).
-        if let Ok(env) = SshEnv::user() {
-            hosts::attach_config_hosts(&mut keys, &key_hosts(&env));
-        }
-        LocalKeys { keys, dir: dir.to_string_lossy().into_owned(), default_comment: comment::default_comment() }
-    })
-    .await
-    .map_err(|e| AppError::Io(e.to_string()))
+/// Llaves privadas de `dir` (~/.ssh) y el comentario sugerido para crear una.
+pub fn local_keys(dir: &Path) -> LocalKeys {
+    let mut keys = list_private_keys(dir);
+    // Sin ~/.ssh/config legible, las llaves se listan igual (sin sus `Host`).
+    if let Ok(env) = SshEnv::user() {
+        hosts::attach_config_hosts(&mut keys, &key_hosts(&env));
+    }
+    LocalKeys { keys, dir: dir.to_string_lossy().into_owned(), default_comment: comment::default_comment() }
 }

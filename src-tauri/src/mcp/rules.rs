@@ -1,17 +1,15 @@
 //! Ajustes de permisos para uno o varios servidores a la vez: nivel, casillas de «Solo lo marcado»,
-//! plantillas y usuarios protegidos. La parte pura (`apply`) se prueba aparte; los comandos Tauri solo la
-//! llaman y apagan el modo automático donde ya no vale.
+//! plantillas y usuarios protegidos. La parte pura (`apply`) se prueba aparte; los comandos Tauri
+//! (`mcp_apply_rules`, `mcp_set_protected_global` en `commands.rs`) solo la llaman y apagan el modo
+//! automático donde ya no vale.
 
 use std::collections::BTreeSet;
 
 use serde::Deserialize;
-use tauri::{AppHandle, State};
 
 use super::config::McpConfig;
 use super::grants::{Grants, Template};
 use super::policy::Access;
-use super::{prune_auto, McpState};
-use crate::error::AppResult;
 
 /// Lo que se cambia en cada servidor elegido. Lo que es None no se toca.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -45,23 +43,4 @@ pub fn apply(cfg: &mut McpConfig, ids: &[String], rules: &Rules) {
             cfg.protected_users.insert(id.to_string(), p.iter().cloned().collect::<BTreeSet<_>>());
         }
     }
-}
-
-/// Aplica nivel, casillas, plantilla o protegidos a uno o varios servidores.
-#[tauri::command]
-pub async fn mcp_apply_rules(
-    app: AppHandle,
-    state: State<'_, McpState>,
-    server_ids: Vec<String>,
-    rules: Rules,
-) -> AppResult<McpConfig> {
-    state.core.config.update(|c| apply(c, &server_ids, &rules))?;
-    prune_auto(&app, &state)?;
-    Ok(state.core.config.get())
-}
-
-/// Usuarios protegidos en todos los servidores.
-#[tauri::command]
-pub async fn mcp_set_protected_global(state: State<'_, McpState>, users: Vec<String>) -> AppResult<McpConfig> {
-    state.core.config.update(|c| c.protected_global = users.into_iter().collect())
 }

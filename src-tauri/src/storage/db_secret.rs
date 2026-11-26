@@ -12,7 +12,6 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-use super::blocking;
 use super::secrets;
 use crate::error::{AppError, AppResult};
 
@@ -64,36 +63,30 @@ fn read(profile_id: &str) -> AppResult<CredMap> {
     Ok(parse_map(raw.as_deref().map(String::as_str)))
 }
 
-/// Destinos con credencial guardada (sin contraseñas), para marcar «guardada» y ofrecer «Olvidar».
-#[tauri::command]
-pub async fn db_creds_targets(profile_id: String) -> AppResult<Vec<String>> {
-    blocking(move || Ok(read(&profile_id)?.into_keys().collect())).await
+/// Destinos con credencial guardada (sin contraseñas).
+pub fn targets(profile_id: &str) -> AppResult<Vec<String>> {
+    Ok(read(profile_id)?.into_keys().collect())
 }
 
-/// Credencial guardada de un destino (la usa la interfaz para conectar; nunca se muestra).
-#[tauri::command]
-pub async fn db_creds_get(profile_id: String, target: String) -> AppResult<Option<DbCredential>> {
-    check_target(&target)?;
-    blocking(move || Ok(read(&profile_id)?.remove(&target))).await
+/// Credencial guardada de un destino.
+pub fn get(profile_id: &str, target: &str) -> AppResult<Option<DbCredential>> {
+    check_target(target)?;
+    Ok(read(profile_id)?.remove(target))
 }
 
 /// Guarda (Some) u olvida (None) la credencial de un destino.
-#[tauri::command]
-pub async fn db_creds_set(profile_id: String, target: String, credential: Option<DbCredential>) -> AppResult<()> {
-    check_target(&target)?;
+pub fn set(profile_id: &str, target: &str, credential: Option<DbCredential>) -> AppResult<()> {
+    check_target(target)?;
     if credential.as_ref().is_some_and(|c| c.user.trim().is_empty()) {
         return Err(AppError::Invalid("Escribe el usuario de la base de datos".into()));
     }
-    blocking(move || {
-        let _one = WRITE.lock().unwrap_or_else(|p| p.into_inner());
-        let id = secrets::db_id(&profile_id);
-        let raw = secrets::get_secret(&id)?.map(Zeroizing::new);
-        match updated(raw.as_deref().map(String::as_str), &target, credential)? {
-            Some(json) => secrets::set_secret(&id, &json),
-            None => secrets::delete_secret(&id),
-        }
-    })
-    .await
+    let _one = WRITE.lock().unwrap_or_else(|p| p.into_inner());
+    let id = secrets::db_id(profile_id);
+    let raw = secrets::get_secret(&id)?.map(Zeroizing::new);
+    match updated(raw.as_deref().map(String::as_str), target, credential)? {
+        Some(json) => secrets::set_secret(&id, &json),
+        None => secrets::delete_secret(&id),
+    }
 }
 
 #[cfg(test)]

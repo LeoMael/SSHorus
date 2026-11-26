@@ -172,3 +172,17 @@ pub fn save_recipe(recipe: DeployRecipe) -> AppResult<DeployRecipe> {
 pub fn delete_recipe(id: &str) -> AppResult<()> {
     delete_recipe_at(&path()?, id)
 }
+
+/// Anota el resultado de la última ejecución de la receta `id`.
+pub fn mark_recipe(id: &str, ok: bool) -> AppResult<()> {
+    update(|cfg| {
+        if let Some(r) = cfg.recipes.iter_mut().find(|r| r.id == id) {
+            r.last_ok = Some(ok);
+            r.last_run_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .map(|d| d.as_secs());
+        }
+        Ok(())
+    })
+}

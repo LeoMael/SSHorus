@@ -11,12 +11,12 @@
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager};
 use zeroize::Zeroizing;
 
 use super::secrets::{self, MoveReport, SystemKeyring};
 use super::vault::{self, PinKind, Vault, VaultStatus};
-use super::{ProfileStore, SettingsStore};
+use super::SettingsStore;
 use crate::error::{AppError, AppResult};
 use crate::types::EV_VAULT_STATE;
 
@@ -40,7 +40,7 @@ impl Default for LockState {
 }
 
 impl LockState {
-    fn touch(&self) {
+    pub(super) fn touch(&self) {
         *self.last_activity.lock().unwrap_or_else(|p| p.into_inner()) = SystemTime::now();
     }
 
@@ -107,49 +107,32 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + '
         .map_err(|e| AppError::Io(format!("tarea interna interrumpida: {e}")))?
 }
 
-// ───────────────────────── Comandos ─────────────────────────
-
-#[tauri::command]
-pub async fn vault_status() -> AppResult<VaultStatus> {
-    Ok(vault().status())
+/// Estado actual de la bóveda.
+pub(super) fn status() -> VaultStatus {
+    vault().status()
 }
 
-/// El usuario hizo algo (tecla, ratón) en alguna ventana: reinicia la cuenta de inactividad.
-#[tauri::command]
-pub async fn vault_activity(state: State<'_, LockState>) -> AppResult<()> {
-    state.touch();
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn vault_unlock(app: AppHandle, pin: String) -> AppResult<VaultStatus> {
+/// Desbloquea con el PIN (o la contraseña) y avisa a las ventanas.
+pub(super) async fn unlock(app: &AppHandle, pin: String) -> AppResult<VaultStatus> {
     let pin = Zeroizing::new(pin);
     blocking(move || vault().unlock(&pin)).await?;
-    touch(&app);
-    notify(&app);
+    touch(app);
+    notify(app);
     Ok(vault().status())
 }
 
-#[tauri::command]
-pub async fn vault_lock(app: AppHandle) -> AppResult<()> {
-    lock_now(&app, "a mano");
-    Ok(())
-}
-
-/// Crea la bóveda con ese PIN (6 números) o contraseña (8 caracteres o más), según `kind` (por
-/// defecto PIN), y mueve a ella los secretos del llavero: contraseñas de conexión y de sudo de
-/// cada servidor, y el token de GitHub.
-#[tauri::command]
-pub async fn vault_enable(
-    app: AppHandle,
-    profiles: State<'_, ProfileStore>,
+/// Crea la bóveda y mueve a ella los secretos de los servidores `server_ids` y el token de GitHub
+/// (ver el comando `vault_enable`).
+pub(super) async fn enable(
+    app: &AppHandle,
+    server_ids: Vec<String>,
     pin: String,
     kind: Option<PinKind>,
 ) -> AppResult<MoveReport> {
     let pin = Zeroizing::new(pin);
     let kind = kind.unwrap_or_default();
     vault::check_new_secret(&pin, kind)?;
-    let ids: Vec<String> = profiles.data().servers.into_iter().map(|s| s.id).collect();
+    let ids = server_ids;
     let report = blocking(move || {
         let params = vault::calibrate();
         log::info!(
@@ -160,27 +143,24 @@ pub async fn vault_enable(
         secrets::enable_vault(vault(), &SystemKeyring(secrets::SERVICE), &ids, &pin, kind, params)
     })
     .await?;
-    touch(&app);
-    notify(&app);
+    touch(app);
+    notify(app);
     Ok(report)
 }
 
-/// Quita la bóveda: pide el PIN (o la contraseña) y devuelve los secretos al llavero del sistema.
-#[tauri::command]
-pub async fn vault_disable(app: AppHandle, pin: String) -> AppResult<MoveReport> {
+/// Quita la bóveda y devuelve los secretos al llavero del sistema.
+pub(super) async fn disable(app: &AppHandle, pin: String) -> AppResult<MoveReport> {
     let pin = Zeroizing::new(pin);
     let report =
         blocking(move || secrets::disable_vault(vault(), &SystemKeyring(secrets::SERVICE), &pin))
             .await?;
-    notify(&app);
+    notify(app);
     Ok(report)
 }
 
-/// Cambia el PIN o la contraseña, o pasa de uno a otro (`new_kind`, por defecto PIN): vuelve a
-/// cifrar la bóveda con sal y llave nuevas. Avisa a las ventanas (cambia qué se pide al bloquear).
-#[tauri::command]
-pub async fn vault_change_pin(
-    app: AppHandle,
+/// Cambia el PIN o la contraseña (o pasa de uno a otro) y avisa a las ventanas.
+pub(super) async fn change_pin(
+    app: &AppHandle,
     old_pin: String,
     new_pin: String,
     new_kind: Option<PinKind>,
@@ -190,18 +170,15 @@ pub async fn vault_change_pin(
     let kind = new_kind.unwrap_or_default();
     vault::check_new_secret(&new_pin, kind)?;
     blocking(move || vault().change_pin(&old_pin, &new_pin, kind, vault::calibrate())).await?;
-    notify(&app);
+    notify(app);
     Ok(())
 }
 
-/// «Olvidé mi PIN»: borra la bóveda (se pierden las contraseñas guardadas y los tokens de GitHub,
-/// del servidor MCP —se crea uno nuevo— y de la IA que explica informes)
-/// y deja SSHorus sin bloqueo. Servidores, ajustes y llaves de ~/.ssh no se tocan.
-#[tauri::command]
-pub async fn vault_reset(app: AppHandle) -> AppResult<()> {
+/// «Olvidé mi PIN»: borra la bóveda y deja SSHorus sin bloqueo (ver el comando `vault_reset`).
+pub(super) async fn reset(app: &AppHandle) -> AppResult<()> {
     blocking(move || vault().remove()).await?;
     log::warn!("bóveda borrada con «Olvidé mi PIN»: las contraseñas guardadas se perdieron");
-    touch(&app);
-    notify(&app);
+    touch(app);
+    notify(app);
     Ok(())
 }

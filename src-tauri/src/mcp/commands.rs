@@ -12,6 +12,7 @@ use super::audit::{self, AuditEntry};
 use super::config::McpConfig;
 use super::core::{AutoDuration, AutoState};
 use super::policy::{Access, AutoLevel};
+use super::rules::{apply, Rules};
 use super::{emit_auto, ensure_token, prune_auto, regenerate, ClientConfig, McpState, McpStatus};
 
 #[tauri::command]
@@ -205,4 +206,23 @@ pub async fn mcp_activity(state: State<'_, McpState>) -> AppResult<Vec<AuditEntr
 pub async fn mcp_activity_clear(state: State<'_, McpState>) -> AppResult<()> {
     state.core.audit.clear_recent();
     Ok(())
+}
+
+/// Aplica nivel, casillas, plantilla o protegidos a uno o varios servidores.
+#[tauri::command]
+pub async fn mcp_apply_rules(
+    app: AppHandle,
+    state: State<'_, McpState>,
+    server_ids: Vec<String>,
+    rules: Rules,
+) -> AppResult<McpConfig> {
+    state.core.config.update(|c| apply(c, &server_ids, &rules))?;
+    prune_auto(&app, &state)?;
+    Ok(state.core.config.get())
+}
+
+/// Usuarios protegidos en todos los servidores.
+#[tauri::command]
+pub async fn mcp_set_protected_global(state: State<'_, McpState>, users: Vec<String>) -> AppResult<McpConfig> {
+    state.core.config.update(|c| c.protected_global = users.into_iter().collect())
 }

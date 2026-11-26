@@ -6,14 +6,18 @@
 
 pub mod commands;
 pub mod connect;
+mod conn_test;
 pub mod handler;
+mod keyring;
 pub mod known_hosts;
 mod known_hosts_match;
+mod lifecycle;
 pub mod login_secret;
+mod open;
 pub mod reboot_wait;
 pub mod reconnect;
 
-pub use commands::*;
+pub use lifecycle::disconnect_session;
 
 use std::collections::HashMap;
 use std::sync::Arc;

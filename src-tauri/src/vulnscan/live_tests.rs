@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::analyze::analyze;
 use super::cache::OsvCache;
-use super::commands::{plan_from, script_for, select_images, ScriptRequest};
+use super::plan::{plan_from, script_for, select_images, ScriptRequest};
 use super::model::*;
 use super::osv::{self, HttpOsv, Query};
 use super::parse::{apk, inventory};

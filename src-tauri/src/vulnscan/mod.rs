@@ -15,7 +15,8 @@
 //!   versión corregida (`dnf check-update`).
 //! - `recheck`: «Volver a comprobar» el sistema tras arreglar (quita lo arreglado del informe).
 //! - `store`: historial por servidor; `export`: JSON y Markdown.
-//! - `commands`: comandos Tauri; `scan`: análisis completo sin sudo desde el motor (pruebas, MCP).
+//! - `plan`: qué script toca y qué hacer tras cada fase; `run`: consultar OSV, juntar y guardar.
+//! - `commands`: comandos Tauri (envoltorios finos); `scan`: análisis completo sin sudo desde el motor (pruebas, MCP).
 //!
 //! Para reutilizar desde otros módulos: [`store::latest_report`] (último informe de un servidor) y
 //! [`scan::scan_session`] (analizar por una sesión SSH abierta, sin sudo). El servidor MCP los usa en
@@ -23,6 +24,8 @@
 
 pub mod analyze;
 mod analyze_merge;
+mod analyze_report;
+mod analyze_sources;
 pub mod cache;
 pub mod commands;
 pub mod ecosystem;
@@ -32,9 +35,11 @@ pub mod model;
 pub mod osv;
 mod osv_model;
 pub mod parse;
+pub mod plan;
 pub mod recheck;
 pub mod repo;
 pub mod rpmver;
+pub mod run;
 // Lo usan el servidor MCP (`scan_vulnerabilities`) y las pruebas.
 pub mod scan;
 pub mod scripts;
@@ -57,5 +62,4 @@ mod tests_runtime;
 #[cfg(test)]
 mod live_tests;
 
-pub use commands::*;
 pub use settings::VulnScanSettings;

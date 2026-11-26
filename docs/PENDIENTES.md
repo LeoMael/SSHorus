@@ -41,7 +41,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 |---|---|---|---|
 | **1. Revisión y reglas** | `/code-review` del lote nuevo + arreglar lo que salga · reglas automáticas de calidad en la CI (límites entre carpetas, dependencias circulares, tope de 500 líneas con lista de excepciones que solo puede bajar) | 2 | **beta.4** (el usuario prueba en su VPS mientras sigue el plan) |
 | **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` — **hecho (26/11)** | 1 (solo interfaz) | beta.5 |
-| **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) | 1 (Rust) | beta.5 |
+| **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) — **hecho (26/11)** | 1 (Rust) | beta.5 |
 | **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
@@ -275,10 +275,9 @@ Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
     `features/multirun/engine.ts` (426), `Containers/ImagesTab.tsx` (418), `Monitor/MonitorPanel.tsx` (416),
     `features/vulnscan/run.ts` (404), `features/monitor/sample.ts` (403), `Terminal/TerminalView.tsx` (403),
     `Admin/AdminPanel.tsx` (407 desde el 26/11: importa las 6 partes de su CSS).
-  - Motor: `snippets/exec.rs` (472), `storage/secrets.rs` (455), `vulnscan/model.rs` (448), `types.rs` (446),
-    `vulnscan/scripts.rs` (444), `vulnscan/analyze_merge.rs` (425), `mcp/bridge.rs` (413), `ssh/commands.rs` (410),
-    `sftp/ops.rs` (409).
-  - Justo en el límite (400): `vulnscan/analyze.rs`, `ai/mod.rs`, `Terminal/TerminalArea.tsx`.
+  - Motor: **hecho (26/11)**, ningún archivo Rust de producción pasa de 400 líneas (el mayor es
+    `vulnscan/analyze.rs`, 398).
+  - Justo en el límite (400): `Terminal/TerminalArea.tsx`.
 - **`generatePassword` sigue en `features/admin/shell.ts`** aunque no es de Administración: pasarlo a `lib/`.
 - **Ciclos entre carpetas** (lista completa en `scripts/deps-allowlist.json`): `stores/` importa de
   `features/connect`, `tmux`, `jobs`, `privileges`, `shortcuts` y de `components/ui` (sobre todo
@@ -288,11 +287,12 @@ Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
   `Settings`/`windows`. Romperlos (el estado de la app no debería depender de la lógica de una función).
 - **La familia de la distribución se detecta en 3 sitios:** `features/containers/detect`, `features/tmux/logic` y
   `distroFromOs` (`features/commands/state.ts`). Dejar una sola versión en `lib/remote/` (junto a `parseOsRelease`).
-- **Los comandos Tauri no siguen un criterio fijo:** unos están en `commands.rs` (`ssh/`, `storage/`, `mcp/`,
-  `vulnscan/`, `storage/ssh_config/`), otros en `mod.rs` (`ai/`, `audit/`, `dragout/`, `github/`, `localkeys/`,
-  `localterm/`, `sftp/`, `snippets/`, `sshkeys/`, `terminal/`, `transfer/`, `tunnels/`), en `github/sync_cmds.rs` y en
-  archivos sueltos (`localfs.rs`, `diagnostics.rs`, `storage/lock.rs`, `storage/sudo_secret.rs`,
-  `ssh/reboot_wait.rs`, `vulnscan/recheck.rs`, `mcp/rules.rs`, `localterm/state.rs`). Elegir una regla y aplicarla.
+- ~~**Los comandos Tauri no siguen un criterio fijo**~~ **hecho (26/11):** cada módulo con comandos tiene su
+  `commands.rs` (o `commands/` por temas en `storage/`) con solo envoltorios finos, y `lib.rs` los registra como
+  `modulo::commands::nombre` (regla en `docs/dev/REGLAS-AGENTES.md` §5).
+- **Pruebas Rust aún grandes** (no cuentan para el tope, pero cuestan de leer): `mcp/tests.rs` (~720, casi todo el
+  motor simulado), `ssh/connect_tests.rs` (564), `snippets/tests.rs` (518), `mcp/e2e_tests.rs` (493),
+  `ssh/reconnect_tests.rs` (490), `mcp/tests_marked.rs` (476).
 - **Solo 12 de las 27 carpetas de `src/features/` tienen `index.ts`** (`admin`, `audit`, `connect`, `containers`,
   `github`, `monitor`, `multirun`, `privileges`, `reboot`, `sudoRun`, `tmux`, `vulnscan`). Decidir si todas lo llevan.
 

@@ -3,6 +3,8 @@
 //! Solo lectura y sin datos sensibles: sistema, arquitectura, motor de la ventana y las variables
 //! de entorno que cambian cómo dibuja WebKitGTK (ver `platform.rs`).
 
+pub mod commands;
+
 use serde::Serialize;
 
 /// Variables de entorno que afectan al dibujado o al arranque y conviene ver en un informe.
@@ -44,8 +46,8 @@ pub struct AppDiagnostics {
     pub env: Vec<EnvVar>,
 }
 
-#[tauri::command]
-pub fn app_diagnostics() -> AppDiagnostics {
+/// Reúne los datos del sistema (todo de solo lectura).
+pub fn collect() -> AppDiagnostics {
     AppDiagnostics {
         os: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),

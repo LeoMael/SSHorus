@@ -13,8 +13,6 @@ use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-use tauri::State;
-
 use crate::error::{AppError, AppResult};
 use crate::ssh::SessionStore;
 
@@ -165,18 +163,6 @@ pub async fn expect_for_session(sessions: &SessionStore, session_id: &str, wait_
         n += 1;
     }
     Ok(n)
-}
-
-/// La interfaz va a reiniciar el servidor de esa sesión: todas las sesiones abiertas con el mismo
-/// servidor (host y puerto) esperarán hasta `wait_secs` a que vuelva. `wait_secs` 0 = ya no
-/// (reinicio cancelado). Devuelve cuántas sesiones quedaron avisadas.
-#[tauri::command]
-pub async fn ssh_expect_reboot(
-    sessions: State<'_, SessionStore>,
-    session_id: String,
-    wait_secs: u32,
-) -> AppResult<u32> {
-    expect_for_session(&sessions, &session_id, wait_secs).await
 }
 
 #[cfg(test)]

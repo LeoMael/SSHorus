@@ -1,4 +1,12 @@
-//! Comandos Tauri de perfiles, proyectos, secretos, ajustes y `~/.ssh/config`.
+//! Comandos Tauri de almacenamiento: perfiles, proyectos, secretos, ajustes y `~/.ssh/config`
+//! (aquí), la bóveda con PIN y el bloqueo (`lock`) y las credenciales de bases de datos (`db`).
+//! Los de `~/.ssh/config` por alias están en `ssh_config/commands.rs`.
+
+mod db;
+mod lock;
+
+pub use db::*;
+pub use lock::*;
 
 use tauri::{AppHandle, Manager, State};
 use zeroize::Zeroizing;
@@ -130,6 +138,20 @@ pub async fn profiles_sudo_password(
     session_id: Option<String>,
 ) -> AppResult<Option<String>> {
     sudo_secret::resolve(&store, &sessions, &id, session_id.as_deref()).await
+}
+
+/// Para escribirla en la terminal (botón de la llave): exige que SSHorus tenga PIN o contraseña y lo
+/// comprueba antes; cuenta como intento, con la misma espera tras fallos que al desbloquear.
+/// None = el servidor no tiene ninguna guardada.
+#[tauri::command]
+pub async fn profiles_reveal_sudo_password(
+    store: State<'_, ProfileStore>,
+    sessions: State<'_, crate::ssh::SessionStore>,
+    id: String,
+    session_id: Option<String>,
+    pin: String,
+) -> AppResult<Option<String>> {
+    sudo_secret::reveal(&store, &sessions, &id, session_id.as_deref(), pin).await
 }
 
 #[tauri::command]

@@ -92,7 +92,7 @@ La app tiene dos mitades dentro del mismo programa:
 | **Tus llaves SSH** | Llaves privadas para conectar (las de siempre) y públicas (`*.pub`) para GitHub. | OpenSSH | `~/.ssh/` | La frase, si la tiene | Motor: `ssh/connect.rs` (privadas, solo lectura) · `localkeys/pubkeys.rs` (solo `*.pub`) |
 | **`localStorage`** | Historial de Administración (`sshorus.admin.history.v1.<perfil>`, 300 entradas), alertas del Monitor (`sshorus.monitor.alerts.<perfil>`), preferencias del Monitor, de Contenedores, de Ejecutar en varios servidores, servidores recientes, búsqueda de actualizaciones, editor en pestaña o ventana, GPU de la terminal, proyectos plegados. | Clave → texto (JSON) | Lo gestiona el motor web. Linux: `~/.local/share/com.sshorus.app/localstorage/` · Windows: `%LOCALAPPDATA%\com.sshorus.app\EBWebView\` | No | Interfaz (con try/catch: si falla, todo funciona igual y solo se pierde la preferencia) |
 | **Caché de arrastre** | Copias descargadas para arrastrar al escritorio. Se borran al abrir la app si tienen más de un día. | Archivos | Linux `~/.cache/com.sshorus.app/arrastre/` · Windows `%LOCALAPPDATA%\com.sshorus.app\arrastre\` · macOS `~/Library/Caches/com.sshorus.app/arrastre/` | No | Motor: `dragout/` y `transfer/` |
-| **Tus carpetas** | Lo que subes y bajas, y los archivos de exportar o importar comandos. Tú eliges dónde. | Archivos | Donde elijas | No | Motor: `transfer/`, `localfs.rs` |
+| **Tus carpetas** | Lo que subes y bajas, y los archivos de exportar o importar comandos. Tú eliges dónde. | Archivos | Donde elijas | No | Motor: `transfer/`, `localfs/` |
 | **Memoria del motor** | Sesiones SSH abiertas, terminales, canales SFTP, cola de transferencias, ejecuciones en curso, túneles en marcha y el token de GitHub ya leído. Con la bóveda abierta, también su llave y los secretos descifrados; al bloquear se pisan con ceros (`Zeroizing`) y se olvida el token. El stdin con contraseñas se sobrescribe con ceros al terminar. | Estructuras Rust | RAM | — | Motor (`SessionStore`, `TerminalStore`, `SftpStore`, `TransferManager`, `ExecRegistry`, `TunnelManager`, `Vault`) |
 | **Memoria de la interfaz** | Contraseña de sudo por conexión (`useSudo`), privilegios detectados, pestañas abiertas. La contraseña de sudo se olvida al cerrar la pestaña, al perder la conexión o al bloquear SSHorus. | Stores de zustand sin persistencia | RAM | — | Interfaz: `features/privileges/`, `features/lock/` y `stores/` |
 | **Sesiones tmux** (en el servidor) | Terminales persistentes `sshorus-<id>` con su historial (50.000 líneas). | Servidor tmux propio `-L sshorus` | Tu servidor | — | Motor: `terminal/tmux.rs` por SSH |
@@ -115,7 +115,7 @@ La app tiene dos mitades dentro del mismo programa:
 | Motor → **OSV.dev** *(v0.5.0)* | HTTPS con reqwest + rustls | `POST api.osv.dev/v1/querybatch` (≤ 1000 paquetes por lote) y `GET /v1/vulns/{id}`. Solo ecosistema, nombre y versión de paquetes; nunca IP, nombre del servidor ni usuarios. Sin token ni redirecciones | `vulnscan/osv.rs` |
 | Motor → **endpoint de IA** *(v0.5.0, opcional)* | HTTPS (HTTP solo a `localhost`) | `POST <URL base>/chat/completions`, compatible con OpenAI; token en `Authorization`. Solo tras mostrar el texto exacto y confirmar; solo a la URL guardada en Ajustes | `ai/mod.rs` |
 | Servidor → repos de su distro *(v0.5.0)* | Lo que use cada herramienta | `dnf advisory`, `debsecan`, `pro`, `zypper` y Trivy bajan sus propios datos desde el servidor, como al actualizar | Scripts de `vulnscan/scripts.rs`, ejecutados por `features/vulnscan/run.ts` |
-| Motor ↔ disco | Archivos y llavero del sistema | Escritura atómica (temporal + renombrar); archivo dañado → se aparta como `.bak-<fecha>` | `storage/fsutil.rs`, `storage/secrets.rs` |
+| Motor ↔ disco | Archivos y llavero del sistema | Escritura atómica (temporal + renombrar); archivo dañado → se aparta como `.bak-<fecha>` | `storage/fsutil.rs`, `storage/secrets/` |
 | Interfaz ↔ `localStorage` | API Web Storage del motor web | Lectura y escritura síncronas, siempre con try/catch | `features/*`, `components/*` |
 
 ---
@@ -138,7 +138,7 @@ Cada función que ves tiene una pieza del motor que hace el trabajo real:
 | GitHub | `github/` (+ exec para lo que toca al servidor) |
 | Actualizaciones | plugins `updater` y `process` |
 | Ajustes → Seguridad (PIN y bloqueo) | `storage/vault.rs`, `storage/lock.rs` |
-| Ajustes → Diagnóstico, exportar comandos | `diagnostics.rs`, `localfs.rs` |
+| Ajustes → Diagnóstico, exportar comandos | `diagnostics/`, `localfs/` |
 | Administración → Vulnerabilidades, Ajustes → IA para explicar informes | `vulnscan/` (+ exec para las fases del servidor), `ai/` |
 
 **Hay dos tipos de mensaje:**
@@ -166,7 +166,7 @@ ventana usa el motor web del sistema, así que la app es pequeña (no lleva un n
   otro y la operación se reintenta una vez.
 - **SFTP de transferencias:** reserva de hasta 10 canales por servidor (`transfer/pool.rs`), de 1 a 8
   archivos a la vez (ajuste `transferConcurrency`, 4 por defecto).
-- **exec (sin terminal):** un canal por comando (`snippets/exec.rs`), con salida capturada (2 MB por
+- **exec (sin terminal):** un canal por comando (`snippets/exec/`), con salida capturada (2 MB por
   flujo como máximo), tiempo límite y cancelación. Ver el diagrama 9.
 - **Túneles:** un canal por cada conexión que pasa por el túnel: `direct-tcpip` (local y SOCKS) o
   `forwarded-tcpip` (remoto, llega por `ssh/handler.rs` → `tunnels/remote.rs`).
@@ -285,27 +285,45 @@ Lo que ya incumplía una regla cuando se añadió está anotado, con su motivo (
 **Esas listas solo pueden encoger**: no se añade nada (se mueve el código a su sitio) y, al arreglar algo, se borra su
 línea; los scripts avisan cuando sobra una.
 
-**Motor (`src-tauri/src/`):** cada módulo grande separa estado/lógica de sus comandos Tauri (`commands.rs` / `sync_cmds.rs`) y submódulos temáticos:
+**Motor (`src-tauri/src/`):** cada módulo es una carpeta con archivos de un solo tema (menos de 400 líneas; un módulo
+de varios archivos es una carpeta con su `mod.rs`).
+
+**Criterio de los comandos Tauri (fijo):**
+
+- Todos los `#[tauri::command]` de un módulo están en su **`commands.rs`**. Si son muchos, una carpeta `commands/` con
+  un archivo por tema (`storage/commands/{mod.rs,lock.rs,db.rs}`). Un submódulo grande con comandos propios tiene el
+  suyo (`storage/ssh_config/commands.rs`, `mcp/pairing/commands.rs`).
+- Son **envoltorios finos**: validar la entrada, sacar el estado (`State`, `AppHandle`), llamar a la lógica y convertir
+  el error. Lo que emite eventos a la interfaz (progreso, salida en vivo) se arma ahí y se pasa a la lógica como
+  función.
+- La **lógica** vive en los demás archivos del módulo, sin Tauri, para poder probarla y reutilizarla (el servidor MCP
+  usa la misma).
+- `lib.rs` registra cada comando con su ruta completa, `modulo::commands::nombre` (sin `pub use commands::*`). El
+  nombre de la función es el nombre del comando que llama la interfaz: no se cambia.
+- Un módulo de un solo archivo que tiene comandos pasa a carpeta: `localfs/{mod.rs,commands.rs}`,
+  `diagnostics/{mod.rs,commands.rs}`.
+
+Módulos:
 
 | Módulo | Qué hace |
 |--------|----------|
 | `lib.rs`, `main.rs` | Arranque: registra plugins, estado global y todos los comandos |
-| `error.rs`, `types.rs` | Errores traducidos a mensajes claros y tipos compartidos con la interfaz |
+| `error.rs`, `types/` | Errores traducidos a mensajes claros y tipos compartidos con la interfaz (por temas: `profiles`, `settings`, `session`, `files`, `snippets`; se usan como `crate::types::X`) |
 | `platform.rs` | Ajustes de WebKitGTK antes de crear la ventana (problemas con NVIDIA) |
 | `pinch.rs` | Plugin propio: el pellizco del touchpad no agranda la app; se reenvía a la interfaz como evento `pinch-zoom` (lo usa el mapa de infraestructura) |
-| `ssh/` | Conectar y autenticar (`connect/`), huellas (`known_hosts.rs`, `known_hosts_match.rs`, `handler.rs`), reconexión (`reconnect.rs`, `reboot_wait.rs`) y comandos (`commands.rs`) |
-| `terminal/` | Shell con PTY sobre un canal SSH (`shell.rs`) y sesiones persistentes (`tmux.rs`) |
-| `localterm/` | Terminal local (PTY del PC) y lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto |
-| `sftp/` | Explorador y editor: listar, crear, renombrar, permisos, leer y guardar |
+| `ssh/` | Conectar y autenticar (`connect/`), huellas (`known_hosts.rs`, `known_hosts_match.rs`, `handler.rs`), reconexión (`reconnect.rs`, `reboot_wait.rs`), abrir y cerrar sesiones (`open.rs`, `lifecycle.rs`, `keyring.rs`), «Probar conexión» (`conn_test.rs`) y comandos (`commands.rs`) |
+| `terminal/` | Shell con PTY sobre un canal SSH (`shell.rs`, `open.rs`) y sesiones persistentes (`tmux.rs`) |
+| `localterm/` | Terminal local (PTY del PC, `pty.rs`, `open.rs`) y lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto |
+| `sftp/` | Explorador y editor: canales (`mod.rs`), listar, crear, renombrar y permisos (`ops.rs`), borrar (`remove.rs`) y guardar de forma atómica (`save.rs`) |
 | `transfer/` | Cola y planificador (`engine/`), reserva de canales (`pool.rs`), subida (`copy.rs`) y bajada (`download.rs`) encadenadas, conflictos (`policy.rs`) |
-| `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec.rs`) y envoltorio sudo (`sudo.rs`) |
+| `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec/`: arranque y marca de PID, registro, lectura del canal y bucle), lo que pide la interfaz (`run.rs`: con registro, stdin que se borra, en vivo y con sudo) y envoltorio sudo (`sudo.rs`) |
 | `tunnels/` | Túneles local, remoto y SOCKS (`manager.rs`, `forward.rs`, `watcher.rs`, `socks.rs`, `remote.rs`, `store.rs`) |
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
-| `github/` | Cuenta y comandos (`mod.rs`, `sync_cmds.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), cifrado del Gist (`crypto.rs`), compartir comandos |
-| `storage/` | Perfiles y ajustes (`mod.rs`, `commands.rs`), llavero (`secrets.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
+| `github/` | Token y cuenta (`token.rs`, `account.rs`, `device.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), recetas (`config.rs`), copia cifrada en un gist (`sync.rs`, `crypto.rs`), compartir comandos (`share.rs`, `collections.rs`) y comandos (`commands.rs`) |
+| `storage/` | Perfiles y ajustes (`mod.rs`), comandos (`commands/`), llavero (`secrets/`: API, `system_keyring.rs`, `vault_move.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
-| `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (`analyze.rs`, `analyze_merge.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`), historial de auditorías (`audit/`) e IA opcional (`ai/`) |
-| `localfs.rs`, `diagnostics.rs` | Archivos locales (exportar/importar) y diagnóstico del sistema |
+| `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (scripts por fase `scripts/`, qué toca tras cada fase `plan.rs`, análisis y guardado `run.rs`, `analyze.rs`, `analyze_merge.rs`, `analyze_sources.rs`, `analyze_report.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`, tipos `model/`), historial de auditorías (`audit/`) e IA opcional (`ai/`: `http.rs`, `token.rs`, `chat.rs`) |
+| `localfs/`, `diagnostics/` | Archivos locales (exportar/importar) y diagnóstico del sistema |
 | `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
 
 Librerías clave del motor: `tauri`, `tokio`, `russh`, `russh-sftp`, `keyring`, `serde`, `reqwest`
@@ -568,7 +586,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 ![Bóveda y bloqueo](arquitectura/15-boveda-y-bloqueo.png)
 
 - **Es opcional** (Ajustes → Seguridad). Sin bóveda todo sigue como antes: contraseñas, frases y
-  tokens (GitHub, MCP e IA de informes) en el llavero del sistema (`storage/secrets.rs`).
+  tokens (GitHub, MCP e IA de informes) en el llavero del sistema (`storage/secrets/`).
 - **Con bóveda**, esos secretos salen del llavero y pasan a `<config>/sshorus/vault.json`: un sobre
   AES-256-GCM (formato `sshorus-vault`) con la cabecera autenticada, escritura atómica, permisos 0600
   y un nonce nuevo en cada guardado. "Proteger con PIN" los mueve del llavero a la bóveda; "Quitar

@@ -25,6 +25,7 @@
 //!   del Explorador) y usa `SHDoDragDrop` (origen e imagen de arrastre de Windows).
 //! - macOS: crate `drag` (CrabNebula), que en macOS sí está bien: arrastra `NSURL` de archivo.
 
+pub mod commands;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]
@@ -68,11 +69,9 @@ fn cache_root(app: &AppHandle) -> AppResult<PathBuf> {
         .map_err(|e| AppError::Io(format!("No se encontró la carpeta de caché: {e}")))
 }
 
-/// Crea una carpeta nueva y vacía en la caché para descargar ahí lo que se va a arrastrar.
+/// Crea una carpeta nueva y vacía dentro de `root` para descargar ahí lo que se va a arrastrar.
 /// Al ser nueva, la descarga nunca choca con archivos que ya existan (no pregunta "¿sobrescribir?").
-#[tauri::command]
-pub fn drag_out_dir(app: AppHandle) -> AppResult<DragOutDir> {
-    let root = cache_root(&app)?;
+fn new_dir(root: &Path) -> AppResult<DragOutDir> {
     let dir = root.join(uuid::Uuid::new_v4().simple().to_string());
     fs::create_dir_all(&dir).map_err(|e| AppError::Io(format!("{}: {e}", dir.display())))?;
     Ok(DragOutDir {
@@ -81,18 +80,14 @@ pub fn drag_out_dir(app: AppHandle) -> AppResult<DragOutDir> {
     })
 }
 
-/// Empieza el arrastre nativo de archivos ya preparados (deben estar dentro de la caché de
-/// arrastre). Hay que llamarlo con el botón del ratón apretado. Termina cuando el usuario suelta:
-/// `true` si los soltó en algún sitio, `false` si canceló.
-#[tauri::command]
-pub async fn drag_out_start(app: AppHandle, window: WebviewWindow, paths: Vec<String>) -> AppResult<bool> {
-    let root = cache_root(&app)?;
-    let paths = check_paths(&root, &paths)?;
+/// Arrastre nativo de `paths` (ya comprobadas). Termina cuando el usuario suelta: `true` si los
+/// soltó en algún sitio, `false` si canceló.
+async fn drag(window: &WebviewWindow, paths: Vec<PathBuf>) -> AppResult<bool> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     let done: Done = Box::new(move |r| {
         let _ = tx.send(r);
     });
-    native_start(&window, paths, done)?;
+    native_start(window, paths, done)?;
     match rx.await {
         Ok(Ok(dropped)) => Ok(dropped),
         Ok(Err(msg)) => Err(AppError::Invalid(format!("No se pudo arrastrar: {msg}"))),

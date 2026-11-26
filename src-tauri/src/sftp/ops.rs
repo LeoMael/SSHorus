@@ -1,31 +1,26 @@
 //! Operaciones SFTP sobre un canal ya abierto. Devuelven `OpResult` para que el
 //! llamador sepa si el canal murió (y reintente) o si es un error normal.
 
-use std::sync::Arc;
-
-use futures::future::BoxFuture;
 use futures::stream::{self, StreamExt};
 use russh_sftp::client::SftpSession;
 use russh_sftp::protocol::{FileAttributes, OpenFlags, StatusCode};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 
 use super::util::{self, is_status, Ctx, Fail, OpResult};
-use super::SftpStore;
 use crate::error::AppError;
-use crate::ssh::SshSession;
 use crate::types::{FileEntry, FileKind, RemoteText};
 
 /// Peticiones simultáneas al resolver enlaces o borrar archivos.
-const PARALLEL: usize = 32;
+pub(super) const PARALLEL: usize = 32;
 /// Bytes que se revisan para detectar binarios.
 const BINARY_PROBE: usize = 8 * 1024;
 
-fn invalid(msg: impl Into<String>) -> Fail {
+pub(super) fn invalid(msg: impl Into<String>) -> Fail {
     Fail::App(AppError::Invalid(msg.into()))
 }
 
 /// Ruta absoluta y sin barras finales; canonicaliza si es relativa.
-async fn absolute(s: &SftpSession, path: &str) -> OpResult<String> {
+pub(super) async fn absolute(s: &SftpSession, path: &str) -> OpResult<String> {
     let p = util::normalize(path.trim());
     if p.starts_with('/') {
         Ok(p)
@@ -58,7 +53,7 @@ async fn explain_exists(s: &SftpSession, path: &str, err: russh_sftp::client::er
     util::map_sftp(err, path)
 }
 
-fn check_name(path: &str) -> OpResult<()> {
+pub(super) fn check_name(path: &str) -> OpResult<()> {
     let name = util::basename(path);
     if path.trim().is_empty() || name == "/" || name == "." || name == ".." {
         return Err(invalid("El nombre no es válido"));
@@ -238,172 +233,4 @@ pub async fn chmod(s: &SftpSession, path: &str, mode: u32) -> OpResult<()> {
     let new = (old & !0o7777) | (mode & 0o7777);
     let set = FileAttributes { permissions: Some(new), ..FileAttributes::empty() };
     s.set_metadata(p.as_str(), set).await.ctx(&p)
-}
-
-// ───────────────────────── Borrado ─────────────────────────
-
-pub async fn delete(s: &SftpSession, paths: &[String]) -> OpResult<()> {
-    for path in paths {
-        let p = absolute(s, path).await?;
-        if p == "/" || p.is_empty() {
-            return Err(invalid("No se puede borrar la raíz del sistema"));
-        }
-        // lstat: un symlink se borra como archivo (nunca se sigue).
-        let attrs = s.symlink_metadata(p.as_str()).await.ctx(&p)?;
-        if util::kind_of(attrs.permissions) == FileKind::Dir {
-            remove_tree(s, p).await?;
-        } else {
-            remove_file(s, &p).await?;
-        }
-    }
-    Ok(())
-}
-
-async fn remove_file(s: &SftpSession, path: &str) -> OpResult<()> {
-    match s.remove_file(path).await {
-        Ok(()) => Ok(()),
-        Err(e) if is_status(&e, StatusCode::NoSuchFile) => Ok(()),
-        Err(e) => Err(util::map_sftp(e, path)),
-    }
-}
-
-fn remove_tree(s: &SftpSession, dir: String) -> BoxFuture<'_, OpResult<()>> {
-    Box::pin(async move {
-        let read = s.read_dir(dir.as_str()).await.ctx(&dir)?;
-        let mut files = Vec::new();
-        let mut dirs = Vec::new();
-        for e in read {
-            let full = util::join(&dir, &e.file_name());
-            // Los atributos de readdir son de lstat: un enlace a carpeta NO es carpeta aquí.
-            if util::kind_of(e.metadata().permissions) == FileKind::Dir {
-                dirs.push(full);
-            } else {
-                files.push(full);
-            }
-        }
-        let results: Vec<OpResult<()>> = stream::iter(files)
-            .map(|f| async move { remove_file(s, &f).await })
-            .buffer_unordered(PARALLEL)
-            .collect()
-            .await;
-        for r in results {
-            r?;
-        }
-        for d in dirs {
-            remove_tree(s, d).await?;
-        }
-        match s.remove_dir(dir.as_str()).await {
-            Ok(()) => Ok(()),
-            Err(e) if is_status(&e, StatusCode::NoSuchFile) => Ok(()),
-            Err(e) => Err(util::map_sftp(e, &dir)),
-        }
-    })
-}
-
-// ───────────────────────── Guardado atómico ─────────────────────────
-
-/// Guarda `content` en `path`:
-/// 1. escribe un temporal `.<nombre>.sshorus-<rand>` en la misma carpeta con los permisos del original;
-/// 2. lo coloca encima con `posix-rename@openssh.com` (o borrar + renombrar si no existe la extensión).
-///
-/// Si no se puede crear el temporal (carpeta sin permiso de escritura) o no se puede conservar
-/// el dueño del archivo, escribe directamente sobre el original.
-pub async fn write_text(store: &SftpStore, ssh: &Arc<SshSession>, s: &SftpSession, path: &str, content: &str) -> OpResult<FileEntry> {
-    let p = absolute(s, path).await?;
-    check_name(&p)?;
-
-    // Destino real (si es un symlink, se escribe en el archivo al que apunta).
-    let (target, orig) = match s.symlink_metadata(p.as_str()).await {
-        Ok(a) => match util::kind_of(a.permissions) {
-            FileKind::Dir => return Err(invalid(format!("«{}» es una carpeta", util::basename(&p)))),
-            FileKind::Symlink => {
-                let real = canonicalize(s, &p).await?;
-                let ra = s.metadata(real.as_str()).await.ctx(&real)?;
-                if util::kind_of(ra.permissions) == FileKind::Dir {
-                    return Err(invalid(format!("«{}» es una carpeta", util::basename(&p))));
-                }
-                (real, Some(ra))
-            }
-            _ => (p.clone(), Some(a)),
-        },
-        Err(e) if is_status(&e, StatusCode::NoSuchFile) => (p.clone(), None),
-        Err(e) => return Err(util::map_sftp(e, &p)),
-    };
-
-    let dir = util::parent(&target);
-    let name = util::basename(&target);
-    let rand = uuid::Uuid::new_v4().simple().to_string();
-    let tmp = util::join(&dir, &format!(".{name}.sshorus-{}", &rand[..8]));
-    let perms = orig.as_ref().and_then(|a| a.permissions).map(|m| m & 0o7777);
-
-    let open_attrs = FileAttributes { permissions: perms, ..FileAttributes::empty() };
-    let flags = OpenFlags::CREATE | OpenFlags::EXCLUDE | OpenFlags::WRITE | OpenFlags::TRUNCATE;
-    let file = match s.open_with_flags_and_attributes(tmp.as_str(), flags, open_attrs).await {
-        Ok(f) => f,
-        Err(e) if orig.is_some() && is_status(&e, StatusCode::PermissionDenied) => {
-            write_in_place(s, &target, content).await?;
-            return stat(s, &p).await;
-        }
-        Err(e) => return Err(util::map_sftp(e, &dir)),
-    };
-
-    let result: OpResult<bool> = async {
-        let mut file = file;
-        file.write_all(content.as_bytes()).await.ctx(&tmp)?;
-        file.flush().await.ctx(&tmp)?;
-        let _ = file.sync_all().await;
-        // Permisos explícitos (la creación aplica la umask del servidor).
-        if let Some(m) = perms {
-            let set = FileAttributes { permissions: Some(m), ..FileAttributes::empty() };
-            file.set_metadata(set).await.ctx(&tmp)?;
-        }
-        // Dueño: si el temporal no queda con el mismo uid/gid y no se puede cambiar, mejor in situ.
-        if let Some(o) = &orig {
-            let t = file.metadata().await.ctx(&tmp)?;
-            let same = (o.uid.is_none() || o.uid == t.uid) && (o.gid.is_none() || o.gid == t.gid);
-            if !same {
-                let set = FileAttributes { uid: o.uid, gid: o.gid, ..FileAttributes::empty() };
-                if file.set_metadata(set).await.is_err() {
-                    let _ = file.close().await;
-                    return Ok(false);
-                }
-            }
-        }
-        file.close().await.ctx(&tmp)?;
-        replace(store, ssh, s, &tmp, &target, orig.is_some()).await?;
-        Ok(true)
-    }
-    .await;
-
-    match result {
-        Ok(true) => stat(s, &p).await,
-        Ok(false) => {
-            let _ = s.remove_file(tmp.as_str()).await;
-            write_in_place(s, &target, content).await?;
-            stat(s, &p).await
-        }
-        Err(e) => {
-            let _ = s.remove_file(tmp.as_str()).await;
-            Err(e)
-        }
-    }
-}
-
-async fn replace(store: &SftpStore, ssh: &Arc<SshSession>, s: &SftpSession, tmp: &str, target: &str, target_exists: bool) -> OpResult<()> {
-    if store.posix_rename(ssh, tmp, target).await? {
-        return Ok(());
-    }
-    if target_exists {
-        s.remove_file(target).await.ctx(target)?;
-    }
-    s.rename(tmp, target).await.ctx(target)
-}
-
-async fn write_in_place(s: &SftpSession, target: &str, content: &str) -> OpResult<()> {
-    let flags = OpenFlags::WRITE | OpenFlags::TRUNCATE;
-    let mut file = s.open_with_flags(target, flags).await.ctx(target)?;
-    file.write_all(content.as_bytes()).await.ctx(target)?;
-    file.flush().await.ctx(target)?;
-    let _ = file.sync_all().await;
-    file.close().await.ctx(target)
 }

@@ -7,7 +7,10 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::storage::ssh_config::{assign_aliases_with, split_line, AliasOverrides, BEGIN_MARKER, END_MARKER};
+use crate::error::AppResult;
+use crate::storage::ssh_config::{
+    assign_aliases_with, load_overrides, split_line, AliasOverrides, SshEnv, BEGIN_MARKER, END_MARKER,
+};
 use crate::types::ServerProfile;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -67,6 +70,16 @@ fn parse_block(config: &str) -> HashMap<String, HostEntry> {
 
 fn clean(v: &str) -> String {
     v.chars().filter(|c| !c.is_control() && *c != '"').collect::<String>().trim().to_string()
+}
+
+/// Lee `~/.ssh/config` del usuario y devuelve los alias exportados (vacío si no hay archivo).
+pub fn load_exported_aliases(servers: &[ServerProfile]) -> AppResult<Vec<ExportedAlias>> {
+    let env = SshEnv::user()?;
+    let text = match std::fs::read_to_string(&env.config) {
+        Ok(t) => t,
+        Err(_) => return Ok(Vec::new()),
+    };
+    Ok(exported_aliases(&text, servers, &load_overrides(&env)))
 }
 
 /// Servidores cuyo alias está en el bloque de SSHorus con sus mismos datos.

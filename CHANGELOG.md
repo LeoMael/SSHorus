@@ -11,6 +11,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   tema) se partieron en archivos por tema; `components/Admin` se ordenó en carpetas (`users/`, `web/`, `vulns/`,
   `audit/`, `visibility/`); `AdmModal` trae su propio CSS; y la barra lateral, Administración y Contenedores usan el
   mismo menú contextual que el resto de la app (`ui/ContextMenu`). La lista de archivos demasiado largos queda vacía.
+- **Desarrollo:** el motor queda más ordenado por dentro: ningún archivo pasa de 400 líneas y los comandos que llama
+  la interfaz están siempre en un `commands.rs` de cada módulo. La app funciona igual.
 
 ## [1.0.0-beta.4] - 2026-11-26
 

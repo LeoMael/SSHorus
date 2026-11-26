@@ -16,7 +16,7 @@ use super::fsutil;
 use crate::error::{AppError, AppResult};
 
 mod alias;
-mod commands;
+pub mod commands;
 mod conflicts;
 mod export;
 mod import;
@@ -29,7 +29,6 @@ mod tests;
 mod conflicts_tests;
 
 pub use alias::{assign_aliases_with, load_overrides, AliasOverrides};
-pub use commands::*;
 pub use export::export_with;
 pub use import::import;
 pub use parse::split_line;

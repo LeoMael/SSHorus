@@ -1,6 +1,8 @@
 //! Lectura y escritura de archivos de texto LOCALES elegidos por el usuario con el diálogo del sistema
 //! (p. ej. exportar/importar «Mis comandos»). Pequeño y con límites: no es un explorador de archivos.
 
+pub mod commands;
+
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -74,26 +76,6 @@ pub fn read_text(path: &Path) -> AppResult<String> {
     Ok(text.strip_prefix('\u{feff}').map(str::to_owned).unwrap_or(text))
 }
 
-async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + 'static) -> AppResult<T> {
-    tokio::task::spawn_blocking(f)
-        .await
-        .map_err(|e| AppError::Io(format!("tarea interna interrumpida: {e}")))?
-}
-
-/// Guarda texto en un archivo local (ruta completa, normalmente elegida con el diálogo «Guardar»).
-#[tauri::command]
-pub async fn local_write_text(path: String, content: String) -> AppResult<()> {
-    let p = check_path(&path)?;
-    blocking(move || write_text(&p, &content)).await
-}
-
-/// Guarda bytes (p. ej. una imagen PNG exportada) en un archivo local elegido con el diálogo «Guardar».
-#[tauri::command]
-pub async fn local_write_bytes(path: String, data: Vec<u8>) -> AppResult<()> {
-    let p = check_path(&path)?;
-    blocking(move || write_bytes(&p, &data)).await
-}
-
 /// Como [`write_text`], pero con bytes cualesquiera (mismo límite de tamaño).
 pub fn write_bytes(path: &Path, data: &[u8]) -> AppResult<()> {
     if data.len() as u64 > MAX_TEXT_BYTES * 4 {
@@ -110,13 +92,6 @@ pub fn write_bytes(path: &Path, data: &[u8]) -> AppResult<()> {
         return Err(AppError::NotFound(format!("la carpeta {}", dir.display())));
     }
     fsutil::write_atomic(path, data)
-}
-
-/// Lee un archivo de texto local (ruta completa, normalmente elegida con el diálogo «Abrir»).
-#[tauri::command]
-pub async fn local_read_text(path: String) -> AppResult<String> {
-    let p = check_path(&path)?;
-    blocking(move || read_text(&p)).await
 }
 
 #[cfg(test)]

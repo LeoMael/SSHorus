@@ -46,7 +46,6 @@ pub mod rules;
 pub mod server;
 pub mod server_audit;
 pub use crate::snippets::sudo;
-pub use commands::*;
 pub mod template;
 pub mod ui;
 pub mod vuln;

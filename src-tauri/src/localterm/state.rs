@@ -5,7 +5,6 @@
 //! Linux lo lee de `/proc`; macOS pregunta la carpeta a `lsof`; en Windows no se sabe (None).
 
 use serde::Serialize;
-use tauri::State;
 
 use super::LocalTermStore;
 use crate::error::AppResult;
@@ -61,10 +60,9 @@ fn read_state(_pid: u32) -> LocalTermState {
     LocalTermState::default()
 }
 
-/// Carpeta actual de la shell y si está ocupada con otro programa.
-#[tauri::command]
-pub async fn local_term_state(terms: State<'_, LocalTermStore>, term_id: String) -> AppResult<LocalTermState> {
-    let Some(pid) = terms.get(&term_id)?.pid() else { return Ok(LocalTermState::default()) };
+/// Carpeta actual de la shell `term_id` y si está ocupada con otro programa.
+pub async fn current(terms: &LocalTermStore, term_id: &str) -> AppResult<LocalTermState> {
+    let Some(pid) = terms.get(term_id)?.pid() else { return Ok(LocalTermState::default()) };
     Ok(tokio::task::spawn_blocking(move || read_state(pid)).await.unwrap_or_default())
 }
 

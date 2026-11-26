@@ -270,11 +270,11 @@ fn parse_collections() {
 #[test]
 fn forbidden_keys_detected() {
     let ok = serde_json::json!({"servers":[{"auth":"password","name":"a"}]});
-    assert!(super::find_forbidden(&ok).is_none());
+    assert!(super::sync::find_forbidden(&ok).is_none());
     let bad = serde_json::json!({"servers":[{"name":"a","Password":"x"}]});
-    assert_eq!(super::find_forbidden(&bad).as_deref(), Some("Password"));
+    assert_eq!(super::sync::find_forbidden(&bad).as_deref(), Some("Password"));
     let bad = serde_json::json!({"x":{"private_key":"x"}});
-    assert!(super::find_forbidden(&bad).is_some());
+    assert!(super::sync::find_forbidden(&bad).is_some());
 }
 
 /// La copia en Gist lleva los servidores tal cual: con «Contraseña de sudo: Guardar» solo viaja el
@@ -289,7 +289,7 @@ fn synced_server_carries_sudo_mode_but_no_secret() {
     let v = serde_json::to_value(&srv).unwrap();
     assert_eq!(v["sudoMode"], "saved");
     let payload = serde_json::json!({ "format": "sshorus-config", "servers": [v] });
-    assert!(super::find_forbidden(&payload).is_none());
+    assert!(super::sync::find_forbidden(&payload).is_none());
     let text = payload.to_string();
     assert!(!text.contains(":sudo") && !text.to_lowercase().contains("password"), "{text}");
     // Perfiles viejos (sin el campo) siguen leyéndose: «Pedir cada vez».

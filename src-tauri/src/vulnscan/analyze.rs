@@ -1,14 +1,15 @@
 //! Fases 5 y 6: con lo que llegó del servidor, consulta OSV, junta todas las fuentes, quita
-//! duplicados por CVE y calcula la gravedad. La fusión de fuentes vive en `analyze_merge.rs`.
+//! duplicados por CVE y calcula la gravedad. La fusión de fuentes vive en `analyze_merge.rs`,
+//! `analyze_sources.rs` y `analyze_report.rs`.
 
 use std::collections::{BTreeSet, HashMap};
 use std::time::Instant;
 
 use tokio_util::sync::CancellationToken;
 
-use super::analyze_merge::{
-    image_label, osv_findings, package_queries, parse_tool, programs, tool_findings, trivy_findings, Merger, PkgTarget, QueryUse,
-};
+use super::analyze_merge::{package_queries, Merger, PkgTarget, QueryUse};
+use super::analyze_report::{image_label, programs};
+use super::analyze_sources::{osv_findings, parse_tool, tool_findings, trivy_findings};
 use super::cache::OsvCache;
 use super::ecosystem;
 use super::kernel;
@@ -18,7 +19,7 @@ use super::osv::{self, OsvApi, Query};
 use super::parse::inventory::{self, Detect, ImageRead};
 use crate::error::{AppError, AppResult};
 
-pub use super::analyze_merge::{merge_rescan, summary_of};
+pub use super::analyze_report::{merge_rescan, summary_of};
 
 /// Comienzo del aviso «faltó el detalle de algunos avisos» (volver a comprobar lo reconoce).
 pub const DETAILS_FAILED: &str = "No se pudo leer el detalle de";

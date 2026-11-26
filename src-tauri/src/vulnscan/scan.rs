@@ -8,7 +8,8 @@ use std::time::Instant;
 
 use tokio_util::sync::CancellationToken;
 
-use super::commands::{analyze_and_save, plan_from, select_images, script_for, ScriptRequest};
+use super::plan::{plan_from, script_for, select_images, ScriptRequest};
+use super::run::analyze_and_save;
 use super::model::*;
 use crate::error::AppResult;
 use crate::snippets::exec;

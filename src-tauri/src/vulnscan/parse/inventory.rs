@@ -1,4 +1,4 @@
-//! Salidas de los scripts propios (`scripts.rs`): detección, inventario, usuarios e imágenes.
+//! Salidas de los scripts propios (`scripts/`): detección, inventario, usuarios e imágenes.
 
 use std::collections::HashMap;
 

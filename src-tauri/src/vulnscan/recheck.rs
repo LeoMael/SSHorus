@@ -10,12 +10,12 @@
 
 use std::collections::BTreeSet;
 
-use tauri::{AppHandle, Emitter};
+use tokio_util::sync::CancellationToken;
 
-use super::analyze::{summary_of, DETAILS_FAILED};
-use super::commands::{analyze_and_save, ProgressPayload, ScanTicket, PROGRESS_EVENT};
+use super::analyze::{summary_of, ProgressFn, DETAILS_FAILED};
 use super::model::*;
 use super::parse::inventory;
+use super::run::analyze_and_save;
 use super::store::History;
 use crate::error::{AppError, AppResult};
 
@@ -93,17 +93,17 @@ pub fn merge_system(base: &Report, partial: &Report) -> Report {
 /// Vuelve a comprobar el sistema del informe `report_id` con lo que la interfaz acaba de leer del
 /// servidor (`input`, sin imágenes) y lo guarda como un análisis nuevo. Progreso y cancelación como
 /// `vulnscan_analyze`.
-#[tauri::command]
-pub async fn vulnscan_recheck(app: AppHandle, server_id: String, report_id: String, input: ScanInput, scan_id: String) -> AppResult<Report> {
+pub async fn recheck(
+    server_id: String,
+    report_id: &str,
+    input: ScanInput,
+    cancel: &CancellationToken,
+    progress: ProgressFn<'_>,
+) -> AppResult<Report> {
     let history = History::system();
-    let base = history.get(&server_id, &report_id)?;
+    let base = history.get(&server_id, report_id)?;
     let input = ScanInput { server_id, images: Vec::new(), elevated: base.elevated, ..input };
-    let ticket = ScanTicket::new(&scan_id);
-    let sid = scan_id.clone();
-    let emit = move |phase: &str, done: usize, total: usize, text: &str| {
-        let _ = app.emit(PROGRESS_EVENT, ProgressPayload { scan_id: sid.clone(), phase: phase.into(), done, total, text: text.into() });
-    };
-    let partial = analyze_and_save(&input, &ticket.token, &emit, false).await?;
+    let partial = analyze_and_save(&input, cancel, progress, false).await?;
     if let Some(why) = degraded(&base, &partial, &input) {
         return Err(AppError::Invalid(format!(
             "No se pudo volver a comprobar del todo ({why}): el informe anterior se queda como estaba. Vuelve a comprobar en un rato."

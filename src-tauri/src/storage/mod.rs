@@ -6,7 +6,7 @@
 //!   SettingsStore::load(), SettingsStore::get()
 //!   secrets::get_secret / set_secret / delete_secret
 //!
-//! Los comandos Tauri viven en `commands.rs` y se re-exportan desde aquí.
+//! Los comandos Tauri viven en `commands/` (y los de `~/.ssh/config` por alias en `ssh_config/commands.rs`).
 
 pub(crate) mod cipher;
 pub mod commands;
@@ -21,7 +21,7 @@ pub mod vault;
 #[cfg(test)]
 mod tests;
 
-pub use commands::*;
+
 
 use std::collections::HashSet;
 use std::path::PathBuf;
