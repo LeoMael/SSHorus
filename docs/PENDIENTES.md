@@ -11,8 +11,11 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 Última versión etiquetada: **1.0.0-beta.4** (26/11/2026; Release en **borrador**, lo publica el usuario tras probarlo).
 Lo que entre en `main` después saldrá en la **1.0.0-beta.5**.
 
-**Estado al 26/11/2026 (para retomar):** tanda 1 del plan hecha (revisión del lote + reglas de calidad en la CI) y
-tanda 2 de la interfaz hecha (CSS partidos, `components/Admin` por temas, un solo menú contextual).
+**Estado al 26/11/2026 (para retomar):** tandas **1, 2 y 3** del plan hechas y unidas en `main` (sin subir; la beta.4
+está etiquetada en local y aún no se ha subido): reglas de calidad en la CI, CSS y Rust partidos, `commands.rs` en cada
+módulo, `components/Admin` por temas, un solo menú contextual, **0 ciclos, 0 excepciones de límites y 0 archivos de
+más de 500 líneas**, `index.ts` en todas las features, limpiezas de Volúmenes y Redes con «Todos», avisos con botón y
+«Renombrar máquina…». Siguiente: **tanda 4** (13 pruebas por distro + 12 «Cerrar puerto»).
 
 **Estado anterior, 25/11/2026:**
 - En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
@@ -42,7 +45,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **1. Revisión y reglas** | `/code-review` del lote nuevo + arreglar lo que salga · reglas automáticas de calidad en la CI (límites entre carpetas, dependencias circulares, tope de 500 líneas con lista de excepciones que solo puede bajar) | 2 | **beta.4** (el usuario prueba en su VPS mientras sigue el plan) |
 | **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` — **hecho (26/11)** | 1 (solo interfaz) | beta.5 |
 | **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) — **hecho (26/11)** | 1 (Rust) | beta.5 |
-| **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
+| **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** — **hecho (26/11)** | 2 | beta.5 |
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta | 2 | beta.6 |
@@ -291,6 +294,9 @@ Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
 - ~~**Los comandos Tauri no siguen un criterio fijo**~~ **hecho (26/11):** cada módulo con comandos tiene su
   `commands.rs` (o `commands/` por temas en `storage/`) con solo envoltorios finos, y `lib.rs` los registra como
   `modulo::commands::nombre` (regla en `docs/dev/REGLAS-AGENTES.md` §5).
+- **Pantallas React dentro de `features/`** (26/11/2026: 51 `.tsx` y varios CSS, p. ej. `features/mcp`,
+  `features/connect/ConnectDialogs.css`, `features/serverEditor`, `features/localterm/LocalMenu.tsx`): según
+  ARQUITECTURA §5 van en `components/<X>/`. No lo mira la CI; moverlas poco a poco (y entonces añadir la regla a ESLint).
 - **Pruebas Rust aún grandes** (no cuentan para el tope, pero cuestan de leer): `mcp/tests.rs` (~720, casi todo el
   motor simulado), `ssh/connect_tests.rs` (564), `snippets/tests.rs` (518), `mcp/e2e_tests.rs` (493),
   `ssh/reconnect_tests.rs` (490), `mcp/tests_marked.rs` (476).
