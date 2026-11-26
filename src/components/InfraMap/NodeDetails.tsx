@@ -1,6 +1,7 @@
 // Panel lateral del mapa con lo que se sabe del nodo elegido; el cortafuegos enseña aquí sus reglas.
 import { X } from "lucide-react";
 import type { MapNode, NavTarget, ServerSnapshot } from "../../features/infra";
+import { MapPortClose } from "../PortClose/MapPortClose";
 import { FirewallPanel } from "./FirewallPanel";
 import { HEALTH_LABEL, KIND_LABEL, NODE_ICON } from "./nodeMeta";
 import "./MapPanels.css";
@@ -67,6 +68,7 @@ export function NodeDetails({
           {NAV_LABEL[node.nav.kind]}
         </button>
       )}
+      {node.kind === "port" && snapshot && <MapPortClose node={node} snap={snapshot} />}
       {firewall && snapshot && <FirewallPanel key={snapshot.id} snap={snapshot} />}
     </aside>
   );

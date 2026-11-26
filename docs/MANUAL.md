@@ -468,6 +468,29 @@ instalar nada en tu PC. Solo lee: no cambia ni consulta datos.
   tarea; si no lo haces, el servidor lo deshace solo (aunque se haya cortado la conexión). **Deshacer ahora** lo
   quita al momento.
 
+**Cerrar un puerto:**
+
+Un puerto está abierto porque un programa lo escucha. Se puede cerrar de dos formas: **bloquearlo en el
+cortafuegos** (el programa sigue funcionando dentro del servidor, pero desde fuera ya no se llega) o **parar lo
+que lo abre** (un servicio, un programa o un contenedor).
+
+- En **Puertos**, el botón **⊘** de la fila (o clic derecho → **Cerrar…**); en el **mapa**, clic en un puerto →
+  **Cerrar…**. Solo sale en los puertos expuestos (los «Solo local» ya no se ven desde fuera).
+- SSHorus mira quién lo abre, te lo explica en una o dos frases y ofrece **solo lo que funciona**, con la
+  recomendada marcada:
+  - **Servicio** (nginx, …): bloquearlo en el cortafuegos, **Parar el servicio** (vuelve al reiniciar) o **Parar y
+    desactivar** (ya no arranca).
+  - **Programa suelto**: bloquearlo en el cortafuegos o **Terminar el programa**.
+  - **Contenedor de Docker o de Podman con root**: publican el puerto **saltándose el cortafuegos**, así que
+    bloquearlo ahí no basta. Lo mejor es **Publicarlo solo en local** (en el compose, `"8080:80"` pasa a
+    `"127.0.0.1:8080:80"`: **Abrir en Contenedores** y **Editar compose**) o **Parar el contenedor**.
+  - **Contenedor de Podman sin root**: sí respeta el cortafuegos, así que puedes bloquearlo ahí y el contenedor
+    sigue en marcha.
+- Si el contenedor es de otro usuario (con sudo y **Todos**), se para **como su dueño**, igual que en Contenedores.
+- Antes de **Aplicar** ves los **comandos exactos**. Bloquear en el cortafuegos va **a prueba** (firewalld o ufw),
+  como en el mapa: si no lo confirmas en 5 minutos, se deshace solo.
+- El puerto de **SSH** (por donde entra SSHorus) **nunca** se cierra desde aquí: te quedarías fuera.
+
 ## Vulnerabilidades
 
 ![Pestaña Vulnerabilidades con el resumen por gravedad y la tabla](manual/14-vulnerabilidades.png)

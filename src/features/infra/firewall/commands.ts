@@ -43,7 +43,7 @@ function rangeText(r: PortRange, sep: string): string {
 
 type FwdKind = "port" | "service" | "rich-rule" | "forward-port" | "masquerade";
 
-function fwd(zone: string, op: "add" | "remove" | "query", kind: FwdKind, value: string, permanent = false): string {
+export function fwd(zone: string, op: "add" | "remove" | "query", kind: FwdKind, value: string, permanent = false): string {
   const v = kind === "masquerade" ? "" : `=${q(value)}`;
   return `firewall-cmd${permanent ? " --permanent" : ""} --zone=${q(zone)} --${op}-${kind}${v}`;
 }
@@ -101,7 +101,7 @@ function alreadyOpen(z: FwZone, t: FwTarget, v: { kind: FwdKind; value: string }
 
 // ───────── ufw ─────────
 
-function ufwCmd(spec: string[], del = false): string {
+export function ufwCmd(spec: string[], del = false): string {
   return `ufw ${del ? "delete " : ""}${spec.map(q).join(" ")}`;
 }
 
@@ -113,8 +113,8 @@ const UFW_FILES = ["/etc/ufw/user.rules", "/etc/ufw/user6.rules"];
  * Volver a crearla con `ufw allow …` la pondría al final, y en ufw manda la primera que encaja: un «ALLOW»
  * detrás de un «DENY» ya no deja pasar (y se perdería su comentario).
  */
-const UFW_SAVE = `mkdir -p ${SAVE} && cp -p ${UFW_FILES.join(" ")} ${SAVE}/`;
-const UFW_RESTORE = `cp -p ${UFW_FILES.map((f) => `${SAVE}/${f.slice(f.lastIndexOf("/") + 1)}`).join(" ")} /etc/ufw/ && ufw reload`;
+export const UFW_SAVE = `mkdir -p ${SAVE} && cp -p ${UFW_FILES.join(" ")} ${SAVE}/`;
+export const UFW_RESTORE = `cp -p ${UFW_FILES.map((f) => `${SAVE}/${f.slice(f.lastIndexOf("/") + 1)}`).join(" ")} /etc/ufw/ && ufw reload`;
 
 /** Argumentos de `ufw` para abrir algo. */
 export function ufwTargetSpec(t: FwTarget): string[] {

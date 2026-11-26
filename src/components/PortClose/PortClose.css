@@ -1,0 +1,152 @@
+/* «Cerrar puerto» (prefijo pc-): explicación, opciones y vista previa de los comandos. */
+.pc-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--fs-sm);
+}
+.pc-addr {
+  margin-top: -4px;
+}
+.pc-loading,
+.pc-sudo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.pc-explain,
+.pc-hint,
+.pc-error {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  line-height: 1.45;
+}
+.pc-explain > svg,
+.pc-hint > svg,
+.pc-error > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.pc-explain {
+  border: 1px solid var(--mix-accent-25);
+  background: var(--mix-accent-7-surface-2);
+}
+.pc-explain > svg {
+  color: var(--accent);
+}
+.pc-hint {
+  border: 1px solid var(--mix-yellow-40);
+  background: var(--mix-yellow-12-surface);
+}
+.pc-error {
+  border: 1px solid var(--mix-red-40);
+  background: var(--mix-red-12);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.pc-error > svg {
+  color: var(--red);
+}
+
+/* Opciones */
+.pc-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pc-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.pc-opt:hover:not(.off) {
+  border-color: var(--border-strong);
+}
+.pc-opt.on {
+  border-color: var(--accent);
+  background: var(--mix-accent-7-surface-2);
+}
+.pc-opt.off {
+  cursor: default;
+  opacity: 0.75;
+}
+.pc-opt input {
+  margin-top: 2px;
+}
+.pc-opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pc-opt-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pc-opt-text {
+  color: var(--text-muted);
+}
+.pc-why {
+  color: var(--orange);
+}
+.pc-rec {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--mix-green-15);
+  color: var(--green);
+}
+
+/* Vista previa */
+.pc-label {
+  color: var(--text-muted);
+}
+.pc-cmd {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 200px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.pc-cmd-sm {
+  font-size: 11px;
+}
+.pc-safe {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+}
+.pc-safe > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--green);
+}
+.pc-undo summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}

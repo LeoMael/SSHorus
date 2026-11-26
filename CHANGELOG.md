@@ -7,6 +7,12 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Añadido
+- **Cerrar un puerto según quién lo abre:** en **Administración → Puertos** (botón de la fila o clic derecho →
+  **Cerrar…**) y en el **mapa** (clic en un puerto → **Cerrar…**). SSHorus mira qué lo abre y ofrece solo lo que
+  funciona: bloquearlo en el cortafuegos (firewalld o ufw, a prueba: se deshace solo si no lo confirmas), parar o
+  desactivar el servicio, terminar el programa, o parar el contenedor o publicarlo solo en local. Con Docker (y
+  Podman con root) explica que el cortafuegos no basta; con Podman sin root, que sí. Los contenedores de otros
+  usuarios se paran como su dueño. Siempre enseña los comandos antes y nunca cierra el puerto de SSH.
 - **Barra lateral:** clic derecho en un servidor con varias cuentas → **Renombrar máquina…** para ponerle un nombre
   propio en vez del host. Vacío vuelve al host. Se recuerda y el buscador también lo encuentra.
 - **Avisos con botón:** los avisos de la esquina pueden llevar un botón (como el **Ver** de las tareas en segundo

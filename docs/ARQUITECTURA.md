@@ -223,8 +223,8 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `McpPairing`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
@@ -278,7 +278,16 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   ufw, nftables e iptables; explicar cada regla en una frase; cruzarlo con los puertos en escucha; y cambiarlo sin
   quedarse fuera, con cambios «a prueba» que el servidor deshace solo) vive en `features/infra/firewall/` porque
   solo lo usa el mapa; su interfaz, en `components/InfraMap/Firewall*.tsx`. Si otro dominio lo necesita (p. ej.
-  Administración), se sube a `features/firewall/`.
+  Administración), se sube a `features/firewall/`. **Pendiente:** «Cerrar puerto» ya usa su parte de bloquear un
+  puerto (`block.ts`), así que la próxima vez que se toque conviene subirlo a `features/firewall/`.
+- **«Cerrar puerto»** (`features/portClose/`): `opener.ts` decide quién abre el puerto (SSH, contenedor de Docker o
+  Podman con o sin root, servicio de systemd del sistema o de un usuario, programa suelto o «no se ve»);
+  `options.ts` qué formas de cerrarlo funcionan de verdad y la explicación en una o dos frases (Docker y Podman con
+  root se saltan el cortafuegos); `commands.ts` los comandos (como el dueño del servicio o del contenedor);
+  `job.ts` lee el cortafuegos y los contenedores de todos los dueños y lo aplica: el cortafuegos con su tarea a
+  prueba (`startFirewallChange`), lo demás con `startJob` + `runElevated` y `ownerWrap`. Nunca ofrece cerrar el
+  puerto de SSH. La interfaz (`components/PortClose/`) la abren Administración → Puertos y el nodo de un puerto del
+  mapa.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
 
 **Estas reglas se comprueban solas.** `npm run check` las pasa en local (ESLint, ciclos, líneas y pruebas) y la CI

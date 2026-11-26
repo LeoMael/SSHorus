@@ -1,7 +1,7 @@
 // Sub-pestaña «Puertos»: puertos en escucha del servidor con su proceso, usuario y servicio o contenedor.
 // Con root/sudo se ven los procesos de todos; sin privilegios, solo los propios (se avisa).
 import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { Box, Copy, KeyRound, Play, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
+import { Ban, Box, Copy, KeyRound, Play, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
 import { formatListen, matchPort, tunnelDestHost, WELL_KNOWN, type ListenPort } from "../../../features/admin";
 import { openLocalTunnel } from "../../../features/tunnels/openLocal";
 import { clipboard } from "../../../lib/clipboard";
@@ -11,6 +11,9 @@ import { useAdmin, type PortProtoFilter, type PortScopeFilter } from "../context
 import { VirtualTable, type Column } from "../VirtualTable";
 import { ContextMenu, type MenuItem } from "../../ui/ContextMenu";
 import { Segmented } from "../../ui/Segmented";
+import { PortCloseDialog } from "../../PortClose/PortCloseDialog";
+import { usePortCloseFinished } from "../../PortClose/usePortClose";
+import { procText, scopeTag } from "./portCells";
 
 function copy(text: string, what: string) {
   clipboard.write(text).then(
@@ -19,41 +22,13 @@ function copy(text: string, what: string) {
   );
 }
 
-function scopeTag(p: ListenPort) {
-  if (p.scope === "public")
-    return (
-      <span
-        className="adm-tag adm-tag-yellow"
-        title="Escucha en todas las interfaces: se puede llegar desde fuera si el cortafuegos lo permite"
-      >
-        Expuesto
-      </span>
-    );
-  if (p.scope === "local")
-    return (
-      <span className="adm-tag adm-tag-green" title="Solo se puede usar desde el propio servidor">
-        Solo local
-      </span>
-    );
-  return (
-    <span className="adm-tag adm-tag-accent" title="Escucha solo en esta dirección del servidor">
-      Una IP
-    </span>
-  );
-}
-
-/** Nombre del programa: «nginx (1200, 1201)». */
-function procText(p: ListenPort): string {
-  if (p.procs.length === 0) return "";
-  const names = [...new Set(p.procs.map((x) => x.name))];
-  return `${names.join(", ")} (${p.procs.map((x) => x.pid).join(", ")})`;
-}
-
 export function PortsTab() {
-  const { ports, loadPorts, portsFilter, setPortsFilter, sessionId, profileId, disabled, elev, askSudo } = useAdmin();
+  const { ports, loadPorts, portsFilter, setPortsFilter, sessionId, profileId, serverName, disabled, elev, askSudo } = useAdmin();
   const serverHost = useProfiles((s) => s.servers.find((x) => x.id === profileId)?.host ?? null);
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; port: ListenPort } | null>(null);
+  const [closing, setClosing] = useState<ListenPort | null>(null);
+  usePortCloseFinished(sessionId, loadPorts);
   const paneRef = useRef<HTMLDivElement>(null);
   const { query, scope, proto } = portsFilter;
   const all = useMemo(() => ports.data?.ports ?? [], [ports.data]);
@@ -89,6 +64,8 @@ export function PortsTab() {
     const name = p.procs[0]?.name ?? p.container ?? WELL_KNOWN[p.port] ?? "Puerto";
     void openLocalTunnel(sessionId, profileId, tunnelDestHost(p), p.port, `${name} :${p.port}`);
   };
+  const closeBlock = (p: ListenPort) =>
+    disabled ? "Sin conexión con el servidor" : p.scope === "local" ? "Solo se usa dentro del servidor: desde fuera no se llega" : null;
   const tunnelBlock = (p: ListenPort) =>
     disabled ? "Sin conexión con el servidor" : p.proto !== "tcp" ? "Los túneles SSH solo sirven para TCP" : null;
 
@@ -99,6 +76,13 @@ export function PortsTab() {
       onSelect: () => tunnel(p),
       disabled: !!tunnelBlock(p),
       title: tunnelBlock(p) ?? "Crea un túnel SSH para usar este puerto desde tu PC",
+    },
+    {
+      label: "Cerrar…",
+      icon: <Ban size={13} />,
+      onSelect: () => setClosing(p),
+      disabled: !!closeBlock(p),
+      title: closeBlock(p) ?? "Bloquearlo en el cortafuegos o parar lo que lo abre (servicio, programa o contenedor)",
     },
     { label: `Copiar ${usefulAddr(p)}`, icon: <Copy size={13} />, onSelect: () => copy(usefulAddr(p), "Dirección copiada") },
     ...(usefulAddr(p) !== formatListen(p)
@@ -201,7 +185,7 @@ export function PortsTab() {
     {
       key: "act",
       label: "",
-      width: "112px",
+      width: "140px",
       render: (p) => (
         <span className="adm-cell-flex">
           <button
@@ -226,6 +210,19 @@ export function PortsTab() {
           >
             <Copy size={12} />
           </button>
+          {!closeBlock(p) && (
+            <button
+              className="icon-btn adm-row-btn"
+              title="Cerrar este puerto…"
+              aria-label={`Cerrar el puerto ${p.port}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setClosing(p);
+              }}
+            >
+              <Ban size={12} />
+            </button>
+          )}
         </span>
       ),
     },
@@ -383,6 +380,7 @@ export function PortsTab() {
         <span className="adm-spacer" />
         <span className="faint">Enter o clic derecho: más acciones</span>
       </div>
+      {closing && <PortCloseDialog port={closing} ports={ports.data} sessionId={sessionId} profileId={profileId} serverName={serverName} onClose={() => setClosing(null)} />}
       {menu && <ContextMenu look="plain" x={menu.x} y={menu.y} items={menuItems(menu.port)} onClose={() => setMenu(null)} />}
     </div>
   );

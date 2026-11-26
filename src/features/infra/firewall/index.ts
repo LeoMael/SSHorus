@@ -9,5 +9,6 @@ export { planChange, TRIAL_SECS, zoneForChange, type FwChange, type FwPlan, type
 export { lockoutProblem, sshPortsToOpen, type SshGuard } from "./lockout";
 export { EMPTY_FORM, formTarget, serviceSuggestions, type RuleForm } from "./form";
 export { usedZones } from "./firewalld";
+export { blockPort, outsideZones, type BlockCheck } from "./block";
 export { readFirewall, type FirewallRead } from "./read";
 export { expireTrials, finishTrial, FIREWALL_JOB, startFirewallChange, trialActions, useFwTrials, type FwTrial } from "./job";
