@@ -39,6 +39,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   **Usuarios y grupos** ya usa `useradd` y compañía en Debian y el resto (antes, al no verlos en `/usr/sbin`, elegía
   los comandos de Alpine); la **Auditoría** lee las actualizaciones pendientes de **openSUSE** (zypper), ya no pide
   sudo cuando el servidor no guarda registro de entradas y escribe bien «1 carpeta personal es visible».
+- **Avisos:** con el ratón y el teclado a la vez sobre un aviso, sacar el ratón ya no hace que el aviso se cierre
+  mientras el foco sigue en su botón.
 
 ## [1.0.0-beta.4] - 2026-11-26
 

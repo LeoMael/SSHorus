@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { CheckCircle2, Info, XCircle, X } from "lucide-react";
 import { useToasts, type ToastAction, type ToastKind } from "../../stores/toasts";
 
@@ -20,17 +20,25 @@ export function ToastCard(p: {
   onHold?: (on: boolean) => void;
 }) {
   const Icon = ICON[p.kind];
-  const hold = p.onHold;
+  const onHold = p.onHold;
+  // Ratón y foco por separado: sacar el ratón con el foco aún dentro (o al revés) no reanuda la cuenta atrás.
+  const inside = useRef({ mouse: false, focus: false });
+  const hold =
+    onHold &&
+    ((what: "mouse" | "focus", on: boolean) => {
+      inside.current[what] = on;
+      onHold(inside.current.mouse || inside.current.focus);
+    });
   return (
     <div
       className={`toast toast-${p.kind}${p.className ? ` ${p.className}` : ""}`}
-      onMouseEnter={hold && (() => hold(true))}
-      onMouseLeave={hold && (() => hold(false))}
-      onFocus={hold && (() => hold(true))}
+      onMouseEnter={hold && (() => hold("mouse", true))}
+      onMouseLeave={hold && (() => hold("mouse", false))}
+      onFocus={hold && (() => hold("focus", true))}
       onBlur={
         hold &&
         ((e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold(false);
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold("focus", false);
         })
       }
     >

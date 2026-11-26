@@ -248,6 +248,14 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   mezclados, «reiniciar servicios» marcado en todos los paquetes; bases de datos: con contraseña no entra por socket
   local, charset de mysql sin fijar, bóveda bloqueada parece «sin credencial»; lista `ARCHES` repetida 3 veces;
   OAuth: la descarga del documento del cliente no bloquea IP privadas (riesgo bajo, petición GET a ciegas).
+- **Pendiente de la revisión del 26/11 (beta.5) (no bloquea):** cambios pequeños de comportamiento que dejaron los
+  refactors, a decidir si se quedan: en el menú de la barra lateral, Escape dentro de un submenú vuelve al menú de
+  arriba en vez de cerrarlo todo (`ui/ContextMenu`); «Ver» del aviso de una tarea ahora también cierra el aviso
+  (`ToastCard`); en los menús «plain» (Administración, Contenedores) el texto ya no salta de línea
+  (`.cm-label` con `nowrap`). Auditoría en openSUSE: si `zypper list-patches` falla se cuentan 0 parches de
+  seguridad en vez de «no se sabe», y `zypper patch` sale con código 103 cuando se actualiza a sí mismo (se ve
+  como fallo; hay que repetirlo). Escáner: `vulnscan_rescan_image` y `vulnscan_recheck` registran el ticket de
+  cancelación antes de mirar si existe el informe (inofensivo).
 
 #### Reglas automáticas de calidad (aprobadas el 24/11/2026; 1–3 hechas el 25/11, salen en la beta.4)
 Para que el orden no dependa de que cada agente se acuerde, la CI falla si se rompe el criterio de
