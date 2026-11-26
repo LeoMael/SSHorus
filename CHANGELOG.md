@@ -171,6 +171,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   la derecha, que se abre sola al empezar.
 - **Cancelar** en «Arreglar» del escáner y de la auditoría ahora detiene de verdad lo que corre como root (antes se
   cortaba la conexión, pero `dnf` o `apt` podían seguir en el servidor).
+- **Desarrollo:** la CI comprueba sola el orden del código (límites entre carpetas, ciclos entre carpetas y tope de
+  500 líneas por archivo); `npm run check` hace lo mismo en local.
 
 ## [1.0.0-beta.3] - 2026-11-24
 

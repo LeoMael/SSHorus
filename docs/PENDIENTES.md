@@ -24,8 +24,9 @@ la **1.0.0-beta.4**.
 - **Pendiente de respuesta del usuario:** qué hacer de 5a, 5b, 4c y 4d; si hacer la batería de pruebas por distro
   (contenedores de Debian, Ubuntu, Alma, Rocky, Fedora, openSUSE, Alpine); qué vio al fallar el registro de visitas
   (versión de Caddy, sitio) y qué CVE/paquete sigue saliendo en el escáner, si sigue alguno.
-- **Aprobado, sin empezar:** reglas automáticas de calidad en la CI (ver «Reglas automáticas de calidad»).
-- Después: reglas de calidad, otro `/code-review` del lote, probar a mano lo de §2, juntar los commits pequeños de
+- **Hecho (25/11, sin subir):** reglas automáticas de calidad en la CI y `npm run check` (ver «Reglas automáticas de
+  calidad»); lo que ya las incumplía está en las listas de excepciones («Deuda técnica»).
+- Después: otro `/code-review` del lote, probar a mano lo de §2, juntar los commits pequeños de
   documentación, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
   (preguntar al usuario antes de subir).
 
@@ -39,7 +40,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **1. Revisión y reglas** | `/code-review` del lote nuevo + arreglar lo que salga · reglas automáticas de calidad en la CI (límites entre carpetas, dependencias circulares, tope de 500 líneas con lista de excepciones que solo puede bajar) | 2 | **beta.4** (el usuario prueba en su VPS mientras sigue el plan) |
 | **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` | 1 (solo interfaz) | beta.5 |
 | **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) | 1 (Rust) | beta.5 |
-| **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos `stores` ↔ `connect`/`tmux`/`ui` · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
+| **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta | 2 | beta.6 |
@@ -232,24 +233,32 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
 - **CSS de `ui/AdmModal`:** varias pantallas copian reglas de `.adm-modal` (Contenedores, MCP, Bases de datos); moverlas
   a un CSS propio de `components/ui/AdmModal`.
 
-#### Reglas automáticas de calidad (aprobadas el 24/11/2026 para la beta.4)
-Para que el orden no dependa de que cada agente se acuerde, la CI debe fallar si se rompe el criterio de
-[`ARQUITECTURA.md` §5](ARQUITECTURA.md#dónde-va-cada-archivo-criterio-de-carpetas):
-1. **Límites entre carpetas con ESLint** (`no-restricted-imports` o `eslint-plugin-boundaries`): `lib/` no importa
-   `features/` ni `components/`; `features/` no importa interfaz salvo `components/ui`; `invoke()` solo en `src/api/`.
-2. **Dependencias circulares** entre carpetas (p. ej. `dependency-cruiser`). Hoy quedan `stores` ↔ `connect`, `tmux`
-   y `ui` (por `stores/sessionState.ts`): arreglarlas o dejarlas como excepción anotada.
-3. **Tope de 500 líneas por archivo** con un script en la CI (también CSS), con lista de excepciones temporales para
-   los que ya lo pasan (ver «Deuda técnica»), que solo puede encoger.
+#### Reglas automáticas de calidad (aprobadas el 24/11/2026; 1–3 hechas el 25/11, salen en la beta.4)
+Para que el orden no dependa de que cada agente se acuerde, la CI falla si se rompe el criterio de
+[`ARQUITECTURA.md` §5](ARQUITECTURA.md#dónde-va-cada-archivo-criterio-de-carpetas). En local: `npm run check`.
+1. ~~Límites entre carpetas con ESLint~~ **Hecho**: `no-restricted-imports` y `no-restricted-syntax` de ESLint (sin
+   plugins) en `eslint.config.js`; cuenta también `import()` diferido.
+2. ~~Dependencias circulares entre carpetas~~ **Hecho**: `npm run check:deps` (`scripts/check-deps.mjs`, lee los
+   imports con el compilador de TypeScript, sin dependencias nuevas).
+3. ~~Tope de 500 líneas por archivo~~ **Hecho**: `npm run check:lines` (`scripts/check-lines.mjs`; `.ts`, `.tsx`,
+   `.rs` y `.css`).
 4. **Revisión de código antes de cada versión** (`/code-review` del lote) y anotar en el CHANGELOG lo que se arregló.
-Documentarlo en `ARQUITECTURA.md` §5 y `dev/REGLAS-AGENTES.md` al hacerlo.
+   Es un paso del proceso (no lo mira la CI); anotado en `dev/REGLAS-AGENTES.md` §5.
+Lo que ya incumplía 1–3 está en las listas de excepciones (ver «Deuda técnica»), que solo pueden encoger.
 
 #### Deuda técnica (no bloquea la 1.0.0)
-Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
-[`dev/REGLAS-AGENTES.md`](dev/REGLAS-AGENTES.md) §5 y criterio de carpetas en
+Reglas de calidad en [`dev/REGLAS-AGENTES.md`](dev/REGLAS-AGENTES.md) §5 y criterio de carpetas en
 [`ARQUITECTURA.md` §5](ARQUITECTURA.md#dónde-va-cada-archivo-criterio-de-carpetas).
-- **CSS de más de 500 líneas (11):** `Containers.css` (1221), `Commands.css` (1153), `MultiRun.css` (981),
-  `Admin.css` (964), `theme.css` (817), `FileExplorer.css` (581), `Monitor.css` (572), `TransferPanel.css` (548),
+**La lista al día de lo que incumple las reglas automáticas son los archivos de excepciones** (cada entrada con su
+`TODO(deuda)`; solo pueden encoger, y al arreglar algo se borra su línea):
+- `scripts/lines-allowlist.json`: archivos de más de 500 líneas (25/11/2026: los 11 CSS de abajo, ningún TS ni Rust).
+- `scripts/deps-allowlist.json`: ciclos entre carpetas (25/11/2026: 16 ciclos, cerrados por 30 imports).
+- `EXCEPCIONES_LIMITES` en `eslint.config.js`: imports que cruzan límites (25/11/2026: 15 imports de `features/` a
+  `components/` en 10 archivos, casi todos de `features/localterm`, `settingsNav` y piezas de GitHub y Administración).
+
+Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
+- **CSS de más de 500 líneas (11, medidos el 25/11):** `Containers.css` (1221), `Commands.css` (1153), `MultiRun.css` (981),
+  `Admin.css` (924), `theme.css` (817), `FileExplorer.css` (581), `Monitor.css` (572), `TransferPanel.css` (548),
   `Vulns.css` (540), `GitHub.css` (529), `SettingsDialog.css` (506).
 - **Código entre 400 y 500 líneas (25):**
   - Interfaz: `Admin/ImageUpdateDialog.tsx` (494), `Terminal/termController.ts` (491), `Admin/KeyUserWizard.tsx` (487),
@@ -268,9 +277,12 @@ Medido el 24/11/2026 con `wc -l`, sin contar pruebas. Reglas de calidad en
   teclado); unificarlos. Y `components/Admin/ContextMenu.tsx` (uno más simple) se llama igual que `ui/ContextMenu.tsx`:
   pasarlo a `ui/ContextMenu` o renombrarlo.
 - **`generatePassword` sigue en `features/admin/shell.ts`** aunque no es de Administración: pasarlo a `lib/`.
-- **Ciclos entre carpetas:** `stores/sessionState.ts` importa de `features/connect`, `features/tmux` y
-  `components/ui`, y estas importan de `stores/`. Romperlos (el estado de la app no debería depender de la lógica de
-  una función).
+- **Ciclos entre carpetas** (lista completa en `scripts/deps-allowlist.json`): `stores/` importa de
+  `features/connect`, `tmux`, `jobs`, `privileges`, `shortcuts` y de `components/ui` (sobre todo
+  `stores/sessionState.ts`), y estas importan de `stores/`; `sudoRun` → `mcp` mete casi todas las features en un
+  solo ciclo; además `containers` ↔ `vulnscan`, `connect` ↔ `serverEditor`, `tabbar` ↔ `fleet`/`localterm`,
+  `localterm` ↔ `components/Terminal`, piezas de `Admin` usadas por `Containers` y el mapa, y `Editor` ↔
+  `Settings`/`windows`. Romperlos (el estado de la app no debería depender de la lógica de una función).
 - **La familia de la distribución se detecta en 3 sitios:** `features/containers/detect`, `features/tmux/logic` y
   `distroFromOs` (`features/commands/state.ts`). Dejar una sola versión en `lib/remote/` (junto a `parseOsRelease`).
 - **Los comandos Tauri no siguen un criterio fijo:** unos están en `commands.rs` (`ssh/`, `storage/`, `mcp/`,

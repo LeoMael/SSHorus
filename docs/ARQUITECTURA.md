@@ -267,6 +267,20 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   Administración), se sube a `features/firewall/`.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
 
+**Estas reglas se comprueban solas.** `npm run check` las pasa en local (ESLint, ciclos, líneas y pruebas) y la CI
+falla en cada push si se rompe alguna:
+
+| Qué | Dónde | Regla |
+|-----|-------|-------|
+| Límites entre carpetas | `eslint.config.js` (ESLint) | `lib/` no importa de `features/`, `components/` ni `stores/`; `features/` no importa de `components/` salvo `components/ui`; `api/` no importa de `features/`, `components/` ni `stores/`; `@tauri-apps/api/core` (`invoke`) solo en `api/`. Cuenta también `import()` diferido |
+| Ciclos entre carpetas | `npm run check:deps` | Cada `src/<área>/<dominio>` (o `src/<área>` para sus archivos sueltos) es una carpeta; ninguna puede depender de sí misma a través de otras |
+| Tope de líneas | `npm run check:lines` | Ningún `.ts`, `.tsx`, `.rs` ni `.css` de producción pasa de 500 líneas (las pruebas no cuentan) |
+
+Lo que ya incumplía una regla cuando se añadió está anotado, con su motivo (`TODO(deuda)`), en
+`EXCEPCIONES_LIMITES` de `eslint.config.js`, en `scripts/deps-allowlist.json` y en `scripts/lines-allowlist.json`.
+**Esas listas solo pueden encoger**: no se añade nada (se mueve el código a su sitio) y, al arreglar algo, se borra su
+línea; los scripts avisan cuando sobra una.
+
 **Motor (`src-tauri/src/`):** cada módulo grande separa estado/lógica de sus comandos Tauri (`commands.rs` / `sync_cmds.rs`) y submódulos temáticos:
 
 | Módulo | Qué hace |
@@ -904,6 +918,7 @@ npm run tauri build    # Generar instaladores en src-tauri/target/release/bundle
 npm test               # Pruebas de la interfaz (todas las src/**/*.test.ts)
 npm test -- sidebar    # Solo las que tengan «sidebar» en la ruta
 npm run lint           # ESLint (0 errores y 0 avisos)
+npm run check          # ESLint, ciclos entre carpetas, tope de 500 líneas y pruebas (como la CI)
 ```
 
 ### Editar los diagramas

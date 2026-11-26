@@ -8,6 +8,9 @@
     "build": "tsc && vite build",
     "lint": "eslint src",
     "test": "node scripts/run-ts-tests.mjs",
+    "check:deps": "node scripts/check-deps.mjs",
+    "check:lines": "node scripts/check-lines.mjs",
+    "check": "npm run lint -- --max-warnings 0 && npm run check:deps && npm run check:lines && npm test",
     "preview": "vite preview",
     "tauri": "tauri"
   },

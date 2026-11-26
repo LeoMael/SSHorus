@@ -1,7 +1,9 @@
 # Integración continua: en cada push o pull request a main comprueba que SSHorus compila y
 # pasa las pruebas en Linux y en Windows (así una rotura de Windows se ve en el mismo push).
 #
-#   Interfaz: tsc (tipos) + ESLint (sin avisos) + pruebas (npm test) + vite build
+#   Interfaz: tsc (tipos) + ESLint (sin avisos y con los límites entre carpetas) + pruebas (npm test)
+#             + vite build
+#   Orden:    ciclos entre carpetas (check:deps) y tope de 500 líneas (check:lines), solo en Linux
 #   Motor:    cargo clippy + cargo test --lib (las pruebas que necesitan servidor SSH son
 #             #[ignore] y no se ejecutan aquí)
 #   macOS:    empaqueta la .app universal (Intel + Apple Silicon) en modo debug, como hace el
@@ -90,9 +92,21 @@ jobs:
       - name: Tipos (tsc)
         run: npx tsc --noEmit
 
-      # Cualquier aviso nuevo de ESLint hace fallar la CI (hoy está en 0).
+      # Cualquier aviso nuevo de ESLint hace fallar la CI (hoy está en 0). También comprueba los límites
+      # entre carpetas de docs/ARQUITECTURA.md §5 (qué puede importar lib/, features/ y api/).
       - name: ESLint
         run: npm run lint -- --max-warnings 0
+
+      # Sin ciclos nuevos entre carpetas de src/ ni archivos de más de 500 líneas (también Rust y CSS).
+      # Las excepciones antiguas están en scripts/*-allowlist.json y solo pueden encoger. No depende del
+      # sistema, así que basta con Linux.
+      - name: Ciclos entre carpetas
+        if: runner.os == 'Linux'
+        run: npm run check:deps
+
+      - name: Tope de 500 líneas
+        if: runner.os == 'Linux'
+        run: npm run check:lines
 
       # Las pruebas de la interfaz (src/**/*.test.ts), cada una empaquetada con rolldown para Node.
       # Solo en Linux: varias ejecutan de verdad los scripts de servidor (bash, /etc/group, /tmp), que en

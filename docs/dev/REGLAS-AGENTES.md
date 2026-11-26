@@ -30,11 +30,13 @@ cd src-tauri && cargo test --lib TU_MODULO -- --ignored --test-threads=1        
 npm run lint && npx tsc --noEmit                                                      # interfaz (0 errores y 0 warnings)
 npm test                                                                              # pruebas de la interfaz (src/**/*.test.ts)
 npm test -- TU_FILTRO                                                                 # solo las que tengan TU_FILTRO en la ruta
+npm run check                                                                         # ESLint + ciclos + tope de líneas + pruebas (antes de tu informe)
 ```
 - No empaquetes pruebas a mano con `npx rolldown … && node …`: usa `npm test` (borra sus archivos temporales).
 - La CI ejecuta en Linux y en Windows `tsc`, ESLint (0 avisos), `vite build`, `cargo clippy --all-targets` y
-  `cargo test --lib`, y `npm test` solo en Linux (varias pruebas ejecutan scripts de servidor con bash). Clippy
-  revisa también el código de pruebas: compruébalo con `--all-targets`, no solo con `--lib`.
+  `cargo test --lib`, y solo en Linux `npm test` (varias pruebas ejecutan scripts de servidor con bash),
+  `npm run check:deps` y `npm run check:lines` (ver §5). Clippy revisa también el código de pruebas: compruébalo
+  con `--all-targets`, no solo con `--lib`.
 - Esperar el candado de cargo ("Blocking waiting for file lock") es normal.
 - **La máquina es justa (15 GB de RAM, disco casi lleno): no dejes nada abierto ni ocupando espacio.**
   - Compila siempre con `CARGO_BUILD_JOBS=3 CARGO_INCREMENTAL=0` y, si estás en un worktree,
@@ -87,9 +89,14 @@ npm test -- TU_FILTRO                                                           
 
 ## 5. Calidad del código (pedido del usuario: nada de código ni archivos espagueti)
 
-- **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400). Hoy ningún archivo de código pasa
-  de 500 líneas, pero hay unos 25 entre 400 y 500 y varios CSS de más de 500 (lista en `docs/PENDIENTES.md`,
-  «Deuda técnica»). Si un archivo ya pasa de ~400 líneas, **no le añadas lógica**: crea un componente,
+- **Las reglas de orden se comprueban solas** (`npm run check` en local; la CI falla si se rompen): límites entre
+  carpetas (ESLint), ciclos entre carpetas (`npm run check:deps`) y tope de 500 líneas (`npm run check:lines`).
+  El detalle está en `docs/ARQUITECTURA.md` §5. Lo que ya las incumplía está en `EXCEPCIONES_LIMITES`
+  (`eslint.config.js`), `scripts/deps-allowlist.json` y `scripts/lines-allowlist.json`. **Esas listas solo
+  pueden encoger**: nunca añadas una excepción para que pase la CI (mueve o parte el código); si arreglas algo
+  de la lista, borra su línea (los scripts avisan).
+- **Archivos pequeños y con un solo tema**: apunta a < 300 líneas (máx. ~400; 500 es el tope que mira la CI,
+  también en CSS y Rust). Si un archivo ya pasa de ~400 líneas, **no le añadas lógica**: crea un componente,
   hook o módulo nuevo y engánchalo con lo mínimo.
 - **Una responsabilidad por función/componente**. La lógica pura (cálculos, análisis de salidas de comandos,
   reglas) va aparte de la interfaz y de los comandos Tauri, y lleva pruebas.
@@ -101,11 +108,13 @@ npm test -- TU_FILTRO                                                           
   la app; `lib/` = utilidades puras sin dominio (`lib/remote/` para scripts remotos); ejecutar con elevación:
   `features/privileges/run.ts`.
   - No dejes archivos sueltos en la raíz de `src/features/`: cada dominio tiene su carpeta (`src/features/<dominio>/`).
-  - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*`.
+  - Ningún componente ni feature llama directamente a `invoke()` de Tauri: todo pasa por `src/api/*` (ESLint lo
+    impide).
   - En Rust, separa el estado/lógica de los comandos `#[tauri::command]` (`commands.rs`) cuando un módulo supera ~350 líneas.
 - **Sin duplicar**: antes de escribir algo, busca si ya existe (diálogos, selectores, llamadas a sudo) y reutilízalo.
 - Nombres claros, sin código muerto ni comentarios que repiten el código; comentarios solo para el «por qué».
-- Mantén `npm run lint` (0 errores, 0 warnings) y `cargo clippy --lib -- -W clippy::all` (0 warnings) siempre en verde.
+- Mantén `npm run check` y `cargo clippy --all-targets -- -D warnings` siempre en verde.
+- **Antes de cada versión** (esto no lo mira la CI): `/code-review` del lote y anotar en el CHANGELOG lo que se arregló.
 
 ## 6. Informe final (máx. ~300 palabras)
 
