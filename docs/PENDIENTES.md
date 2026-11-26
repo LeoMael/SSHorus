@@ -8,14 +8,16 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 26/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.4** (26/11/2026; Release en **borrador**, lo publica el usuario tras probarlo).
-Lo que entre en `main` después saldrá en la **1.0.0-beta.5**.
+Última versión etiquetada: **1.0.0-beta.5** (26/11/2026, en local; la beta.4 también está etiquetada en local y ninguna
+de las dos se ha subido todavía: preguntar al usuario antes del push). Lo que entre en `main` después saldrá en la
+**1.0.0-beta.6**.
 
-**Estado al 26/11/2026 (para retomar):** tandas **1, 2 y 3** del plan hechas y unidas en `main` (sin subir; la beta.4
-está etiquetada en local y aún no se ha subido): reglas de calidad en la CI, CSS y Rust partidos, `commands.rs` en cada
-módulo, `components/Admin` por temas, un solo menú contextual, **0 ciclos, 0 excepciones de límites y 0 archivos de
-más de 500 líneas**, `index.ts` en todas las features, limpiezas de Volúmenes y Redes con «Todos», avisos con botón y
-«Renombrar máquina…». Siguiente: **tanda 4** (13 pruebas por distro, **hecha**, + 12 «Cerrar puerto»).
+**Estado al 26/11/2026 (para retomar):** tandas **1 a 4** del plan hechas y unidas en `main`, revisadas
+(`/code-review` del lote) y etiquetadas como **beta.5**: reglas de calidad en la CI, CSS y Rust partidos,
+`commands.rs` en cada módulo, **0 ciclos, 0 excepciones de límites y 0 archivos de más de 500 líneas**, `index.ts` en
+todas las features, limpiezas de Volúmenes y Redes con «Todos», avisos con botón, «Renombrar máquina…», **«Cerrar
+puerto»** (idea 12) y **pruebas por distro** (idea 13, `npm run test:distros`). Siguiente: **tanda 5** (11
+configuración y seguridad del servidor + 4c auditar proyecto y contenedores de otros usuarios).
 
 **Estado anterior, 25/11/2026:**
 - En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
@@ -46,7 +48,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` — **hecho (26/11)** | 1 (solo interfaz) | beta.5 |
 | **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) — **hecho (26/11)** | 1 (Rust) | beta.5 |
 | **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** — **hecho (26/11)** | 2 | beta.5 |
-| **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
+| **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto — **hecho (26/11)** | 2 | beta.5 |
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta | 2 | beta.6 |
 | **7. Funciones D** | **5b** despliegue asistido por IA (MCP) | 1 | beta.6 |

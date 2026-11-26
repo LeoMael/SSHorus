@@ -6,6 +6,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [1.0.0-beta.5] - 2026-11-26
+
 ### Añadido
 - **Cerrar un puerto según quién lo abre:** en **Administración → Puertos** (botón de la fila o clic derecho →
   **Cerrar…**) y en el **mapa** (clic en un puerto → **Cerrar…**). SSHorus mira qué lo abre y ofrece solo lo que
@@ -759,6 +761,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
+[1.0.0-beta.5]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.2
