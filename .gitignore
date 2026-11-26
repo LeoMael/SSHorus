@@ -24,4 +24,6 @@ dist-ssr
 *.sw?
 
 # Worktrees y datos locales de agentes
-.claude/
+.claude/*
+# las skills del proyecto sí van en git
+!.claude/skills/
