@@ -1,0 +1,287 @@
+/* Ejecutar en varios: paso 1, preparar. Va después de MultiRun.css. */
+
+/* ───────── Paso 1: preparar ───────── */
+.mr-setup {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+}
+.mr-col {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+}
+.mr-col-servers {
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+  padding-right: 10px;
+}
+.mr-col-command {
+  position: relative;
+  overflow: auto;
+}
+.mr-col-command.lib-open {
+  overflow: hidden;
+}
+.mr-col-title {
+  margin-bottom: 8px;
+}
+
+.mr-servers {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mr-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mr-search .input {
+  width: 100%;
+  height: 28px;
+  padding-left: 28px;
+  padding-right: 26px;
+}
+.mr-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.mr-search-clear {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.mr-search-clear:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.mr-servers-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px 4px;
+  font-size: var(--fs-sm);
+}
+.mr-servers-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-right: -6px;
+  padding-right: 6px;
+}
+.mr-group + .mr-group {
+  margin-top: 6px;
+}
+.mr-group-head,
+.mr-server {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 0;
+}
+.mr-group-head {
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--bg-sunken);
+  z-index: 1;
+}
+.mr-group-head:hover,
+.mr-server:hover {
+  background: var(--surface-2);
+}
+.mr-server {
+  padding-left: 22px;
+}
+.mr-server.on {
+  background: var(--mix-accent-10);
+}
+.mr-server.on:hover {
+  background: var(--mix-accent-16);
+}
+.mr-group-head input,
+.mr-server input {
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+.mr-chip {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+  background: var(--text-faint);
+}
+.mr-group-title,
+.mr-server-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mr-group-title {
+  flex: 1;
+}
+.mr-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
+}
+.mr-server-name {
+  flex: none;
+  max-width: 55%;
+}
+.mr-server-sub {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.mr-cmd-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-height: 26px;
+}
+.mr-lib-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border-radius: 11px;
+  background: var(--mix-accent-16);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  min-width: 0;
+  max-width: 50%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.mr-lib-chip button {
+  display: inline-flex;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+}
+.mr-lib-chip button:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.mr-cmd-input {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+.mr-hint {
+  font-size: var(--fs-sm);
+  margin: 6px 0 12px;
+  line-height: 1.45;
+}
+.mr-hint .mono {
+  color: var(--text-muted);
+}
+.mr-vars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0 12px;
+}
+.mr-var .input {
+  height: 30px;
+}
+.mr-invalid {
+  border-color: var(--mix-red-55);
+}
+.mr-preview {
+  margin-bottom: 12px;
+}
+.mr-preview pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  font-size: 12px;
+}
+.mr-options {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mr-opt .select {
+  height: 30px;
+  min-width: 150px;
+}
+.mr-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mr-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  line-height: 1.45;
+}
+.mr-banner > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.mr-banner.danger {
+  border-color: var(--mix-red-40);
+  background: var(--mix-red-12);
+}
+.mr-banner.danger > svg {
+  color: var(--red);
+}
+.mr-banner.warn {
+  border-color: var(--mix-yellow-40);
+  background: var(--mix-yellow-12-surface);
+}
+.mr-banner.warn > svg {
+  color: var(--yellow);
+}
+.mr-banner.info > svg {
+  color: var(--accent);
+}
+.mr-banner .mono {
+  font-size: 12px;
+}

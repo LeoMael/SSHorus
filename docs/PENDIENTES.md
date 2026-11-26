@@ -11,7 +11,8 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 Última versión etiquetada: **1.0.0-beta.4** (26/11/2026; Release en **borrador**, lo publica el usuario tras probarlo).
 Lo que entre en `main` después saldrá en la **1.0.0-beta.5**.
 
-**Estado al 26/11/2026 (para retomar):** tanda 1 del plan hecha (revisión del lote + reglas de calidad en la CI).
+**Estado al 26/11/2026 (para retomar):** tanda 1 del plan hecha (revisión del lote + reglas de calidad en la CI) y
+tanda 2 de la interfaz hecha (CSS partidos, `components/Admin` por temas, un solo menú contextual).
 
 **Estado anterior, 25/11/2026:**
 - En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
@@ -39,7 +40,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | Tanda | Qué | Agentes | Sale en |
 |---|---|---|---|
 | **1. Revisión y reglas** | `/code-review` del lote nuevo + arreglar lo que salga · reglas automáticas de calidad en la CI (límites entre carpetas, dependencias circulares, tope de 500 líneas con lista de excepciones que solo puede bajar) | 2 | **beta.4** (el usuario prueba en su VPS mientras sigue el plan) |
-| **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` | 1 (solo interfaz) | beta.5 |
+| **2. Deuda técnica (interfaz)** | Partir los 11 CSS de más de 500 líneas · CSS propio de `ui/AdmModal` · partir `components/Admin` por tema (usuarios, puertos y sitios, vulnerabilidades, auditoría, visibilidad) · unir `SbContextMenu` con `ui/ContextMenu` — **hecho (26/11)** | 1 (solo interfaz) | beta.5 |
 | **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) | 1 (Rust) | beta.5 |
 | **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** | 2 | beta.5 |
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto | 2 | beta.5 |
@@ -55,7 +56,7 @@ pago) y las pruebas en entornos reales que solo puede hacer el usuario (Windows,
 ### 1. Hecho en `main` (sin publicar todavía)
 - **Administración → «Qué pueden ver»** + categoría `isolation` en **Auditar servidor** + casilla **«Permitir túneles SSH»** en «Nuevo usuario con clave» (apagada por defecto sin sudo).
 - **Contenedores → «Al reiniciar»** siempre visible (y en Inspeccionar), linger inmediato, soporte de unidades como `podman-compose@*.service`, Podman de otros usuarios en `/tmp/sshorus-run-<uid>` y gestión de permisos en Usuarios → Contenedores.
-- **Sitios web → «Tráfico»**: monitor bajo demanda para Caddy y nginx (`nice`/`ionice`, límite de 8 MB, también los rotados) con activación segura de log dedicado y rotación, ya como tarea en segundo plano paso a paso (dueño del log de Caddy, SELinux `httpd_log_t`, `server` correcto en nginx, visita de prueba, «Quitar registro…»). Código: `features/admin/webTrafficSetup.ts`, `webLogPatch.ts`, `webLogResult.ts`, `webLogJob.ts` y `components/Admin/WebLogDialog.tsx`.
+- **Sitios web → «Tráfico»**: monitor bajo demanda para Caddy y nginx (`nice`/`ionice`, límite de 8 MB, también los rotados) con activación segura de log dedicado y rotación, ya como tarea en segundo plano paso a paso (dueño del log de Caddy, SELinux `httpd_log_t`, `server` correcto en nginx, visita de prueba, «Quitar registro…»). Código: `features/admin/webTrafficSetup.ts`, `webLogPatch.ts`, `webLogResult.ts`, `webLogJob.ts` y `components/Admin/web/WebLogDialog.tsx`.
 - **«Reiniciar ahora»** (escáner, auditoría, Panel de VPS), **MCP `reboot_server`**, **terminal tras reinicio** (distingue tmux reenganchado vs nuevo), **IA de informes** con reintento sin `temperature`, escritura sin retraso (`TCP_NODELAY`), botón de llave sudo en terminal y ventana de «Aceptar automáticamente».
 - **Mapa de infraestructura**: zoom con rueda del ratón, pellizco táctil y `Ctrl +` / `−` / `0`.
 - **Orden del código (Partes 1, 2 y 3)**: ESLint con 0 errores y 0 warnings, `cargo clippy` con 0 warnings, todos los archivos > 500 líneas divididos en módulos cohesivos (TS/TSX y Rust) y `src/features/` organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz).
@@ -261,31 +262,23 @@ Reglas de calidad en [`dev/REGLAS-AGENTES.md`](dev/REGLAS-AGENTES.md) §5 y crit
 [`ARQUITECTURA.md` §5](ARQUITECTURA.md#dónde-va-cada-archivo-criterio-de-carpetas).
 **La lista al día de lo que incumple las reglas automáticas son los archivos de excepciones** (cada entrada con su
 `TODO(deuda)`; solo pueden encoger, y al arreglar algo se borra su línea):
-- `scripts/lines-allowlist.json`: archivos de más de 500 líneas (25/11/2026: los 11 CSS de abajo, ningún TS ni Rust).
-- `scripts/deps-allowlist.json`: ciclos entre carpetas (25/11/2026: 16 ciclos, cerrados por 30 imports).
+- `scripts/lines-allowlist.json`: archivos de más de 500 líneas (26/11/2026: **vacía**; los 11 CSS que había se partieron por tema).
+- `scripts/deps-allowlist.json`: ciclos entre carpetas (26/11/2026: 16 ciclos, cerrados por 29 imports).
 - `EXCEPCIONES_LIMITES` en `eslint.config.js`: imports que cruzan límites (25/11/2026: 15 imports de `features/` a
   `components/` en 10 archivos, casi todos de `features/localterm`, `settingsNav` y piezas de GitHub y Administración).
 
 Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
-- **CSS de más de 500 líneas (11, medidos el 25/11):** `Containers.css` (1221), `Commands.css` (1153), `MultiRun.css` (981),
-  `Admin.css` (924), `theme.css` (817), `FileExplorer.css` (581), `Monitor.css` (572), `TransferPanel.css` (548),
-  `Vulns.css` (540), `GitHub.css` (529), `SettingsDialog.css` (506).
 - **Código entre 400 y 500 líneas (25):**
-  - Interfaz: `Admin/ImageUpdateDialog.tsx` (494), `Terminal/termController.ts` (491), `Admin/KeyUserWizard.tsx` (487),
+  - Interfaz: `Admin/vulns/ImageUpdateDialog.tsx` (494), `Terminal/termController.ts` (491), `Admin/users/KeyUserWizard.tsx` (487),
     `Containers/ContainersTab.tsx` (477), `Tabs/TabBar.tsx` (475), `Commands/CommandsPanel.tsx` (450),
-    `Admin/VulnsTab.tsx` (445), `stores/transfers.ts` (439), `About/markdown.tsx` (434),
+    `Admin/vulns/VulnsTab.tsx` (445), `stores/transfers.ts` (439), `About/markdown.tsx` (434),
     `features/multirun/engine.ts` (426), `Containers/ImagesTab.tsx` (418), `Monitor/MonitorPanel.tsx` (416),
     `features/vulnscan/run.ts` (404), `features/monitor/sample.ts` (403), `Terminal/TerminalView.tsx` (403),
-    `Admin/AdminPanel.tsx` (402).
+    `Admin/AdminPanel.tsx` (407 desde el 26/11: importa las 6 partes de su CSS).
   - Motor: `snippets/exec.rs` (472), `storage/secrets.rs` (455), `vulnscan/model.rs` (448), `types.rs` (446),
     `vulnscan/scripts.rs` (444), `vulnscan/analyze_merge.rs` (425), `mcp/bridge.rs` (413), `ssh/commands.rs` (410),
     `sftp/ops.rs` (409).
   - Justo en el límite (400): `vulnscan/analyze.rs`, `ai/mod.rs`, `Terminal/TerminalArea.tsx`.
-- **`src/components/Admin` es demasiado grande:** 54 archivos TS/TSX (63 con CSS) y ~9.800 líneas. Partirlo por
-  tema (usuarios, puertos y sitios, vulnerabilidades, auditoría…).
-- **Menús contextuales repetidos:** `Sidebar/SbContextMenu.tsx` es casi igual a `ui/ContextMenu.tsx` (submenús y
-  teclado); unificarlos. Y `components/Admin/ContextMenu.tsx` (uno más simple) se llama igual que `ui/ContextMenu.tsx`:
-  pasarlo a `ui/ContextMenu` o renombrarlo.
 - **`generatePassword` sigue en `features/admin/shell.ts`** aunque no es de Administración: pasarlo a `lib/`.
 - **Ciclos entre carpetas** (lista completa en `scripts/deps-allowlist.json`): `stores/` importa de
   `features/connect`, `tmux`, `jobs`, `privileges`, `shortcuts` y de `components/ui` (sobre todo

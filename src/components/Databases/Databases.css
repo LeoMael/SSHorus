@@ -430,16 +430,7 @@
   color: var(--yellow);
 }
 
-/* Diálogos de Administración (AdmModal / SudoDialog) cuando Admin.css no está cargado */
-.db-root .adm-modal .modal-body {
-  flex: 1;
-  min-height: 0;
-}
-.db-root .adm-modal > form {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
+/* SudoDialog de Administración cuando Admin.css no está cargado (AdmModal trae su propio CSS) */
 .db-root .adm-spinner-btn {
   width: 12px;
   height: 12px;

@@ -12,6 +12,11 @@ import { MY_CATEGORY, buildItems, getSessionInfo, searchItems, useSnippets, type
 import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import { useRun } from "./useRun";
 import "./Commands.css";
+import "./CommandsDetail.css";
+import "./CommandsRun.css";
+import "./CommandsReport.css";
+import "./CommandsPalette.css";
+import "./CommandsImport.css";
 
 const MAX_RESULTS = 80;
 const CAT_ORDER = new Map<string, number>([MY_CATEGORY, ...CATEGORIES].map((c, i) => [c, i]));

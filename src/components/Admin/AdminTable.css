@@ -1,0 +1,122 @@
+/* Administración: tabla virtual (VirtualTable) y sus filas. Va después de Admin.css. */
+
+/* ───────── Tabla virtual ───────── */
+.adm-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  outline: none;
+}
+.adm-table:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.adm-thead,
+.adm-tr {
+  display: grid;
+  align-items: center;
+  height: 28px;
+  min-width: 760px;
+}
+.adm-thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.adm-thead > div,
+.adm-tr > div {
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.adm-tbody {
+  position: relative;
+  min-width: 760px;
+}
+.adm-tr {
+  position: absolute;
+  left: 0;
+  right: 0;
+  cursor: default;
+  border-bottom: 1px solid transparent;
+}
+.adm-tr:hover {
+  background: var(--surface-2);
+}
+.adm-tr.sel {
+  background: var(--accent-bg);
+}
+.adm-table:focus .adm-tr.sel {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.adm-row-muted > div {
+  color: var(--text-muted);
+}
+.adm-right {
+  text-align: right;
+}
+.adm-table-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.adm-empty-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 460px;
+  line-height: 1.5;
+}
+.adm-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
+.adm-you {
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  background: var(--mix-accent-16);
+  color: var(--accent);
+}
+.adm-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+}
+.adm-tag-red {
+  background: var(--mix-red-15);
+  color: var(--red);
+}
+.adm-tag-yellow {
+  background: var(--mix-yellow-25);
+  color: var(--text);
+}
+.adm-tag-green {
+  background: var(--mix-green-15);
+  color: var(--green);
+}
+.adm-tag-accent {
+  background: var(--mix-accent-16);
+  color: var(--accent);
+}
+.adm-row-btn {
+  height: 22px;
+}

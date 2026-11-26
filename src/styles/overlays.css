@@ -1,0 +1,135 @@
+/* Modal, avisos (toasts) y menú contextual. BASE compartida. Va después de controls.css. */
+
+/* ───────── Modal ───────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 6px;
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.modal-body {
+  padding: 10px 16px;
+  overflow: auto;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px 14px;
+}
+/* confirmDialog / promptDialog: siempre encima de la ventana que los abre (Ajustes, formularios,
+   avisos de conexión a 1010), aunque esa ventana se dibuje después en el árbol. */
+.modal-backdrop:has(> .ui-dialog) {
+  z-index: 1020;
+}
+.dialog-message {
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+/* ───────── Toasts ───────── */
+.toaster {
+  position: fixed;
+  right: 16px;
+  bottom: 48px; /* deja libre la barra de transferencias */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1100;
+  max-width: 380px;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+}
+.toast-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  user-select: text;
+}
+.toast-text span {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  word-break: break-word;
+}
+.toast-success > svg {
+  color: var(--green);
+}
+.toast-error > svg {
+  color: var(--red);
+}
+.toast-info > svg {
+  color: var(--accent);
+}
+
+/* ───────── Menú contextual ───────── */
+.context-menu {
+  position: fixed;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 1050;
+}
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.context-menu button:hover:not(:disabled) {
+  background: var(--accent-bg);
+}
+.context-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.context-menu .danger {
+  color: var(--red);
+}
+.context-menu hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}

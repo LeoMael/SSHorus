@@ -1,0 +1,93 @@
+/* Administración: historial y búsqueda. Va después de users/AdminKeys.css. */
+
+/* Historial */
+.adm-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.adm-hist {
+  border-bottom: 1px solid var(--border);
+}
+.adm-hist-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.adm-hist-head:hover {
+  background: var(--surface-2);
+}
+.adm-hist-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.adm-hist-head > svg {
+  flex: none;
+}
+.adm-ok {
+  color: var(--green);
+}
+.adm-bad {
+  color: var(--red);
+}
+.adm-hist-date {
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.adm-hist-action {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-hist.err .adm-hist-action {
+  color: var(--red);
+}
+.adm-hist-server {
+  flex: none;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.adm-hist-body {
+  padding: 0 10px 10px 52px;
+}
+.adm-hist-result pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow: auto;
+  user-select: text;
+}
+.adm-hist-result.err pre {
+  color: var(--red);
+}
+
+.adm-search-wide {
+  width: 330px;
+}
+.adm-search-clear {
+  position: absolute;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+}

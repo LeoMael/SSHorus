@@ -2,6 +2,7 @@
 // (para poder cambiar entre formulario y revisión del comando dentro del mismo diálogo).
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
+import "./AdmModal.css";
 
 /** Pila de modales abiertos: Escape cierra solo el de arriba. */
 const stack: object[] = [];

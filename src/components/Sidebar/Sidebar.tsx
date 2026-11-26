@@ -6,7 +6,7 @@ import type { ServerProfile } from "../../api/types";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";
 import { useUi } from "../../stores/ui";
-import { SbContextMenu } from "./SbContextMenu";
+import { ContextMenu } from "../ui/ContextMenu";
 import { FleetButton } from "../Fleet/FleetButton";
 import { preloadable } from "../../lib/lazy";
 import "./Sidebar.css";
@@ -153,7 +153,7 @@ export function Sidebar() {
           <ImportSshConfigDialog onClose={() => setImportOpen(false)} />
         </Suspense>
       )}
-      {tree.menu && <SbContextMenu x={tree.menu.x} y={tree.menu.y} items={tree.menu.items} onClose={tree.closeMenu} />}
+      {tree.menu && <ContextMenu className="sb-menu" x={tree.menu.x} y={tree.menu.y} items={tree.menu.items} onClose={tree.closeMenu} />}
     </aside>
   );
 }

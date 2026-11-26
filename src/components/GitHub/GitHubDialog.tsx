@@ -9,6 +9,7 @@ import { DeploySection } from "./DeploySection";
 import { ActionsSection } from "./ActionsSection";
 import { SyncSection } from "./SyncSection";
 import "./GitHub.css";
+import "./GitHubLists.css";
 
 const SECTIONS: { id: GhSection; label: string; icon: ComponentType<{ size?: number }>; view: ComponentType }[] = [
   { id: "account", label: "Cuenta", icon: UserRound, view: AccountSection },

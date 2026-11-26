@@ -3,7 +3,13 @@ import { othersText, type MapScope } from "../../features/infra/scope";
 import type { Box } from "../../features/infra/layout";
 import { Segmented } from "../ui/Segmented";
 // Estilos de Administración que usa el mapa (p. ej. .adm-spin): se abre sin Administración cargada.
+// Se importan todas las partes, en el mismo orden que AdminPanel, para que el orden del CSS no cambie.
 import "../Admin/Admin.css";
+import "../Admin/AdminTable.css";
+import "../Admin/AdminDialogs.css";
+import "../Admin/users/AdminKeys.css";
+import "../Admin/AdminHistory.css";
+import "../Admin/web/AdminWeb.css";
 import "./MapScope.css";
 
 /** Prefijo del `data-node` de la caja «Otros»: un clic en ella muestra todo ese servidor. */

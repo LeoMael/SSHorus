@@ -1,0 +1,252 @@
+/* Contenedores: tablas y punto de estado. Va después de ContainersBars.css. */
+
+/* ───────── Tablas ───────── */
+.ct-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  container-type: inline-size;
+}
+.ct-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.ct-table-auto {
+  table-layout: auto;
+}
+.ct-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.ct-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.ct-th:hover {
+  color: var(--text);
+}
+.ct-sort {
+  font-size: 8px;
+}
+.ct-table td {
+  height: 28px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ct-table tbody tr:hover {
+  background: var(--surface);
+}
+.ct-table tbody tr.sel {
+  background: var(--accent-bg);
+}
+.ct-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ct-table td.mono,
+.ct-table .mono {
+  font-size: var(--fs-sm);
+}
+.ct-norows {
+  text-align: center;
+  color: var(--text-faint);
+  height: 60px !important;
+}
+.ct-col-chk {
+  width: 32px;
+  text-align: center !important;
+  padding: 0 !important;
+}
+.ct-col-chk input {
+  vertical-align: middle;
+}
+.ct-col-name {
+  width: 26%;
+}
+.ct-col-image {
+  width: 22%;
+}
+.ct-col-state {
+  width: 14%;
+}
+.ct-col-ports {
+  width: 18%;
+}
+/* Contenedores: el nombre cede sitio a imagen, estado y puertos (la barra lateral abierta deja ~1000 px). */
+.ct-table-containers .ct-col-name {
+  width: 18%;
+}
+.ct-table-containers .ct-col-image {
+  width: 22%;
+}
+.ct-table-containers .ct-col-state {
+  width: 19%;
+}
+.ct-table-containers .ct-col-ports {
+  width: 22%;
+}
+/* Si no cabe, se recorta antes la etiqueta del proyecto Compose (con «…») que el nombre. */
+.ct-table-containers .ct-col-name .ct-strong {
+  flex: none;
+  max-width: calc(100% - 14px);
+}
+.ct-table-containers .ct-col-name .ct-tag {
+  display: block;
+  line-height: 16px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ct-col-created {
+  width: 96px;
+}
+.ct-col-num {
+  width: 70px;
+  text-align: right !important;
+}
+.ct-col-mem {
+  width: 80px;
+  text-align: right !important;
+}
+.ct-col-short {
+  width: 80px;
+}
+/* Columna «Usuario» (solo con «Todos»). */
+.ct-col-owner {
+  width: 96px;
+}
+.ct-col-id {
+  width: 120px;
+}
+.ct-col-actions {
+  width: 116px;
+  text-align: right !important;
+}
+.ct-cell-flex {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+}
+.ct-actions {
+  display: inline-flex;
+  gap: 1px;
+  justify-content: flex-end;
+}
+.ct-actions .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+.ct-actions .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ct-go:hover:not(:disabled) {
+  color: var(--green);
+}
+.ct-danger:hover:not(:disabled) {
+  color: var(--red);
+}
+.ct-yes {
+  color: var(--green);
+}
+.ct-bad-text {
+  color: var(--red);
+}
+.ct-warn-text {
+  display: inline;
+  color: var(--yellow);
+}
+.ct-warn-text svg {
+  vertical-align: -2px;
+}
+
+/* Punto de estado */
+.ct-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--text-faint);
+}
+.ct-dot.ct-ok {
+  background: var(--green);
+  box-shadow: 0 0 0 2px rgb(34 197 94 / 0.18);
+}
+.ct-dot.ct-warn {
+  background: var(--yellow);
+}
+.ct-dot.ct-bad {
+  background: var(--red);
+}
+.ct-dot.ct-off {
+  background: var(--text-faint);
+}
+
+.ct-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-family: var(--font);
+  white-space: nowrap;
+  flex: none;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ct-ports {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+}
+.ct-port {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ct-port:hover {
+  background: var(--mix-accent-12);
+  border-color: var(--accent);
+}

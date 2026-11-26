@@ -33,7 +33,7 @@ import { serversNotInProject } from "../../features/profiles/projectServers";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import { useProfiles } from "../../stores/profiles";
 import { useUi } from "../../stores/ui";
-import type { MenuItem } from "./SbContextMenu";
+import type { MenuItem } from "../ui/ContextMenu";
 import { addBookmarkFor, connectNew, deleteProject, deleteServer, exportSshConfig, openOrFocus } from "./sidebarActions";
 import { projectServers, type TabState } from "./sidebarLogic";
 
@@ -59,7 +59,7 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
     return candidates.map((s) => ({
       label: s.name,
       icon: <Server size={14} />,
-      onClick: () =>
+      onSelect: () =>
         void useProfiles
           .getState()
           .addServerToProject(p.id, s.id)
@@ -73,7 +73,7 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
       label: "Añadir servidor nuevo…",
       icon: <Plus size={14} />,
       // Editor de servidor nuevo que lo guarda ya dentro del proyecto (se puede cambiar en el selector).
-      onClick: () => openServerEditor(null, { projectId: p.id, onSaved: revealServer }),
+      onSelect: () => openServerEditor(null, { projectId: p.id, onSaved: revealServer }),
     },
     { label: "Añadir servidor existente", icon: <Server size={14} />, submenu: existingServerItems(p) },
   ];
@@ -87,12 +87,12 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
             label: p.name,
             icon: <span className="sb-chip" style={{ background: p.color ?? undefined }} />,
             disabled: p.serverIds.includes(s.id),
-            onClick: () => void st.addServerToProject(p.id, s.id),
+            onSelect: () => void st.addServerToProject(p.id, s.id),
           }));
-    projectItems.push("separator", {
+    projectItems.push({ sep: true }, {
       label: "Nuevo proyecto…",
       icon: <FolderPlus size={14} />,
-      onClick: () => openProjectEditor({ id: "", name: "", serverIds: [s.id], bookmarks: [], color: null }),
+      onSelect: () => openProjectEditor({ id: "", name: "", serverIds: [s.id], bookmarks: [], color: null }),
     });
 
     const tabState = tabStates.get(s.id);
@@ -101,32 +101,32 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
       {
         label: !tabState ? "Conectar" : tabState === "closed" ? "Ir a su pestaña y reconectar" : "Ir a su pestaña",
         icon: <Plug size={14} />,
-        onClick: () => openOrFocus(s),
+        onSelect: () => openOrFocus(s),
         disabled: busy,
       },
     ];
     if (tabState) {
-      items.push({ label: "Abrir otra conexión", icon: <CopyPlus size={14} />, onClick: () => connectNew(s), disabled: busy });
+      items.push({ label: "Abrir otra conexión", icon: <CopyPlus size={14} />, onSelect: () => connectNew(s), disabled: busy });
     }
     items.push(
       {
         label: "Ejecutar en varios servidores…",
         icon: <SquareTerminal size={14} />,
-        onClick: () => openMultiRun({ profileIds: [s.id] }),
+        onSelect: () => openMultiRun({ profileIds: [s.id] }),
       },
-      "separator",
-      { label: "Editar…", icon: <Pencil size={14} />, onClick: () => openServerEditor(s) },
-      { label: "Duplicar", icon: <Copy size={14} />, onClick: () => void st.duplicateServer(s.id) },
+      { sep: true },
+      { label: "Editar…", icon: <Pencil size={14} />, onSelect: () => openServerEditor(s) },
+      { label: "Duplicar", icon: <Copy size={14} />, onSelect: () => void st.duplicateServer(s.id) },
       { label: "Añadir a proyecto", icon: <Layers size={14} />, submenu: projectItems },
     );
     if (projectId) {
       const p = st.projects.find((x) => x.id === projectId);
       items.push(
-        { label: "Añadir marcador…", icon: <BookmarkIcon size={14} />, onClick: () => void addBookmarkFor(projectId, s) },
+        { label: "Añadir marcador…", icon: <BookmarkIcon size={14} />, onSelect: () => void addBookmarkFor(projectId, s) },
         {
           label: "Quitar del proyecto",
           icon: <MinusCircle size={14} />,
-          onClick: () =>
+          onSelect: () =>
             p &&
             void st.saveProject({
               ...p,
@@ -136,11 +136,11 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
         },
       );
     }
-    items.push("separator", {
+    items.push({ sep: true }, {
       label: "Eliminar",
       icon: <Trash2 size={14} />,
       danger: true,
-      onClick: () => void deleteServer(s),
+      onSelect: () => void deleteServer(s),
     });
     return items;
   };
@@ -149,58 +149,58 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
     const projServers = projectServers(p, serverById);
     const none = projServers.length === 0;
     return [
-      { label: "Editar…", icon: <Pencil size={14} />, onClick: () => openProjectEditor(p) },
+      { label: "Editar…", icon: <Pencil size={14} />, onSelect: () => openProjectEditor(p) },
       ...addToProject(p),
-      "separator",
-      { label: "Conectar a todos", icon: <Plug size={14} />, disabled: none, onClick: () => void connectToMany(projServers) },
+      { sep: true },
+      { label: "Conectar a todos", icon: <Plug size={14} />, disabled: none, onSelect: () => void connectToMany(projServers) },
       {
         label: "Ejecutar comando en el proyecto…",
         icon: <SquareTerminal size={14} />,
         disabled: none,
-        onClick: () => openMultiRun({ projectId: p.id }),
+        onSelect: () => openMultiRun({ projectId: p.id }),
       },
-      { label: "Mapa", icon: <Waypoints size={14} />, disabled: none, onClick: () => openProjectMap(p.id) },
-      { label: "Panel del proyecto", icon: <LayoutDashboard size={14} />, disabled: none, onClick: () => openFleet(p.id) },
-      "separator",
-      { label: "Eliminar", icon: <Trash2 size={14} />, danger: true, onClick: () => void deleteProject(p) },
+      { label: "Mapa", icon: <Waypoints size={14} />, disabled: none, onSelect: () => openProjectMap(p.id) },
+      { label: "Panel del proyecto", icon: <LayoutDashboard size={14} />, disabled: none, onSelect: () => openFleet(p.id) },
+      { sep: true },
+      { label: "Eliminar", icon: <Trash2 size={14} />, danger: true, onSelect: () => void deleteProject(p) },
     ];
   };
 
   /** Servidor con varias cuentas guardadas. */
   const machine = (accounts: ServerProfile[], open: boolean, toggle: () => void): MenuItem[] => [
     open
-      ? { label: "Plegar", icon: <ChevronsDownUp size={14} />, onClick: toggle }
-      : { label: "Desplegar", icon: <ChevronsUpDown size={14} />, onClick: toggle },
-    "separator",
-    { label: "Conectar todas las cuentas", icon: <Plug size={14} />, onClick: () => void connectToMany(accounts) },
+      ? { label: "Plegar", icon: <ChevronsDownUp size={14} />, onSelect: toggle }
+      : { label: "Desplegar", icon: <ChevronsUpDown size={14} />, onSelect: toggle },
+    { sep: true },
+    { label: "Conectar todas las cuentas", icon: <Plug size={14} />, onSelect: () => void connectToMany(accounts) },
     {
       label: "Ejecutar comando en estas cuentas…",
       icon: <SquareTerminal size={14} />,
-      onClick: () => openMultiRun({ profileIds: accounts.map((s) => s.id) }),
+      onSelect: () => openMultiRun({ profileIds: accounts.map((s) => s.id) }),
     },
   ];
 
   const bookmark = (p: Project, b: Bookmark, s: ServerProfile | undefined): MenuItem[] => [
-    { label: "Abrir", icon: <Folder size={14} />, disabled: !s, onClick: () => s && connectNew(s, b.path) },
-    { label: "Editar proyecto…", icon: <Pencil size={14} />, onClick: () => openProjectEditor(p) },
-    "separator",
+    { label: "Abrir", icon: <Folder size={14} />, disabled: !s, onSelect: () => s && connectNew(s, b.path) },
+    { label: "Editar proyecto…", icon: <Pencil size={14} />, onSelect: () => openProjectEditor(p) },
+    { sep: true },
     {
       label: "Quitar marcador",
       icon: <Trash2 size={14} />,
       danger: true,
-      onClick: () => void useProfiles.getState().removeBookmark(p.id, b.serverId, b.path),
+      onSelect: () => void useProfiles.getState().removeBookmark(p.id, b.serverId, b.path),
     },
   ];
 
   const newItems = (): MenuItem[] => [
-    { label: "Servidor", icon: <Server size={14} />, onClick: () => openServerEditor(null) },
-    { label: "Proyecto", icon: <Layers size={14} />, onClick: () => openProjectEditor(null) },
-    "separator",
-    { label: `Importar de ${SSH_CONFIG_LABEL}…`, icon: <Download size={14} />, onClick: openImport },
-    { label: `Exportar a ${SSH_CONFIG_LABEL}`, icon: <Upload size={14} />, onClick: () => void exportSshConfig() },
-    "separator",
-    { label: "Terminal local (este equipo)", icon: <Laptop size={14} />, onClick: () => openLocalTerminal() },
-    ...ASSISTANTS.map((a) => ({ label: a.label, icon: <Bot size={14} />, onClick: () => void launchAssistant(a.tool) })),
+    { label: "Servidor", icon: <Server size={14} />, onSelect: () => openServerEditor(null) },
+    { label: "Proyecto", icon: <Layers size={14} />, onSelect: () => openProjectEditor(null) },
+    { sep: true },
+    { label: `Importar de ${SSH_CONFIG_LABEL}…`, icon: <Download size={14} />, onSelect: openImport },
+    { label: `Exportar a ${SSH_CONFIG_LABEL}`, icon: <Upload size={14} />, onSelect: () => void exportSshConfig() },
+    { sep: true },
+    { label: "Terminal local (este equipo)", icon: <Laptop size={14} />, onSelect: () => openLocalTerminal() },
+    ...ASSISTANTS.map((a) => ({ label: a.label, icon: <Bot size={14} />, onSelect: () => void launchAssistant(a.tool) })),
   ];
 
   return { server, machine, project, bookmark, addToProject, newItems };

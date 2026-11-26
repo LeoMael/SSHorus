@@ -24,6 +24,9 @@ import { useSelectionOps, useSelectionState } from "./useSelection";
 import { useDropUpload, useUploadRefresh } from "./useUploadEvents";
 import { useExplorerNav } from "../../features/fileExplorer/nav";
 import "./FileExplorer.css";
+import "./FileExplorerList.css";
+import "./FileExplorerStatus.css";
+import "./FileExplorerDialogs.css";
 
 export interface FileExplorerProps {
   sessionId: string;

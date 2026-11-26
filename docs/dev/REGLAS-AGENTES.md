@@ -10,7 +10,7 @@ El usuario habla español: **todo texto visible en la app va en español**. Cali
 - **Solo edita los archivos que tu tarea dice que son tuyos.** Puedes crear archivos nuevos dentro de tus carpetas.
 - **Archivos BASE (no editar):**
   `src-tauri/src/{lib.rs,error.rs,types.rs,ssh/mod.rs}`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`,
-  `src-tauri/capabilities/*`, `package.json`, `src/main.tsx`, `src/api/*`, `src/lib/*`, `src/styles/theme.css`,
+  `src-tauri/capabilities/*`, `package.json`, `src/main.tsx`, `src/api/*`, `src/lib/*`, `src/styles/*.css`,
   `src/components/ui/*`, `src/stores/{tabs,settings,toasts,ui}.ts`.
   Si de verdad necesitas un cambio en BASE o una dependencia nueva: no lo hagas; arréglatelas y pídelo en tu informe final.
 - Los **comandos Tauri ya están registrados** en `lib.rs` con su firma. Implementa el cuerpo; puedes quitar el `_` de
@@ -80,7 +80,8 @@ npm run check                                                                   
 - Utilidades: `src/lib/format.ts` (bytes, fechas, velocidad), `src/lib/paths.ts` (rutas remotas).
 - Íconos: `lucide-react`. Paneles redimensionables: `react-resizable-panels` v4 (lee sus tipos en node_modules; la API cambió respecto a v2).
   Diálogos de archivos locales: `@tauri-apps/plugin-dialog`. Arrastrar desde el sistema: `getCurrentWebview().onDragDropEvent`.
-- Estilos: **usa las variables y clases de `src/styles/theme.css`** (`--bg`, `--surface`, `--accent`, `.btn`, `.btn-primary`,
+- Estilos: **usa las variables y clases del tema (`src/styles/`: variables en `theme.css`, clases en `controls.css`,
+  `overlays.css` y `utilities.css`)** (`--bg`, `--surface`, `--accent`, `.btn`, `.btn-primary`,
   `.input`, `.field`, `.icon-btn`, `.context-menu`, `.progress`, `.status-dot`, `.section-label`, `.empty-state`, `.spinner`…).
   Tu CSS va en un archivo junto a tu componente, importado desde él, con clases prefijadas por el componente
   (p. ej. `.fx-row` para FileExplorer) para no chocar con otros. Debe verse bien en tema oscuro y claro.

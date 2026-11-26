@@ -41,19 +41,24 @@ import {
 import { AdminContext, type AdminContextValue, type PortsFilter, type RunOutcome, type ScanState } from "./context";
 import { AdminBanners, AdminHeader, NEEDS_READ, type SubTab } from "./AdminChrome";
 import { SudoDialog } from "./SudoDialog";
-import { UsersTab } from "./UsersTab";
-import { GroupsTab } from "./GroupsTab";
-import { SessionsTab } from "./SessionsTab";
+import { UsersTab } from "./users/UsersTab";
+import { GroupsTab } from "./users/GroupsTab";
+import { SessionsTab } from "./users/SessionsTab";
 import { HistoryTab } from "./HistoryTab";
-import { PortsTab } from "./PortsTab";
-import { WebTab } from "./WebTab";
-import { VulnsTab } from "./VulnsTab";
-import { AuditTab } from "./AuditTab";
-import { VisibilityTab } from "./VisibilityTab";
+import { PortsTab } from "./web/PortsTab";
+import { WebTab } from "./web/WebTab";
+import { VulnsTab } from "./vulns/VulnsTab";
+import { AuditTab } from "./audit/AuditTab";
+import { VisibilityTab } from "./visibility/VisibilityTab";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
 import { preloadable } from "../../lib/lazy";
 import "./Admin.css";
+import "./AdminTable.css";
+import "./AdminDialogs.css";
+import "./users/AdminKeys.css";
+import "./AdminHistory.css";
+import "./web/AdminWeb.css";
 
 const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
 

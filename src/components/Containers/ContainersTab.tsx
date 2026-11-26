@@ -35,7 +35,7 @@ import {
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { promptDialog } from "../ui/dialogs";
-import { ContextMenu, type MenuItem } from "../Admin/ContextMenu";
+import { ContextMenu, type MenuItem } from "../ui/ContextMenu";
 import { PICK_OWNER_HINT, useCt } from "./context";
 import { openPortTunnel } from "./tunnel";
 import { askAutostart, autostartMenuLabel } from "./Autostart";
@@ -73,7 +73,7 @@ export function ContainersTab() {
   const [sort, setSort] = useState<{ key: ContainerSortKey; dir: 1 | -1 }>({ key: "state", dir: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Set<string>>(new Set());
-  const [menu, setMenu] = useState<{ x: number; y: number; items: (MenuItem | "sep")[] } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
 
   const counts = useMemo(
     () => ({
@@ -206,36 +206,36 @@ export function ContainersTab() {
     return {
       label,
       icon: <Power size={13} />,
-      onClick: () => askAutostart(ct, auto, on, [c]),
+      onSelect: () => askAutostart(ct, auto, on, [c]),
       disabled: !info,
       title: info ? info.why.join("\n") : auto.loading ? "Leyendo si arranca solo…" : "No se pudo saber si arranca solo",
     };
   };
 
-  const rowMenu = (c: Container): (MenuItem | "sep")[] => [
+  const rowMenu = (c: Container): MenuItem[] => [
     isContainerUp(c)
-      ? { label: "Parar", icon: <Square size={13} />, onClick: () => confirmAction("stop", [c]) }
-      : { label: "Iniciar", icon: <Play size={13} />, onClick: () => void direct(c.state === "paused" ? "unpause" : "start", [c]) },
-    { label: "Reiniciar", icon: <RotateCw size={13} />, onClick: () => confirmAction("restart", [c]), disabled: !isContainerUp(c) && c.state !== "paused" },
+      ? { label: "Parar", icon: <Square size={13} />, onSelect: () => confirmAction("stop", [c]) }
+      : { label: "Iniciar", icon: <Play size={13} />, onSelect: () => void direct(c.state === "paused" ? "unpause" : "start", [c]) },
+    { label: "Reiniciar", icon: <RotateCw size={13} />, onSelect: () => confirmAction("restart", [c]), disabled: !isContainerUp(c) && c.state !== "paused" },
     c.state === "paused"
-      ? { label: "Reanudar", icon: <Play size={13} />, onClick: () => void direct("unpause", [c]) }
-      : { label: "Pausar", icon: <Pause size={13} />, onClick: () => void direct("pause", [c]), disabled: c.state !== "running" },
-    "sep",
-    { label: "Ver logs", icon: <ScrollText size={13} />, onClick: () => openLogs(c) },
+      ? { label: "Reanudar", icon: <Play size={13} />, onSelect: () => void direct("unpause", [c]) }
+      : { label: "Pausar", icon: <Pause size={13} />, onSelect: () => void direct("pause", [c]), disabled: c.state !== "running" },
+    { sep: true },
+    { label: "Ver logs", icon: <ScrollText size={13} />, onSelect: () => openLogs(c) },
     {
       label: "Terminal dentro",
       icon: <TerminalSquare size={13} />,
-      onClick: () => ct.toTerminal(withOwner(execShellCmd(engine, c.name || c.id), c.owner), true),
+      onSelect: () => ct.toTerminal(withOwner(execShellCmd(engine, c.name || c.id), c.owner), true),
       disabled: c.state !== "running",
     },
-    { label: "Inspeccionar", icon: <FileSearch size={13} />, onClick: () => ct.openInspect(c) },
-    { label: "Renombrar…", icon: <Pencil size={13} />, onClick: () => void rename(c) },
+    { label: "Inspeccionar", icon: <FileSearch size={13} />, onSelect: () => ct.openInspect(c) },
+    { label: "Renombrar…", icon: <Pencil size={13} />, onSelect: () => void rename(c) },
     autostartItem(c),
-    "sep",
-    { label: "Copiar nombre", icon: <Copy size={13} />, onClick: () => copy(c.name, "Nombre copiado") },
-    { label: "Copiar ID", icon: <Copy size={13} />, onClick: () => copy(c.id, "ID copiado") },
-    "sep",
-    { label: "Eliminar…", icon: <Trash2 size={13} />, onClick: () => confirmRemove([c]), danger: true },
+    { sep: true },
+    { label: "Copiar nombre", icon: <Copy size={13} />, onSelect: () => copy(c.name, "Nombre copiado") },
+    { label: "Copiar ID", icon: <Copy size={13} />, onSelect: () => copy(c.id, "ID copiado") },
+    { sep: true },
+    { label: "Eliminar…", icon: <Trash2 size={13} />, onSelect: () => confirmRemove([c]), danger: true },
   ];
 
   const portMenu = (e: MouseEvent, p: PortMapping) => {
@@ -248,12 +248,12 @@ export function ContainersTab() {
       x: r.left,
       y: r.bottom + 2,
       items: [
-        { label: `Copiar ${host}:${port}`, icon: <Copy size={13} />, onClick: () => copy(`${host}:${port}`, "Dirección copiada") },
+        { label: `Copiar ${host}:${port}`, icon: <Copy size={13} />, onSelect: () => copy(`${host}:${port}`, "Dirección copiada") },
         {
           label: "Abrir túnel a mi PC…",
           icon: <Play size={13} />,
           title: "Crea un túnel SSH para usar este puerto desde tu PC",
-          onClick: () => void openPortTunnel(ct.sessionId, ct.profileId, p),
+          onSelect: () => void openPortTunnel(ct.sessionId, ct.profileId, p),
           disabled: p.protocol !== "tcp",
         },
       ],
@@ -466,7 +466,7 @@ export function ContainersTab() {
       <div className="ct-foot faint">
         Enter: logs · Espacio: seleccionar · Supr: eliminar · Menú o Mayús+F10: más acciones
       </div>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu look="plain" x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
     </div>
   );
 }

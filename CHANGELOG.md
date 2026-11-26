@@ -6,6 +6,12 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Cambiado
+- **Desarrollo:** orden interno de la interfaz, sin cambios a la vista. Los 11 CSS de más de 500 líneas (también el
+  tema) se partieron en archivos por tema; `components/Admin` se ordenó en carpetas (`users/`, `web/`, `vulns/`,
+  `audit/`, `visibility/`); `AdmModal` trae su propio CSS; y la barra lateral, Administración y Contenedores usan el
+  mismo menú contextual que el resto de la app (`ui/ContextMenu`). La lista de archivos demasiado largos queda vacía.
+
 ## [1.0.0-beta.4] - 2026-11-26
 
 ### Añadido

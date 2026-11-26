@@ -23,6 +23,11 @@ import { useResources } from "./useResources";
 import { useEngineActions } from "./useEngineActions";
 import { useAutostart } from "./useAutostart";
 import "./Containers.css";
+import "./ContainersBars.css";
+import "./ContainersTable.css";
+import "./ContainersReview.css";
+import "./ContainersForm.css";
+import "./ContainersCleanup.css";
 
 export interface ContainersPanelProps {
   sessionId: string;

@@ -1,7 +1,10 @@
-// Menú contextual flotante (usa la clase .context-menu del tema), con submenús y teclado.
+// Menú contextual flotante (usa la clase .context-menu del tema), con submenús y teclado. Es el único
+// menú contextual de la app: lo usan el explorador, las pestañas, la terminal, la barra lateral,
+// Administración y Contenedores.
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight } from "lucide-react";
+import "./ContextMenu.css";
 
 export type MenuItem =
   | { sep: true }
@@ -24,29 +27,46 @@ interface Props {
   y: number;
   items: MenuItem[];
   onClose: () => void;
+  /** «icons» (por defecto): columna de íconos, atajo y flecha de submenú. «plain»: ícono y texto tal cual. */
+  look?: "icons" | "plain";
+  /** Clase extra del menú, para ajustes de una pantalla (p. ej. «sb-menu» en la barra lateral). */
+  className?: string;
 }
+
+const LOOK_CLASS: Record<NonNullable<Props["look"]>, string> = { icons: "cm-menu", plain: "cm-plain" };
 
 /** Ancho aproximado de un submenú, para decidir si se abre a la derecha o a la izquierda. */
 const SUB_W = 220;
 
-export function ContextMenu({ x, y, items, onClose }: Props) {
+export function ContextMenu({ x, y, items, onClose, look = "icons", className }: Props) {
   useEffect(() => {
+    const inMenu = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.(".context-menu");
     const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (!t?.closest(".fx-menu")) onClose();
+      if (!inMenu(e.target)) onClose();
+    };
+    // Con el foco fuera del menú, Escape solo lo cierra (no llega a la pantalla de debajo).
+    // Con el foco dentro, lo atiende el propio menú (cierra o vuelve del submenú).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !inMenu(e.target)) {
+        e.stopPropagation();
+        onClose();
+      }
     };
     const onBlur = () => onClose();
     window.addEventListener("mousedown", onDown, true);
+    window.addEventListener("keydown", onKey, true);
     window.addEventListener("blur", onBlur);
     window.addEventListener("resize", onBlur);
     return () => {
       window.removeEventListener("mousedown", onDown, true);
+      window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("resize", onBlur);
     };
   }, [onClose]);
 
-  return createPortal(<MenuPanel x={x} y={y} items={items} onClose={onClose} autoFocus />, document.body);
+  const panelClass = className ? `${LOOK_CLASS[look]} ${className}` : LOOK_CLASS[look];
+  return createPortal(<MenuPanel x={x} y={y} items={items} onClose={onClose} panelClass={panelClass} autoFocus />, document.body);
 }
 
 function MenuPanel({
@@ -54,9 +74,10 @@ function MenuPanel({
   y,
   items,
   onClose,
+  panelClass,
   autoFocus,
   onBack,
-}: Props & { autoFocus?: boolean; onBack?: () => void }) {
+}: Omit<Props, "look" | "className"> & { panelClass: string; autoFocus?: boolean; onBack?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
   const [openSub, setOpenSub] = useState<{ index: number; x: number; y: number; focus: boolean } | null>(null);
@@ -114,7 +135,7 @@ function MenuPanel({
     <>
       <div
         ref={ref}
-        className="context-menu fx-menu"
+        className={`context-menu ${panelClass}`}
         style={{ left: pos.left, top: pos.top }}
         role="menu"
         onKeyDown={onKeyDown}
@@ -146,10 +167,10 @@ function MenuPanel({
                 it.onSelect?.();
               }}
             >
-              <span className="fx-menu-icon">{it.icon}</span>
-              <span className="fx-menu-label">{it.label}</span>
-              {it.hint && <span className="fx-menu-hint">{it.hint}</span>}
-              {it.submenu && <ChevronRight size={14} className="fx-menu-chevron" />}
+              <span className="cm-icon">{it.icon}</span>
+              <span className="cm-label">{it.label}</span>
+              {it.hint && <span className="cm-hint">{it.hint}</span>}
+              {it.submenu && <ChevronRight size={14} className="cm-chevron" />}
             </button>
           ),
         )}
@@ -161,6 +182,7 @@ function MenuPanel({
           y={openSub.y}
           items={sub.submenu}
           onClose={onClose}
+          panelClass={panelClass}
           autoFocus={openSub.focus}
           onBack={() => {
             const idx = openSub.index;

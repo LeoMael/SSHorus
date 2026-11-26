@@ -1,0 +1,166 @@
+/* Transferencias: panel desplegado, lote y estado. Va después de TransferPanel.css. */
+
+/* ───────── Desplegado ───────── */
+.tp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  flex: none;
+  padding: 0 6px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.tp-head-sum {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tp-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tp-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  container-type: inline-size;
+}
+.tp-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  padding: 0 16px;
+  text-align: center;
+}
+.tp-empty svg {
+  color: var(--text-faint);
+  flex: none;
+}
+
+/* Lote */
+.tp-batch {
+  border-bottom: 1px solid var(--border);
+}
+.tp-batch.tp-open {
+  background: var(--mix-surface-70);
+}
+.tp-brow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 6px 0 8px;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+}
+.tp-brow:hover,
+.tp-brow:focus-visible {
+  background: var(--surface-2);
+}
+.tp-caret {
+  display: inline-flex;
+  color: var(--text-faint);
+  flex: none;
+}
+.tp-blabel {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1 1 140px;
+  min-width: 80px;
+}
+.tp-bname {
+  font-weight: 500;
+  flex: 0 1 auto;
+}
+.tp-server {
+  font-size: var(--fs-sm);
+  flex: 0 1 auto;
+}
+.tp-bcount {
+  flex: none;
+  font-size: var(--fs-sm);
+  min-width: 84px;
+  text-align: right;
+}
+.tp-bbytes {
+  flex: none;
+  font-size: var(--fs-sm);
+  min-width: 140px;
+  text-align: right;
+}
+.tp-bprog {
+  flex: 0 1 160px;
+  min-width: 60px;
+}
+.tp-bspeed {
+  flex: none;
+  width: 78px;
+  text-align: right;
+  font-size: var(--fs-sm);
+}
+.tp-beta {
+  flex: none;
+  width: 52px;
+  font-size: var(--fs-sm);
+}
+.tp-bactions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 2px;
+  flex: none;
+  width: 78px;
+}
+.tp-berror {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 6px 58px;
+  margin-top: -4px;
+  color: var(--red);
+  font-size: var(--fs-sm);
+}
+.tp-berror svg {
+  flex: none;
+}
+
+/* Estado */
+.tp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-width: 96px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-3);
+}
+.tp-badge-running {
+  color: var(--orange);
+  background: var(--mix-orange-15);
+}
+.tp-badge-done {
+  color: var(--green);
+  background: var(--mix-green-14);
+}
+.tp-badge-error {
+  color: var(--red);
+  background: var(--mix-red-14);
+}
+.tp-badge-queued {
+  color: var(--accent);
+  background: var(--mix-accent-12);
+}

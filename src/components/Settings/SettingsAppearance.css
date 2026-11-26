@@ -1,0 +1,232 @@
+/* Ajustes: apariencia, deslizador y vistas previas. Va después de SettingsDialog.css. */
+
+/* ───────── Apariencia ───────── */
+.st-themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+.st-theme {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.st-theme:hover {
+  border-color: var(--border-strong);
+}
+.st-theme.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.st-theme-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+.st-theme-check {
+  margin-left: auto;
+  color: var(--accent);
+}
+.st-theme-hint {
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+
+/* Miniatura (colores en línea: son los de la apariencia que se muestra, no los actuales). */
+.st-thumb {
+  display: flex;
+  height: 84px;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid;
+  border-radius: var(--radius);
+}
+.st-thumb i,
+.st-thumb b {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+}
+.st-thumb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 26%;
+  padding: 8px 6px;
+  border-right: 1px solid;
+}
+.st-thumb-side i:not(:first-child) {
+  opacity: 0.5;
+}
+.st-thumb-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px;
+  min-width: 0;
+}
+.st-thumb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 16px;
+  padding: 0 6px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+.st-thumb-bar i {
+  width: 40%;
+  opacity: 0.8;
+}
+.st-thumb-bar b {
+  width: 18%;
+  height: 6px;
+  border-radius: 3px;
+}
+.st-thumb-term {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+.st-thumb-term i:first-child {
+  width: 55%;
+}
+.st-thumb-term i:not(:first-child) {
+  opacity: 0.55;
+}
+/* «Sistema»: mitad claro, mitad oscuro. */
+.st-thumb-split {
+  position: relative;
+  display: block;
+  height: 84px;
+}
+.st-thumb-split > .st-thumb {
+  position: absolute;
+  inset: 0;
+}
+.st-thumb-split > .st-thumb:last-child {
+  clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
+}
+
+/* Color de acento */
+.st-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.st-swatch {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border-strong);
+  color: var(--bg);
+  cursor: pointer;
+}
+.st-swatch.active {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.st-swatch-auto {
+  width: auto;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.st-swatch-auto.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* ───────── Deslizador ───────── */
+.st-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.st-range input[type="range"] {
+  width: 160px;
+  accent-color: var(--accent);
+}
+.st-range-value {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────── Vistas previas (terminal y editor) ───────── */
+.st-preview {
+  margin: 0 16px 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-terminal);
+  border: 1px solid var(--border);
+  color: var(--text);
+  line-height: 1.45;
+  white-space: pre;
+  overflow: hidden;
+}
+.st-preview-editor {
+  background: var(--surface);
+}
+.st-kw {
+  color: var(--purple);
+}
+.st-numlit {
+  color: var(--orange);
+}
+.st-comment {
+  color: var(--text-faint);
+}
+
+.st-reset {
+  margin-right: auto;
+}
+.st-footer-hint {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.st-disabled {
+  opacity: 0.5;
+}
+.st-manual-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}

@@ -1,0 +1,43 @@
+/* Menú contextual (ui/ContextMenu). La caja y los botones son .context-menu de theme.css. */
+
+/* Aspecto «icons»: columna de íconos, texto que se recorta, atajo y flecha de submenú. */
+.cm-menu {
+  /* Listas largas (p. ej. muchos proyectos en un submenú): se desplazan en vez de salirse. */
+  max-height: calc(100vh - 8px);
+  max-width: 360px;
+  overflow-y: auto;
+}
+.cm-menu button {
+  font-size: var(--fs);
+}
+.cm-icon {
+  display: inline-flex;
+  width: 16px;
+  color: var(--text-muted);
+}
+.cm-menu .danger .cm-icon {
+  color: var(--red);
+}
+.cm-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-hint {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-left: 16px;
+}
+.cm-chevron {
+  color: var(--text-muted);
+  flex: none;
+}
+
+/* Aspecto «plain» (Administración, Contenedores): ícono y texto directamente en el botón. */
+.cm-plain .cm-icon,
+.cm-plain .cm-label {
+  display: contents;
+  color: inherit;
+}

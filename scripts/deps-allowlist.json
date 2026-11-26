@@ -90,9 +90,8 @@
     },
     {
       "ciclo": "components/Containers, components/InfraMap ↔ components/Admin",
-      "motivo": "TODO(deuda): Contenedores y el mapa usan piezas genéricas de Administración (ContextMenu, SudoDialog, PlanReview); pasarlas a components/ui.",
+      "motivo": "TODO(deuda): Contenedores y el mapa usan piezas genéricas de Administración (SudoDialog, PlanReview); pasarlas a components/ui.",
       "imports": [
-        "src/components/Containers/ContainersTab.tsx -> src/components/Admin/ContextMenu.tsx",
         "src/components/Containers/PanelDialogs.tsx -> src/components/Admin/SudoDialog.tsx",
         "src/components/InfraMap/FirewallChangeDialog.tsx -> src/components/Admin/PlanReview.tsx",
         "src/components/InfraMap/FirewallPanel.tsx -> src/components/Admin/SudoDialog.tsx"

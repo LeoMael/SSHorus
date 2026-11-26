@@ -278,37 +278,18 @@
   font-size: var(--fs-sm);
 }
 
-/* Menú contextual (usa .context-menu del tema) */
-.sb-menu {
+/* Menú contextual (ui/ContextMenu con className «sb-menu»): filas de 28 px y sin tope de ancho. */
+.context-menu.sb-menu {
   font-size: var(--fs);
-  /* Listas largas (p. ej. muchos servidores en un submenú): se desplazan en vez de salirse. */
-  max-height: calc(100vh - 8px);
-  overflow-y: auto;
+  max-width: none;
 }
 .sb-menu button {
   height: 28px;
   padding: 0 8px;
 }
-.sb-menu-icon {
-  display: inline-flex;
+.sb-menu .cm-icon {
   align-items: center;
   justify-content: center;
-  width: 16px;
-  flex: none;
-  color: var(--text-muted);
-}
-.sb-menu .danger .sb-menu-icon {
-  color: var(--red);
-}
-.sb-menu-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sb-menu-chevron {
-  color: var(--text-muted);
   flex: none;
 }
 .sb-menu button:focus-visible {

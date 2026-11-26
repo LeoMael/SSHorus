@@ -1,0 +1,176 @@
+/* Vulnerabilidades: tabla, detalle y diálogos. Va después de Vulns.css. */
+
+/* Tabla + detalle */
+.vs-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.vs-main > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.vs-row-kernel {
+  font-weight: 500;
+}
+.vs-child {
+  padding-left: 18px;
+}
+.vs-expander {
+  width: 20px;
+  padding: 0;
+}
+.vs-fixed {
+  color: var(--green);
+}
+
+.vs-detail {
+  width: 380px;
+  max-width: 45%;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  min-height: 0;
+}
+.vs-d-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.vs-d-id {
+  overflow-wrap: anywhere;
+}
+.vs-d-body {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 10px 16px;
+  font-size: var(--fs-sm);
+}
+.vs-d-summary {
+  margin: 6px 0;
+  font-size: var(--fs);
+}
+.vs-d-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 10px;
+  margin: 8px 0;
+}
+.vs-d-grid dt {
+  color: var(--text-muted);
+}
+.vs-d-grid dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vs-d-wrap {
+  overflow-wrap: anywhere;
+}
+.vs-d-sec {
+  margin-top: 12px;
+}
+.vs-d-sec h4 {
+  margin: 0 0 4px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.vs-d-note {
+  margin: 4px 0;
+}
+.vs-d-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 260px;
+  overflow: auto;
+}
+.vs-d-actions,
+.vs-d-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.vs-d-list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+.vs-d-list li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.vs-cmd {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* Diálogos */
+.vs-hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vs-hist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.vs-hist li.on {
+  background: var(--mix-accent-10);
+}
+.vs-hist-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vs-indent {
+  margin-left: 20px;
+  gap: 6px;
+}
+.vs-opt span {
+  display: flex;
+  flex-direction: column;
+}
+.vs-opt small {
+  font-size: var(--fs-sm);
+}
+.vs-ai-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vs-ai-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.vs-ai-preview {
+  max-height: 46vh;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

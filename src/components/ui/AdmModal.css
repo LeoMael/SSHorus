@@ -1,0 +1,10 @@
+/* AdmModal: el contenido pone su propio cuerpo (y a veces un <form>) que ocupa el alto libre del recuadro. */
+.adm-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+}
+.adm-modal > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

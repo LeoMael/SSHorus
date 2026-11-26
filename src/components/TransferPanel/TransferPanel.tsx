@@ -25,6 +25,9 @@ import {
 } from "./TransferHelpers";
 import { JobList } from "./TransferJobs";
 import "./TransferPanel.css";
+import "./TransferBatch.css";
+import "./TransferJobs.css";
+import "./TransferConflict.css";
 
 export function TransferPanel() {
   const [expanded, setExpanded] = useState(loadExpanded);

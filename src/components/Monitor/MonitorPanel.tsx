@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Bell, BellOff } from "lucide-react";
 import "./Monitor.css";
+import "./MonitorCharts.css";
+import "./MonitorTables.css";
 import { useTabs } from "../../stores/tabs";
 import { formatBytes } from "../../lib/format";
 import {

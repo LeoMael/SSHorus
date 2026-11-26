@@ -1,16 +1,4 @@
 {
   "_léeme": "Archivos que ya pasaban de 500 líneas el 25/11/2026, con las que tenían (npm run check:lines). Ninguno puede crecer. Esta lista solo puede encoger: no añadas archivos; cuando uno baje, pon su número nuevo o bórralo si ya está en 500 o menos (el script avisa).",
-  "archivos": {
-    "src/components/Admin/Admin.css": 924,
-    "src/components/Admin/Vulns.css": 540,
-    "src/components/Commands/Commands.css": 1153,
-    "src/components/Containers/Containers.css": 1221,
-    "src/components/FileExplorer/FileExplorer.css": 581,
-    "src/components/GitHub/GitHub.css": 529,
-    "src/components/Monitor/Monitor.css": 572,
-    "src/components/MultiRun/MultiRun.css": 981,
-    "src/components/Settings/SettingsDialog.css": 506,
-    "src/components/TransferPanel/TransferPanel.css": 548,
-    "src/styles/theme.css": 817
-  }
+  "archivos": {}
 }

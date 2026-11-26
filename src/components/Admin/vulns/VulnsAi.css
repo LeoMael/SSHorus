@@ -1,0 +1,57 @@
+/* Vulnerabilidades: respuesta de la IA. Va después de VulnsDetail.css. */
+
+/* Respuesta de la IA */
+.vs-ai-answer {
+  margin: 6px 0;
+}
+.vs-ai-mark {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--mix-yellow-12-surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.vs-md {
+  font-size: var(--fs);
+  user-select: text;
+}
+.vs-md h4,
+.vs-md h5 {
+  margin: 10px 0 4px;
+}
+.vs-md p {
+  margin: 6px 0;
+}
+.vs-md ul,
+.vs-md ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.vs-md code {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.vs-md-code {
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+.vs-md-code pre {
+  margin: 0;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vs-md-code-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
+}

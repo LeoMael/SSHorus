@@ -1,0 +1,50 @@
+/* Administración: llaves SSH de un usuario. Va después de AdminDialogs.css. */
+
+/* Llaves */
+.adm-keys,
+.adm-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 240px;
+  overflow: auto;
+}
+.adm-key,
+.adm-members li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 4px 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.adm-key:last-child,
+.adm-members li:last-child {
+  border-bottom: none;
+}
+.adm-key > svg {
+  flex: none;
+  color: var(--text-faint);
+}
+.adm-members li > span {
+  flex: 1;
+}
+.adm-key-type {
+  flex: none;
+  width: 64px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.adm-key-body {
+  flex: none;
+  font-size: var(--fs-sm);
+}
+.adm-key-comment {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

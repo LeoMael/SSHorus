@@ -1,0 +1,233 @@
+/* Contenedores: errores, revisión de comandos, logs e inspeccionar. Va después de ContainersTable.css. */
+
+/* ───────── Errores y avisos ───────── */
+.ct-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: rgb(244 63 94 / 0.08);
+  color: var(--red);
+}
+.ct-error > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.ct-error pre {
+  margin: 0;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  max-height: 200px;
+  overflow: auto;
+  user-select: text;
+}
+.ct-error-inline {
+  margin: 0 10px 6px;
+  align-items: center;
+}
+.ct-warn {
+  padding: 6px 10px;
+  margin: 6px 0;
+  border-left: 3px solid var(--yellow);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ct-hint-line {
+  margin: -4px 0 10px;
+  font-size: var(--fs-sm);
+}
+
+/* ───────── Revisión de comandos ───────── */
+.ct-review-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ct-cmd {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  max-height: 180px;
+  overflow: auto;
+}
+.ct-cmd-sm {
+  font-size: 11px;
+}
+.ct-details {
+  margin-bottom: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.ct-details summary {
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.ct-review-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ct-review-hint {
+  font-size: 11px;
+}
+.ct-review-details {
+  margin-bottom: 6px;
+}
+.ct-confirm-word {
+  margin-top: 8px;
+}
+.ct-list {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+.ct-list li .ct-dot {
+  vertical-align: 0;
+}
+.ct-list-scroll {
+  max-height: 160px;
+  overflow: auto;
+}
+.ct-summary {
+  margin: 4px 0;
+}
+.ct-prune-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+}
+
+/* ───────── Logs ───────── */
+.ct-logs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 0;
+}
+.ct-logs .ct-toolbar {
+  padding: 4px 0 8px;
+}
+.ct-logview {
+  flex: 1;
+  min-height: 300px;
+  height: 60vh;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+  user-select: text;
+}
+.ct-logview mark {
+  background: #facc15;
+  color: #0f172a;
+  border-radius: 2px;
+}
+.ct-logview:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.ct-cmdline {
+  margin-top: 6px;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* ───────── Inspeccionar ───────── */
+.ct-inspect .ct-toolbar {
+  padding: 4px 0 8px;
+}
+.ct-inspect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+}
+.ct-sec {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+  position: relative;
+}
+.ct-sec h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+.ct-sec-btn {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  height: 22px;
+}
+.ct-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.ct-kv dt {
+  color: var(--text-muted);
+}
+.ct-kv dd {
+  margin: 0;
+  min-width: 0;
+  user-select: text;
+}
+.ct-mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.ct-mini td {
+  padding: 3px 6px 3px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  user-select: text;
+}
+.ct-json {
+  margin: 0;
+  padding: 10px;
+  max-height: 60vh;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  user-select: text;
+}

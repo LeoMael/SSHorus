@@ -32,6 +32,11 @@ import {
 } from "../../features/commands/state";
 import { pickImportFile, planImport, type ImportPlan } from "./transfer";
 import "./Commands.css";
+import "./CommandsDetail.css";
+import "./CommandsRun.css";
+import "./CommandsReport.css";
+import "./CommandsPalette.css";
+import "./CommandsImport.css";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 
 export interface CommandsPanelProps {

@@ -1,0 +1,188 @@
+/* Contenedores: limpieza, «Sin motor» y «Al reiniciar». Va la última. */
+
+/* ───────── Limpieza ───────── */
+.ct-cleanup {
+  overflow: auto;
+  padding-bottom: 16px;
+}
+.ct-h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.ct-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 0 10px;
+}
+.ct-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ct-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ct-card-head svg {
+  color: var(--accent);
+}
+.ct-card-size {
+  font-size: 20px;
+  font-weight: 600;
+}
+.ct-df-bar > div {
+  background: var(--accent);
+}
+.ct-bigclean {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ct-bigclean > svg {
+  color: var(--purple);
+  flex: none;
+}
+.ct-cleanup > .section-label {
+  margin: 4px 10px 6px;
+}
+.ct-quick {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 10px;
+}
+.ct-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.ct-quick-btn:hover:not(:disabled) {
+  border-color: var(--red);
+}
+.ct-quick-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ct-quick-btn svg {
+  color: var(--text-muted);
+}
+
+/* ───────── Sin motor ───────── */
+.ct-noengine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 20px;
+  overflow: auto;
+  height: 100%;
+  text-align: center;
+}
+.ct-noengine h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.ct-noengine p {
+  margin: 0;
+  max-width: 560px;
+}
+.ct-noengine-icon {
+  color: var(--accent);
+}
+.ct-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 680px;
+  text-align: left;
+}
+.ct-hint {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ct-hint-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ct-hint-note {
+  font-size: var(--fs-sm);
+  margin-bottom: 6px;
+}
+.ct-hint-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@container (max-width: 780px) {
+  .ct-col-image,
+  .ct-col-created {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .ct-compose-list {
+    width: 200px;
+  }
+}
+
+/* ───────── «Al reiniciar» ───────── */
+.ct-col-auto {
+  width: 108px;
+}
+.ct-auto {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  font-size: 10.5px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  cursor: help;
+}
+.ct-auto-yes {
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+  color: var(--green);
+}
+.ct-auto-no {
+  color: var(--text-faint);
+}
+.ct-auto-unknown {
+  border-style: dashed;
+}
+.ct-auto-notes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.ct-auto-why {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}

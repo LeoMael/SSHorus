@@ -1,7 +1,7 @@
 // Árbol de la barra lateral: fila seleccionada, menú contextual abierto, teclado y «mostrar fila».
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { isModKey } from "../../lib/platform";
-import type { MenuItem } from "./SbContextMenu";
+import type { MenuItem } from "../ui/ContextMenu";
 import { isNavKey, navIndex } from "./sidebarLogic";
 
 export interface MenuState {

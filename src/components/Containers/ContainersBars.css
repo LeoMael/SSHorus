@@ -1,0 +1,145 @@
+/* Contenedores: sub-pestañas y barras. Va después de Containers.css. */
+
+/* ───────── Sub-pestañas ───────── */
+.ct-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  overflow-x: auto;
+  flex: none;
+}
+.ct-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ct-tab:hover {
+  color: var(--text);
+}
+.ct-tab.on {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.ct-tab:focus-visible,
+.ct-seg button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ct-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.ct-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ct-tab-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ───────── Barras ───────── */
+.ct-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  flex-wrap: wrap;
+  flex: none;
+}
+.ct-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 180px;
+  flex: 0 1 260px;
+}
+.ct-search > svg {
+  position: absolute;
+  left: 8px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.ct-search .input {
+  width: 100%;
+  height: 26px;
+  padding-left: 26px;
+  padding-right: 24px;
+  font-size: var(--fs-sm);
+}
+.ct-search .icon-btn {
+  position: absolute;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+}
+.ct-batch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  margin: 0 10px 6px;
+  border: 1px solid var(--mix-accent-35);
+  border-radius: var(--radius-sm);
+  background: var(--mix-accent-10);
+  flex-wrap: wrap;
+}
+.ct-batch strong {
+  margin-right: 6px;
+  font-size: var(--fs-sm);
+}
+.ct-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
+  margin: 0 2px;
+}
+.ct-btn-danger {
+  color: var(--red);
+}
+.ct-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ct-select-sm {
+  height: 26px;
+  padding: 0 6px;
+  font-size: var(--fs-sm);
+}
+.ct-toolbar .checkbox {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.ct-foot {
+  padding: 4px 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  flex: none;
+}

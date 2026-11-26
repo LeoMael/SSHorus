@@ -7,6 +7,10 @@ import { confirmDialog } from "../ui/dialogs";
 import { SetupView } from "./SetupView";
 import { ResultsView } from "./ResultsView";
 import "./MultiRun.css";
+import "./MultiRunPrepare.css";
+import "./MultiRunLibrary.css";
+import "./MultiRunResults.css";
+import "./MultiRunOutput.css";
 
 /** ¿Hay otro diálogo o menú encima (contraseña, confirmación…)? Entonces Escape es suyo. */
 function somethingAbove(): boolean {

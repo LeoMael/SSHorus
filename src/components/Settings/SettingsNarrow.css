@@ -1,0 +1,65 @@
+/* Ajustes: ventana estrecha. Va la última (pisa lo anterior). */
+
+/* ───────── Ventana estrecha: navegación arriba, en una fila desplazable ───────── */
+@media (max-width: 760px) {
+  .st-root {
+    flex-direction: column;
+  }
+  .st-nav {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .st-search {
+    flex: none;
+    width: 150px;
+    margin: 8px 4px 8px 10px;
+  }
+  .st-nav-list {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px 8px 4px;
+  }
+  .st-nav-group {
+    display: flex;
+    gap: 2px;
+  }
+  .st-nav-group + .st-nav-group {
+    margin-top: 0;
+    padding-left: 6px;
+    margin-left: 4px;
+    border-left: 1px solid var(--border);
+  }
+  .st-nav-group-title {
+    display: none;
+  }
+  .st-nav-item {
+    width: auto;
+    flex: none;
+  }
+  .st-nav-empty {
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+  .st-main {
+    padding: 16px;
+  }
+  .st-footer-hint {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .st-search {
+    width: 110px;
+  }
+  .st-nav-item > span {
+    display: none;
+  }
+  .st-nav-item.active > span {
+    display: inline;
+  }
+}

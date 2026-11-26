@@ -223,11 +223,12 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu`, `Segmented`, `ColorPicker`, `SettingsKit`…) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`…) |
 | `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano) y `sessionState` (estado de cada sesión abierta) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte |
+| `styles/` | El tema (BASE): `theme.css` (variables de color y tamaños), `palettes.css` (apariencias), `controls.css` (reinicio, botones, formularios), `overlays.css` (modal, avisos, menú contextual) y `utilities.css` (etiquetas, progreso, spinner, logo). `main.tsx` los importa **en ese orden** (los posteriores pisan a los anteriores). `themes.ts` tiene la lista de apariencias |
 | `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida y `lib/remote/` (lo común a los scripts remotos) |
 
 ### Dónde va cada archivo (criterio de carpetas)
@@ -236,7 +237,7 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 
 | Carpeta | Qué va ahí | Ejemplo |
 |---------|-----------|---------|
-| `components/<X>/` | La **interfaz React** de un dominio: pantallas, diálogos, hooks de pantalla y su CSS. | `components/Admin/UserDialog.tsx` |
+| `components/<X>/` | La **interfaz React** de un dominio: pantallas, diálogos, hooks de pantalla y su CSS. | `components/Admin/users/UserDialog.tsx` |
 | `features/<x>/` | La **lógica sin React** de una función (scripts remotos, parseadores, reglas, cálculos) y los **stores propios** de esa función. Lleva pruebas. | `features/commands/catalog.ts`, `features/fileExplorer/explorerLogic.ts`, `features/reboot/store.ts` |
 | `components/ui/` | **Controles genéricos** que usa más de un dominio, sin lógica de ninguno. | `ui/AdmModal.tsx`, `ui/PopupMenu.tsx`, `ui/ContextMenu.tsx`, `ui/Segmented.tsx` |
 | `stores/` | **Estado de toda la app** (lo que comparten varios dominios). | `stores/tabs.ts`, `stores/sessionState.ts` |
@@ -250,7 +251,7 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   `runKillable`/`runElevated` (`features/jobs/remote.ts`) para que «Cancelar» mate el proceso en el servidor con el
   mismo usuario. Lo puro (lista, historial, texto de estado, salida) está en `features/jobs/state.ts` y `output.ts`;
   el store, en `stores/jobs.ts` (no sabe de ninguna función concreta); la interfaz, en `components/Jobs/` (montada
-  una vez en `App`). Un resultado propio se enseña con el `view` de la tarea (p. ej. `Admin/VulnFixJobView.tsx`).
+  una vez en `App`). Un resultado propio se enseña con el `view` de la tarea (p. ej. `Admin/vulns/VulnFixJobView.tsx`).
 - **Bases de datos** (solo lectura): la lógica está en `features/databases/` (`discover.ts` qué hay, reutilizando los
   puertos de Administración, el catálogo de Túneles y `containers/readAll.ts`; `auth.ts` en qué orden se entra;
   `scripts.ts` el script de `psql`/`mysql`/`sqlite3`/`pg_dump`, en el servidor o con `exec` dentro del contenedor y
@@ -260,6 +261,9 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   contraseña va por stdin y entra al cliente por `PGPASSWORD`/`MYSQL_PWD`.
 - Si un archivo solo lo usa un dominio, va en la carpeta de ese dominio aunque parezca genérico. Cuando lo use un
   segundo dominio, se mueve a `components/ui/` o a `lib/`.
+- **CSS**: un archivo por tema (< 300 líneas, máx. ~400) junto al componente que lo usa e importado desde él. Si un CSS
+  se parte, sus partes se importan **juntas y en el mismo orden** desde cada sitio que importaba el original (p. ej.
+  las 6 de `Admin/` desde `AdminPanel.tsx` y desde `InfraMap/MapScope.tsx`): así la cascada no cambia.
 - Una parte grande de un dominio va en una subcarpeta suya. Ejemplo: el **cortafuegos del mapa** (leer firewalld,
   ufw, nftables e iptables; explicar cada regla en una frase; cruzarlo con los puertos en escucha; y cambiarlo sin
   quedarse fuera, con cambios «a prueba» que el servidor deshace solo) vive en `features/infra/firewall/` porque
@@ -410,6 +414,12 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 - **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web, Mapa, Vulnerabilidades, Auditoría,
   **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
   exec de la sección 8.
+- **Carpetas de `components/Admin/`:** en la raíz lo común (`AdminPanel`, `AdminChrome`, `context`, `HistoryTab`,
+  `PlanReview`, `SudoDialog`, `PasswordField`, `MiniMarkdown`, `VirtualTable` y el CSS común); `users/` (usuarios,
+  grupos, conectados ahora, llaves, nuevo usuario con clave, sudo de la llave, importar usuarios y contenedores de cada
+  usuario); `web/` (puertos, sitios web, tráfico y registro de visitas); `vulns/` (escáner, «Arreglar», actualizar
+  imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `visibility/` («Qué pueden ver»). El menú
+  contextual de las tablas es `ui/ContextMenu` con `look="plain"`.
 - **Nuevo usuario con clave** (`KeyUserWizard.tsx`, `features/admin/keyUser.ts`): valida la llave (tipo +
   base64 + tipo interno), lee `AllowUsers/AllowGroups` con `sshd -T` (o `sshd_config`), arma el plan
   (`useradd` + `usermod -p '*'` + `authorized_keys` 700/600 + linger + bloqueo de túneles SSH cuando «Permitir
@@ -433,7 +443,7 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   - **Sitios web:** `nginx -T` (o los archivos de configuración si falla); Caddy por su API local
     `127.0.0.1:2019/config/` o, si no responde, `caddy adapt`; caducidad de certificados con `openssl`. De esa misma
     lectura (cero SSH extra) `features/admin/webTrafficLog.ts` deduce el archivo de registro de visitas de cada sitio.
-  - **Tráfico web por sitio** (`features/admin/webTraffic.ts`, `webTrafficSetup.ts`, `components/Admin/WebTraffic*.tsx`):
+  - **Tráfico web por sitio** (`features/admin/webTraffic.ts`, `webTrafficSetup.ts`, `components/Admin/web/WebTraffic*.tsx`):
     100 % bajo demanda (sin polling), ejecuta un analizador compacto en Python 3 bajo `ionice -c3 nice -n 19` y
     `timeout 15` que salta a los últimos 8 MiB del archivo (o lee `journalctl -u caddy`) y devuelve un JSON resumido
     (~4 KB). Si el sitio no tiene log o usa uno compartido, `enableSiteLogPlan` propone un Plan con respaldo, validación
@@ -828,7 +838,7 @@ defecto, máximo 100). El análisis pide permiso la primera vez, tiene tiempo l�
 
 ## 16c. Auditar servidor
 
-Sub-pestaña **«Auditoría»** en Administración (`components/Admin/AuditTab.tsx`). Un botón revisa todo, sin
+Sub-pestaña **«Auditoría»** en Administración (`components/Admin/audit/AuditTab.tsx`). Un botón revisa todo, sin
 instalar nada, y da una nota.
 
 1. `src/features/audit/run.ts` ejecuta con la elevación de Administración (`readElevated`; si sudo falla,
