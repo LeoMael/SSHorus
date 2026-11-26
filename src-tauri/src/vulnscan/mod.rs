@@ -62,4 +62,7 @@ mod tests_runtime;
 #[cfg(test)]
 mod live_tests;
 
+#[cfg(test)]
+mod tests_distros;
+
 pub use settings::VulnScanSettings;

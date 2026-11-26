@@ -6,7 +6,7 @@
 //   @@id «uid usuario» · @@os «id|id_like|nombre» · @@sshd (sshd -T) · @@sshdsrc «T|F» · @@sshdcfg (archivos)
 //   @@sshinc «n» · @@passwd «nombre:uid:home:shell» · @@shadow «nombre:empty|locked|set» · @@keys «usuario|n|modo|ruta»
 //   @@sudoers (líneas sin comentarios) · @@groups (getent) · @@fw «herramienta estado [n]»
-//   @@updates «gestor|total|seguridad» · @@reboot · @@failed · @@auth · @@disk (df -P) · @@mem · @@proc
+//   @@updates «gestor|total|seguridad» (dnf, yum, apt, zypper, apk) · @@reboot · @@failed · @@auth · @@disk (df -P) · @@mem · @@proc
 //   @@perms «ruta modo dueño grupo» · @@wwetc · @@webperm («@dir», «@group caddy», archivos) · @@cron
 //   @@ctr («@engine motor rootless» + «nombre|privilegiado|usuario|puertos») · @@end
 
@@ -63,6 +63,11 @@ export const AUDIT_SCRIPT = [
   // escalonadas de Ubuntu, que «apt list --upgradable» enseña aunque no se puedan instalar todavía.
   "elif command -v apt-get >/dev/null 2>&1; then L=$(apt-get -s -o Debug::NoLocking=1 --with-new-pkgs upgrade 2>/dev/null | grep '^Inst ')",
   "  echo \"apt|$(printf '%s\\n' \"$L\" | grep -c '^Inst')|$(printf '%s\\n' \"$L\" | grep -c -- '-security')\"",
+  // zypper (openSUSE/SLES): sin refrescar; si no hay lista (<update-list>) es que no se pudo leer.
+  "elif command -v zypper >/dev/null 2>&1; then o=$($TO zypper -n --no-refresh --xmlout list-updates 2>/dev/null)",
+  "  if printf '%s\\n' \"$o\" | grep -q '<update-list'; then t=$(printf '%s\\n' \"$o\" | grep -c '<update '); else t='?'; fi",
+  "  s=$($TO zypper -n --no-refresh --xmlout list-patches --category security 2>/dev/null | grep -c 'status=\"needed\"')",
+  "  echo \"zypper|$t|$s\"",
   "elif command -v apk >/dev/null 2>&1; then echo \"apk|$(apk version -l '<' 2>/dev/null | grep -c '<')|?\"",
   "else echo 'none|?|?'; fi",
   "echo @@reboot",

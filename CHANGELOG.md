@@ -34,6 +34,12 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   listas de excepciones quedan vacías), cada función tiene su `index.ts`, la terminal y el escáner están en archivos
   más pequeños, y la contraseña aleatoria y la detección de la distribución están en un solo sitio. La app funciona igual.
 
+### Arreglado
+- **Probado en 7 distros** (Debian, Ubuntu, AlmaLinux, Rocky, Fedora, openSUSE y Alpine, con `npm run test:distros`):
+  **Usuarios y grupos** ya usa `useradd` y compañía en Debian y el resto (antes, al no verlos en `/usr/sbin`, elegía
+  los comandos de Alpine); la **Auditoría** lee las actualizaciones pendientes de **openSUSE** (zypper), ya no pide
+  sudo cuando el servidor no guarda registro de entradas y escribe bien «1 carpeta personal es visible».
+
 ## [1.0.0-beta.4] - 2026-11-26
 
 ### Añadido

@@ -431,6 +431,18 @@ npm test               # todas (src/**/*.test.ts)
 npm test -- vulnscan   # solo las que tengan «vulnscan» en la ruta
 ```
 
+Batería por distro (no va en la CI: descarga imágenes). Arranca contenedores efímeros con podman sin root de
+Debian 12, Ubuntu 24.04, AlmaLinux 9, Rocky 9, Fedora 45, openSUSE Leap 15.6 y Alpine 3.20, les pasa los scripts
+reales de SSHorus como un usuario normal con sudo (usuarios, sesiones, puertos, monitor, distro, auditoría,
+cortafuegos, sitios web y el escáner) y comprueba lo que entienden los mismos parseadores de la app:
+
+```bash
+npm run test:distros                     # todas (unos 10 min la primera vez; ~1 GB de imágenes, se borran al acabar)
+npm run test:distros -- debian alpine    # solo esas
+npm run test:distros -- --sin-rust       # sin el escáner (no compila el motor)
+# Otras opciones: --conservar-imagenes, --conservar-salidas, --detalle
+```
+
 La CI (GitHub Actions) ejecuta en cada push, en Linux y en Windows: `tsc`, ESLint (0 avisos), `vite build`,
 `cargo clippy --all-targets` y `cargo test --lib` (sin las pruebas que necesitan servidor SSH). `npm test` corre
 solo en Linux, porque varias pruebas ejecutan scripts de servidor con bash.

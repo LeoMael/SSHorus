@@ -31,6 +31,9 @@ export const PROBED_TOOLS = [
  * Se ejecuta con `sh` (ver run.ts), no con el shell de login.
  */
 export const READ_SCRIPT = [
+  // En Debian (y Alpine) useradd, chpasswd… están en /usr/sbin, que no está en el PATH de un usuario
+  // normal por SSH: sin esto se elegirían los comandos de busybox (adduser -D…) en un Debian.
+  "PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin",
   "echo @@me; id -un 2>/dev/null",
   "echo @@passwd; getent passwd 2>/dev/null || cat /etc/passwd",
   "echo @@group; getent group 2>/dev/null || cat /etc/group",

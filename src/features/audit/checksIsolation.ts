@@ -70,7 +70,7 @@ export function isolationChecks(ctx: AuditCtx, ports: PortsResult | null): Check
             "isolation",
             "Carpetas personales (HOME) abiertas",
             "warn",
-            `${plural(openHomes.length, "carpeta personal es", "carpetas personales son")} visibles para otros usuarios`,
+            `${plural(openHomes.length, "carpeta personal es visible", "carpetas personales son visibles")} para otros usuarios`,
             {
               weight: 1,
               items: openHomes.map((h) => `${h.path} (permisos ${h.mode})`),

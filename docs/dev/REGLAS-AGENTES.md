@@ -31,6 +31,7 @@ npm run lint && npx tsc --noEmit                                                
 npm test                                                                              # pruebas de la interfaz (src/**/*.test.ts)
 npm test -- TU_FILTRO                                                                 # solo las que tengan TU_FILTRO en la ruta
 npm run check                                                                         # ESLint + ciclos + tope de líneas + pruebas (antes de tu informe)
+CARGO_BUILD_JOBS=3 CARGO_INCREMENTAL=0 npm run test:distros -- debian alpine           # scripts remotos en contenedores de cada distro (podman; no va en la CI)
 ```
 - No empaquetes pruebas a mano con `npx rolldown … && node …`: usa `npm test` (borra sus archivos temporales).
 - La CI ejecuta en Linux y en Windows `tsc`, ESLint (0 avisos), `vite build`, `cargo clippy --all-targets` y

@@ -21,6 +21,8 @@ function upgradeCommand(mgr: string, securityOnly: boolean): string | null {
       return `${mgr} -y upgrade${securityOnly ? " --security" : ""}`;
     case "apt":
       return "apt-get update\nDEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --with-new-pkgs upgrade";
+    case "zypper":
+      return securityOnly ? "zypper -n refresh\nzypper -n patch --category security" : "zypper -n refresh\nzypper -n update";
     case "apk":
       return "apk update\napk upgrade";
     default:
@@ -36,7 +38,7 @@ export function updateChecks(ctx: AuditCtx, vuln: AuditInput["vuln"], now: numbe
   if (total === null) {
     out.push(check("updates.pending", "updates", "Actualizaciones pendientes", "skip", mgr === "none" ? "Gestor de paquetes no reconocido" : "No se pudo leer (sin caché de paquetes)", { weight: 3 }));
   } else if (sec !== null && sec > 0) {
-    const c = upgradeCommand(mgr, mgr === "dnf" || mgr === "yum");
+    const c = upgradeCommand(mgr, mgr === "dnf" || mgr === "yum" || mgr === "zypper");
     out.push(
       check("updates.pending", "updates", "Actualizaciones pendientes", "bad", `${plural(sec, "actualización", "actualizaciones")} de seguridad (${total} en total)`, {
         weight: 3,
@@ -281,7 +283,9 @@ export function loginChecks(ctx: AuditCtx): Check[] {
   const f = a.find((l) => l.startsWith("file "));
   const f2b = a.find((l) => l.startsWith("f2b "))?.slice(4) ?? "none";
   const n = j ? Number(j.split(" ")[1]) : f ? Number(f.split(" ")[1]) : null;
-  if (n === null || !Number.isFinite(n)) out.push(check("logins.failed", "logins", "Intentos de entrada fallidos", "skip", NEEDS_SUDO));
+  // Con sudo y sin nada que leer: no hay journald ni registro de entradas (contenedores, Alpine sin syslog…).
+  const why = ctx.elevated ? "No hay registro de entradas que leer (ni journald ni /var/log/auth.log, secure o messages)" : NEEDS_SUDO;
+  if (n === null || !Number.isFinite(n)) out.push(check("logins.failed", "logins", "Intentos de entrada fallidos", "skip", why));
   else {
     const many = n > 200 && f2b !== "active";
     out.push(check("logins.failed", "logins", "Intentos de entrada fallidos", many ? "warn" : "info", `${n} intentos fallidos${j ? " en 24 h" : " en el registro"}`, { weight: 1 }));
