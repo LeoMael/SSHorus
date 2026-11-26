@@ -69,7 +69,9 @@ function pgConn(c: ClientCall): string[] {
 
 function pgClient(c: ClientCall): string {
   const lines = [
-    `PGOPTIONS='-c statement_timeout=${STATEMENT_SECS * 1000} -c default_transaction_read_only=on'; export PGOPTIONS`,
+    // standard_conforming_strings: con él apagado (en una base vieja o con ALTER DATABASE), psql tomaría «\'»
+    // como comilla escapada y un filtro de la IA podría cerrar el literal y colar `\!` (comando del shell).
+    `PGOPTIONS='-c statement_timeout=${STATEMENT_SECS * 1000} -c default_transaction_read_only=on -c standard_conforming_strings=on'; export PGOPTIONS`,
     "PGCONNECT_TIMEOUT=10; export PGCONNECT_TIMEOUT",
     // Mensajes en inglés (se reconocen los errores) y salida en UTF-8.
     "LC_MESSAGES=C; PGCLIENTENCODING=UTF8; export LC_MESSAGES PGCLIENTENCODING",

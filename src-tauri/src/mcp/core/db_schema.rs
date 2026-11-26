@@ -31,7 +31,7 @@ pub struct DbSchemaParams {
     #[serde(default)]
     pub session_id: Option<String>,
     /// Qué base de datos leer: el `key` de un destino de la lista (p. ej. «pg@127.0.0.1:5432» o
-    /// «mysql@ctr:root/tienda-db»). Sin él, devuelve los destinos encontrados.
+    /// «mysql@ctr:docker:root/tienda-db»). Sin él, devuelve los destinos encontrados.
     #[serde(default)]
     pub target: Option<String>,
     /// Ruta de un archivo SQLite del servidor (en lugar de `target`). No se busca por el disco.

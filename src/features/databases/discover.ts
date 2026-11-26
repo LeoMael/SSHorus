@@ -111,7 +111,8 @@ export function buildTargets(o: { ports: ListenPort[]; containers: FoundContaine
   }
   for (const { c, engine } of ctrs) {
     out.push({
-      key: `${KEY_PREFIX[engine]}@ctr:${c.user}/${c.name}`,
+      // Con el motor: un «db» de Docker y otro de Podman del mismo usuario son bases distintas.
+      key: `${KEY_PREFIX[engine]}@ctr:${c.engine}:${c.user}/${c.name}`,
       engine,
       place: { kind: "container", engine: c.engine, owner: c.ctOwner, user: c.user, sudo: c.sudo, id: c.id, name: c.name, image: c.image },
       label: c.name,

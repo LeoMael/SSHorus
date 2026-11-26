@@ -101,7 +101,9 @@ function nibbles(ip: string): { n: number[]; bits: number } | null {
 
 /** La IP está dentro de la red («10.0.0.0/8», «2001:db8::/32» o una IP suelta). null = no se sabe leer. */
 export function ipInNet(ip: string, net: string): boolean | null {
-  const [base, lenStr] = net.split("/");
+  const [base, lenStr, ...more] = net.split("/");
+  // «1.2.3.4/», «/0x8» o «/8/9» no son redes (Number("") daría 0: «cualquier sitio»).
+  if (more.length || (lenStr !== undefined && !/^\d{1,3}$/.test(lenStr))) return null;
   const a = nibbles(ip);
   const b = nibbles(base ?? "");
   if (!a || !b) return null;

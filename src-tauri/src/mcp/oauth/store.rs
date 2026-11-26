@@ -29,6 +29,8 @@ const ID_TRIES: usize = 16;
 pub struct AuthRequest {
     pub client: ClientInfo,
     pub redirect_uri: String,
+    /// El cliente mandó `redirect_uri` (si no, era la única registrada): entonces `/token` también la pide.
+    pub redirect_given: bool,
     pub code_challenge: String,
     pub state: Option<String>,
     pub resource: String,
@@ -44,6 +46,7 @@ pub struct AuthRequest {
 pub struct CodeGrant {
     pub client_id: String,
     pub redirect_uri: String,
+    pub redirect_given: bool,
     pub code_challenge: String,
     pub resource: String,
     pub scope: Option<String>,

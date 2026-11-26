@@ -56,8 +56,11 @@ export async function dbSchemaForAssistant(payload: Record<string, unknown>): Pr
   const elevation: Elevation | null = isRoot ? { kind: "root" } : null;
   const ctx: DbContext = { sessionId: r.sessionId, elevation };
   const sshPort = useProfiles.getState().servers.find((s) => s.id === r.profileId)?.port ?? 22;
+  // La búsqueda de la pestaña puede venir de sudo (contenedores de root y de otros usuarios, que sin sudo ni
+  // se pueden abrir): el asistente solo la reutiliza si se hizo sin sudo (o la conexión ya es root).
+  const cached = useDbDiscovery.getState().discovery[r.sessionId];
   const discover = async (): Promise<Discovery> =>
-    useDbDiscovery.getState().discovery[r.sessionId] ?? (await discoverDatabases(r.sessionId, { elevation, me: info.user, isRoot, sshPort }));
+    cached && (!cached.elevated || isRoot) ? cached : await discoverDatabases(r.sessionId, { elevation, me: info.user, isRoot, sshPort });
 
   if (!r.target) {
     const d = await discover();

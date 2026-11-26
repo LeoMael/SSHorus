@@ -29,9 +29,14 @@ export function useTargetSessions(ctx: DbContext, profileId: string, onSavedChan
     setStates((all) => ({ ...all, [key]: typeof s === "function" ? s(all[key]) : s }));
   }, []);
 
+  // Solo al empezar a cargar se elige esa base: si termina después de que eligieras otra, no te devuelve a ella.
   const setSchema = useCallback(
     (key: string, db: string, load: SchemaLoad) =>
-      put(key, (prev) => (prev?.phase === "open" ? { ...prev, database: db, schemas: { ...prev.schemas, [db]: load } } : (prev ?? { phase: "opening" }))),
+      put(key, (prev) =>
+        prev?.phase === "open"
+          ? { ...prev, database: load.state === "loading" ? db : prev.database, schemas: { ...prev.schemas, [db]: load } }
+          : (prev ?? { phase: "opening" }),
+      ),
     [put],
   );
 

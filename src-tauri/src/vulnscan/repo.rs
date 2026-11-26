@@ -13,7 +13,9 @@ use super::model::{DistroTool, Finding, HostInfo, NoteLevel, RawOutput, ScanNote
 use super::parse::{section, sections};
 use super::rpmver::cmp_installed;
 
-const ARCHES: &[&str] = &["x86_64", "noarch", "i686", "i386", "aarch64", "ppc64le", "s390x", "armv7hl", "ppc64", "riscv64"];
+/// `x86_64_v2`: AlmaLinux 10 para procesadores x86-64 más viejos. Si falta una, sus paquetes parecerían «sin
+/// versión corregida en tus repos» y no se ofrecería «Arreglar».
+const ARCHES: &[&str] = &["x86_64", "x86_64_v2", "noarch", "i686", "i586", "i386", "aarch64", "ppc64le", "s390x", "armv7hl", "ppc64", "riscv64"];
 
 fn name_of(name_arch: &str) -> Option<&str> {
     let (name, arch) = name_arch.rsplit_once('.')?;
@@ -25,7 +27,8 @@ fn looks_like_version(v: &str) -> bool {
 }
 
 /// Líneas de `check-update`: «nombre.arch  [epoch:]versión-release  repositorio». dnf4 parte en dos
-/// las líneas con nombres largos (el nombre solo y debajo versión y repositorio). Lo que va después de
+/// las líneas con nombres largos (el nombre solo y debajo versión y repositorio) y yum, las de versión
+/// larga (nombre y versión, y debajo el repositorio). Lo que va después de
 /// «Obsoleting Packages» no son actualizaciones. Devuelve nombre → la versión más nueva.
 pub fn parse_check_update(text: &str) -> BTreeMap<String, String> {
     let mut out: BTreeMap<String, String> = BTreeMap::new();
@@ -41,6 +44,7 @@ pub fn parse_check_update(text: &str) -> BTreeMap<String, String> {
                 continue;
             }
             ([v, _repo], Some(n)) => (n, (*v).to_string()),
+            ([n, v], None) => ((*n).to_string(), (*v).to_string()),
             ([n, v, _repo], _) => ((*n).to_string(), (*v).to_string()),
             _ => continue,
         };
@@ -70,7 +74,9 @@ pub fn upgrades(tool: DistroTool, out: &RawOutput) -> Option<BTreeMap<String, St
         return None;
     }
     let text = section(&secs, "upgrades").map(|l| l.join("\n")).unwrap_or_default();
-    Some(parse_check_update(&text))
+    let up = parse_check_update(&text);
+    // 100 = hay actualizaciones: si no se entendió ninguna, no se sabe (no «tus repos no traen nada»).
+    (rc == 0 || !up.is_empty()).then_some(up)
 }
 
 /// Hallazgos (clave) con versión corregida publicada que tus repositorios aún no ofrecen: ningún

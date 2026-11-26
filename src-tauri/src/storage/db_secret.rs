@@ -3,7 +3,7 @@
 //! Un solo secreto por servidor (`<id>:db`, en la bóveda o el llavero como los demás) con un mapa JSON
 //! «destino → credencial». Así se borra y se copia junto con el servidor (`server_secret_ids`) sin tener
 //! que recorrer el llavero. El destino es la clave que arma la interfaz (`pg@127.0.0.1:5432`,
-//! `mysql@ctr:ana/tienda-db`…). La contraseña solo va a la interfaz, que la pasa por stdin al comando
+//! `mysql@ctr:podman:ana/tienda-db`…). La contraseña solo va a la interfaz, que la pasa por stdin al comando
 //! remoto: nunca a la línea de comandos, a los registros ni al asistente de IA.
 
 use std::collections::BTreeMap;

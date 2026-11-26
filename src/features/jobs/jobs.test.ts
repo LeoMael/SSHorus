@@ -283,6 +283,19 @@ try {
   ok(code !== 0 && jobOut.includes("empieza") && !jobOut.includes("nunca"), "cancelar: no llega al final");
   eq(sh(`kill -0 -${group} 2>/dev/null && echo vivo || echo nada`).stdout.trim(), "nada", "no queda nada del grupo (tampoco el «sleep» en segundo plano)");
   eq(sh(killJobScript(id)).stdout.trim(), "gone", "cancelar otra vez: ya no está");
+  ok(!fs.existsSync(`${tmp}/sshorus-job-${id}.pid.cancel`), "y no deja el aviso de cancelar");
+
+  // Cancelar antes de que la tarea apunte su grupo (sudo aún pidiendo paso): la tarea ya no empieza.
+  const early = "test-job-early";
+  const killer = cp.spawn("sh", ["-c", killJobScript(early)], { env: { ...env, TMPDIR: tmp } });
+  let killOut = "";
+  killer.stdout.on("data", (d) => (killOut += d.toString()));
+  const killed = new Promise<number | null>((res) => killer.on("exit", (c) => res(c)));
+  await tick(300);
+  const late = sh(jobScript(early, "echo corre"));
+  await killed;
+  eq([late.status, late.stdout.trim(), killOut.trim()], [130, "", "gone"], "cancelada antes de empezar: no corre nada");
+  ok(!fs.existsSync(`${tmp}/sshorus-job-${early}.pid.cancel`), "ni queda el aviso");
   const fine = sh(jobScript("test-job-5678", "echo hola; exit 3"));
   eq([fine.status, fine.stdout.trim()], [3, "hola"], "una tarea normal devuelve su salida y su código");
   ok(!fs.existsSync(`${tmp}/sshorus-job-test-job-5678.pid`), "al terminar se borra el archivo del grupo");

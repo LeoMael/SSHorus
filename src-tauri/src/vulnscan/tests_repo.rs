@@ -175,6 +175,12 @@ fn check_update_output() {
     assert_eq!(repo::upgrades(DistroTool::Dnf4, &raw("100")).map(|u| u.len()), Some(1));
     assert_eq!(repo::upgrades(DistroTool::Dnf4, &raw("1")), None, "dnf falló: no se sabe");
     assert_eq!(repo::upgrades(DistroTool::Debsecan, &raw("100")), None);
+    let odd = RawOutput { stdout: "@@upgrades\nalgo que no se entiende\n@@uprc 100\n@@end\n".into(), ..Default::default() };
+    assert_eq!(repo::upgrades(DistroTool::Dnf4, &odd), None, "hay actualizaciones pero no se entendió ninguna: no se sabe");
+    // AlmaLinux 10 x86_64_v2 y la versión larga partida por yum (el repositorio en la línea de abajo).
+    let up = repo::parse_check_update("glibc.x86_64_v2   2.39-37.el10_0   baseos\nsome-package.x86_64   1:2.34.0-10000.el7_9.longrelease\n    updates\n");
+    assert_eq!(up.get("glibc").map(String::as_str), Some("2.39-37.el10_0"));
+    assert_eq!(up.get("some-package").map(String::as_str), Some("1:2.34.0-10000.el7_9.longrelease"));
 }
 
 #[test]

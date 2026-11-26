@@ -165,6 +165,29 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   conexión con token no tenga acceso, y vale solo para quien tenga Completo o Solo lo marcado ahí.
 - El servidor MCP rechaza las peticiones que no sabe de quién son (antes usaban los permisos de la conexión con
   token) y las páginas que se hacen pasar por otro nombre de equipo («DNS rebinding»).
+- **Revisión del lote nuevo (seguridad y errores):**
+  - **Bases de datos:** un nombre de tabla con «\» ya no puede hacer que el cliente `mysql` de Oracle ejecute un
+    comando del shell al pulsar **Copiar DDL**, y un filtro de `get_db_schema` ya no puede cerrar el texto en
+    PostgreSQL con `standard_conforming_strings` apagado. El asistente de IA ya no ve los contenedores que la
+    pestaña encontró con sudo (él va sin sudo). Si una base tarda en cargar, al terminar ya no te devuelve a ella
+    si mientras elegiste otra. Un contenedor «db» de Docker y otro de Podman ya no se confunden.
+  - **Cortafuegos:** abrir algo que ya estaba abierto (p. ej. el servicio «ssh») o que se solapa con un rango ya
+    abierto se rechaza: al deshacerlo se quitaba también lo que había y podías quedarte fuera. Deshacer el quitar
+    una regla de ufw la deja en su sitio (antes volvía al final, detrás de un «DENY», y no dejaba pasar). Si
+    confirmar o deshacer falla, el cambio sigue a prueba con sus botones; el tiempo que queda se cuenta desde que
+    se aplicó; un origen mal escrito («10.0.0.0/8/9», «1.2.3.4/») ya no se acepta.
+  - **Vulnerabilidades:** si al volver a comprobar OSV.dev no responde, el inventario llega a medias o la
+    herramienta de la distro falla, ya no se da por arreglado lo que no se pudo mirar (ni se guarda así en el
+    historial). **Cancelar** justo al empezar «Arreglar» ya no deja `dnf` en marcha como root. `check-update` se
+    entiende también en AlmaLinux 10 (`x86_64_v2`) y con las líneas que parte yum.
+  - **Contenedores:** eliminar una imagen de Docker bajada solo por su digest ya no borra la que se llama
+    `nombre:latest` (se le inventaba esa etiqueta). «Editar compose» en «Al reiniciar» aplica todos los archivos
+    del proyecto (`-f base.yml -f prod.yml`), no solo el primero.
+  - **Sitios web → registro de visitas:** en Caddy, con un `http://dominio { redir … }` antes del sitio, el registro
+    va al bloque del sitio; un `log` que envía por red (`output net`) se respeta; en nginx, las llaves dentro de
+    comillas ya no confunden dónde acaba un bloque; los archivos con finales de línea CRLF quedan tal cual.
+  - **Asistentes por HTTP (OAuth):** si el asistente no mandó `redirect_uri` al pedir la autorización (tenía una
+    sola registrada), al canjear el código ya no se le exige.
 
 ### Cambiado
 - El aviso flotante de **Reiniciar ahora** (abajo a la izquierda) pasa a ser una tarea más de la ventanita de abajo a

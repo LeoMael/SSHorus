@@ -2,7 +2,8 @@
 //! fuera del hilo async.
 //!
 //! - `authorization_code`: el código vale una vez y 60 s, para el mismo cliente, la misma dirección de vuelta
-//!   y con el verificador PKCE. Si alguien repite un código ya canjeado, se revoca lo que se dio con él.
+//!   (si se mandó al pedirlo) y con el verificador PKCE. Si alguien repite un código ya canjeado, se revoca
+//!   lo que se dio con él.
 //! - `refresh_token`: cada token de renovación vale una vez; la respuesta trae otro (rotación).
 //! - Revocar el de renovación desconecta al asistente (como «Revocar» en SSHorus); revocar uno de acceso
 //!   solo quita ese.
@@ -82,7 +83,7 @@ impl OAuth {
 
     fn exchange(&self, p: &Params, audit: &AuditLog) -> Result<Tokens, TokenError> {
         let (code, client_id) = (need(p, "code")?, need(p, "client_id")?);
-        let (redirect_uri, verifier) = (need(p, "redirect_uri")?, need(p, "code_verifier")?);
+        let verifier = need(p, "code_verifier")?;
         let used = lock(&self.store).take_code(code, now_ms());
         let g = match used {
             CodeUse::Valid(g) => g,
@@ -104,8 +105,11 @@ impl OAuth {
         if g.client_id != client_id {
             return fail("el código es de otro cliente");
         }
-        if g.redirect_uri != redirect_uri {
-            return fail("la dirección de vuelta no coincide");
+        // RFC 6749 §4.1.3: obligatoria (e idéntica) solo si se mandó al pedir la autorización.
+        match p.get("redirect_uri") {
+            Some(r) if r != g.redirect_uri => return fail("la dirección de vuelta no coincide"),
+            None if g.redirect_given => return fail("falta redirect_uri"),
+            _ => {}
         }
         if !pkce::verify_s256(verifier, &g.code_challenge) {
             return fail("el verificador PKCE no coincide");

@@ -102,6 +102,7 @@ eq(sqlString("o'brien"), "'o''brien'", "literal pg/sqlite");
 eq(mysqlString("a\\'b"), "'a\\\\''b'", "literal mysql: barra y comilla");
 eq(sqlIdent('ra"ro'), '"ra""ro"', "identificador pg");
 eq(mysqlIdent("ra`ro"), "`ra``ro`", "identificador mysql");
+throws(() => mysqlIdent("\\`\\! touch /tmp/p #"), "identificador mysql con «\\»: el cliente de Oracle lo tomaría como escape y ejecutaría «\\!»");
 eq(pgConnValue("a b'c\\d"), "'a b\\'c\\\\d'", "valor de cadena de conexión");
 eq(pgDumpPattern("ventas", 'Pe"didos'), '"ventas"."Pe""didos"', "patrón exacto de pg_dump");
 throws(() => sqlString("a\nb"), "sin saltos de línea (el SQL va en un heredoc)");

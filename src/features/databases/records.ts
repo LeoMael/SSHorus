@@ -70,8 +70,13 @@ export function sqlIdent(s: string): string {
   return `"${checked(s).replace(/"/g, '""')}"`;
 }
 
-/** Identificador de MySQL/MariaDB: `…` con los acentos graves doblados. */
+/**
+ * Identificador de MySQL/MariaDB: `…` con los acentos graves doblados. Sin «\»: el cliente `mysql` de Oracle
+ * la toma como escape también entre acentos graves, perdería la cuenta y ejecutaría lo que siga como comando
+ * suyo (`\!` va al shell).
+ */
 export function mysqlIdent(s: string): string {
+  if (s.includes("\\")) throw new Error("Nombre con «\\» no admitido");
   return `\`${checked(s).replace(/`/g, "``")}\``;
 }
 

@@ -11,8 +11,9 @@ use super::analyze::analyze;
 use super::cache::OsvCache;
 use super::model::*;
 use super::osv::{BatchItem, Hit, OsvApi, OsvError, Query};
-use super::recheck::merge_system;
+use super::recheck::{degraded, merge_system};
 use super::store::History;
+use crate::error::AppError;
 
 const ECO: &str = "Rocky Linux:9";
 const OLD_K: &str = "5.14.0-427.13.1.el9_4";
@@ -186,4 +187,45 @@ async fn recheck_drops_what_was_fixed_with_a_warm_cache() {
     assert_eq!(latest.id, merged.id);
     assert!(by_cve(&latest, "CVE-2026-1004").is_none());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// OSV.dev caída (o sin red) al volver a comprobar.
+struct DownOsv;
+
+impl OsvApi for DownOsv {
+    async fn querybatch(&self, _: &[(Query, Option<String>)]) -> Result<Vec<BatchItem>, OsvError> {
+        Err(OsvError::Other(AppError::Network("sin conexión".into())))
+    }
+
+    async fn vuln(&self, _: &str) -> Result<Value, OsvError> {
+        Err(OsvError::NotFound)
+    }
+}
+
+#[tokio::test]
+async fn a_recheck_that_could_not_look_does_not_count_as_fixed() {
+    let api = rocky_osv();
+    let p = no_progress();
+    let uname = format!("{NEW_K}.x86_64");
+    let cancel = CancellationToken::new();
+    let input = rocky_input(&uname, "7.76.1-26.el9");
+    let base = analyze(&input, Some(&api), &OsvCache::none(), &cancel, &p).await.unwrap();
+    assert!(by_cve(&base, "CVE-2026-1004").is_some());
+
+    // OSV no responde: sin sus avisos, todo parecería arreglado. No vale.
+    let after = rocky_input(&uname, "7.76.1-29.el9");
+    let partial = analyze(&after, Some(&DownOsv), &OsvCache::none(), &cancel, &p).await.unwrap();
+    assert!(partial.findings.is_empty(), "sin OSV no sale nada…");
+    let why = degraded(&base, &partial, &after).expect("…y eso no es «arreglado»");
+    assert!(why.contains("OSV.dev"), "{why}");
+
+    // El inventario cortado tampoco.
+    let mut cut = after.clone();
+    cut.inventory.stdout = cut.inventory.stdout.replace("@@end\n", "");
+    let partial = analyze(&cut, Some(&api), &OsvCache::none(), &cancel, &p).await.unwrap();
+    assert!(degraded(&base, &partial, &cut).is_some_and(|w| w.contains("inventario")));
+
+    // Con todo bien, sí sirve.
+    let partial = analyze(&after, Some(&api), &OsvCache::none(), &cancel, &p).await.unwrap();
+    assert_eq!(degraded(&base, &partial, &after), None);
 }

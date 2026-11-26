@@ -77,6 +77,7 @@ try {
   ok(!pw.out.split("\n").some((l) => l.startsWith("ARG=") && l.includes("s3cr")), "y nunca por sus argumentos");
   ok(pw.out.includes("ARG=-h\nARG=127.0.0.1\nARG=-p\nARG=5433\nARG=-U\nARG=app\nARG=-d\nARG=dbname='tienda'"), "conexión por TCP con usuario y base");
   ok(pw.out.includes("STDIN<<\nSELECT 'V', 1;\n>>"), "el SQL llega por stdin, sin tocar");
+  ok(pw.script.includes("-c standard_conforming_strings=on'"), "psql: «\\» nunca escapa la comilla de un literal (aunque la base lo tenga apagado)");
 
   const peer = run({ engine: "postgres", place: HOST, auth: { kind: "peer" }, database: null, action: { kind: "sql", sql: "SELECT 1;" } });
   ok(peer.out.includes("PGPASSWORD=<sin>") && peer.out.includes("ARG=dbname='postgres'") && !peer.out.includes("ARG=-h"), "peer: por socket, sin contraseña, base postgres");
@@ -166,7 +167,7 @@ const targets = buildTargets({
   containers: [ctrOf("tienda-db", "docker.io/library/postgres:17", 5433), ctrOf("vieja", "postgres:12", null, "exited"), ctrOf("web", "nginx", null)],
   probe,
 });
-eq(targets.map((t) => t.key), ["pg@127.0.0.1:5432", "mysql@127.0.0.1:3306", "pg@ctr:ana/tienda-db"], "servicio, socket de mysql y contenedor; sin repetir el puerto que publica el contenedor ni los parados");
+eq(targets.map((t) => t.key), ["pg@127.0.0.1:5432", "mysql@127.0.0.1:3306", "pg@ctr:podman:ana/tienda-db"], "servicio, socket de mysql y contenedor; sin repetir el puerto que publica el contenedor ni los parados");
 eq(targets.map((t) => t.problem), [null, null, null], "con psql y mariadb no hay avisos");
 eq(buildTargets({ ports: [port(3306, ["mysqld"])], containers: [], probe: parseProbe("") })[0].problem, "Falta el cliente mysql o mariadb en el servidor", "aviso si falta el cliente");
 eq(groupTargets(targets).map((g) => [g.title, g.targets.length]), [["En el servidor", 2], ["En contenedores", 1]], "grupos de la lista");

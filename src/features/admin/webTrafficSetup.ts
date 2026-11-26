@@ -65,11 +65,15 @@ export function isSshorusLog(site: Site): boolean {
   return !!site.accessLog?.path && site.accessLog.path === suggestedLogPath(site);
 }
 
-/** Qué se le pasa al parche: Caddy busca el bloque por dominio; nginx, por archivo y línea. */
+/**
+ * Qué se le pasa al parche: Caddy busca el bloque por dominio (y su puerto, por si el mismo dominio tiene
+ * otro bloque: el «http://…» que redirige o «dominio:8443»); nginx, por archivo y línea.
+ */
 function patchTarget(server: ServerInfo, site: Site): { where: string; target: string } | null {
   if (site.server === "caddy") {
     const host = site.names[0];
-    return host ? { where: server.configPath, target: host } : null;
+    const port = site.listens[0]?.port;
+    return host ? { where: server.configPath, target: port ? `${host}|${port}` : host } : null;
   }
   return site.file && site.line ? { where: site.file, target: String(site.line) } : null;
 }

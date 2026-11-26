@@ -20,6 +20,9 @@ use crate::error::{AppError, AppResult};
 
 pub use super::analyze_merge::{merge_rescan, summary_of};
 
+/// Comienzo del aviso «faltó el detalle de algunos avisos» (volver a comprobar lo reconoce).
+pub const DETAILS_FAILED: &str = "No se pudo leer el detalle de";
+
 /// Progreso: (fase, hechos, total, texto).
 pub type ProgressFn<'a> = &'a (dyn Fn(&str, usize, usize, &str) + Send + Sync);
 
@@ -287,7 +290,7 @@ pub async fn analyze<A: OsvApi>(
                                     notes.push(ScanNote::new(
                                         "osv",
                                         NoteLevel::Warn,
-                                        format!("No se pudo leer el detalle de {failed} de {total} avisos"),
+                                        format!("{DETAILS_FAILED} {failed} de {total} avisos"),
                                     ));
                                 }
                                 let index: HashMap<&Query, usize> = uniq.iter().enumerate().map(|(i, q)| (q, i)).collect();

@@ -52,7 +52,8 @@ function EditComposeButton({ g }: { g: ComposeGroup }) {
       detail: g.project,
       key: p.key,
       owner: g.owner,
-      cmds: [{ ...withOwner(composeCmd(tool, p.dir, p.file, "up", { project: g.project }), g.owner), mergeStderr: true }],
+      // Con todos sus archivos (`-f base.yml -f prod.yml`): solo con el primero, `up` recrearía sin lo demás.
+      cmds: [{ ...withOwner(composeCmd(tool, p.dir, g.files.length ? g.files : p.file, "up", { project: g.project }), g.owner), mergeStderr: true }],
       success: "Cambios aplicados",
       onFinished: () => void ct.reload("containers"),
     });

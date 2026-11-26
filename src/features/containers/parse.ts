@@ -75,9 +75,11 @@ export function parseImages(text: string): ImageInfo[] {
     const repo = str(pick(o, "Repository"));
     const tag = str(pick(o, "Tag"));
     const names = strList(pick(o, "Names", "RepoTags"));
+    // Docker: sin etiqueta («Tag» <none>, p. ej. una imagen bajada solo por su digest) NO es «:latest»: con esa
+    // etiqueta inventada, «Eliminar» borraría otra imagen (la que de verdad se llama «repo:latest»).
     let tags: string[];
     if (names.length) tags = names;
-    else if (repo && repo !== "<none>") tags = [`${repo}:${tag && tag !== "<none>" ? tag : "latest"}`];
+    else if (repo && repo !== "<none>" && tag && tag !== "<none>") tags = [`${repo}:${tag}`];
     else tags = [];
     tags = tags.filter((t) => !t.startsWith("<none>"));
     const containers = num(pick(o, "Containers"));

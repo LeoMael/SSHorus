@@ -12,11 +12,34 @@ use std::collections::BTreeSet;
 
 use tauri::{AppHandle, Emitter};
 
-use super::analyze::summary_of;
+use super::analyze::{summary_of, DETAILS_FAILED};
 use super::commands::{analyze_and_save, ProgressPayload, ScanTicket, PROGRESS_EVENT};
 use super::model::*;
+use super::parse::inventory;
 use super::store::History;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
+
+/// Por qué el análisis parcial no sirve para decir qué se arregló (None = sirve). Lo que falte en él tiene
+/// que faltar porque ya no está, no porque no se pudo mirar: con el inventario a medias, una fuente que
+/// antes respondió y ahora no (OSV.dev caído, la herramienta de la distro falló) o avisos sin detalle,
+/// guardarlo daría por arregladas vulnerabilidades que siguen ahí.
+pub fn degraded(base: &Report, partial: &Report, input: &ScanInput) -> Option<String> {
+    if input.inventory.timed_out || !inventory::parse_inventory(&input.inventory.stdout).complete {
+        return Some("el inventario de paquetes llegó incompleto".into());
+    }
+    if !inventory::parse_detect(&input.detect.stdout).complete {
+        return Some("la detección del sistema llegó incompleta".into());
+    }
+    let used = |r: &Report, id: SourceId| r.sources.iter().any(|s| s.id == id && s.used);
+    for id in [SourceId::Osv, SourceId::Distro] {
+        if used(base, id) && !used(partial, id) {
+            let s = partial.sources.iter().find(|s| s.id == id);
+            let label = s.map_or("una fuente", |s| s.label.as_str());
+            return Some(format!("{label}: {}", s.and_then(|s| s.note.as_deref()).unwrap_or("no respondió")));
+        }
+    }
+    partial.notes.iter().find(|n| n.phase == "osv" && n.text.starts_with(DETAILS_FAILED)).map(|n| n.text.clone())
+}
 
 /// Fases que salen del análisis parcial (sus avisos se cambian por los nuevos).
 const SYSTEM_PHASES: &[&str] = &["detect", "inventory", "distro", "osv", "merge"];
@@ -81,6 +104,11 @@ pub async fn vulnscan_recheck(app: AppHandle, server_id: String, report_id: Stri
         let _ = app.emit(PROGRESS_EVENT, ProgressPayload { scan_id: sid.clone(), phase: phase.into(), done, total, text: text.into() });
     };
     let partial = analyze_and_save(&input, &ticket.token, &emit, false).await?;
+    if let Some(why) = degraded(&base, &partial, &input) {
+        return Err(AppError::Invalid(format!(
+            "No se pudo volver a comprobar del todo ({why}): el informe anterior se queda como estaba. Vuelve a comprobar en un rato."
+        )));
+    }
     let merged = merge_system(&base, &partial);
     history.save(&merged)?;
     Ok(merged)

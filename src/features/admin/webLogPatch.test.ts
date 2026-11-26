@@ -115,6 +115,30 @@ try {
   // Formato de la versión anterior (marca al final de la línea): también se quita.
   fs.writeFileSync(conf, `server {\n    access_log /var/log/nginx/viejo.access.log combined; ${TRAFFIC_LOG_MARK}\n    listen 80;\n}\n`);
   eq(patch("disable", "nginx", conf, "1", "/x.log").text, "server {\n    listen 80;\n}\n", "nginx: quita también el formato anterior");
+
+  // Caddy: el mismo dominio con otro bloque antes (el «http://» que redirige): va al del puerto del sitio.
+  const two = `${tmp}/two.caddy`;
+  fs.writeFileSync(two, "http://example.com {\n\tredir https://example.com{uri}\n}\n\nexample.com {\n\treverse_proxy 127.0.0.1:3000\n}\n");
+  const twoOn = patch("enable", "caddy", two, "example.com|443", "/var/log/caddy/example.com.log");
+  ok((twoOn.text ?? "").startsWith("http://example.com {\n\tredir") && (twoOn.text ?? "").includes(`example.com {\n\t${TRAFFIC_LOG_MARK}\n`), "Caddy: el registro va al bloque del sitio (443), no al que redirige");
+  ok((patch("enable", "caddy", two, "example.com|80", "/x.log").text ?? "").startsWith(`http://example.com {\n\t${TRAFFIC_LOG_MARK}`), "Caddy: y con el puerto 80, al de http://");
+
+  // Caddy: un «log» que envía por red (output net) no se sustituye.
+  fs.writeFileSync(two, "example.com {\n\tlog {\n\t\toutput net 10.0.0.9:5140\n\t}\n\trespond \"it's {ok}\"\n}\n");
+  const net = patch("enable", "caddy", two, "example.com|443", "/var/log/caddy/example.com.log");
+  ok((net.text ?? "").includes("\tlog {\n\t\toutput net 10.0.0.9:5140\n\t}") && !(net.text ?? "").includes("antes:"), "Caddy: el log por red se queda");
+
+  // nginx: llaves dentro de comillas (return 200 '{"ok":1') no cuentan como bloques.
+  fs.writeFileSync(conf, "http {\n    server {\n        listen 80;\n        location /x { return 200 '{\"ok\":1'; }\n    }\n    server {\n        listen 81;\n    }\n}\n");
+  const quoted = patch("enable", "nginx", conf, "2", "/var/log/nginx/q.access.log");
+  ok((quoted.text ?? "").includes(`'; }\n        ${TRAFFIC_LOG_MARK}\n        access_log /var/log/nginx/q.access.log combined;\n    }\n    server {\n        listen 81;`), "nginx: el registro va en su server, no en http");
+
+  // CRLF: activar y quitar deja el archivo byte a byte como estaba.
+  const crlf = "server {\r\n    listen 80;\r\n    access_log off;\r\n}\r\n";
+  fs.writeFileSync(conf, crlf);
+  const crOn = patch("enable", "nginx", conf, "1", "/x.log");
+  fs.writeFileSync(conf, crOn.text ?? "");
+  eq(patch("disable", "nginx", conf, "1", "/x.log").text, crlf, "nginx: con CRLF, quitar devuelve el archivo tal cual");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

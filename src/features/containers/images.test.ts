@@ -11,6 +11,7 @@ import {
   removeImagesCmds,
   usersOf,
 } from "./images";
+import { parseImages } from "./parse";
 import { allSelected, selectionReducer, someSelected } from "./selection";
 import { renderCmd } from "./shell";
 import type { Container, ImageInfo } from "./types";
@@ -89,6 +90,17 @@ eq(pruneBlockedReason({ loaded: true, error: null, images: [img("e", ["a:1"], LE
 // ── Eliminar una selección ──
 eq(imageRefs(NGINX), ["docker.io/library/nginx:alpine", "localhost/web:1"], "varias etiquetas: se pasan todas (sin -f)");
 eq(imageRefs(OLD), ["bbbbbbbbbbbb2222"], "sin nombre: el id");
+// Docker, una línea por etiqueta: la bajada solo por su digest («<none>») no se llama «nginx:latest».
+const docker = parseImages(
+  [
+    { ID: "sha256:" + "1".repeat(64), Repository: "nginx", Tag: "latest", Size: "190MB" },
+    { ID: "sha256:" + "2".repeat(64), Repository: "nginx", Tag: "<none>", Size: "180MB" },
+  ]
+    .map((o) => JSON.stringify(o))
+    .join("\n"),
+);
+eq(docker.map((i) => [i.tags, i.dangling]), [[["nginx:latest"], false], [[], true]], "docker: sin etiqueta no es «:latest» (y prune la cuenta como sin nombre)");
+eq(imageRefs(docker[1]), ["2".repeat(64)], "eliminar la de solo digest va por su id, no borra «nginx:latest»");
 const plan = planImageRemoval([PG, NGINX, ROOT_DANGLING], containers);
 eq([plan.free.map((i) => i.id), plan.inUse.map((u) => [u.img.id, u.count, u.users.map((c) => c.name)])], [[NGINX.id, ROOT_DANGLING.id], [[PG.id, 1, ["seguimiento-siu-db"]]]], "en uso aparte");
 eq(

@@ -13,11 +13,13 @@ function pidFile(jobId: string): string {
 
 /**
  * Envuelve `body` (ya como su dueño): lo lanza con `setsid` (grupo nuevo), apunta el grupo y espera.
- * Si a este shell le llega TERM (cancelar por el canal), lo pasa a todo el grupo.
+ * Si a este shell le llega TERM (cancelar por el canal), lo pasa a todo el grupo. Si se canceló antes de
+ * empezar (`killJobScript` dejó «.cancel»), no lanza nada.
  */
 export function jobScript(jobId: string, body: string): string {
   return [
     `pf=${pidFile(jobId)}`,
+    'if [ -e "$pf.cancel" ]; then rm -f "$pf.cancel"; exit 130; fi',
     "s=; if command -v setsid >/dev/null 2>&1; then s=setsid; fi",
     `$s sh -c 'echo $$ >"$0"; exec sh -c "$1"' "$pf" ${shQuote(body)} &`,
     "p=$!",
@@ -32,13 +34,21 @@ export function jobScript(jobId: string, body: string): string {
 export const PARTIAL_STOP = "partial";
 
 /**
- * Detiene la tarea (como su dueño): TERM a todo el grupo, espera hasta 10 s y luego KILL. Sin `setsid`
+ * Detiene la tarea (como su dueño): TERM a todo el grupo, espera hasta 10 s y luego KILL. Si aún no
+ * empezó, hace que no empiece. Sin `setsid`
  * el comando no tiene grupo propio: entonces se para su árbol de procesos (hijos con `pgrep -P` o
  * leyendo /proc) y, si no hay forma de listarlos, solo el shell de la tarea, avisando con «partial».
  */
 export function killJobScript(jobId: string): string {
   return [
     `pf=${pidFile(jobId)}`,
+    // Recién lanzada, la tarea aún no apuntó su grupo (sudo tarda un poco): se deja aviso para que no
+    // empiece y se espera unos segundos a que lo apunte (si ya había empezado).
+    'if [ ! -s "$pf" ]; then',
+    '  : >"$pf.cancel"; i=0',
+    '  while [ ! -s "$pf" ] && [ -e "$pf.cancel" ] && [ $i -lt 5 ]; do sleep 1; i=$((i+1)); done',
+    '  rm -f "$pf.cancel"',
+    "fi",
     'p=$(cat "$pf" 2>/dev/null) || { echo gone; exit 0; }',
     "case $p in ''|*[!0-9]*) echo gone; exit 0 ;; esac",
     "if kill -TERM -$p 2>/dev/null; then",

@@ -12,7 +12,9 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está en `main` después de la beta.3 saldrá en
 la **1.0.0-beta.4**.
 
-**Estado al 25/11/2026 (para retomar):**
+**Estado al 26/11/2026 (para retomar):** tanda 1 del plan hecha (revisión del lote + reglas de calidad en la CI).
+
+**Estado anterior, 25/11/2026:**
 - En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
   TS, clippy `--all-targets -D warnings`, 434 tests Rust): Compose (conflicto de nombres, tareas largas, editar el
   compose de otro usuario), tareas en segundo plano para toda la app, Monitor → Por usuario con los UID de
@@ -201,7 +203,8 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
     (`sudo firewall-cmd --permanent --list-all` debe tenerlo); otro sin confirmar y comprobar que a los 5 min el
     servidor lo quita solo (también cerrando SSHorus); «Deshacer ahora». **Antilockout**: la papelera del servicio
     `ssh` debe estar desactivada con su explicación (y activa si hay otra regla para el 22). En un **Ubuntu con
-    ufw**: reglas `(v6)` juntas, `limit`, perfiles («Nginx Full»), quitar una regla (a prueba, «Mantener»), y con
+    ufw**: reglas `(v6)` juntas, `limit`, perfiles («Nginx Full»), quitar una regla (a prueba, «Mantener»; y otra
+    con «Deshacer ahora»: debe volver a su mismo número en `sudo ufw status numbered`, con su comentario), y con
     ufw apagado «Activar ufw» (antes añade `ufw allow 22/tcp`; casilla obligatoria). En un **Debian con nftables**
     (y Docker): frases de cada regla, la cadena a la que se salta, las de Docker en «Creadas por Docker/Podman» y el
     aviso de solo lectura. Sin sudo: el aviso y «Escribir la contraseña de sudo». Teclado (Tab entre nodos, Intro,
@@ -232,6 +235,14 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   y explicar el motivo cuando no se puede).
 - **CSS de `ui/AdmModal`:** varias pantallas copian reglas de `.adm-modal` (Contenedores, MCP, Bases de datos); moverlas
   a un CSS propio de `components/ui/AdmModal`.
+
+- **Pendiente de la revisión del 26/11 (no bloquea):** cortafuegos: la vuelta atrás programada puede morir con
+  `KillUserProcesses=yes` (usar `systemd-run`), la protección anti-bloqueo da por buena la zona si no la sabe y mira
+  las reglas vivas, no las `--permanent`; sitios web: dos tareas sobre el mismo archivo pueden pisarse (`flock`);
+  `podman-compose systemd register` podría recrear contenedores (confirmar); escáner: `grubby` sin root, epochs
+  mezclados, «reiniciar servicios» marcado en todos los paquetes; bases de datos: con contraseña no entra por socket
+  local, charset de mysql sin fijar, bóveda bloqueada parece «sin credencial»; lista `ARCHES` repetida 3 veces;
+  OAuth: la descarga del documento del cliente no bloquea IP privadas (riesgo bajo, petición GET a ciegas).
 
 #### Reglas automáticas de calidad (aprobadas el 24/11/2026; 1–3 hechas el 25/11, salen en la beta.4)
 Para que el orden no dependa de que cada agente se acuerde, la CI falla si se rompe el criterio de

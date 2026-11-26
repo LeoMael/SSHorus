@@ -23,7 +23,7 @@ export type DbPlace =
   | { kind: "file"; path: string };
 
 export interface DbTarget {
-  /** Clave estable (también la de la credencial guardada): `pg@127.0.0.1:5432`, `mysql@ctr:ana/tienda-db`… */
+  /** Clave estable (también la de la credencial guardada): `pg@127.0.0.1:5432`, `mysql@ctr:podman:ana/tienda-db`… */
   key: string;
   engine: DbEngine;
   place: DbPlace;

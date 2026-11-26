@@ -101,7 +101,14 @@ eq([rmRich.trial, rmRich.checkLogin], [true, true], "quitar: a prueba y probando
 const ufwAdd = plan(planChange(ubuntu, { kind: "add", target: { kind: "port", ports: { from: 5432, to: 5432 }, proto: "tcp", source: "10.0.0.0/8" }, zone: null }));
 eq([ufwAdd.apply, ufwAdd.trial], [["ufw allow from 10.0.0.0/8 to any port 5432 proto tcp"], false], "ufw: abrir no necesita prueba");
 const ufwRm = plan(planChange(ubuntu, { kind: "remove", rule: ubuntu.rules[4] }));
-eq([ufwRm.apply, ufwRm.revert], [["ufw delete allow 'Nginx Full'"], ["ufw allow 'Nginx Full'"]], "ufw: quitar un perfil con espacio");
+eq(ufwRm.apply[1], "ufw delete allow 'Nginx Full'", "ufw: quitar un perfil con espacio");
+eq(ufwRm.revert.join(" ").includes("ufw allow"), false, "ufw: deshacer no la añade al final (cambiaría el orden): vuelven las reglas de antes");
+// Abrir lo que ya está (o se solapa): deshacerlo quitaría también lo de antes (con «ssh», te quedarías fuera).
+const addTo = (target: Parameters<typeof planChange>[1] & { kind: "add" }) => planChange(rocky, target);
+eq("error" in addTo({ kind: "add", target: { kind: "service", name: "ssh", source: null }, zone: "public" }), true, "firewalld: «ssh» ya está en la zona");
+eq("error" in addTo({ kind: "add", target: { kind: "port", ports: { from: 9005, to: 9020 }, proto: "udp", source: null }, zone: "public" }), true, "firewalld: se solapa con 9000-9010/udp");
+eq("error" in addTo({ kind: "add", target: { kind: "port", ports: { from: 9005, to: 9005 }, proto: "tcp", source: null }, zone: "public" }), false, "otro protocolo: sí");
+eq(add443.alreadyIf, "firewall-cmd --zone=public --query-port=443/tcp", "y en el servidor se mira antes de tocar nada");
 const ufwOn = plan(planChange(parseFirewallReport(UBUNTU_OFF), { kind: "enable", sshPorts: [22] }));
 eq(ufwOn.apply, ["ufw allow 22/tcp", "ufw --force enable"], "activar ufw abre antes el 22");
 const fwdOn = plan(planChange({ ...rocky, active: false }, { kind: "enable", sshPorts: [2222] }));
@@ -120,10 +127,59 @@ for (const [what, s] of [["prueba", trial], ["confirmar", confirmScript(rmRich, 
 }
 eq(confirmScript(rmRich, "a").includes("--permanent --zone=public --remove-rich-rule="), true, "confirmar lo deja fijo");
 
+// De verdad, con firewall-cmd y ufw falsos y la marca en una carpeta temporal (en vez de /run y /etc/ufw).
+const fs = await nodeModule("node:fs");
+const { tmpdir } = await nodeModule("node:os");
+const tmp: string = fs.mkdtempSync(`${tmpdir()}/sshorus-fw-`);
+const FAKE_FWD = `#!/bin/sh\necho "firewall-cmd $*" >> ${tmp}/log\ncase "$*" in *--query-*) [ -e ${tmp}/ya ] && exit 0; exit 1 ;; esac\n`;
+const FAKE_UFW = `#!/bin/sh\necho "ufw $*" >> ${tmp}/log\n[ "$1" = delete ] && sed -i '/Nginx Full/d' ${tmp}/etc-ufw/user.rules\nexit 0\n`;
+const run = (script: string) =>
+  spawnSync("sh", ["-c", script.replaceAll("/run/", `${tmp}/`).replaceAll("/etc/ufw/", `${tmp}/etc-ufw/`)], { encoding: "utf8", env: { PATH: `${tmp}:/usr/bin:/bin` } });
+const log = (): string[] => (fs.existsSync(`${tmp}/log`) ? fs.readFileSync(`${tmp}/log`, "utf8").trim().split("\n") : []);
+const wait = (secs: number) => spawnSync("sleep", [String(secs)]);
+try {
+  fs.mkdirSync(`${tmp}/etc-ufw`);
+  for (const [name, body] of [["firewall-cmd", FAKE_FWD], ["ufw", FAKE_UFW]]) {
+    fs.writeFileSync(`${tmp}/${name}`, body);
+    fs.chmodSync(`${tmp}/${name}`, 0o755);
+  }
+  eq(run(trialScript(add443, "t1", 1)).status, 0, "a prueba: aplicado");
+  eq(run(undoScript(add443, "t1")).status, 0, "deshacer ahora");
+  eq(run(confirmScript(add443, "t1")).status, 3, "confirmar después de deshacer: ya no hay nada que confirmar");
+  wait(1.5);
+  eq(
+    log(),
+    ["firewall-cmd --zone=public --query-port=443/tcp", "firewall-cmd --zone=public --add-port=443/tcp", "firewall-cmd --zone=public --remove-port=443/tcp"],
+    "se deshace una sola vez (la vuelta atrás del servidor ve que ya se hizo)",
+  );
+  fs.writeFileSync(`${tmp}/ya`, "");
+  eq(run(trialScript(add443, "t2", 1)).status, 4, "ya estaba abierto en el servidor: no se toca nada");
+  eq(log().length, 4, "ni se añade ni queda nada que deshacer");
+  fs.rmSync(`${tmp}/ya`);
+  eq(run(trialScript(add443, "t3", 1)).status, 0, "a prueba otra vez");
+  wait(1.5);
+  eq(log().slice(-1), ["firewall-cmd --zone=public --remove-port=443/tcp"], "sin confirmar, el servidor lo deshace solo");
+  eq(run(confirmScript(add443, "t3")).status, 3, "y confirmar tarde lo dice");
+
+  // ufw: quitar la 2.ª de tres y deshacer deja las reglas como estaban (mismo orden, con su comentario).
+  const rules = "### tuple ### allow tcp 22 0.0.0.0/0 any 1.2.3.4 in\n### tuple ### allow tcp 80,443 0.0.0.0/0 any 0.0.0.0/0 Nginx Full - in # web\n### tuple ### deny tcp 22 0.0.0.0/0 any 0.0.0.0/0 in\n";
+  fs.writeFileSync(`${tmp}/etc-ufw/user.rules`, rules);
+  fs.writeFileSync(`${tmp}/etc-ufw/user6.rules`, "");
+  eq(run(trialScript(ufwRm, "u1", 2)).status, 0, "ufw: quitada a prueba");
+  eq(fs.readFileSync(`${tmp}/etc-ufw/user.rules`, "utf8").includes("Nginx Full"), false, "ufw: ya no está");
+  eq(run(undoScript(ufwRm, "u1")).status, 0, "ufw: deshacer");
+  eq(fs.readFileSync(`${tmp}/etc-ufw/user.rules`, "utf8"), rules, "ufw: las reglas de antes, tal cual");
+  eq(fs.existsSync(`${tmp}/sshorus-fw-u1.d`), false, "sin copias olvidadas");
+} finally {
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 // ───────── Formulario ─────────
 eq(formTarget({ ...EMPTY_FORM, port: "443" }), { target: { kind: "port", ports: { from: 443, to: 443 }, proto: "tcp", source: null } }, "puerto");
 eq("error" in formTarget({ ...EMPTY_FORM, port: "80,443" }), true, "una lista no: un puerto o un rango");
 eq("error" in formTarget({ ...EMPTY_FORM, port: "443", source: "mi casa" }), true, "origen que no es IP");
+for (const bad of ["1.2.3.4/", "1.2.3.4/ 8", "1.2.3.4/0x8", "10.0.0.0/8/9"]) eq("error" in formTarget({ ...EMPTY_FORM, port: "443", source: bad }), true, `origen mal escrito: «${bad}»`);
+eq(formTarget({ ...EMPTY_FORM, port: "443", source: "10.0.0.0/8" }), { target: { kind: "port", ports: { from: 443, to: 443 }, proto: "tcp", source: "10.0.0.0/8" } }, "red bien escrita");
 eq(formTarget({ ...EMPTY_FORM, kind: "service", service: "https", source: "2001:db8::/32" }), { target: { kind: "service", name: "https", source: "2001:db8::/32" } }, "servicio con origen IPv6");
 eq("error" in formTarget({ ...EMPTY_FORM, kind: "service", service: "a'b" }), true, "nombre de servicio raro");
 

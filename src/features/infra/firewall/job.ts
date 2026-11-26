@@ -65,6 +65,8 @@ async function run(ctx: JobCtx, req: FwChangeRequest): Promise<JobResult> {
   const { plan } = req;
   const tag = ctx.id;
   ctx.output(plan.apply.map((c) => `$ ${c}\n`).join(""));
+  // El servidor cuenta el tiempo desde que se arma la vuelta atrás (antes de aplicar y de probar a entrar).
+  const armedAt = Date.now();
   const r = await runElevated(ctx, req.sessionId, plan.trial ? trialScript(plan, tag) : directScript(plan), req.elevation, 60);
   if (!succeeded(r)) return { status: "failed", error: failureText(r) };
   if (plan.checkLogin) {
@@ -73,13 +75,17 @@ async function run(ctx: JobCtx, req: FwChangeRequest): Promise<JobResult> {
     const login = await probeLogin(req.profileId);
     if (login === "blocked") {
       ctx.output("La conexión nueva no pasó: se deshace el cambio.\n");
-      await runElevated(ctx, req.sessionId, undoScript(plan, tag), req.elevation, 60);
+      const u = await runElevated(ctx, req.sessionId, undoScript(plan, tag), req.elevation, 60);
+      if (!succeeded(u)) {
+        const at = clock(armedAt + TRIAL_SECS * 1000);
+        return { status: "failed", error: `Con este cambio no se podía entrar por SSH y no se pudo deshacer ahora (${failureText(u)}): el servidor lo deshace solo a las ${at}.` };
+      }
       return { status: "failed", error: "Con este cambio no se podía entrar por SSH: se deshizo." };
     }
     ctx.output(login === "ok" ? "Se puede entrar por SSH: bien.\n" : "No se pudo comprobar si se puede entrar: pruébalo tú con otra pestaña antes de confirmar.\n");
   }
   if (!plan.trial) return { summary: "Hecho." };
-  const trial: FwTrial = { tag, sessionId: req.sessionId, serverName: req.serverName, plan, until: Date.now() + TRIAL_SECS * 1000 };
+  const trial: FwTrial = { tag, sessionId: req.sessionId, serverName: req.serverName, plan, until: armedAt + TRIAL_SECS * 1000 };
   useFwTrials.setState((s) => ({ trials: [...s.trials, trial] }));
   ctx.step(plan.checkLogin ? 2 : 1);
   return { summary: `Aplicado a prueba: si no lo confirmas, se deshace solo a las ${clock(trial.until)}.`, actions: trialActions(trial) };
@@ -113,9 +119,19 @@ export function finishTrial(t: FwTrial, what: "confirm" | "undo"): string | null
     cancelLabel: null,
     run: async (ctx) => {
       const el = computeElevation(getPrivilege(t.sessionId), getSudoPassword(t.sessionId)).elevation;
-      if (!el) return { status: "failed", error: "Hace falta sudo para terminar el cambio. Si no lo confirmas, se deshace solo." };
+      if (!el) {
+        useFwTrials.setState((s) => ({ trials: [...s.trials, t] }));
+        return { status: "failed", error: "Hace falta sudo para terminar el cambio. Si no lo confirmas, se deshace solo.", actions: trialActions(t) };
+      }
       const r = await runElevated(ctx, t.sessionId, what === "confirm" ? confirmScript(t.plan, t.tag) : undoScript(t.plan, t.tag), el, 60);
-      if (!succeeded(r)) return { status: "failed", error: failureText(r) };
+      if (!succeeded(r)) {
+        // Sigue a prueba (salvo si ya se deshizo solo, código 3): se puede volver a intentar.
+        if (r.exitCode !== 3 && Date.now() < t.until) {
+          useFwTrials.setState((s) => ({ trials: [...s.trials, t] }));
+          return { status: "failed", error: failureText(r), actions: trialActions(t) };
+        }
+        return { status: "failed", error: failureText(r) };
+      }
       return { summary: what === "confirm" ? (t.plan.permanent.length ? "Guardado: el cambio queda fijo." : "Hecho: el cambio se queda.") : "Deshecho." };
     },
   });

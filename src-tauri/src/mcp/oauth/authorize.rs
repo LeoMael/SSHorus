@@ -88,6 +88,7 @@ impl OAuth {
         let request = AuthRequest {
             client,
             redirect_uri: redirect_uri.clone(),
+            redirect_given: q.get("redirect_uri").is_some(),
             code_challenge: challenge.to_string(),
             state: state.map(str::to_string),
             resource,
@@ -117,6 +118,7 @@ impl OAuth {
         let grant = CodeGrant {
             client_id: r.client.client_id.clone(),
             redirect_uri: r.redirect_uri.clone(),
+            redirect_given: r.redirect_given,
             code_challenge: r.code_challenge.clone(),
             resource: r.resource.clone(),
             scope: r.scope.clone(),

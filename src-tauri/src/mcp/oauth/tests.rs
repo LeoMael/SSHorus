@@ -144,6 +144,7 @@ fn grant(now: u64) -> CodeGrant {
     CodeGrant {
         client_id: "c1".into(),
         redirect_uri: "http://localhost/cb".into(),
+        redirect_given: true,
         code_challenge: pkce::challenge_of(&"v".repeat(43)),
         resource: "http://127.0.0.1:1/mcp".into(),
         scope: None,
@@ -261,4 +262,25 @@ async fn directory_resolves_metadata_documents_and_registrations() {
         .unwrap();
     assert!(reg.client_id.starts_with("sshorus-"));
     assert_eq!(dir.resolve(&reg.client_id, 0).await.unwrap(), reg);
+}
+
+#[test]
+fn token_asks_for_redirect_uri_only_if_authorize_had_it() {
+    let (_, o) = oauth();
+    let audit = AuditLog::at(None);
+    let verifier = "v".repeat(43);
+    let exchange = |given: bool, redirect: Option<&str>| {
+        let now = super::now_ms();
+        let code = super::lock(&o.store).put_code(CodeGrant { redirect_given: given, ..grant(now) }, now).unwrap();
+        let mut form = format!("grant_type=authorization_code&code={}&client_id=c1&code_verifier={verifier}", code.as_str());
+        if let Some(r) = redirect {
+            form.push_str(&format!("&redirect_uri={r}"));
+        }
+        o.token(&Params::parse(&form).unwrap(), &audit).map(|_| ()).map_err(|e| e.code)
+    };
+    // Sin redirect_uri en /authorize (era la única registrada): /token no la pide.
+    assert_eq!(exchange(false, None), Ok(()));
+    assert_eq!(exchange(true, Some("http://localhost/cb")), Ok(()));
+    assert_eq!(exchange(true, None), Err("invalid_grant"));
+    assert_eq!(exchange(false, Some("http://localhost/otra")), Err("invalid_grant"));
 }
