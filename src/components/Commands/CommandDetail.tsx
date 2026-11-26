@@ -2,10 +2,10 @@
 import { useMemo, useState } from "react";
 import { Copy, CopyPlus, Network, Pencil, Play, SquareTerminal, Terminal, Trash2 } from "lucide-react";
 import { DISTRO_LABEL } from "../../features/commands/catalog";
+import type { CommandItem } from "../../features/commands";
+import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import { captureBlockedReason, toTerminal } from "./actions";
 import { CommandTags, Preview, ResultView, VarField, initialValues, rememberValues } from "./parts";
-import type { CommandItem } from "../../features/commands/state";
-import { missingVars, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 import { useRun } from "./useRun";
 import { usePrivilege } from "../../features/privileges";
 import { multiRunBlockedReason, runOnManyServers } from "./multi";

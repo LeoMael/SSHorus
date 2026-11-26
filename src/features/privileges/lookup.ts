@@ -128,3 +128,12 @@ export function sudoPasswordNeeded(info: Pick<PrivilegeInfo, "level" | "hasSudo"
   if (info.level === "root" || info.level === "sudo-nopasswd") return false;
   return info.level === "unknown" || info.hasSudo;
 }
+
+/** Por qué no hace falta la contraseña: el motor ejecuta tal cual, avisa o rechaza («no-sudo»). */
+export type NoPasswordWhy = "root" | "nopasswd" | "no-sudo";
+
+/** Solo cuando `sudoPasswordNeeded(info)` es false: root, sudo sin contraseña o sin sudo instalado. */
+export function noPasswordWhy(info: Pick<PrivilegeInfo, "level" | "hasSudo">): NoPasswordWhy {
+  if (info.level === "root") return "root";
+  return info.hasSudo ? "nopasswd" : "no-sudo";
+}

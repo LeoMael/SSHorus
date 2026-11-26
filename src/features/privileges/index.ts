@@ -46,13 +46,14 @@ export {
   buildExec,
   elevationFailure,
   elevationFailureMessage,
+  elevationText,
   wrapScript,
   type Elevation,
   type ElevationFailure,
   type ExecRequest,
 } from "./elevate";
 export { ElevationError, failureText, readElevated, runScript, succeeded, type ElevatedRead } from "./run";
-export { loadStoredSudo,obtainSudoPassword, sudoModeOf, useStoredSudo, type SudoObtainResult } from "./stored";
+export { loadStoredSudo, obtainSudoPassword, sudoModeOf, useStoredSudo, type SudoObtainResult } from "./stored";
 export {
   defaultSaveChecked,
   otherSessionPasswords,
@@ -61,6 +62,16 @@ export {
   storedStateAfterConfirm,
   sudoLookupPlan,
   sudoPasswordNeeded,
+  noPasswordWhy,
   sudoSourceChanged,
+  type NoPasswordWhy,
   type SudoSource,
 } from "./lookup";
+export {
+  askSudoInDialog,
+  cancelAllSudoAsks,
+  finishSudoAsk,
+  sudoPasswordForCommand,
+  useSudoAsks,
+  type SudoAsk,
+} from "./sudoAsk";

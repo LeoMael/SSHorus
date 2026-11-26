@@ -8,8 +8,8 @@ import type { ServerProfile } from "../../api/types";
 import { toast } from "../../stores/toasts";
 import { refreshAuto, useMcp } from "../../features/mcp/store";
 import { autoAllowed } from "../../features/mcp/pairing";
-import { AutoAcceptPicker, autoText } from "../../features/mcp/AutoAccept";
 import { ACCESS, accessOf, allowsAuto, grantsOf, protectedOf, tasksText } from "../../features/mcp/accessInfo";
+import { AutoAcceptPicker, autoText } from "../../features/mcp/AutoAccept";
 import { MarkedEditor } from "../../features/mcp/MarkedEditor";
 import { PROTECTED_NOTE, ProtectedInput } from "../../features/mcp/ProtectedUsers";
 

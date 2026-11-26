@@ -5,19 +5,19 @@
 //   sendToAi(texto, "web")          // «Enviar a la IA» desde una terminal de servidor
 import { createElement } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openLink } from "../../components/ui/openLink";
 import { localTerm, type AiLaunch, type AiTool, type AiToolInfo } from "../../api/localterm";
 import { mcp, type McpConfig } from "../../api/mcp";
 import { confirmDialog } from "../../components/ui/dialogs";
-import { openSettingsAt } from "../../components/Settings/settingsNav";
+import { openSettingsAt } from "../../stores/settingsNav";
 import { tabCurrentPath } from "../../stores/sessionState";
-import type { TermController } from "../../components/Terminal/termController";
+import type { TermHandle } from "../terminal";
 import { useProfiles } from "../../stores/profiles";
 import { useSettings } from "../../stores/settings";
 import { useTabs } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";
 import { clipboard } from "../../lib/clipboard";
-import { getPrivilege } from "../privileges/store";
+import { getPrivilege } from "../privileges";
 import { refreshStatus, useMcp } from "../mcp/store";
 import { choiceDialog } from "./ChoiceDialog";
 import { buildAiContext, selectionForAi, usesDirect, type ContextServer } from "./context";
@@ -74,7 +74,7 @@ async function offerInstall(info: AiToolInfo, cwd: string | null): Promise<void>
       ),
       confirmText: "Abrir nodejs.org",
     });
-    if (go) openUrl("https://nodejs.org/").catch((e) => toast.error("No se pudo abrir el enlace", e));
+    if (go) openLink("https://nodejs.org/");
     return;
   }
   const ok = await confirmDialog({
@@ -317,7 +317,7 @@ const PASTE_WAIT_MS = 20_000;
 
 /** Pega cuando el programa acepte «pegado entre corchetes» (así no se envía línea a línea).
  *  Si no llega a estar listo, lo deja en el portapapeles. */
-export async function pasteWhenReady(getCtrl: () => TermController | null, text: string): Promise<void> {
+export async function pasteWhenReady(getCtrl: () => TermHandle | null, text: string): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < PASTE_WAIT_MS) {
     const c = getCtrl();

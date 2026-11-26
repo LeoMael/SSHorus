@@ -5,7 +5,7 @@ import { errorMessage } from "../../api/core";
 import type { ExecResult } from "../../api/types";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import type { CatalogVar } from "../../features/commands/catalog";
+import type { CatalogVar } from "../../features/commands";
 import { getSuggestions, type CommandItem, type Suggestion } from "../../features/commands/state";
 import { VAR_RE, parseVars, renderTemplate, varLabel } from "../../features/commands/template";
 

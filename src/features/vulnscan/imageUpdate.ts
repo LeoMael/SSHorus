@@ -3,7 +3,7 @@
 import type { Engine } from "../../api/vulnscan";
 import { composeCmd, composeFor, pullImage } from "../containers/commands";
 import { OBJ_NAME_RE, renderCmd, type Cmd } from "../containers/shell";
-import type { ComposeTool } from "../containers/types";
+import type { ComposeTool } from "../containers";
 import { SAFE } from "./fixCommand";
 import type { ContainerDetail, ReadResult } from "./imageUpdateRead";
 

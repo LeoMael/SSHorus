@@ -10,7 +10,7 @@ import {
   terminalOwns,
   withBinding,
   type ShortcutOverrides,
-} from "./keys";
+} from "../../stores/shortcutKeys";
 
 let capturing = false;
 /** Mientras se captura un atajo nuevo en Ajustes, ninguna acción se dispara. */

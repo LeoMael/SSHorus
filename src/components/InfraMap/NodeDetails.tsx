@@ -1,6 +1,6 @@
 // Panel lateral del mapa con lo que se sabe del nodo elegido; el cortafuegos enseña aquí sus reglas.
 import { X } from "lucide-react";
-import type { MapNode, NavTarget, ServerSnapshot } from "../../features/infra/graph";
+import type { MapNode, NavTarget, ServerSnapshot } from "../../features/infra";
 import { FirewallPanel } from "./FirewallPanel";
 import { HEALTH_LABEL, KIND_LABEL, NODE_ICON } from "./nodeMeta";
 import "./MapPanels.css";

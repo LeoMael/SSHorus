@@ -6,7 +6,7 @@
 //     useradd/usermod/userdel/groupadd/groupdel/groupmod/gpasswd/chpasswd/chage.
 //   - "busybox": Alpine mínimo: adduser -D/deluser/addgroup/delgroup/passwd -l|-u/chpasswd.
 import { MASK } from "./shell";
-import { shQuote } from "../../lib/remote";
+import { distroFamily, shQuote } from "../../lib/remote";
 
 export type Toolset = "shadow" | "busybox";
 
@@ -32,9 +32,7 @@ export function detectEnv(
   groupNames: string[] = [],
 ): AdminEnv {
   const toolset: Toolset = tools.has("useradd") ? "shadow" : "busybox";
-  const family = [distroId ?? "", ...distroLike];
-  const debianLike = family.some((d) => ["debian", "ubuntu", "linuxmint", "pop", "raspbian"].includes(d));
-  let adminGroup = debianLike ? "sudo" : "wheel";
+  let adminGroup = distroFamily(distroId, distroLike).family === "debian" ? "sudo" : "wheel";
   // Si el grupo esperado no existe pero el otro sí, se usa el que hay.
   const other = adminGroup === "sudo" ? "wheel" : "sudo";
   if (groupNames.length && !groupNames.includes(adminGroup) && groupNames.includes(other)) adminGroup = other;

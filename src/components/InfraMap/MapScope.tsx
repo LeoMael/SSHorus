@@ -1,6 +1,6 @@
 // Selector «Lo mío» / «Todo el servidor» y la caja plegada «Otros» de cada servidor.
 import { othersText, type MapScope } from "../../features/infra/scope";
-import type { Box } from "../../features/infra/layout";
+import type { Box } from "../../features/infra";
 import { Segmented } from "../ui/Segmented";
 // Estilos de Administración que usa el mapa (p. ej. .adm-spin): se abre sin Administración cargada.
 // Se importan todas las partes, en el mismo orden que AdminPanel, para que el orden del CSS no cambie.

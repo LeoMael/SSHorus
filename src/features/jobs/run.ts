@@ -6,7 +6,7 @@ import { newExecId } from "../../api/snippets";
 import { getJob, pushJobNotice, putJob, setJobsPopover, updateJob } from "../../stores/jobs";
 import { useTabs } from "../../stores/tabs";
 import { JobOutput, type OutputRules } from "./output";
-import { finishedJob, newJob, stepsAt, type Job, type JobEnd, type JobInit, type JobPatch, type JobProgress } from "./state";
+import { finishedJob, newJob, stepsAt, type Job, type JobEnd, type JobInit, type JobPatch, type JobProgress } from "../../stores/jobsState";
 
 /** Se lanza (o se devuelve) cuando la tarea se canceló. */
 export class JobCanceled extends Error {

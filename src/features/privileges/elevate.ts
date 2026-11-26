@@ -110,3 +110,17 @@ export function elevationFailureMessage(f: ElevationFailure): string {
       return "sudo exige una terminal (opción «requiretty» en sudoers): no se puede usar desde aquí";
   }
 }
+
+/** Frase sobre cómo se ejecutará un cambio (encima del comando que se revisa). */
+export function elevationText(el: Elevation | null): string {
+  switch (el?.kind) {
+    case "root":
+      return "Se ejecutará como root:";
+    case "nopasswd":
+      return `Se ejecutará como root mediante ${el.tool} (sin contraseña):`;
+    case "password":
+      return "Se ejecutará como root mediante sudo. Tu contraseña de sudo se envía por la entrada estándar, nunca en el comando:";
+    default:
+      return "Se ejecutará:";
+  }
+}

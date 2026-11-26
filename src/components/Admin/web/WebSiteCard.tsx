@@ -13,7 +13,7 @@ import {
   type Site,
   type SiteRoute,
 } from "../../../features/admin";
-import { readElevated } from "../../../features/privileges/run";
+import { readElevated } from "../../../features/privileges";
 import { useProfiles } from "../../../stores/profiles";
 import { useAdmin } from "../context";
 import { AdmModal } from "../../ui/AdmModal";

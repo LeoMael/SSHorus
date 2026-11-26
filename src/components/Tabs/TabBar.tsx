@@ -7,7 +7,7 @@ import { useUi } from "../../stores/ui";
 import { Logo } from "../ui/Logo";
 import { LockButton } from "./LockButton";
 import { McpButton } from "../../features/mcp/McpButton";
-import { openManual } from "../Settings/settingsNav";
+import { openManual } from "../../stores/settingsNav";
 import { useLocalTabs } from "../../features/localterm/store";
 import { useFleetTabs } from "../../features/fleet/tabs";
 import { FleetTabs, type TabBarHooks } from "../Fleet/FleetTabs";

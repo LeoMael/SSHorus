@@ -5,7 +5,7 @@ import { KeyRound, Lock, LockOpen, Settings, ShieldCheck } from "lucide-react";
 import { lockNow, openPinDialog, useLock } from "../../features/lock/lockStore";
 import { secretWords } from "../../features/lock/secretKind";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
-import { openSettingsAt } from "../Settings/settingsNav";
+import { openSettingsAt } from "../../stores/settingsNav";
 import { PopupMenu } from "../ui/PopupMenu";
 
 export function LockButton() {

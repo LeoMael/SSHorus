@@ -1,8 +1,8 @@
 // Tareas en segundo plano de toda la app (Compose, arreglar vulnerabilidades, auditoría, actualizar una
 // imagen, reinicios…): la lista, la ventanita de la esquina, la vista grande y los avisos al terminar.
-// Las transiciones puras están en features/jobs/state.ts y quien ejecuta las tareas, en features/jobs/run.ts.
+// Las transiciones puras están en stores/jobsState.ts y quien ejecuta las tareas, en features/jobs/run.ts.
 import { create } from "zustand";
-import { addJob, clearFinished, dismissJob, patchJob, type Job, type JobFilter, type JobPatch } from "../features/jobs/state";
+import { addJob, clearFinished, dismissJob, patchJob, type Job, type JobFilter, type JobPatch } from "./jobsState";
 
 interface JobsState {
   jobs: Job[];

@@ -1,5 +1,5 @@
 // Pruebas del registro de atajos (funciones puras).
-// Ejecutar: npx rolldown src/features/shortcuts/keys.test.ts -p node -f esm -o /tmp/keys.mjs && node /tmp/keys.mjs
+// Ejecutar: npm test -- shortcuts
 import {
   SHORTCUT_ACTIONS,
   cleanOverrides,
@@ -14,7 +14,7 @@ import {
   resolveCombo,
   terminalOwns,
   withBinding,
-} from "./keys";
+} from "../../stores/shortcutKeys";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {

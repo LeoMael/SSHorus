@@ -1,7 +1,8 @@
-// Atajos de teclado: registro de acciones y funciones puras (sin React ni stores) para
+// Atajos de teclado: registro de acciones y funciones puras (sin React) para
 // normalizar combinaciones, compararlas con eventos, mostrarlas y detectar conflictos.
 // Una combinación se guarda como texto canónico: "Ctrl+Alt+Shift+Meta+Tecla" (en ese orden);
-// "Meta" es ⌘ en macOS. "" = sin atajo.
+// "Meta" es ⌘ en macOS. "" = sin atajo. Está en stores/ porque el store de ajustes limpia con ella lo
+// guardado; los atajos en uso (que leen los ajustes) están en features/shortcuts.
 
 export type ShortcutScope = "global" | "terminal" | "explorer" | "editor";
 

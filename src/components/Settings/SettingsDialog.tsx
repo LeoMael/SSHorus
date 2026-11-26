@@ -12,7 +12,7 @@ import { confirmDialog } from "../ui/dialogs";
 import "./SettingsDialog.css";
 import "./SettingsAppearance.css";
 import "./SettingsNarrow.css";
-import { useSettingsNav, type SectionId } from "./settingsNav";
+import { useSettingsNav, type SectionId } from "../../stores/settingsNav";
 import { filterNav } from "./settingsSearch";
 import { ALL_SECTIONS, NAV } from "./settingsSections";
 

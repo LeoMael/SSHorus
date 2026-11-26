@@ -1,5 +1,6 @@
 // Contenedores de todos los dueños que se ven: los tuyos y, con sudo, los de root y de cada usuario (como
 // el selector «Usuario» de Contenedores). Lo usan el mapa de infraestructura y «Bases de datos».
+import type { UsersView } from "../../api/vulnscan";
 import type { Elevation } from "../privileges";
 import { DETECT_SCRIPT, parseDetect } from "./detect";
 import { listContainers } from "./commands";
@@ -7,6 +8,7 @@ import { OWNER_SELF, findOwner, ownerKey, ownerOptions, type CtOwner } from "./o
 import { readOwners, type OwnerRunner } from "./ownerRun";
 import { parseContainers } from "./parse";
 import { runRaw, scriptFor } from "./run";
+import { loadStoreUsers } from "./storeUsers";
 import type { Container, Engine } from "./types";
 
 const NONE: Elevation = { kind: "none" };
@@ -40,10 +42,9 @@ export async function readAllContainers(
   if (!found?.ok) return [];
   const isRoot = isRootConn || found.uid === 0;
   const out: FoundContainer[] = [];
-  let users: Awaited<ReturnType<typeof import("../vulnscan/run").loadStoreUsers>> | null = null;
+  let users: UsersView | null = null;
   if (el) {
     try {
-      const { loadStoreUsers } = await import("../vulnscan/run");
       users = await loadStoreUsers(sessionId, el);
     } catch {
       users = null;

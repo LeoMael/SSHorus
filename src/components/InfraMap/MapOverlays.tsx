@@ -2,7 +2,7 @@
 import { useEffect, useState, type PointerEvent as RPointerEvent } from "react";
 import { Maximize, Minus, Plus } from "lucide-react";
 import { updatedAgo } from "../../features/infra/freshness";
-import type { layoutGraph } from "../../features/infra/layout";
+import type { layoutGraph } from "../../features/infra";
 import { MAX_ZOOM, MIN_ZOOM, type Viewport } from "../../features/infra/viewport";
 import { isMac } from "../../lib/platform";
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
 import { formatBytes } from "../../lib/format";
 import { authLabel } from "../../features/databases/auth";
-import type { DbTarget } from "../../features/databases/types";
+import type { DbTarget } from "../../features/databases";
 import { CredentialsDialog } from "./CredentialsDialog";
 import { SchemaView } from "./SchemaView";
 import type { TargetSessions } from "./useTargetSessions";

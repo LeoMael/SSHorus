@@ -1,7 +1,7 @@
 // Tarjeta de un VPS: estado, avisos, cifras y usuarios guardados. Clic → abre su pestaña.
 import type { KeyboardEvent, MouseEvent } from "react";
 import { Plug, RotateCw, ShieldCheck } from "lucide-react";
-import type { Vps } from "../../features/fleet/group";
+import type { Vps } from "../../features/fleet";
 import { warnings, worstLevel, type VpsLive } from "../../features/fleet/health";
 import { fleetConnect, fleetRetry, openVps, rebootVps } from "../../features/fleet/runtime";
 import { RebootButtonView, serverKey, useRebootRun } from "../../features/reboot";

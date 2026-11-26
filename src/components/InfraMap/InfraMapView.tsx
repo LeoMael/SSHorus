@@ -2,7 +2,8 @@
 // desplazamiento, ajustar a la pantalla, minimapa, filtros, leyenda, panel de detalles y exportar.
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Download, Map as MapIcon, Network, RefreshCw } from "lucide-react";
-import { buildGraph, filterGraph, graphOwners, LAYERS, type NavTarget, type ServerSnapshot } from "../../features/infra/graph";
+import { buildGraph } from "../../features/infra/graph";
+import { filterGraph, graphOwners, LAYERS, type NavTarget, type ServerSnapshot } from "../../features/infra/graphTypes";
 import { layoutGraph } from "../../features/infra/layout";
 import { ownerLabel, ROUTE_OWNER } from "../../features/infra/owner";
 import { zoomPercent } from "../../features/infra/viewport";

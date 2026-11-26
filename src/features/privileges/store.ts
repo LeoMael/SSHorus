@@ -3,8 +3,11 @@ import { create } from "zustand";
 import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import { useTabs, type SessionTab } from "../../stores/tabs";
+import { onServerSaved } from "../../stores/profiles";
 import { useLock } from "../lock/lockStore";
 import { recordDetected } from "./knownAdmin";
+import { sudoSourceChanged } from "./lookup";
+import { resetStoredSudoForProfile } from "./resetForProfile";
 import { forgetSudo, resetStoredSudo, useSudo } from "./sudo";
 import {
   DETECT_COMMAND,
@@ -160,10 +163,15 @@ export function initPrivileges(): () => void {
   const unsubKnown = usePrivileges.subscribe((s, prev) => {
     if (s.bySession !== prev.bySession) recordDetected(s.bySession, prev.bySession);
   });
+  // Al guardar un servidor, sus pestañas abiertas vuelven a mirar la contraseña de sudo guardada.
+  const unsubSaved = onServerSaved(({ prev, saved, edits }) =>
+    resetStoredSudoForProfile(saved.id, sudoSourceChanged(prev, saved, edits)),
+  );
   return () => {
     unsub();
     unsubLock();
     unsubKnown();
+    unsubSaved();
     started = false;
   };
 }

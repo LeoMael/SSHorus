@@ -6,7 +6,7 @@ import { CAPTURE_TIMEOUT_SECS, captureExec, confirmDangerous } from "./actions";
 import { execWithSudo, sudoFailureText } from "../../features/sudoRun";
 import type { ExecResult } from "../../api/types";
 import type { RunState } from "./parts";
-import type { CommandItem } from "../../features/commands/state";
+import type { CommandItem } from "../../features/commands";
 
 /** Con la contraseña de sudo de SSHorus (no la de la terminal). Un texto si sudo no llegó a ejecutarlo. */
 async function runSudo(sessionId: string, item: CommandItem, command: string, execId: string): Promise<ExecResult | string> {

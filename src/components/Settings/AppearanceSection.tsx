@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Check, Monitor } from "lucide-react";
 import { Segmented, SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 import { ACCENTS, PALETTES, type AccentId, type PaletteInfo, type ThemeId } from "../../styles/themes";
-import { useAppTheme } from "./theme";
+import { useAppTheme } from "../../stores/appTheme";
 import { useSetting } from "./useSetting";
 
 /** Miniatura de una apariencia: barra lateral, panel con acento y un trozo de terminal. */

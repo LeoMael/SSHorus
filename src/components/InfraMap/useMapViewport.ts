@@ -7,7 +7,7 @@
 // En Linux el pellizco del touchpad no llega a la página: lo captura el motor (ver nativePinch.ts).
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { isMac } from "../../lib/platform";
-import { SHORTCUT_ACTIONS } from "../../features/shortcuts/keys";
+import { SHORTCUT_ACTIONS } from "../../stores/shortcutKeys";
 import { matchesShortcut } from "../../features/shortcuts/shortcuts";
 import { savedView, saveView } from "../../features/infra/cache";
 import {

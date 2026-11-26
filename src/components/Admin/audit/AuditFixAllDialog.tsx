@@ -7,7 +7,7 @@ import type { AuditReport, Check } from "../../../api/audit";
 import { AdmModal } from "../../ui/AdmModal";
 import { FixFooter, NeedSudo, OutcomeLine } from "./AuditFixParts";
 import { useAdmin } from "../context";
-import { elevationText } from "../PlanReview";
+import { elevationText } from "../../../features/privileges";
 import { useAuditFix } from "./useAuditFix";
 import { JobPanel } from "../../Jobs/JobPanel";
 

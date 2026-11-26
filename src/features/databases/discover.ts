@@ -2,8 +2,8 @@
 // Administración → Puertos y Túneles → «Servicios que puedes traer»), los sockets habituales y los
 // contenedores con imagen de PostgreSQL o MySQL/MariaDB (los tuyos y, con sudo, los de root y de cada
 // usuario). Los archivos SQLite solo se leen si el usuario da la ruta. Funciones puras + `discoverDatabases`.
-import type { ListenPort } from "../admin/ports";
-import type { FoundContainer } from "../containers/readAll";
+import type { ListenPort } from "../admin";
+import type { FoundContainer } from "../containers";
 import { splitSections } from "../../lib/remote";
 import { findServices, identifyService } from "../tunnels/detect";
 import type { DbEngine, DbTarget } from "./types";

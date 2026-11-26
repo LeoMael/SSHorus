@@ -1,13 +1,11 @@
 // Diálogos del flujo de conexión (contraseña, frase, código 2FA, huella) + editores de servidor/proyecto.
 // DUEÑO: agente Almacenamiento/Sidebar. App monta <ConnectDialogHost /> una vez.
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { KeyRound, Lock, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
 import { Modal } from "../../components/ui/Modal";
 import type { HostKeyInfo, ServerProfile } from "../../api/types";
 import { useProfiles } from "../../stores/profiles";
-import { useUi } from "../../stores/ui";
-import { preloadable } from "../../lib/lazy";
 import "./ConnectDialogs.css";
 
 export interface SecretAnswer {
@@ -33,10 +31,6 @@ type Pending =
       resolve: (code: string | null) => void;
     }
   | { kind: "hostkey"; changed: boolean; seq: number; hostKey: HostKeyInfo; resolve: (trust: boolean) => void };
-
-// Los editores de servidor/proyecto se cargan al abrirse (no hacen falta para la primera pantalla).
-export const ServerEditorHost = preloadable(() => import("../serverEditor/ServerEditorHost").then((m) => m.ServerEditorHost));
-export const ProjectEditorHost = preloadable(() => import("../profiles/ProjectEditor").then((m) => m.ProjectEditorHost));
 
 /** Cola de diálogos: si varias conexiones preguntan a la vez, se muestran de uno en uno. */
 const useConnectDialogs = create<{ queue: Pending[] }>(() => ({ queue: [] }));
@@ -82,8 +76,6 @@ export function confirmHostKey(hostKey: HostKeyInfo, changed: boolean): Promise<
 
 export function ConnectDialogHost() {
   const pending = useConnectDialogs((s) => s.queue[0] ?? null);
-  const serverEditorOpen = useUi((s) => s.serverEditor !== null);
-  const projectEditorOpen = useUi((s) => s.projectEditor !== null);
   const loaded = useProfiles((s) => s.loaded);
   const load = useProfiles((s) => s.load);
 
@@ -135,18 +127,9 @@ export function ConnectDialogHost() {
     );
   }
 
-  return (
-    <>
-      {(serverEditorOpen || projectEditorOpen) && (
-        <Suspense fallback={null}>
-          {serverEditorOpen && <ServerEditorHost />}
-          {projectEditorOpen && <ProjectEditorHost />}
-        </Suspense>
-      )}
-      {/* Después de los editores: la huella de «Probar conexión» se ve encima del editor de servidor. */}
-      {dialog}
-    </>
-  );
+  // App lo monta justo después de los editores (EditorsHost): la huella de «Probar conexión» se ve encima
+  // del editor de servidor.
+  return dialog;
 }
 
 function SecretDialog({

@@ -1,6 +1,6 @@
 // Cortafuegos: leer las reglas de un servidor conectado (con sudo si lo hay) y la conexión SSH actual
 // (sin sudo: con sudo se pierde $SSH_CONNECTION). Solo lectura.
-import type { PortsResult } from "../../admin/ports";
+import type { PortsResult } from "../../admin";
 import { GUARD_SCRIPT, sshListenPorts } from "../../audit/fixSafety";
 import { readElevated, runScript, type Elevation } from "../../privileges";
 import { sshConnFromGuard, sshGuard, type SshGuard } from "./lockout";

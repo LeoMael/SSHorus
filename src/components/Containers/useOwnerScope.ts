@@ -19,11 +19,16 @@ import {
   type Engine,
   type EngineStatus,
   type OwnerRunner,
+  loadStoreUsers,
+  useStoreUsers,
 } from "../../features/containers";
-import type { Elevation, ElevationState, PrivilegeInfo } from "../../features/privileges";
-import { sudoRejected } from "../../features/privileges/sudo";
-import { ElevationError } from "../../features/privileges";
-import { loadStoreUsers, useVulnScan } from "../../features/vulnscan/run";
+import {
+  type Elevation,
+  type ElevationState,
+  type PrivilegeInfo,
+  sudoRejected,
+  ElevationError,
+} from "../../features/privileges";
 import { errorMessage } from "../../api/core";
 import { NO_ELEVATION, pickStatus, selfOwnerLabel } from "../../features/containers/panelLogic";
 import { useOwnerNav } from "../../features/containers/ownerNav";
@@ -53,7 +58,7 @@ export function useOwnerScope({ sessionId, profileId, info, elev, result, active
     saveOwnerChoice(profileId, ownerNav.owner);
   }, [ownerNav, sessionId, profileId]);
   // Usuarios con contenedores propios: la misma lista (y el mismo script) que el escáner.
-  const usersView = useVulnScan((s) => s.users[sessionId] ?? null);
+  const usersView = useStoreUsers((s) => s.bySession[sessionId] ?? null);
   const [usersLoad, setUsersLoad] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
 
   const available: EngineStatus[] = useMemo(

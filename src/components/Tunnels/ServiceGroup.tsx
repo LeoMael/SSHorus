@@ -2,8 +2,7 @@
 // traerlo y sus servicios. «Otro» va plegado salvo que sea lo único que hay.
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import type { CategoryGroup } from "../../features/tunnels/categories";
-import type { FoundService } from "../../features/tunnels/detect";
+import type { CategoryGroup, FoundService } from "../../features/tunnels";
 import { CATEGORY_ICONS } from "./categoryIcons";
 
 export interface ServiceGroupProps {

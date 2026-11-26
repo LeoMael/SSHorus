@@ -1,5 +1,6 @@
 // Terminales persistentes (tmux): funciones puras, sin React ni Tauri, para poder probarlas aparte.
 import type { TmuxMode, TmuxSession } from "../../api/types";
+import { distroFamily, type DistroFamily } from "../../lib/remote";
 
 /** Prefijo de las sesiones de SSHorus (el motor solo acepta `sshorus-` + letras, números, - y _). */
 export const TMUX_PREFIX = "sshorus-";
@@ -85,26 +86,18 @@ export function tmuxInstallCommand(
   distroLike: string[] = [],
   elevate: "" | "sudo" | "doas" = "sudo",
 ): InstallInfo {
-  const ids = [distroId ?? "", ...distroLike].map((s) => s.toLowerCase());
-  const has = (...xs: string[]) => xs.some((x) => ids.includes(x));
+  const { family, label: distro } = distroFamily(distroId, distroLike);
   const p = elevate ? `${elevate} ` : "";
-  if (has("fedora", "rhel", "centos", "rocky", "almalinux", "ol", "amzn")) {
-    return { distro: has("fedora") && !has("rhel") ? "Fedora" : "RHEL / Rocky / Alma", command: `${p}dnf install -y tmux` };
-  }
-  if (has("ubuntu", "debian", "linuxmint", "pop", "raspbian")) {
-    return {
-      distro: has("ubuntu") ? "Ubuntu" : "Debian",
-      command: `${p}apt-get update && ${p}apt-get install -y tmux`,
-    };
-  }
-  if (has("alpine")) return { distro: "Alpine", command: `${p}apk add tmux` };
-  if (has("arch", "manjaro", "endeavouros")) return { distro: "Arch Linux", command: `${p}pacman -S --needed --noconfirm tmux` };
-  if (has("opensuse", "opensuse-leap", "opensuse-tumbleweed", "suse", "sles")) {
-    return { distro: "openSUSE", command: `${p}zypper install -y tmux` };
-  }
-  if (has("freebsd")) return { distro: "FreeBSD", command: `${p}pkg install -y tmux` };
+  const commands: Record<DistroFamily, string> = {
+    rhel: `${p}dnf install -y tmux`,
+    debian: `${p}apt-get update && ${p}apt-get install -y tmux`,
+    alpine: `${p}apk add tmux`,
+    arch: `${p}pacman -S --needed --noconfirm tmux`,
+    suse: `${p}zypper install -y tmux`,
+    freebsd: `${p}pkg install -y tmux`,
+  };
   return {
-    distro: distroId ?? "tu sistema",
-    command: `${p}apt-get install -y tmux  # o dnf / apk / pacman / zypper / brew según tu sistema`,
+    distro,
+    command: family ? commands[family] : `${p}apt-get install -y tmux  # o dnf / apk / pacman / zypper / brew según tu sistema`,
   };
 }

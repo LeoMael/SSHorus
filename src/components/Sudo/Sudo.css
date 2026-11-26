@@ -1,0 +1,11 @@
+/* Diálogo de la contraseña de sudo (SudoDialog) y su cola fuera de los paneles (SudoAskHost). */
+.sudo-dialog-reason {
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+/* Fuera de un panel no está cargado el CSS de Administración, que da tamaño al spinner del botón. */
+.sudo-ask .adm-spinner-btn {
+  width: 12px;
+  height: 12px;
+}

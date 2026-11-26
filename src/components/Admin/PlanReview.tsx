@@ -2,22 +2,9 @@
 import { useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronLeft, KeyRound, Play } from "lucide-react";
 import { MASK, type Plan } from "../../features/admin";
-import { wrapScript, type Elevation } from "../../features/privileges";
+import { elevationText, wrapScript } from "../../features/privileges";
 import { AdmModal } from "../ui/AdmModal";
 import { useAdmin } from "./context";
-
-export function elevationText(el: Elevation | null): string {
-  switch (el?.kind) {
-    case "root":
-      return "Se ejecutará como root:";
-    case "nopasswd":
-      return `Se ejecutará como root mediante ${el.tool} (sin contraseña):`;
-    case "password":
-      return "Se ejecutará como root mediante sudo. Tu contraseña de sudo se envía por la entrada estándar, nunca en el comando:";
-    default:
-      return "Se ejecutará:";
-  }
-}
 
 interface ReviewProps {
   plan: Plan;

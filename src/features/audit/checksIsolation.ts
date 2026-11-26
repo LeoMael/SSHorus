@@ -1,10 +1,10 @@
 // Comprobaciones de «Qué pueden ver tus usuarios» (aislamiento de usuarios sin sudo) dentro de la auditoría.
 // Regla de privacidad: `detail` no lleva nombres de usuario, direcciones ni rutas (eso solo va en `items`).
 import type { Check } from "../../api/audit";
-import type { PortsResult } from "../admin/ports";
-import { shQuote } from "../../lib/remote";
+import type { PortsResult } from "../admin";
 import { noTunnelsNonAdminSteps } from "../admin/sshdConf";
-import { classifyLocalServices, NO_LOGIN_SHELL, openTunnelFlags, parseSshTunnels } from "../admin/userVisibility";
+import { classifyLocalServices, NO_LOGIN_SHELL, openTunnelFlags, parseSshTunnels } from "../admin/userVisibilityScript";
+import { shQuote } from "../../lib/remote";
 import { check, fix, lines, NEEDS_SUDO, parsePasswdLines, plural, sudoUsers, type AuditCtx } from "./checksCommon";
 
 export function isolationChecks(ctx: AuditCtx, ports: PortsResult | null): Check[] {

@@ -1,18 +1,12 @@
 // Piezas comunes de la ventana de GitHub.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, Lock, Search } from "lucide-react";
 import type { GhRepo } from "../../api/github";
 import { errorMessage } from "../../api/core";
 import { useTabs } from "../../stores/tabs";
-import { useProfiles } from "../../stores/profiles";
-import { toast } from "../../stores/toasts";
 import { connectedTabs } from "../../features/github/session";
 import { useGitHub } from "../../features/github/store";
-
-export function openLink(url: string) {
-  openUrl(url).catch((e) => toast.error("No se pudo abrir el enlace", e));
-}
+import { openLink } from "../ui/openLink";
 
 export function Link({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -101,26 +95,6 @@ export function SessionPicker({
       {list.map((t) => (
         <option key={t.sessionId} value={t.sessionId}>
           {t.title}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/** Selector de un servidor guardado. value = ServerProfile.id. */
-export function ServerSelect({ value, onChange }: { value: string; onChange: (id: string) => void }) {
-  const servers = useProfiles((s) => s.servers);
-  const load = useProfiles((s) => s.load);
-  const loaded = useProfiles((s) => s.loaded);
-  useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
-  return (
-    <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Elige un servidor…</option>
-      {servers.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name} ({s.username}@{s.host})
         </option>
       ))}
     </select>

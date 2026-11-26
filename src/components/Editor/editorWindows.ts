@@ -12,7 +12,7 @@ import { useUi } from "../../stores/ui";
 import { toast } from "../../stores/toasts";
 import { basename } from "../../lib/paths";
 import { useEditorDirty } from "../../stores/sessionState";
-import { useAppTheme } from "../Settings/theme";
+import { useAppTheme } from "../../stores/appTheme";
 import {
   EV_EDW_DIRTY,
   EV_EDW_HELLO,
@@ -28,7 +28,7 @@ import {
   type EdwHello,
   type EdwReturn,
   type EdwStatus,
-} from "../../windows/editorWindowBus";
+} from "./editorWindowBus";
 
 interface DetachedState {
   /** sessionId → rutas abiertas en ventanas aparte */

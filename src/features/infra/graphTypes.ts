@@ -1,8 +1,7 @@
 // Tipos y funciones auxiliares puras del grafo de infraestructura.
-import type { ListenPort, PortsResult } from "../admin/ports";
-import { certStatus, type Site, type WebResult } from "../admin/web";
-import type { OwnedContainer } from "../containers/readAll";
-import type { Container } from "../containers/types";
+import type { ListenPort, PortsResult } from "../admin";
+import { certStatus, type Site, type WebResult } from "../admin/webTypes";
+import type { OwnedContainer, Container } from "../containers";
 import { sortOwners, type OwnerContext } from "./owner";
 import type { InfraExtra } from "./parse";
 

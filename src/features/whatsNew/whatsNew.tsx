@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { getVersion } from "@tauri-apps/api/app";
 import changelogSource from "../../../CHANGELOG.md?raw";
-import { parseMarkdown, plainText, splitChangelog } from "../../components/About/markdown";
+import { parseMarkdown, plainText, splitChangelog } from "../../lib/markdown";
 import { useProfiles } from "../../stores/profiles";
 
 /** Última versión cuyas novedades se vieron (o se dieron por vistas) en este equipo. */

@@ -7,8 +7,15 @@ import { dbCreds } from "../../api/db";
 import { newExecId, snippets } from "../../api/snippets";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
-import { DbAuthError, openTarget, openWith, readDdl, readSchema, type DbContext } from "../../features/databases/remote";
-import type { DbAuth, DbList, DbSchema, DbTarget } from "../../features/databases/types";
+import {
+  DbAuthError,
+  openTarget,
+  openWith,
+  readDdl,
+  readSchema,
+  type DbContext,
+} from "../../features/databases/remote";
+import type { DbAuth, DbList, DbSchema, DbTarget } from "../../features/databases";
 
 export type SchemaLoad = { state: "loading"; execId: string } | { state: "ok"; schema: DbSchema } | { state: "error"; message: string };
 

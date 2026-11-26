@@ -6,7 +6,7 @@
 // - Si no responde, reintenta con espera creciente (retryDelayMs).
 import type { ExecResult, ServerProfile } from "../../api/types";
 import { cpuPercent } from "../monitor/derive";
-import type { CpuTicks } from "../monitor/sample";
+import type { CpuTicks } from "../monitor";
 import { classifyConnectError, errText } from "../multirun/engine";
 import { pickProfile, type Vps } from "./group";
 import { emptyLive, pushHistory, retryDelayMs, type VpsLive } from "./health";

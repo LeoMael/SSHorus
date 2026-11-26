@@ -1,5 +1,5 @@
 // Comandos del motor (Podman / Docker) y del formulario «Nuevo contenedor». Funciones puras.
-import { generatePassword } from "../admin/shell";
+import { generatePassword } from "../../lib/password";
 import { composeBin, engineCmd, splitArgs, type Cmd } from "./shell";
 import type { ComposeTool, Engine } from "./types";
 

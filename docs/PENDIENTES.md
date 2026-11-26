@@ -265,38 +265,37 @@ Reglas de calidad en [`dev/REGLAS-AGENTES.md`](dev/REGLAS-AGENTES.md) §5 y crit
 **La lista al día de lo que incumple las reglas automáticas son los archivos de excepciones** (cada entrada con su
 `TODO(deuda)`; solo pueden encoger, y al arreglar algo se borra su línea):
 - `scripts/lines-allowlist.json`: archivos de más de 500 líneas (26/11/2026: **vacía**; los 11 CSS que había se partieron por tema).
-- `scripts/deps-allowlist.json`: ciclos entre carpetas (26/11/2026: 16 ciclos, cerrados por 29 imports).
-- `EXCEPCIONES_LIMITES` en `eslint.config.js`: imports que cruzan límites (25/11/2026: 15 imports de `features/` a
-  `components/` en 10 archivos, casi todos de `features/localterm`, `settingsNav` y piezas de GitHub y Administración).
+- `scripts/deps-allowlist.json`: ciclos entre carpetas (26/11/2026: **vacía**; los 16 ciclos se rompieron moviendo
+  cada pieza a su carpeta).
+- `EXCEPCIONES_LIMITES` en `eslint.config.js`: imports que cruzan límites (26/11/2026: **vacía**; la terminal local,
+  `settingsNav`, el diálogo de sudo, `openLink`/`ServerSelect` y el lector de Markdown ya están en su sitio).
 
 Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
 - **Código entre 400 y 500 líneas (25):**
   - Interfaz: ~~`Admin/vulns/ImageUpdateDialog.tsx`, `Admin/users/KeyUserWizard.tsx`, `Containers/ContainersTab.tsx`,
     `Tabs/TabBar.tsx`, `Commands/CommandsPanel.tsx`, `Admin/vulns/VulnsTab.tsx`, `stores/transfers.ts`,
     `features/multirun/engine.ts`, `Containers/ImagesTab.tsx`, `Monitor/MonitorPanel.tsx`, `features/monitor/engine.ts`,
-    `features/monitor/sample.ts`, `Admin/AdminPanel.tsx`~~ **partidos (26/11)**. Quedan (los parte otra tarea):
-    `Terminal/termController.ts` (491), `About/markdown.tsx` (434), `features/vulnscan/run.ts` (404),
-    `Terminal/TerminalView.tsx` (403).
+    `features/monitor/sample.ts`, `Admin/AdminPanel.tsx`~~ **partidos (26/11)**. También ~~`Terminal/termController.ts`, `About/markdown.tsx`,
+    `features/vulnscan/run.ts`, `Terminal/TerminalView.tsx`~~ **partidos (26/11)**, todos por debajo de 300 (lo puro
+    del Markdown en `lib/markdown.ts`).
   - Motor: **hecho (26/11)**, ningún archivo Rust de producción pasa de 400 líneas (el mayor es
     `vulnscan/analyze.rs`, 398).
-  - Justo en el límite (400): `Terminal/TerminalArea.tsx`.
-- **`generatePassword` sigue en `features/admin/shell.ts`** aunque no es de Administración: pasarlo a `lib/`.
-- **Ciclos entre carpetas** (lista completa en `scripts/deps-allowlist.json`): `stores/` importa de
-  `features/connect`, `tmux`, `jobs`, `privileges`, `shortcuts` y de `components/ui` (sobre todo
-  `stores/sessionState.ts`), y estas importan de `stores/`; `sudoRun` → `mcp` mete casi todas las features en un
-  solo ciclo; además `containers` ↔ `vulnscan`, `connect` ↔ `serverEditor`, `tabbar` ↔ `fleet`/`localterm`,
-  `localterm` ↔ `components/Terminal`, piezas de `Admin` usadas por `Containers` y el mapa, y `Editor` ↔
-  `Settings`/`windows`. Romperlos (el estado de la app no debería depender de la lógica de una función).
-- **La familia de la distribución se detecta en 3 sitios:** `features/containers/detect`, `features/tmux/logic` y
-  `distroFromOs` (`features/commands/state.ts`). Dejar una sola versión en `lib/remote/` (junto a `parseOsRelease`).
+  - ~~Justo en el límite (400): `Terminal/TerminalArea.tsx`~~ **partido (26/11)**: sub-pestañas, su tira y su menú aparte.
+- ~~**`generatePassword` sigue en `features/admin/shell.ts`**~~ **hecho (26/11):** está en `lib/password.ts`.
+- ~~**Ciclos entre carpetas**~~ **hecho (26/11):** `scripts/deps-allowlist.json` está vacía. El estado de la app ya no
+  depende de ninguna función (cerrar y reconectar pestañas pasó a `features/connect/tabLifecycle.ts`; privilegios se
+  entera de los servidores guardados con `onServerSaved`; lo puro de tareas y atajos vive en `stores/`), la cola de
+  diálogos de sudo está en `features/privileges/sudoAsk.ts` y el diálogo en `components/Sudo/`.
+- ~~**La familia de la distribución se detecta en 3 sitios**~~ **hecho (26/11):** una sola tabla en
+  `lib/remote/distro.ts` (`distroFamily`), que usan Contenedores, tmux, la biblioteca de comandos y Administración.
 - ~~**Los comandos Tauri no siguen un criterio fijo**~~ **hecho (26/11):** cada módulo con comandos tiene su
   `commands.rs` (o `commands/` por temas en `storage/`) con solo envoltorios finos, y `lib.rs` los registra como
   `modulo::commands::nombre` (regla en `docs/dev/REGLAS-AGENTES.md` §5).
 - **Pruebas Rust aún grandes** (no cuentan para el tope, pero cuestan de leer): `mcp/tests.rs` (~720, casi todo el
   motor simulado), `ssh/connect_tests.rs` (564), `snippets/tests.rs` (518), `mcp/e2e_tests.rs` (493),
   `ssh/reconnect_tests.rs` (490), `mcp/tests_marked.rs` (476).
-- **Solo 12 de las 27 carpetas de `src/features/` tienen `index.ts`** (`admin`, `audit`, `connect`, `containers`,
-  `github`, `monitor`, `multirun`, `privileges`, `reboot`, `sudoRun`, `tmux`, `vulnscan`). Decidir si todas lo llevan.
+- ~~**Solo 12 de las 27 carpetas de `src/features/` tienen `index.ts`**~~ **hecho (26/11):** todas lo tienen, con la
+  regla en `ARQUITECTURA.md` §5.
 
 ### 4. Ideas y funciones futuras anotadas
 

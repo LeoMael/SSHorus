@@ -1,6 +1,6 @@
 // Sección visible de Ajustes, para poder abrirlos directamente en una sección (p. ej. «Acerca de»).
 import { create } from "zustand";
-import { useUi } from "../../stores/ui";
+import { useUi } from "./ui";
 
 export type SectionId =
   | "appearance"

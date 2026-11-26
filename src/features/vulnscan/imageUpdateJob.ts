@@ -10,7 +10,7 @@ import { failureMessage } from "../containers/run";
 import { JobCanceled, runKillable, startJob, type Job, type JobAction, type JobCtx, type JobResult } from "../jobs";
 import { ElevationError, runScript, type Elevation } from "../privileges";
 import { rescanMessage, stepScript, type UpdatePlan } from "./imageUpdate";
-import { useVulnScan } from "./run";
+import { useVulnScan } from "./scanState";
 import { ownerScript, rescanImage, UpdateCancel, UpdateCanceled, type RescanResult } from "./updateRun";
 
 export const IMAGE_UPDATE_JOB = "imageupdate";

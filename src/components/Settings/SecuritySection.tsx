@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import { useSettings } from "../../stores/settings";
 import { lockNow, useLock } from "../../features/lock/lockStore";
+import { secretWords } from "../../features/lock/secretKind";
 import { useShortcutText } from "../../features/shortcuts/shortcuts";
 import { WhatItProtects } from "../../features/lock/LockInfo";
 import { ChangePinForm, DisablePinForm, SetupPinForm } from "../../features/lock/PinForms";
-import { secretWords } from "../../features/lock/secretKind";
 import "../../features/lock/Lock.css";
 import { SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
 

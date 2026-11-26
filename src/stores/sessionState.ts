@@ -1,15 +1,7 @@
-// Estado compartido de las sesiones: archivos con cambios sin guardar y cierre/reconexión de pestañas.
+// Estado compartido de las sesiones: archivos con cambios sin guardar, carpeta actual y orden de las
+// pestañas. Cerrar y reconectar (que conecta, pregunta y cierra tmux) está en features/connect/tabLifecycle.ts.
 import { create } from "zustand";
 import { useTabs } from "./tabs";
-import { ssh } from "../api/ssh";
-import { useProfiles } from "./profiles";
-import { toast } from "./toasts";
-import { connectToServer } from "../features/connect/connect";
-import { confirmDialog } from "../components/ui/dialogs";
-import { basename } from "../lib/paths";
-import { killTmuxSessions, openTmuxNames } from "../features/tmux";
-import { useTransfers } from "./transfers";
-import { closeWarning } from "../features/connect/closeConfirm";
 
 interface DirtyState {
   /** sessionId → rutas con cambios sin guardar */
@@ -50,31 +42,10 @@ export function tabCurrentPath(tab: { sessionId: string; initialPath: string | n
   return currentPaths.get(tab.sessionId) ?? tab.initialPath;
 }
 
-/** Transferencias sin terminar (en curso, en cola o en pausa) de una conexión. */
-function pendingTransfers(sessionId: string): number {
-  let n = 0;
-  for (const b of Object.values(useTransfers.getState().batches)) {
-    if (b.sessionId === sessionId) n += b.running + b.queued + b.paused;
-  }
-  return n;
-}
-
-/** Cierra una pestaña de conexión, pidiendo confirmación si hay archivos sin guardar o transferencias
- *  sin terminar (se cortarían). */
-export async function requestCloseTab(tabId: string): Promise<boolean> {
-  const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
-  if (!tab) return false;
-  const dirty = useEditorDirty.getState().dirty[tab.sessionId] ?? [];
-  const warn = closeWarning(tab.title, dirty.map((p) => basename(p)), pendingTransfers(tab.sessionId));
-  if (warn && !(await confirmDialog({ ...warn, danger: true }))) return false;
-  useEditorDirty.getState().clearSession(tab.sessionId);
-  currentPaths.delete(tab.sessionId);
-  // Cerrar la pestaña a propósito termina también sus terminales persistentes (tmux), igual que una
-  // shell normal. Si la conexión ya se había perdido, quedan en el servidor y se pueden reabrir o
-  // cerrar después desde «Sesiones en el servidor».
-  if (tab.status === "connected") await killTmuxSessions(tab.sessionId, openTmuxNames(tab.sessionId));
-  await useTabs.getState().closeTab(tabId);
-  return true;
+/** Olvida lo guardado de una sesión que se cierra (archivos sin guardar y carpeta actual). */
+export function forgetSession(sessionId: string) {
+  useEditorDirty.getState().clearSession(sessionId);
+  currentPaths.delete(sessionId);
 }
 
 /** Mueve una pestaña a otra posición (arrastrar para reordenar). */
@@ -87,59 +58,4 @@ export function moveTab(tabId: string, toIndex: number) {
     tabs.splice(Math.max(0, Math.min(toIndex, tabs.length)), 0, t);
     return { tabs };
   });
-}
-
-const reconnecting = new Set<string>();
-
-/** Deja de reintentar una reconexión automática: la pestaña queda desconectada (con «Reconectar»). */
-export async function cancelReconnect(tabId: string): Promise<void> {
-  const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
-  if (!tab || tab.status !== "reconnecting") return;
-  try {
-    await ssh.disconnect(tab.sessionId);
-  } catch {
-    /* ya estaba cerrada */
-  }
-  useTabs.getState().markClosed(tab.sessionId, "reconexión cancelada");
-}
-
-/** Reconecta una pestaña cerrada: abre una nueva conexión en la misma carpeta y cierra la vieja. */
-export async function reconnectTab(tabId: string): Promise<void> {
-  if (reconnecting.has(tabId)) return;
-  const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
-  if (!tab) return;
-  const initialPath = tabCurrentPath(tab);
-  const profile = useProfiles.getState().servers.find((s) => s.id === tab.profileId);
-  if (!profile) {
-    toast.error("No se puede reconectar", "El servidor ya no existe en tu lista.");
-    return;
-  }
-  const dirty = useEditorDirty.getState().dirty[tab.sessionId] ?? [];
-  if (dirty.length > 0) {
-    const ok = await confirmDialog({
-      title: "Cambios sin guardar",
-      message: `Hay ${dirty.length === 1 ? "un archivo" : `${dirty.length} archivos`} con cambios sin guardar en esta conexión. Al reconectar se abrirá una pestaña nueva y esos cambios se perderán. Copia lo que necesites antes de seguir.`,
-      confirmText: "Reconectar igualmente",
-      danger: true,
-    });
-    if (!ok) return;
-  }
-  reconnecting.add(tabId);
-  try {
-    const oldIndex = useTabs.getState().tabs.findIndex((t) => t.id === tabId);
-    const before = new Set(useTabs.getState().tabs.map((t) => t.id));
-    // Las terminales persistentes (tmux) de la pestaña vieja se reabren en la nueva.
-    const ok = await connectToServer(profile, { initialPath, restoreTerminals: openTmuxNames(tab.sessionId) });
-    if (!ok) return;
-    const fresh = useTabs.getState().tabs.find((t) => !before.has(t.id));
-    useEditorDirty.getState().clearSession(tab.sessionId);
-    currentPaths.delete(tab.sessionId);
-    await useTabs.getState().closeTab(tabId);
-    if (fresh) {
-      moveTab(fresh.id, oldIndex);
-      useTabs.getState().setActive(fresh.id);
-    }
-  } finally {
-    reconnecting.delete(tabId);
-  }
 }

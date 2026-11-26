@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { fetchMap, useMapCache } from "../../features/infra/cache";
 import { needsReload } from "../../features/infra/freshness";
-import type { ServerSnapshot } from "../../features/infra/graph";
+import type { ServerSnapshot } from "../../features/infra";
 import { toast } from "../../stores/toasts";
 
 interface Options {

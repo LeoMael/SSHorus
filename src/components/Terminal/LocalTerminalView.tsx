@@ -3,17 +3,23 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Bot, Laptop, Plug } from "lucide-react";
 import { localTerm } from "../../api/localterm";
-import { TerminalView } from "../../components/Terminal/TerminalView";
-import type { TermController, TermStatus } from "../../components/Terminal/termController";
-import { onTerminalExit } from "../../components/Terminal/exitEvents";
-import "../../components/Terminal/Terminal.css";
-import "../../components/Session/SessionView.css";
-import { kindLabel } from "./logic";
-import { pasteWhenReady } from "./launch";
-import { getLocalController, setLocalController, setLocalSession, updateLocalTab, type LocalTab } from "./store";
-import { LocalSession, type LocalApi } from "./session";
-import { HereMenu } from "./HereMenu";
-import "./LocalTerm.css";
+import { TerminalView } from "./TerminalView";
+import type { TermController, TermStatus } from "./termController";
+import { onTerminalExit } from "./exitEvents";
+import "./Terminal.css";
+import "../Session/SessionView.css";
+import { kindLabel } from "../../features/localterm/logic";
+import { pasteWhenReady } from "../../features/localterm/launch";
+import {
+  getLocalController,
+  setLocalController,
+  setLocalSession,
+  updateLocalTab,
+  type LocalTab,
+} from "../../features/localterm/store";
+import { LocalSession, type LocalApi } from "../../features/localterm/session";
+import { HereMenu } from "../../features/localterm/HereMenu";
+import "../../features/localterm/LocalTerm.css";
 
 /** Para escribir en la shell recién abierta: se espera a que dibuje su prompt (máx. 1,5 s). */
 const INPUT_WAIT_MS = 1500;

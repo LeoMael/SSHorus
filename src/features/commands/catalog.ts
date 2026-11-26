@@ -4,8 +4,10 @@ import { parseVars } from "./template";
 import type { McpTask } from "../../api/mcp";
 import { PODMAN_SECTIONS, type CatalogRow, type CatalogSection } from "./catalogContainers";
 import { SYSTEM_SECTIONS } from "./catalogSystem";
+import type { PackageFormat } from "../../lib/remote";
 
-export type Distro = "rpm" | "deb" | "apk";
+/** Formato de paquetes del servidor (de `distroFromOsRelease`, lib/remote/distro.ts). */
+export type Distro = PackageFormat;
 
 export interface CatalogVar {
   label?: string;

@@ -19,7 +19,7 @@ import { useElevation, usePrivilege, useStoredSudo, useStoredSudoState } from ".
 import { AdminContext, type AdminContextValue, type PortsFilter } from "./context";
 import { AdminBanners, AdminHeader, type SubTab } from "./AdminChrome";
 import { AdminBody } from "./AdminBody";
-import { SudoDialog } from "./SudoDialog";
+import { SudoDialog } from "../Sudo/SudoDialog";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
 import { useElevatedScan } from "./useElevatedScan";

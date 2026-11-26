@@ -1,7 +1,8 @@
 // Lectura (`inspect`) y resolución de dueño para «Actualizar imagen» en el escáner.
 import type { Engine, Target } from "../../api/vulnscan";
-import { parseJsonList, splitMarked } from "../containers/parse";
-import type { ComposeTool } from "../containers/types";
+import { parseJsonList } from "../containers/parsePrimitives";
+import { splitMarked } from "../containers/parseInspect";
+import type { ComposeTool } from "../containers";
 import { updatableTag } from "./fixCommand";
 
 /** Con quién se ejecuta: el usuario conectado, root (elevando) u otro usuario (elevando y entrando como él). */

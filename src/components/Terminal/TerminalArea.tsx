@@ -1,6 +1,6 @@
 // Zona de terminales de una pestaña de conexión: sub-pestañas + una xterm por shell.
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { Copy, InfinityIcon, LayersIcon, Plus, RefreshCw, SquareTerminal, Unlink, Unplug, X } from "lucide-react";
+import { LayersIcon, Plus, RefreshCw, SquareTerminal, Unplug } from "lucide-react";
 import { TerminalView } from "./TerminalView";
 import { TmuxSessionsDialog } from "./TmuxSessionsDialog";
 import { SudoPasswordButton } from "./SudoPasswordButton";
@@ -9,21 +9,20 @@ import { useTabs } from "../../stores/tabs";
 import { registerTerminalWriter } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
 import { terminal } from "../../api/terminal";
-import { clipboard } from "../../lib/clipboard";
 import { sendToAi } from "../../features/localterm/launch";
-import { ContextMenu, type MenuItem } from "../ui/ContextMenu";
+import { ContextMenu } from "../ui/ContextMenu";
 import {
   allOpenTmuxNames,
   detachedLeftovers,
-  getTmuxMode,
-  isSshorusName,
   killTmuxSessions,
-  manualAttachCommand,
   newTmuxName,
   setOpenTmux,
   useTmuxMode,
   warnTmuxMissing,
 } from "../../features/tmux";
+import { initialTabs, newTab, type SubTab } from "./subTabs";
+import { TermTabStrip } from "./TermTabStrip";
+import { termTabMenuItems } from "./termTabMenu";
 import "./Terminal.css";
 
 export interface TerminalAreaProps {
@@ -32,38 +31,6 @@ export interface TerminalAreaProps {
   active: boolean;
   /** true si la conexión se cerró: no abrir terminales nuevas. */
   disabled: boolean;
-}
-
-interface SubTab {
-  key: number;
-  num: number;
-  status: TermStatus;
-  /** Sesión tmux propia (null = shell normal). Estable: la reconexión vuelve a ella. */
-  tmux: string | null;
-  /** Volcar su historial al abrir (se reabre una sesión que ya existía). */
-  replay: boolean;
-  /** La shell corre de verdad dentro de tmux (el servidor lo tiene). */
-  persistent: boolean;
-}
-
-let keySeq = 0;
-const newTab = (num: number, tmux: string | null, replay = false): SubTab => ({
-  key: ++keySeq,
-  num,
-  status: "opening",
-  tmux,
-  replay,
-  persistent: false,
-});
-
-/** Terminales iniciales: las que hay que reabrir (botón «Reconectar») o una nueva. */
-function initialTabs(sessionId: string, disabled: boolean): SubTab[] {
-  if (disabled) return [];
-  const tab = useTabs.getState().tabs.find((t) => t.sessionId === sessionId);
-  const mode = getTmuxMode(tab?.profileId ?? null);
-  const restore = mode === "never" ? [] : (tab?.restoreTerminals ?? []).filter(isSshorusName);
-  if (restore.length > 0) return restore.map((name, i) => newTab(i + 1, name, true));
-  return [newTab(1, mode === "never" ? null : newTmuxName())];
 }
 
 interface TabMenuState {
@@ -188,76 +155,16 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
     setTabs((prev) => prev.map((t) => (t.key === key && t.status !== status ? { ...t, status } : t)));
   }, []);
 
-  const onTabKey = (e: React.KeyboardEvent, key: number) => {
-    const idx = tabs.findIndex((t) => t.key === key);
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setActiveKey(key);
-    } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      e.preventDefault();
-      const n = tabs[(idx + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
-      if (n) {
-        setActiveKey(n.key);
-        (e.currentTarget.parentElement?.children[tabs.indexOf(n)] as HTMLElement | undefined)?.focus();
-      }
-    } else if (e.key === "Delete") {
-      e.preventDefault();
-      closeTab(key);
-    }
-  };
-
   return (
     <div className="term-area">
       <div className="term-bar">
-        <div className="term-tabs" role="tablist" aria-label="Terminales">
-          {tabs.map((t) => (
-            <div
-              key={t.key}
-              role="tab"
-              tabIndex={t.key === activeKey ? 0 : -1}
-              aria-selected={t.key === activeKey}
-              className={`term-tab${t.key === activeKey ? " active" : ""}${t.status === "exited" ? " exited" : ""}`}
-              title={t.status === "exited" ? "Shell terminada" : undefined}
-              onClick={() => setActiveKey(t.key)}
-              onMouseDown={(e) => {
-                if (e.button === 1) {
-                  e.preventDefault();
-                  closeTab(t.key);
-                }
-              }}
-              onKeyDown={(e) => onTabKey(e, t.key)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setTabMenu({ x: e.clientX, y: e.clientY, key: t.key });
-              }}
-            >
-              <SquareTerminal size={13} className="term-tab-icon" />
-              <span className="term-tab-label">Terminal {t.num}</span>
-              {t.persistent && (
-                <span
-                  className="term-tab-persist"
-                  title={`Terminal persistente (tmux «${t.tmux}»): sigue viva en el servidor si se corta la conexión`}
-                  aria-label="Persistente"
-                >
-                  <InfinityIcon size={12} />
-                </span>
-              )}
-              <button
-                type="button"
-                className="term-tab-close"
-                tabIndex={-1}
-                aria-label={`Cerrar Terminal ${t.num}`}
-                title={t.persistent ? "Cerrar terminal (termina su sesión tmux)" : "Cerrar terminal"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(t.key);
-                }}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
+        <TermTabStrip
+          tabs={tabs}
+          activeKey={activeKey}
+          onActivate={setActiveKey}
+          onClose={closeTab}
+          onMenu={(x, y, key) => setTabMenu({ x, y, key })}
+        />
         <button
           type="button"
           className="icon-btn term-add"
@@ -343,7 +250,12 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
         )}
       </div>
       {tabMenu && (
-        <ContextMenu x={tabMenu.x} y={tabMenu.y} items={tabMenuItems(tabMenu.key)} onClose={() => setTabMenu(null)} />
+        <ContextMenu x={tabMenu.x} y={tabMenu.y} items={termTabMenuItems(tabs.find((x) => x.key === tabMenu.key), {
+            blocked,
+            onNew: () => addTab(),
+            onSessions: () => setShowSessions(true),
+            onClose: (detach) => closeTab(tabMenu.key, detach),
+          })} onClose={() => setTabMenu(null)} />
       )}
       {showSessions && (
         <TmuxSessionsDialog
@@ -357,44 +269,4 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
       )}
     </div>
   );
-
-  function tabMenuItems(key: number): MenuItem[] {
-    const t = tabs.find((x) => x.key === key);
-    if (!t) return [];
-    const items: MenuItem[] = [
-      { label: "Nueva terminal", icon: <Plus size={14} />, disabled: blocked, onSelect: () => addTab() },
-      {
-        label: "Terminales persistentes en el servidor…",
-        icon: <LayersIcon size={14} />,
-        disabled: blocked,
-        onSelect: () => setShowSessions(true),
-      },
-      { sep: true },
-    ];
-    if (t.persistent && t.tmux) {
-      const name = t.tmux;
-      items.push(
-        {
-          label: "Desacoplar (sigue corriendo en el servidor)",
-          icon: <Unlink size={14} />,
-          onSelect: () => closeTab(key, true),
-        },
-        {
-          label: "Copiar comando para engancharse",
-          icon: <Copy size={14} />,
-          hint: name,
-          onSelect: () => {
-            clipboard.write(manualAttachCommand(name)).catch((e) => toast.error("No se pudo copiar", e));
-          },
-        },
-      );
-    }
-    items.push({
-      label: t.persistent ? "Cerrar y terminar la sesión" : "Cerrar terminal",
-      icon: <X size={14} />,
-      danger: t.persistent,
-      onSelect: () => closeTab(key),
-    });
-    return items;
-  }
 });

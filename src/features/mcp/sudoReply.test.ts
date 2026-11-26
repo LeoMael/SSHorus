@@ -1,6 +1,7 @@
 // Pruebas de la respuesta a las peticiones de sudo del motor y de los textos del diálogo.
-// Ejecutar: npx rolldown src/features/mcp/sudoReply.test.ts -p node -f esm -o /tmp/sr.mjs && node /tmp/sr.mjs
-import { noPasswordWhy, sudoAskReason } from "./sudoReply";
+// Ejecutar: npm test -- sudoReply
+import { noPasswordWhy } from "../privileges/lookup";
+import { sudoAskReason } from "./sudoReply";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {

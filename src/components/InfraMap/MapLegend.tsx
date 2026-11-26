@@ -1,7 +1,7 @@
 // Leyenda del mapa (esquina inferior izquierda): qué es cada icono y cada color. Se puede plegar.
 import { useState, type PointerEvent as RPointerEvent } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import type { Health, NodeKind } from "../../features/infra/graph";
+import type { Health, NodeKind } from "../../features/infra";
 import { HEALTH_LABEL, KIND_LABEL, NODE_ICON } from "./nodeMeta";
 import "./MapPanels.css";
 

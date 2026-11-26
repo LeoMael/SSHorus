@@ -2,25 +2,13 @@
 // se enseñan antes los comandos exactos y lo que protege de quedarse fuera; se aplica como tarea.
 import { useState } from "react";
 import { AlertTriangle, ChevronLeft, Play, ShieldCheck, Timer } from "lucide-react";
-import {
-  EMPTY_FORM,
-  formTarget,
-  lockoutProblem,
-  planChange,
-  serviceSuggestions,
-  sshPortsToOpen,
-  startFirewallChange,
-  TRIAL_SECS,
-  usedZones,
-  zoneForChange,
-  type FwChange,
-  type FwReport,
-  type FwRule,
-  type RuleForm,
-  type SshGuard,
-} from "../../features/infra/firewall";
-import type { Elevation } from "../../features/privileges";
-import { elevationText } from "../Admin/PlanReview";
+import { EMPTY_FORM, formTarget, serviceSuggestions, type RuleForm } from "../../features/infra/firewall/form";
+import { lockoutProblem, sshPortsToOpen, type SshGuard } from "../../features/infra/firewall/lockout";
+import { planChange, TRIAL_SECS, zoneForChange, type FwChange } from "../../features/infra/firewall/commands";
+import { startFirewallChange } from "../../features/infra/firewall/job";
+import { usedZones } from "../../features/infra/firewall/firewalld";
+import type { FwReport, FwRule } from "../../features/infra";
+import { elevationText, type Elevation } from "../../features/privileges";
 import { AdmModal } from "../ui/AdmModal";
 import { Segmented } from "../ui/Segmented";
 

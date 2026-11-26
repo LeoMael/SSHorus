@@ -2,7 +2,8 @@
 // cadena, con «Quitar» cuando SSHorus sabe hacerlo sin dejarte fuera.
 import { useState, type ComponentType } from "react";
 import { Ban, Check, ChevronRight, CornerDownRight, FileText, Gauge, Minus, Shuffle, Trash2, type LucideProps } from "lucide-react";
-import { ruleText, type FwReport, type FwRule, type FwVerdict } from "../../features/infra/firewall";
+import { ruleText } from "../../features/infra/firewall/explain";
+import type { FwReport, FwRule, FwVerdict } from "../../features/infra";
 
 const VERDICT_ICON: Record<FwVerdict, ComponentType<LucideProps>> = {
   allow: Check,

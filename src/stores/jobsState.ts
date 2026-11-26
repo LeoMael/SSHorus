@@ -1,5 +1,6 @@
-// Tareas en segundo plano: tipos y transiciones de la lista (añadir, cambiar, terminar, quitar), texto
-// de estado y aviso cuando una tarea lleva rato sin escribir nada. Funciones puras (sin React ni Tauri).
+// Tareas en segundo plano, lo puro del store (stores/jobs.ts): tipos y transiciones de la lista (añadir,
+// cambiar, terminar, quitar), texto de estado y aviso cuando una tarea lleva rato sin escribir nada.
+// Funciones puras (sin React ni Tauri).
 import type { ComponentType } from "react";
 
 export type JobStatus = "running" | "done" | "failed" | "canceled";

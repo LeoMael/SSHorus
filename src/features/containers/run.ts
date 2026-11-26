@@ -1,9 +1,7 @@
 // Ejecución de comandos del motor por el canal exec (con sudo si hace falta) y traducción de errores.
 import type { ExecResult } from "../../api/types";
 import { errorMessage } from "../../api/core";
-import { runScript, ElevationError } from "../privileges";
-import type { Elevation } from "../privileges";
-import { sudoRejected } from "../privileges/sudo";
+import { runScript, ElevationError, type Elevation, sudoRejected } from "../privileges";
 import { PATH_PREFIX } from "./detect";
 import { ROOT_STORAGE_PROBLEM, ROOT_STORAGE_RE } from "./rootStorage";
 import { displayPrefix, renderCmd, type Cmd } from "./shell";

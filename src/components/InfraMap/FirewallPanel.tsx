@@ -2,25 +2,18 @@
 // políticas, reglas en palabras simples y cambios seguros (firewalld y ufw; nftables/iptables solo se ven).
 import { lazy, Suspense, useEffect, useState } from "react";
 import { AlertTriangle, KeyRound, Plus, Power, RefreshCw, Timer } from "lucide-react";
-import type { ServerSnapshot } from "../../features/infra/graph";
-import {
-  canManage,
-  crossCheck,
-  expireTrials,
-  lockoutProblem,
-  MANAGED_TEXT,
-  policyLines,
-  statusText,
-  trialActions,
-  useFwTrials,
-  type FwRule,
-} from "../../features/infra/firewall";
+import type { ServerSnapshot, FwRule } from "../../features/infra";
+import { canManage } from "../../features/infra/firewall/report";
+import { crossCheck } from "../../features/infra/firewall/crosscheck";
+import { expireTrials, trialActions, useFwTrials } from "../../features/infra/firewall/job";
+import { lockoutProblem } from "../../features/infra/firewall/lockout";
+import { MANAGED_TEXT, policyLines, statusText } from "../../features/infra/firewall/explain";
 import { FirewallChangeDialog, type ChangeRequest } from "./FirewallChangeDialog";
 import { FirewallRules, type RuleActions } from "./FirewallRules";
 import { useFirewall } from "./useFirewall";
 import "./Firewall.css";
 
-const SudoDialog = lazy(() => import("../Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
+const SudoDialog = lazy(() => import("../Sudo/SudoDialog").then((m) => ({ default: m.SudoDialog })));
 
 /** Cambios a prueba de esta conexión, con su cuenta atrás y los botones para resolverlos. */
 function PendingTrials({ sessionId }: { sessionId: string }) {

@@ -2,8 +2,6 @@
 import { create } from "zustand";
 import { profiles } from "../api/profiles";
 import type { Bookmark, Project, ServerProfile } from "../api/types";
-import { sudoSourceChanged } from "../features/privileges/lookup";
-import { resetStoredSudoForProfile } from "../features/privileges/resetForProfile";
 import { toast } from "./toasts";
 
 interface ProfilesState {
@@ -38,6 +36,23 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   const next = list.slice();
   next[i] = item;
   return next;
+}
+
+/** Lo que cambió al guardar un servidor. `prev` undefined = servidor nuevo. `edits`: las contraseñas que
+ *  se tocaron (ver `saveServer`). */
+export interface ServerSaved {
+  prev: ServerProfile | undefined;
+  saved: ServerProfile;
+  edits: { secret?: string; sudoSecret?: string };
+}
+
+const savedListeners = new Set<(e: ServerSaved) => void>();
+
+/** Avisa cada vez que se guarda un servidor (p. ej. privilegios vuelve a mirar su contraseña de sudo).
+ *  El store no sabe quién escucha: así no depende de ninguna función. Devuelve cómo dejar de escuchar. */
+export function onServerSaved(listener: (e: ServerSaved) => void): () => void {
+  savedListeners.add(listener);
+  return () => savedListeners.delete(listener);
 }
 
 let loading: Promise<void> | null = null;
@@ -88,8 +103,7 @@ export const useProfiles = create<ProfilesState>((set, get) => ({
         toast.error("Servidor guardado, pero no la contraseña de sudo", e);
       }
     }
-    // Las pestañas abiertas a este servidor vuelven a mirar la contraseña de sudo guardada.
-    resetStoredSudoForProfile(saved.id, sudoSourceChanged(prev, saved, { secret, sudoSecret }));
+    for (const listener of savedListeners) listener({ prev, saved, edits: { secret, sudoSecret } });
     return saved;
   },
 

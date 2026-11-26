@@ -1,7 +1,6 @@
 // Datos de ejemplo del mapa de infraestructura: web-prod (nginx → 2 sitios → contenedores y una app de
 // Node, varios usuarios) y db-01 (PostgreSQL), conectados. Los usan las pruebas y la vista previa.
-import type { ListenPort, PortScope } from "../admin/ports";
-import type { Site, WebResult } from "../admin/web";
+import type { ListenPort, PortScope, Site, WebResult } from "../admin";
 import type { OwnedContainer, ServerSnapshot } from "./graph";
 import type { HumanUser } from "./parse";
 

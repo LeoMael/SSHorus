@@ -2,7 +2,7 @@
 import type { Terminal } from "@xterm/xterm";
 import { SearchAddon, type ISearchResultChangeEvent } from "@xterm/addon-search";
 import { buildSearchDecorations } from "./termTheme";
-import type { SearchResults } from "./termTypes";
+import type { SearchResults } from "../../features/terminal";
 
 export class TermSearch {
   private readonly addon = new SearchAddon({ highlightLimit: 2000 });

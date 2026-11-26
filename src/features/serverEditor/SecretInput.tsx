@@ -7,8 +7,8 @@ import { errorMessage, isApiError } from "../../api/core";
 import { profiles, type SecretKind } from "../../api/profiles";
 import { vault } from "../../api/vault";
 import { applyVaultStatus, useLock } from "../lock/lockStore";
-import { PinField } from "../lock/PinField";
 import { secretWords } from "../lock/secretKind";
+import { PinField } from "../lock/PinField";
 
 export function SecretInput({
   profileId,

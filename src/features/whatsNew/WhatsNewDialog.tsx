@@ -1,7 +1,7 @@
 // Diálogo pequeño de «Novedades»: lo esencial de la versión recién instalada.
 import { BookOpen, Sparkles } from "lucide-react";
 import { Modal } from "../../components/ui/Modal";
-import { openManual, openSettingsAt } from "../../components/Settings/settingsNav";
+import { openManual, openSettingsAt } from "../../stores/settingsNav";
 import { useShowSetup } from "../lock/LockGate";
 import { useLock } from "../lock/lockStore";
 import { dismissWhatsNew, useWhatsNew } from "./whatsNew";

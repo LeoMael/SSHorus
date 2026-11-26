@@ -1,6 +1,6 @@
 // «Cerrar las demás»: cierra todas las pestañas de la barra menos una.
 import { useTabs } from "../../stores/tabs";
-import { requestCloseTab } from "../../stores/sessionState";
+import { requestCloseTab } from "../../features/connect";
 import { closeLocalTab, useLocalTabs } from "../../features/localterm/store";
 import { closeFleetTab, fleetTabIds } from "../../features/fleet/tabs";
 

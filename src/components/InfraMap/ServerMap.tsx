@@ -2,7 +2,7 @@
 // guardado (ver useCachedMap) y se relee con «Actualizar», al reconectar o si tiene más de ~10 min.
 import { useCallback } from "react";
 import { collectServer } from "../../features/infra/collect";
-import type { NavTarget } from "../../features/infra/graph";
+import type { NavTarget } from "../../features/infra";
 import { useInfraNav } from "../../features/infra/store";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs } from "../../stores/tabs";

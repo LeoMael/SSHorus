@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { KeyRound } from "lucide-react";
 import { HEAD_H, MAX_TABLES, ROW_H, layoutDiagram, tableId } from "../../features/databases/diagram";
-import type { DbTable } from "../../features/databases/types";
+import type { DbTable } from "../../features/databases";
 
 interface Props {
   tables: DbTable[];

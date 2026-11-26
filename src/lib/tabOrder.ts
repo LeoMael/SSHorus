@@ -1,5 +1,5 @@
 // Orden de la barra de pestañas: grupos seguidos (servidor, este equipo, paneles) que se reordenan
-// cada uno por su lado. Funciones puras, con pruebas en order.test.ts.
+// cada uno por su lado. Funciones puras, con pruebas en tabOrder.test.ts.
 
 /** Mueve el elemento `id` a la posición `toIndex` (acotada). Si no está, devuelve la misma lista. */
 export function moveById<T extends { id: string }>(list: T[], id: string, toIndex: number): T[] {

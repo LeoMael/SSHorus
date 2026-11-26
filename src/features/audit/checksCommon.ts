@@ -1,8 +1,7 @@
 // Tipos y utilidades compartidas por las comprobaciones de auditoría.
 import type { Check, CheckStatus, Fix } from "../../api/audit";
 import type { Summary } from "../../api/vulnscan";
-import type { PortsResult } from "../admin/ports";
-import type { WebResult } from "../admin/web";
+import type { PortsResult, WebResult } from "../admin";
 
 export interface AuditInput {
   /** Salida de AUDIT_SCRIPT. */

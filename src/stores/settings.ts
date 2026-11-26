@@ -4,7 +4,7 @@ import { settingsApi } from "../api/profiles";
 import type { LocalAiSettings, Settings } from "../api/types";
 import { DEFAULT_AI_SETTINGS, DEFAULT_VULNSCAN_SETTINGS } from "../api/vulnscan";
 import { ACCENTS, normalizeTheme } from "../styles/themes";
-import { cleanOverrides } from "../features/shortcuts/keys";
+import { cleanOverrides } from "./shortcutKeys";
 import { isMac } from "../lib/platform";
 
 /** Fuente monoespaciada por defecto: Linux (JetBrains/Fira/Noto), Windows (Cascadia Mono, Consolas), macOS (Menlo). */

@@ -287,16 +287,6 @@
   user-select: text;
 }
 
-/* Contraseña de sudo para un comando del asistente: SudoDialog de Administración sin Admin.css cargado */
-.mcp-sudo .adm-spinner-btn {
-  width: 12px;
-  height: 12px;
-}
-.sudo-dialog-reason {
-  margin-bottom: 12px;
-  line-height: 1.45;
-}
-
 /* ───── Aceptar automáticamente ───── */
 .mcp-auto {
   display: flex;

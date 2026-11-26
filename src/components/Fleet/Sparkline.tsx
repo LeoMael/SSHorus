@@ -1,6 +1,5 @@
 // Mini gráfica de CPU y memoria de los últimos minutos (0–100 %).
-import type { HistoryPoint } from "../../features/fleet/health";
-import { HISTORY_MS } from "../../features/fleet/health";
+import { type HistoryPoint, HISTORY_MS } from "../../features/fleet/health";
 
 const W = 100;
 const H = 30;

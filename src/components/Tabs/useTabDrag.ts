@@ -4,7 +4,7 @@ import { useTabs } from "../../stores/tabs";
 import { moveTab } from "../../stores/sessionState";
 import { moveLocalTab, useLocalTabs } from "../../features/localterm/store";
 import { fleetTabIds, moveFleetTab } from "../../features/fleet/tabs";
-import { slotInGroup } from "../../features/tabbar/order";
+import { slotInGroup } from "../../lib/tabOrder";
 
 /** Grupos de la barra, en orden: cada uno se reordena solo dentro de sí. */
 function barGroups(): { ids: string[]; move: (id: string, toIndex: number) => void }[] {

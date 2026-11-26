@@ -5,13 +5,13 @@ import "./styles/palettes.css";
 import "./styles/controls.css";
 import "./styles/overlays.css";
 import "./styles/utilities.css";
-import { parseEditorWindowParams } from "./windows/editorWindowBus";
+import { parseEditorWindowParams } from "./components/Editor/editorWindowBus";
 import { BOOT_MARKS, markBoot } from "./components/Diagnostics/bootMarks";
 import { initLock } from "./features/lock/lockStore";
 import { LockGate } from "./features/lock/LockGate";
 import { forgetAllSudo } from "./features/privileges/sudo";
 import { useSettings } from "./stores/settings";
-import { initThemeSync } from "./components/Settings/theme";
+import { initThemeSync } from "./stores/appTheme";
 
 markBoot(BOOT_MARKS.main);
 

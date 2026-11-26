@@ -2,7 +2,7 @@
 // Administración), por ejemplo para abrir el diálogo de un botón de la tarea.
 import { create } from "zustand";
 import { useTabs } from "../../stores/tabs";
-import type { Job, JobPane } from "./state";
+import type { Job, JobPane } from "../../stores/jobsState";
 
 export interface JobNavRequest {
   sessionId: string;

@@ -1,7 +1,8 @@
 // «Nuevo usuario con clave» con sudo: contraseña solo para sudo (generada o escrita) y el servidor que se
 // guarda en SSHorus para ese usuario. Funciones puras (sin React ni Tauri).
 import type { AuthMethod, ServerProfile } from "../../api/types";
-import { generatePassword, validatePassword } from "./shell";
+import { generatePassword } from "../../lib/password";
+import { validatePassword } from "./shell";
 
 export type SudoPassMode = "generate" | "type";
 

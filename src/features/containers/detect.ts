@@ -1,6 +1,7 @@
 // Detección de Podman / Docker / Compose en el servidor (script POSIX + parseo). Funciones puras.
 // El script viaja por stdin (ver privileges/elevate.ts: buildExec), así que puede llevar comillas simples.
 import { parseKeyValues } from "../privileges/detect";
+import { distroFamily } from "../../lib/remote";
 import { ROOT_STORAGE_PROBLEM, usesRootStorage } from "./rootStorage";
 import type { ComposeTool, Engine } from "./types";
 
@@ -173,12 +174,11 @@ export interface InstallHint {
 
 /** Instrucciones de instalación según la distro (ID / ID_LIKE de /etc/os-release). */
 export function installHints(distroId: string | null, distroLike: string[] = []): { distro: string; hints: InstallHint[] } {
-  const ids = [distroId ?? "", ...distroLike].map((s) => s.toLowerCase());
-  const has = (...xs: string[]) => xs.some((x) => ids.includes(x));
-  if (has("fedora", "rhel", "centos", "rocky", "almalinux", "ol")) {
-    const fedora = has("fedora") && !has("rhel");
+  const { family, label: distro } = distroFamily(distroId, distroLike);
+  if (family === "rhel") {
+    const fedora = distro === "Fedora";
     return {
-      distro: fedora ? "Fedora" : "RHEL / Rocky / Alma",
+      distro,
       hints: [
         { title: "Podman (recomendado)", command: "sudo dnf install -y podman podman-compose" },
         fedora
@@ -191,10 +191,10 @@ export function installHints(distroId: string | null, distroLike: string[] = [])
       ],
     };
   }
-  if (has("ubuntu", "debian", "linuxmint", "pop", "raspbian")) {
-    const ubuntu = has("ubuntu");
+  if (family === "debian") {
+    const ubuntu = distro === "Ubuntu";
     return {
-      distro: ubuntu ? "Ubuntu" : "Debian",
+      distro,
       hints: [
         { title: "Podman (recomendado)", command: "sudo apt-get update && sudo apt-get install -y podman podman-compose" },
         {
@@ -204,27 +204,27 @@ export function installHints(distroId: string | null, distroLike: string[] = [])
       ],
     };
   }
-  if (has("alpine")) {
+  if (family === "alpine") {
     return {
-      distro: "Alpine",
+      distro,
       hints: [
         { title: "Podman (recomendado)", command: "doas apk add podman podman-compose", note: "En Alpine también puedes usar sudo si está instalado." },
         { title: "Docker", command: "doas apk add docker docker-cli-compose && doas rc-update add docker default && doas service docker start" },
       ],
     };
   }
-  if (has("arch", "manjaro", "endeavouros")) {
+  if (family === "arch") {
     return {
-      distro: "Arch Linux",
+      distro,
       hints: [
         { title: "Podman (recomendado)", command: "sudo pacman -S --needed --noconfirm podman podman-compose" },
         { title: "Docker", command: "sudo pacman -S --needed --noconfirm docker docker-compose && sudo systemctl enable --now docker" },
       ],
     };
   }
-  if (has("opensuse", "opensuse-leap", "opensuse-tumbleweed", "suse", "sles")) {
+  if (family === "suse") {
     return {
-      distro: "openSUSE",
+      distro,
       hints: [
         { title: "Podman (recomendado)", command: "sudo zypper install -y podman podman-compose" },
         { title: "Docker", command: "sudo zypper install -y docker docker-compose && sudo systemctl enable --now docker" },

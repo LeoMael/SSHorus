@@ -6,7 +6,7 @@ import type { ExecResult } from "../../api/types";
 import { confirmDialog } from "../ui/dialogs";
 import { hasTerminal, sendToTerminal } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
-import type { CommandItem } from "../../features/commands/state";
+import type { CommandItem } from "../../features/commands";
 
 export const CAPTURE_TIMEOUT_SECS = 30;
 

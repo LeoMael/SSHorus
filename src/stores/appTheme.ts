@@ -4,8 +4,8 @@
 //   <html data-palette> = apariencia concreta (tokens de theme.css).
 // Acento y tamaño de letra de la interfaz van como estilo en línea de <html>.
 import { create } from "zustand";
-import { useSettings } from "../../stores/settings";
-import { applyAccent, applyUiFontSize, normalizeTheme, paletteInfo, type PaletteId, type ThemeMode } from "../../styles/themes";
+import { useSettings } from "./settings";
+import { applyAccent, applyUiFontSize, normalizeTheme, paletteInfo, type PaletteId, type ThemeMode } from "../styles/themes";
 
 export type EffectiveTheme = ThemeMode;
 

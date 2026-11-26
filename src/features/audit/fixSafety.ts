@@ -3,7 +3,7 @@
 // Funciones puras: se prueban en fix.test.ts.
 import type { AuthMethod } from "../../api/types";
 import type { Check } from "../../api/audit";
-import type { PortsResult } from "../admin/ports";
+import type { PortsResult } from "../admin";
 import { splitSections } from "../../lib/remote";
 
 /** auto = entra en «Arreglar todo lo seguro» · confirm = uno a uno, con aviso · manual = solo explicación. */

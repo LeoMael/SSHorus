@@ -5,7 +5,7 @@ import { create } from "zustand";
 import type { Project } from "../../api/types";
 import { useTabs } from "../../stores/tabs";
 import { pickNeighbor } from "../localterm/logic";
-import { moveById } from "../tabbar/order";
+import { moveById } from "../../lib/tabOrder";
 
 export interface FleetTab {
   /** «fleet-all» o «fleet-<proyecto>» (nunca choca con un sessionId ni con una local). */

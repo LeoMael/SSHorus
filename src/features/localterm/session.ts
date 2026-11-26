@@ -5,7 +5,7 @@
 //
 // Para la vista es un `TermBackend` más: el termId que ve es siempre el de la shell.
 import type { AiLaunch, LocalOpened, LocalTermState } from "../../api/localterm";
-import type { TermBackend, TermOpenResult } from "../../components/Terminal/termController";
+import type { TermBackend, TermOpenResult } from "../terminal";
 
 /** Lo que usa del motor (en las pruebas, uno falso). */
 export interface LocalApi {

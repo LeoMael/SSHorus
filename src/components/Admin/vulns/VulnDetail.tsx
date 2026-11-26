@@ -1,20 +1,15 @@
 // Panel lateral con el detalle de un hallazgo (o de la fila agrupada del kernel).
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Box, CloudDownload, ExternalLink, RotateCcw, Wrench, X } from "lucide-react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openLink } from "../../ui/openLink";
 import { errorMessage } from "../../../api/core";
 import { vulnscan, type Finding, type Report, type Target, type VulnDetail as Detail } from "../../../api/vulnscan";
 import { canUpdateImage, fixKind, fixSuggestion, kernelSuggestion, targetOf, type FixSuggestion, type SudoTool } from "../../../features/vulnscan";
-import { toast } from "../../../stores/toasts";
 import { useAdmin } from "../context";
 import { CommandActions, findingLinks, originLabel, SevTag, SOURCE_LABEL } from "./vulnUi";
 import { VulnWhy } from "./VulnWhy";
 
 const ImageUpdateDialog = lazy(() => import("./ImageUpdateDialog").then((m) => ({ default: m.ImageUpdateDialog })));
-
-function open(url: string) {
-  openUrl(url).catch((e) => toast.error("No se pudo abrir el enlace", e));
-}
 
 /** Botón «Actualizar imagen» y qué contenedores se recrean (según el último análisis). */
 function ImageUpdate({ report, target }: { report: Report; target: Target }) {
@@ -268,7 +263,7 @@ export function VulnDetail({
           <h4>Enlaces</h4>
           <div className="vs-d-links">
             {links.map((l) => (
-              <button key={l.url} className="vs-link" onClick={() => open(l.url)} title={l.url}>
+              <button key={l.url} className="vs-link" onClick={() => openLink(l.url)} title={l.url}>
                 <ExternalLink size={11} /> {l.label}
               </button>
             ))}

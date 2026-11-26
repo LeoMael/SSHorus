@@ -1,6 +1,5 @@
 // «Bases de datos»: tipos de los destinos (dónde está cada base y cómo se entra) y del esquema leído.
-import type { CtOwner } from "../containers/owner";
-import type { Engine } from "../containers/types";
+import type { CtOwner, Engine } from "../containers";
 
 export type DbEngine = "postgres" | "mysql" | "sqlite";
 

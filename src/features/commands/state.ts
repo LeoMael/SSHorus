@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { snippets } from "../../api/snippets";
 import type { Project, Snippet } from "../../api/types";
-import { parseOsRelease } from "../../lib/remote";
+import { distroFromOsRelease, parseOsRelease } from "../../lib/remote";
 import { toast } from "../../stores/toasts";
 import { CATALOG, type CatalogEntry, type CatalogVar, type Distro, varHint } from "./catalog";
 import { fuzzyScore, parseVars } from "./template";
@@ -137,11 +137,7 @@ const sessionInfo = new Map<string, Promise<SessionInfoCache>>();
 const suggestions = new Map<string, Promise<string[]>>();
 
 export function distroFromOs(os: Record<string, string>): Distro | null {
-  const ids = `${os.ID ?? ""} ${os.ID_LIKE ?? ""}`.toLowerCase();
-  if (/\b(alpine)\b/.test(ids)) return "apk";
-  if (/\b(fedora|rhel|centos|rocky|almalinux|ol|amzn|suse|opensuse)\b/.test(ids)) return "rpm";
-  if (/\b(debian|ubuntu|linuxmint|pop|raspbian|kali)\b/.test(ids)) return "deb";
-  return null;
+  return distroFromOsRelease(os).packages;
 }
 
 export function getSessionInfo(sessionId: string): Promise<SessionInfoCache> {

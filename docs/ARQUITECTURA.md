@@ -206,7 +206,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 - **Editores:** cada archivo abierto es una pestaña más en la misma fila. Ctrl+Shift+M divide el
   área en vista fija | editores.
 - **Editor en otra ventana:** suelta la pestaña fuera de la ventana o usa "Abrir en ventana aparte".
-  Las ventanas se hablan por eventos (`windows/editorWindowBus.ts`); "Volver" o cerrar la ventana la
+  Las ventanas se hablan por eventos (`components/Editor/editorWindowBus.ts`); "Volver" o cerrar la ventana la
   devuelve como pestaña. Al cerrar la ventana principal se cierra toda la app.
 - **Abajo:** terminales (varias por conexión; con ∞ si son persistentes con tmux) y el panel de
   transferencias. Con PIN activo, una pantalla de bloqueo tapa todas las ventanas.
@@ -223,13 +223,13 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sshkeys`, `sudoRun`, `tabbar`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`) |
-| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano) y `sessionState` (estado de cada sesión abierta) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `Jobs`, `McpActivity`, `McpPairing`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
-| `windows/` | La ventana de editor aparte |
+| `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
 | `styles/` | El tema (BASE): `theme.css` (variables de color y tamaños), `palettes.css` (apariencias), `controls.css` (reinicio, botones, formularios), `overlays.css` (modal, avisos, menú contextual) y `utilities.css` (etiquetas, progreso, spinner, logo). `main.tsx` los importa **en ese orden** (los posteriores pisan a los anteriores). `themes.ts` tiene la lista de apariencias |
-| `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida y `lib/remote/` (lo común a los scripts remotos) |
+| `lib/` | Utilidades puras: rutas, formato, plataforma, portapapeles, carga diferida, contraseñas aleatorias (`password.ts`), orden de la barra de pestañas (`tabOrder.ts`), lo puro del Markdown (`markdown.ts`) y `lib/remote/` (lo común a los scripts remotos) |
 
 ### Dónde va cada archivo (criterio de carpetas)
 
@@ -239,17 +239,27 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
 |---------|-----------|---------|
 | `components/<X>/` | La **interfaz React** de un dominio: pantallas, diálogos, hooks de pantalla y su CSS. | `components/Admin/users/UserDialog.tsx` |
 | `features/<x>/` | La **lógica sin React** de una función (scripts remotos, parseadores, reglas, cálculos) y los **stores propios** de esa función. Lleva pruebas. | `features/commands/catalog.ts`, `features/fileExplorer/explorerLogic.ts`, `features/reboot/store.ts` |
-| `components/ui/` | **Controles genéricos** que usa más de un dominio, sin lógica de ninguno. | `ui/AdmModal.tsx`, `ui/PopupMenu.tsx`, `ui/ContextMenu.tsx`, `ui/Segmented.tsx` |
-| `stores/` | **Estado de toda la app** (lo que comparten varios dominios). | `stores/tabs.ts`, `stores/sessionState.ts` |
-| `lib/` | **Utilidades puras sin dominio**. En `lib/remote/`: citas de shell (`shQuote`, `shJoin`, `shQuoteMinimal`), salida por secciones `@@` (`splitSections`), lectura de `/etc/os-release` (`parseOsRelease`) e «ip:puerto» (`parseAddr`). | `lib/paths.ts`, `lib/remote/shell.ts` |
+| `components/ui/` | **Controles genéricos** que usa más de un dominio, sin lógica de ninguno. Solo importa de `stores/`, `lib/` y `api/` (si importara una feature, se cerraría un ciclo: casi todas usan `components/ui`). | `ui/AdmModal.tsx`, `ui/PopupMenu.tsx`, `ui/ContextMenu.tsx`, `ui/ServerSelect.tsx`, `ui/openLink.ts` |
+| `stores/` | **Estado de toda la app** (lo que comparten varios dominios). Solo guarda estado: no conecta, no abre diálogos ni importa de `features/` ni de `components/`. Si una función necesita enterarse de un cambio, se suscribe (p. ej. `onServerSaved` de `stores/profiles`). | `stores/tabs.ts`, `stores/sessionState.ts` |
+| `lib/` | **Utilidades puras sin dominio**. En `lib/remote/`: citas de shell (`shQuote`, `shJoin`, `shQuoteMinimal`), salida por secciones `@@` (`splitSections`), lectura de `/etc/os-release` (`parseOsRelease`), familia de la distro (`distroFamily`: una sola tabla para elegir comandos según la distro) e «ip:puerto» (`parseAddr`). | `lib/paths.ts`, `lib/remote/shell.ts`, `lib/password.ts` |
 
 - **Ejecutar con elevación** (`runScript`, `readElevated`, `ElevationError`, `succeeded`, `failureText`) vive en
-  `features/privileges/run.ts`: lo usan Administración, Contenedores, Auditoría, el escáner y el resto.
+  `features/privileges/run.ts`: lo usan Administración, Contenedores, Auditoría, el escáner y el resto. La **contraseña
+  de sudo fuera de un panel** (asistente de IA, «Ejecutar en varios servidores», comandos con sudo) se pide con
+  `sudoPasswordForCommand` (`features/privileges/sudoAsk.ts`, una cola de diálogos); el diálogo (`SudoDialog`) y quien
+  enseña la cola (`SudoAskHost`, montado en `App`) están en `components/Sudo/`.
+- **`index.ts` en cada carpeta de `features/`**: exporta su API pública, la lógica (stores, funciones, tipos). Desde
+  otra carpeta se importa del index (`../../features/fleet`), con tres excepciones que se importan de su archivo:
+  (1) los componentes React con CSS propio (traerían su CSS a quien solo quiere una función; el index no los
+  exporta), (2) lo que se carga con `import()` para que no entre en el arranque, y (3) cuando el index arrastraría
+  código que esa pantalla no usa (p. ej. la barra lateral solo quiere `useInfraNav` de `features/infra/store`, no el
+  mapa entero): así cada pantalla que se carga aparte sigue cargándose aparte. Dentro de la propia carpeta, siempre
+  del archivo (`./store`), nunca del index.
 - **Tareas en segundo plano** (lo que tarda y sigue aunque se cierre su diálogo): cada función describe su tarea con
   `startJob({ kind, sessionId, title, steps, run(ctx) })` (o `trackJob` si avanza por fuera, como un reinicio) en su
   propio `features/<x>/…Job.ts`; dentro de `run` usa `ctx.output`, `ctx.phase`, `ctx.step`, `ctx.onCancel` y
   `runKillable`/`runElevated` (`features/jobs/remote.ts`) para que «Cancelar» mate el proceso en el servidor con el
-  mismo usuario. Lo puro (lista, historial, texto de estado, salida) está en `features/jobs/state.ts` y `output.ts`;
+  mismo usuario. Lo puro (lista, historial, texto de estado, salida) está en `stores/jobsState.ts` y `features/jobs/output.ts`;
   el store, en `stores/jobs.ts` (no sabe de ninguna función concreta); la interfaz, en `components/Jobs/` (montada
   una vez en `App`). Un resultado propio se enseña con el `view` de la tarea (p. ej. `Admin/vulns/VulnFixJobView.tsx`).
 - **Bases de datos** (solo lectura): la lógica está en `features/databases/` (`discover.ts` qué hay, reutilizando los
@@ -280,10 +290,9 @@ falla en cada push si se rompe alguna:
 | Ciclos entre carpetas | `npm run check:deps` | Cada `src/<área>/<dominio>` (o `src/<área>` para sus archivos sueltos) es una carpeta; ninguna puede depender de sí misma a través de otras |
 | Tope de líneas | `npm run check:lines` | Ningún `.ts`, `.tsx`, `.rs` ni `.css` de producción pasa de 500 líneas (las pruebas no cuentan) |
 
-Lo que ya incumplía una regla cuando se añadió está anotado, con su motivo (`TODO(deuda)`), en
+Lo que ya incumplía una regla cuando se añadió se anotó, con su motivo (`TODO(deuda)`), en
 `EXCEPCIONES_LIMITES` de `eslint.config.js`, en `scripts/deps-allowlist.json` y en `scripts/lines-allowlist.json`.
-**Esas listas solo pueden encoger**: no se añade nada (se mueve el código a su sitio) y, al arreglar algo, se borra su
-línea; los scripts avisan cuando sobra una.
+Desde el 26/11/2026 **las tres están vacías**, y solo pueden encoger: no se añade nada (se mueve el código a su sitio).
 
 **Motor (`src-tauri/src/`):** cada módulo es una carpeta con archivos de un solo tema (menos de 400 líneas; un módulo
 de varios archivos es una carpeta con su `mod.rs`).
@@ -412,7 +421,8 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 - **Comandos con sudo del asistente (MCP) y «Ejecutar en varios servidores»:** usan la misma contraseña en
   memoria y el mismo envoltorio del motor (`snippets/sudo.rs`; ver sección 16, «sudo en los comandos del
   asistente»). En varios servidores (`exec_capture_sudo`), cada servidor la busca con `obtainSudoPassword`
-  y, si hay que preguntar, el diálogo va a la cola de `SudoAskHost` (uno cada vez, con «Saltar este
+  y, si hay que preguntar, el diálogo va a la cola de `features/privileges/sudoAsk.ts`, que enseña
+  `components/Sudo/SudoAskHost` (uno cada vez, con «Saltar este
   servidor»). Root, sudo sin contraseña y `sudo -n` se ejecutan tal cual; si sudo la rechaza, ese servidor
   termina con error «Contraseña de sudo incorrecta» y queda rechazada (`sudoRejectedNotified`).
 - **Cancelación real:** `exec_cancel(id)` → el motor pide TERM por el mismo canal y espera 1,5 s →
@@ -433,7 +443,8 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
   exec de la sección 8.
 - **Carpetas de `components/Admin/`:** en la raíz lo común (`AdminPanel`, `AdminChrome`, `context`, `HistoryTab`,
-  `PlanReview`, `SudoDialog`, `PasswordField`, `MiniMarkdown`, `VirtualTable` y el CSS común); `users/` (usuarios,
+  `PlanReview`, `PasswordField`, `MiniMarkdown`, `VirtualTable` y el CSS común; el diálogo de sudo, que usan también
+  Contenedores, el mapa, el Monitor y los comandos con sudo, está en `components/Sudo/`); `users/` (usuarios,
   grupos, conectados ahora, llaves, nuevo usuario con clave, sudo de la llave, importar usuarios y contenedores de cada
   usuario); `web/` (puertos, sitios web, tráfico y registro de visitas); `vulns/` (escáner, «Arreglar», actualizar
   imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `visibility/` («Qué pueden ver»). El menú

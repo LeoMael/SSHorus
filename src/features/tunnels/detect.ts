@@ -3,7 +3,7 @@
 import type { TunnelDef } from "../../api/tunnels";
 import { scopeOf, tunnelDestHost, type ListenPort, type PortScope } from "../admin/ports";
 import { splitSections } from "../../lib/remote";
-import { parsePortsString } from "../containers/parse";
+import { parsePortsString } from "../containers/parsePrimitives";
 import { HTTPS_PORTS, PROXY_PROCESSES, SERVICE_CATALOG, type ServiceDef } from "./catalog";
 
 /** Puerto publicado de un contenedor («127.0.0.1:5432->5432/tcp»). */

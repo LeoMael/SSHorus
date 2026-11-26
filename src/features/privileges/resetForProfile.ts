@@ -1,6 +1,6 @@
 // Al cambiar la contraseña de sudo guardada de un servidor (o su modo), sus pestañas abiertas vuelven a
-// mirarla. Aparte de sudo.ts (que carga también la ventana del editor) y de stored.ts (que importa el
-// store de servidores, y este lo importa a él).
+// mirarla (al guardar el servidor, ver initPrivileges, o desde el diálogo de sudo). Aparte de sudo.ts,
+// que carga también la ventana del editor.
 import { useTabs } from "../../stores/tabs";
 import { resetStoredSudo } from "./sudo";
 

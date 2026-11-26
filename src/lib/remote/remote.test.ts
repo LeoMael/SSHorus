@@ -1,6 +1,7 @@
-// Pruebas de las utilidades compartidas para scripts remotos: secciones, citas, os-release y direcciones.
-// Ejecutar: npx rolldown src/lib/remote/remote.test.ts -p node -f esm -o /tmp/rt.mjs && node /tmp/rt.mjs
-import { parseAddr, parseOsRelease, shJoin, shQuote, shQuoteMinimal, splitSections } from ".";
+// Pruebas de las utilidades compartidas para scripts remotos: secciones, citas, os-release, familia de la
+// distro y direcciones.
+// Ejecutar: npm test -- remote
+import { distroFamily, distroFromOsRelease, parseAddr, parseOsRelease, shJoin, shQuote, shQuoteMinimal, splitSections } from ".";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {
@@ -52,6 +53,26 @@ eq(os.ID_LIKE, "rhel centos fedora", "ID_LIKE");
 eq(os.PRETTY_NAME, "Rocky 9", "comillas simples y \\r");
 eq(os.VERSION_ID, "9", "sin comillas");
 eq(Object.keys(parseOsRelease("hola\n=x\nid=minus")).length, 0, "líneas que no son CLAVE=valor");
+
+// ── Familia de la distro ──
+const fam = (id: string | null, like: string[] = []) => {
+  const d = distroFamily(id, like);
+  return [d.family, d.label, d.packages];
+};
+eq(fam("ubuntu", ["debian"]), ["debian", "Ubuntu", "deb"], "Ubuntu");
+eq(fam("debian"), ["debian", "Debian", "deb"], "Debian");
+eq(fam("pop", ["ubuntu", "debian"]), ["debian", "Ubuntu", "deb"], "Pop!_OS cuenta como Ubuntu");
+eq(fam("fedora"), ["rhel", "Fedora", "rpm"], "Fedora");
+eq(fam("rocky", ["rhel", "centos", "fedora"]), ["rhel", "RHEL / Rocky / Alma", "rpm"], "Rocky (ID_LIKE con fedora y rhel)");
+eq(fam("amzn", ["centos", "rhel", "fedora"]), ["rhel", "RHEL / Rocky / Alma", "rpm"], "Amazon Linux");
+eq(fam("Alpine"), ["alpine", "Alpine", "apk"], "mayúsculas");
+eq(fam("manjaro", ["arch"]), ["arch", "Arch Linux", null], "Manjaro");
+eq(fam("opensuse-leap", ["suse", "opensuse"]), ["suse", "openSUSE", "rpm"], "openSUSE: paquetes rpm");
+eq(fam("freebsd"), ["freebsd", "FreeBSD", null], "FreeBSD");
+eq(fam("nixos"), [null, "nixos", null], "desconocida: su ID");
+eq(fam(null), [null, "tu sistema", null], "sin ID");
+eq(distroFromOsRelease(parseOsRelease('ID=linuxmint\nID_LIKE="ubuntu debian"\n')).packages, "deb", "desde os-release");
+eq(distroFromOsRelease({}).family, null, "os-release vacío");
 
 // ── Direcciones ──
 eq(parseAddr("0.0.0.0:22"), { ip: "0.0.0.0", iface: null, port: 22 }, "IPv4");

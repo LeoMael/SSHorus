@@ -3,9 +3,9 @@
 // conexiones SSH (privilegios, monitor, transferencias…) las confunde con un servidor.
 import { create } from "zustand";
 import type { AiLaunch, AiTool } from "../../api/localterm";
-import type { TermController, TermStatus } from "../../components/Terminal/termController";
+import type { TermHandle, TermStatus } from "../terminal";
 import { useTabs } from "../../stores/tabs";
-import { moveById } from "../tabbar/order";
+import { moveById } from "../../lib/tabOrder";
 import { pickNeighbor, titleFor, type LocalKind } from "./logic";
 import type { LocalSession } from "./session";
 
@@ -102,14 +102,14 @@ export function moveLocalTab(id: string, toIndex: number) {
 
 // ───────── Controladores y sesiones (para pegar texto o abrir un asistente desde fuera) ─────────
 
-const controllers = new Map<string, TermController>();
+const controllers = new Map<string, TermHandle>();
 
-export function setLocalController(id: string, c: TermController | null) {
+export function setLocalController(id: string, c: TermHandle | null) {
   if (c) controllers.set(id, c);
   else controllers.delete(id);
 }
 
-export function getLocalController(id: string): TermController | null {
+export function getLocalController(id: string): TermHandle | null {
   return controllers.get(id) ?? null;
 }
 

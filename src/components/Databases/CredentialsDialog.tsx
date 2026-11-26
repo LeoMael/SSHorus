@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { AdmModal } from "../ui/AdmModal";
-import type { DbTarget } from "../../features/databases/types";
+import type { DbTarget } from "../../features/databases";
 
 interface Props {
   target: DbTarget;

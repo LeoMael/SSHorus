@@ -15,7 +15,7 @@ import {
   type SessionReconnecting,
 } from "../api/types";
 import { useSettings } from "../stores/settings";
-import { initThemeSync } from "../components/Settings/theme";
+import { initThemeSync } from "../stores/appTheme";
 import { DialogHost, confirmDialog } from "../components/ui/dialogs";
 import { Toaster } from "../components/ui/Toaster";
 import { basename } from "../lib/paths";
@@ -36,7 +36,7 @@ import {
   type EdwReturn,
   type EdwSettings,
   type EdwStatus,
-} from "./editorWindowBus";
+} from "../components/Editor/editorWindowBus";
 import { LockGate } from "../features/lock/LockGate";
 import "./EditorWindow.css";
 

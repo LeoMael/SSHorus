@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Copy, ExternalLink, Upload } from "lucide-react";
 import { github } from "../../api/github";
 import { errorMessage } from "../../api/core";
-import { openLink } from "../../components/GitHub/parts";
+import { openLink } from "../../components/ui/openLink";
 import { useGitHub } from "../github/store";
 import { GITHUB_NEW_KEY_URL, githubTestCommand } from "./keys";
 import { copyText } from "./copy";

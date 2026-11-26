@@ -1,9 +1,8 @@
 // Revisión de una acción antes de ejecutarla: opciones, comando exacto, confirmación y resultado.
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Copy, KeyRound, Play } from "lucide-react";
-import { displayCmds, runEngine, type Cmd, type EngineRun } from "../../features/containers";
+import { displayCmds, runEngine, type Cmd, type EngineRun, scriptFor } from "../../features/containers";
 import { wrapScript, type Elevation } from "../../features/privileges";
-import { scriptFor } from "../../features/containers/run";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { AdmModal } from "../ui/AdmModal";

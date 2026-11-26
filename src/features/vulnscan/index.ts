@@ -1,6 +1,7 @@
 // Escáner de vulnerabilidades (interfaz): orquestación de fases, comando sugerido, arreglar y volver a
 // comprobar, y texto para la IA.
 export * from "./run";
+export { loadStoreUsers } from "../containers";
 export * from "./fixCommand";
 export * from "./aiPayload";
 export * from "./nav";

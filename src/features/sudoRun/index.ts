@@ -5,8 +5,7 @@
 import { snippets, type SudoExecResult } from "../../api/snippets";
 import { useTabs } from "../../stores/tabs";
 import { toast } from "../../stores/toasts";
-import { sudoPasswordForCommand } from "../mcp/sudoAsk";
-import { detectPrivilege, getPrivilege, sudoRejectedNotified } from "../privileges";
+import { detectPrivilege, getPrivilege, sudoPasswordForCommand, sudoRejectedNotified } from "../privileges";
 import { sudoRunError } from "./failure";
 
 export { sudoFailureText, sudoRunError } from "./failure";

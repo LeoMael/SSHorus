@@ -4,7 +4,7 @@ import { OWNER_SELF, type CtOwner } from "./owner";
 import type { Cmd } from "./shell";
 import type { EngineStatus } from "./detect";
 import type { Container, Engine } from "./types";
-import type { Elevation } from "../privileges/elevate";
+import type { Elevation } from "../privileges";
 
 /** Listas que carga el panel (cada una con su estado de carga). */
 export type ResourceKind = "containers" | "images" | "volumes" | "networks" | "df";

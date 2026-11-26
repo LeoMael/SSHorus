@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { LocalPrivateKey } from "../../../api/localkeys";
 import { ACCESS_METHODS, accessStatus, type AccessEdit, type AccessMethod, type RowAccess, type StatusTone } from "../../../features/admin";
 import { keyOptionLabel } from "../../../features/sshkeys/usage";
-import type { WithUsage } from "../../../features/sshkeys/useKeyUsage";
+import type { WithUsage } from "../../../features/sshkeys";
 
 type Key = WithUsage<LocalPrivateKey>;
 

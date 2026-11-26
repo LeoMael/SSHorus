@@ -8,7 +8,7 @@ import { vulnscan, type Engine, type ImageRaw, type Report, type Target, type Us
 import { runScript } from "../privileges";
 import type { Elevation } from "../privileges";
 import { imageKey, type Owner } from "./imageUpdate";
-import { loadStoreUsers, useVulnScan } from "./run";
+import { loadStoreUsers, useStoreUsers } from "../containers/storeUsers";
 
 /** Lo que se cancela con «Cancelar». */
 export class UpdateCancel {
@@ -40,7 +40,7 @@ export function elevationFor(owner: Owner, el: Elevation | null): Elevation | nu
 /** UID y HOME del dueño (otro usuario). Usa la lista del escáner, o la lee con sudo. */
 export async function ownerCtx(sessionId: string, owner: Owner, el: Elevation): Promise<UserCtx | null> {
   if (owner.kind !== "user") return null;
-  const find = () => useVulnScan.getState().users[sessionId]?.users.find((u) => u.name === owner.name);
+  const find = () => useStoreUsers.getState().bySession[sessionId]?.users.find((u) => u.name === owner.name);
   const u = find() ?? (await loadStoreUsers(sessionId, el), find());
   if (!u) throw new Error(`No se encontró el usuario «${owner.name}» con contenedores en el servidor`);
   return { name: u.name, uid: u.uid, home: u.home };

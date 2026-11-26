@@ -2,7 +2,7 @@
 import { Folder } from "lucide-react";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
 import { serverAddress } from "../../features/profiles/serverMatches";
-import type { SudoBadge } from "../../features/sidebar/machineGroups";
+import type { SudoBadge } from "../../features/sidebar";
 import { isMac, isModKey } from "../../lib/platform";
 import { connectNew, openOrFocus } from "./sidebarActions";
 import { bookmarkRowKey, serverRowKey, type TabState } from "./sidebarLogic";

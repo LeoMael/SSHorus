@@ -8,7 +8,7 @@
 //                        EV_EDW_DIRTY           el archivo tiene / ya no tiene cambios sin guardar
 //                        EV_EDW_RETURN          el archivo vuelve como pestaña (botón «Volver» o cierre de la ventana)
 //                        EV_EDW_OPEN_SETTINGS   abrir Ajustes en la principal
-import type { Settings } from "../api/types";
+import type { Settings } from "../../api/types";
 
 export const EV_EDW_HELLO = "editor-window://hello";
 export const EV_EDW_STATUS = "editor-window://status";

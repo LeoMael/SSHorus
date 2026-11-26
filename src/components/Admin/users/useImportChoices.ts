@@ -16,7 +16,7 @@ import {
   type ImportCandidate,
   type RowAccess,
 } from "../../../features/admin";
-import type { WithUsage } from "../../../features/sshkeys/useKeyUsage";
+import type { WithUsage } from "../../../features/sshkeys";
 
 type Key = WithUsage<LocalPrivateKey>;
 

@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ownedFullScript, type Container, type OwnerRunner, type RunForm } from "../../features/containers";
 import type { CtJob } from "../../features/containers/jobs";
 import { useStoredSudoState } from "../../features/privileges";
-import { SudoDialog } from "../Admin/SudoDialog";
+import { SudoDialog } from "../Sudo/SudoDialog";
 import type { LogsTarget, ReviewRequest } from "./context";
 import { ReviewDialog } from "./ReviewDialog";
 import type { EngineActions } from "./useEngineActions";

@@ -17,7 +17,7 @@ import { ProcessTable } from "./ProcessTable";
 import { UsersSummary } from "./UsersSummary";
 import { UserContainersNote } from "./UserContainersNote";
 
-const SudoDialog = lazy(() => import("../Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
+const SudoDialog = lazy(() => import("../Sudo/SudoDialog").then((m) => ({ default: m.SudoDialog })));
 
 const SCOPE_TEXT: Record<ProcScope, string> = {
   all: "Ves los procesos de todos los usuarios.",

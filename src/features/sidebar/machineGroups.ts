@@ -2,7 +2,7 @@
 // bajo un nodo plegable, con las que administran (sudo o root) primero.
 import type { ServerProfile } from "../../api/types";
 import { vpsKey } from "../fleet/group";
-import type { AccountAdmin } from "../privileges/detect";
+import type { AccountAdmin } from "../privileges";
 
 /** Marca de administración que se ve en la fila. */
 export type SudoBadge = "root" | "sudo";

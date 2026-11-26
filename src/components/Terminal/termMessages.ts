@@ -1,6 +1,6 @@
 // Avisos que la propia terminal escribe (no vienen del programa): colores ANSI y textos de
 // «reconectado» y «proceso terminado».
-import type { ConnState } from "./termTypes";
+import type { ConnState } from "../../features/terminal";
 
 /** Texto gris (informativo). */
 export const DIM = (s: string) => `\x1b[0m\x1b[2m${s}\x1b[0m`;

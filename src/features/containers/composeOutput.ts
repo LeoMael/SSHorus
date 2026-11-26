@@ -2,7 +2,7 @@
 // (cada capa de una imagen, cada contenedor «Creating… Created… Started»: se ve solo su último estado),
 // los logs de Podman en texto llano y el ruido que se quita. Funciones puras; la salida en sí la lleva
 // features/jobs/output.ts.
-import type { OutputRules } from "../jobs/output";
+import type { OutputRules } from "../jobs";
 
 /** Estados que Compose escribe tras el nombre de un contenedor, imagen, red, volumen o servicio. */
 const STATE_WORDS =

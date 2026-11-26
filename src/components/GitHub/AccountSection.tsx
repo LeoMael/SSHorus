@@ -14,7 +14,8 @@ import {
   hasCapability,
   tokenKindLabel,
 } from "../../features/github/tokens";
-import { Card, ErrorBox, Link, SectionHead, openLink } from "./parts";
+import { Card, ErrorBox, Link, SectionHead } from "./parts";
+import { openLink } from "../ui/openLink";
 
 function ConnectForm() {
   const setAccount = useGitHub((s) => s.setAccount);

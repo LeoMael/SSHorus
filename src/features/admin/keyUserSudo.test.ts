@@ -7,7 +7,7 @@ import { buildExec } from "../privileges/elevate";
 import { detectEnv, innerScript } from "./commands";
 import { createKeyUserPlan } from "./keyUser";
 import { keyUserServer, pickSudoPassword } from "./keyUserSudo";
-import { generatePassword } from "./shell";
+import { generatePassword } from "../../lib/password";
 import { keyOnlyFile, keyOnlySshdSteps, RELOAD_SSHD_STEP, SSHD_CONFIG_D } from "./sshdConf";
 
 declare const process: { env: Record<string, string | undefined> };

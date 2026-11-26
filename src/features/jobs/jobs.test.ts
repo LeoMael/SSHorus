@@ -23,7 +23,7 @@ import {
   statusLine,
   stepsAt,
   type Job,
-} from "./state";
+} from "../../stores/jobsState";
 
 const CHILD = "node:child_process";
 const cp = (await import(/* @vite-ignore */ CHILD)) as {

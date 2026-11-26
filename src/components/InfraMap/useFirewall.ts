@@ -2,8 +2,9 @@
 // al cambiar la elevación o al terminar un cambio del cortafuegos en esa conexión.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../api/core";
-import type { ServerSnapshot } from "../../features/infra/graph";
-import { FIREWALL_JOB, readFirewall, type FirewallRead } from "../../features/infra/firewall";
+import type { ServerSnapshot } from "../../features/infra";
+import { FIREWALL_JOB } from "../../features/infra/firewall/job";
+import { readFirewall, type FirewallRead } from "../../features/infra/firewall/read";
 import { onJobFinished } from "../../features/jobs";
 import { useElevation, usePrivilege, useStoredSudo } from "../../features/privileges";
 import { useProfiles } from "../../stores/profiles";

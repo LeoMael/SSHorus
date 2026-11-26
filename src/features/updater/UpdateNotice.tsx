@@ -5,7 +5,7 @@ import { formatBytes } from "../../lib/format";
 import { toast } from "../../stores/toasts";
 import { useTabs } from "../../stores/tabs";
 import { confirmDialog } from "../../components/ui/dialogs";
-import { openSettingsAt } from "../../components/Settings/settingsNav";
+import { openSettingsAt } from "../../stores/settingsNav";
 import { canSelfUpdate, installUpdate, needsAdmin, RELEASES_URL, useUpdater } from "./updater";
 import "./UpdateNotice.css";
 

@@ -2,7 +2,7 @@
 // el panel de detalles).
 import type { ComponentType } from "react";
 import { Box, Cpu, Database, Earth, ExternalLink, Globe, Plug, Server, Settings2, ShieldCheck, Waypoints, type LucideProps } from "lucide-react";
-import type { Health, NodeKind } from "../../features/infra/graph";
+import type { Health, NodeKind } from "../../features/infra";
 
 export const NODE_ICON: Record<NodeKind, ComponentType<LucideProps>> = {
   internet: Earth,

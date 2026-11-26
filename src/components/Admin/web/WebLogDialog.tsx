@@ -8,7 +8,7 @@ import { useJobs } from "../../../stores/jobs";
 import { JobPanel } from "../../Jobs/JobPanel";
 import { AdmModal } from "../../ui/AdmModal";
 import { useAdmin } from "../context";
-import { elevationText } from "../PlanReview";
+import { elevationText } from "../../../features/privileges";
 import "./WebTraffic.css";
 
 interface Props {

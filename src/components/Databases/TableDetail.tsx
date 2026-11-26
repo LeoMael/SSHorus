@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Copy, KeyRound, Link2 } from "lucide-react";
 import { formatBytes } from "../../lib/format";
 import { KIND_LABEL, rowsText } from "../../features/databases/view";
-import type { DbTable } from "../../features/databases/types";
+import type { DbTable } from "../../features/databases";
 
 interface Props {
   table: DbTable;

@@ -7,7 +7,8 @@
 import { parseOsRelease, splitSections } from "../../lib/remote";
 import { ADMIN_GROUPS } from "../privileges/detect";
 import { cpuPercent, memMetrics, type MemMetrics } from "../monitor/derive";
-import { parseCpu, parseDf, parseLoadavg, parseMeminfo, parseUptime, type CpuTicks, type DiskUsage } from "../monitor/sample";
+import { parseCpu, parseLoadavg, parseMeminfo, parseUptime, type CpuTicks, type DiskUsage } from "../monitor/sample";
+import { parseDf } from "../monitor/disks";
 
 export const PROBE_TIMEOUT_SECS = 20;
 /** Pausa entre las dos lecturas de CPU de la primera ronda (después, se compara con la ronda anterior). */

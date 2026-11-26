@@ -1,4 +1,6 @@
-// Tipos del controlador de terminal (estado, apertura de la shell, opciones y búsqueda).
+// Tipos del controlador de terminal (estado, apertura de la shell, opciones y búsqueda). Sin xterm ni
+// React: los usan la interfaz (components/Terminal, que tiene el controlador) y la terminal local
+// (features/localterm), que solo guarda y maneja controladores ya creados.
 
 export type TermStatus = "opening" | "running" | "exited";
 /** Estado de la conexión SSH de la pestaña (de `useTabs`). */
@@ -54,4 +56,16 @@ export interface TermControllerOptions {
 export interface SearchResults {
   index: number;
   count: number;
+}
+
+/** Lo que se le puede pedir desde fuera a una terminal abierta (lo cumple `TermController`). */
+export interface TermHandle {
+  /** La shell está abierta. */
+  isRunning(): boolean;
+  /** El programa de la terminal acepta «pegado entre corchetes». */
+  acceptsBracketedPaste(): boolean;
+  pasteText(text: string): void;
+  /** Escribe un aviso en la terminal (no va a la shell). */
+  note(text: string): void;
+  focus(): void;
 }

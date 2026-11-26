@@ -4,13 +4,13 @@ import { lazy, Suspense, useState } from "react";
 import { Box, Database, FileText, KeyRound, Plus, RefreshCw, Server, X } from "lucide-react";
 import { ENGINE_LABEL } from "../../features/databases/discover";
 import { groupTargets } from "../../features/databases/view";
-import type { DbTarget } from "../../features/databases/types";
+import type { DbTarget } from "../../features/databases";
 import { TargetView } from "./TargetView";
 import { useDbPanel } from "./useDbPanel";
 import { useTargetSessions } from "./useTargetSessions";
 import "./Databases.css";
 
-const SudoDialog = lazy(() => import("../Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
+const SudoDialog = lazy(() => import("../Sudo/SudoDialog").then((m) => ({ default: m.SudoDialog })));
 
 export interface DatabasesPanelProps {
   sessionId: string;

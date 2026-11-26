@@ -1,7 +1,7 @@
 // Campo de contraseña de usuario con «Generar segura», mostrar y copiar (Crear usuario y «Nuevo usuario con clave»).
 import { useState } from "react";
 import { Copy, Eye, EyeOff, Sparkles } from "lucide-react";
-import { generatePassword } from "../../features/admin";
+import { generatePassword } from "../../lib/password";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 

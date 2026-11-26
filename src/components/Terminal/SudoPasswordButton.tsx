@@ -9,8 +9,8 @@ import { vault } from "../../api/vault";
 import { toast } from "../../stores/toasts";
 import { Modal } from "../ui/Modal";
 import { applyVaultStatus, useLock } from "../../features/lock/lockStore";
-import { PinField } from "../../features/lock/PinField";
 import { secretWords } from "../../features/lock/secretKind";
+import { PinField } from "../../features/lock/PinField";
 import { isPasswordPrompt } from "./passwordPrompt";
 import type { TermController } from "./termController";
 

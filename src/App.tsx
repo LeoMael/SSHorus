@@ -6,14 +6,15 @@ import { DialogHost } from "./components/ui/dialogs";
 import { Toaster } from "./components/ui/Toaster";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { TransferPanel } from "./components/TransferPanel/TransferPanel";
-import { ConnectDialogHost, ProjectEditorHost, ServerEditorHost } from "./features/connect/ConnectDialogs";
+import { ConnectDialogHost } from "./features/connect/ConnectDialogs";
+import { EditorsHost, ProjectEditorHost, ServerEditorHost } from "./features/serverEditor/EditorsHost";
 import { PaletteHost, PaletteView } from "./components/Commands/PaletteHost";
 import { MultiRunHost } from "./components/MultiRun/MultiRunHost";
 import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";
 import { FleetHost } from "./components/Fleet/FleetHost";
 import { GitHubHost } from "./components/GitHub";
-import { initThemeSync } from "./components/Settings/theme";
-import { requestCloseTab } from "./stores/sessionState";
+import { initThemeSync } from "./stores/appTheme";
+import { requestCloseTab } from "./features/connect/tabLifecycle";
 import { TabBar } from "./components/Tabs/TabBar";
 import { Welcome, recordRecentServer } from "./components/Welcome/Welcome";
 import { useSettings } from "./stores/settings";
@@ -25,7 +26,7 @@ import { PinDialogHost } from "./features/lock/PinDialog";
 import { initMcp } from "./features/mcp/store";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { PairDialogHost } from "./components/McpPairing/PairDialog";
-import { SudoAskHost } from "./features/mcp/SudoAskHost";
+import { SudoAskHost } from "./components/Sudo/SudoAskHost";
 import { PasswordRunHost } from "./features/mcp/PasswordRunDialog";
 import { JobsHost } from "./components/Jobs/JobsHost";
 import { McpActivity } from "./components/McpActivity/McpActivity";
@@ -43,7 +44,7 @@ import "./App.css";
 const SessionView = preloadable(() => import("./components/Session/SessionView").then((m) => m.SessionView));
 const SettingsDialog = preloadable(() => import("./components/Settings/SettingsDialog").then((m) => m.SettingsDialog));
 const LocalTerminalView = preloadable(() =>
-  import("./features/localterm/LocalTerminalView").then((m) => m.LocalTerminalView),
+  import("./components/Terminal/LocalTerminalView").then((m) => m.LocalTerminalView),
 );
 
 function preloadInBackground() {
@@ -303,6 +304,7 @@ export default function App() {
       )}
       <DialogHost />
       <Toaster />
+      <EditorsHost />
       <ConnectDialogHost />
       <SettingsHost />
       <PaletteHost />

@@ -7,7 +7,7 @@ import { useUi } from "../../stores/ui";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { formatBytes, formatDate } from "../../lib/format";
-import { useAppTheme } from "../Settings/theme";
+import { useAppTheme } from "../../stores/appTheme";
 import { applyMonacoTheme, monaco } from "./monacoSetup";
 import { detectLanguage, languageLabel, LANGUAGE_CHOICES } from "./languages";
 import "./RemoteEditor.css";

@@ -1,6 +1,6 @@
 // Pruebas del orden de la barra de pestañas.
-// Ejecutar: npx rolldown src/features/tabbar/order.test.ts -p node -f esm -o /tmp/order.mjs && node /tmp/order.mjs
-import { moveById, slotInGroup } from "./order";
+// Ejecutar: npm test -- tabOrder
+import { moveById, slotInGroup } from "./tabOrder";
 
 let passed = 0;
 function eq<T>(got: T, want: T, what: string) {

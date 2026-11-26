@@ -3,7 +3,7 @@ import { useState } from "react";
 import { CheckCircle2, Server } from "lucide-react";
 import { errorMessage } from "../../api/core";
 import { useProfiles } from "../../stores/profiles";
-import { ServerSelect } from "../../components/GitHub/parts";
+import { ServerSelect } from "../../components/ui/ServerSelect";
 import { addAuthorizedKeysScript, parseAddResult } from "../github/shell";
 import { ensureSession, execOk } from "../github/session";
 

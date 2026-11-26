@@ -94,7 +94,7 @@ export interface Settings {
   /** Terminal local y asistentes de IA (Claude Code, Codex, agy, OpenCode): qué contexto se les da y cómo. */
   localAi: LocalAiSettings;
   /** Atajos de teclado cambiados por el usuario: id de acción → combinación ("" = sin atajo).
-   *  Solo se guardan los distintos de los de por defecto (lista en src/features/shortcuts/keys.ts). */
+   *  Solo se guardan los distintos de los de por defecto (lista en src/stores/shortcutKeys.ts). */
   shortcuts: Record<string, string>;
 }
 

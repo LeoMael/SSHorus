@@ -4,25 +4,20 @@
 // mismo servidor): si sirve, se cierra solo. Con «puede que tengas sudo» ofrece comprobar si sudo pide
 // contraseña (solo si se pulsa: `sudo -n` queda en el registro de sudo del servidor). Lo usan
 // Administración, Contenedores, el escáner, los comandos con sudo (asistente de IA, biblioteca de comandos,
-// Monitor, instalaciones) y «Ejecutar en varios servidores» (cola de features/mcp/SudoAskHost.tsx).
+// Monitor, instalaciones) y «Ejecutar en varios servidores» (cola de features/privileges/sudoAsk.ts, que
+// enseña SudoAskHost.tsx).
 import { useEffect, useState } from "react";
 import { KeyRound, ShieldCheck } from "lucide-react";
-import {
-  checkSudoNoPassword,
-  confirmSudo,
-  defaultSaveChecked,
-  obtainSudoPassword,
-  storedFailed,
-  sudoModeOf,
-  setStoredSudo,
-  usePrivilege,
-  useStoredSudoState,
-} from "../../features/privileges";
+import { checkSudoNoPassword, usePrivilege } from "../../features/privileges/store";
+import { confirmSudo, setStoredSudo, useStoredSudoState } from "../../features/privileges/sudo";
+import { defaultSaveChecked, storedFailed } from "../../features/privileges/lookup";
+import { obtainSudoPassword, sudoModeOf } from "../../features/privileges/stored";
 import { profiles as profilesApi } from "../../api/profiles";
 import { resetStoredSudoForProfile } from "../../features/privileges/resetForProfile";
 import { useProfiles } from "../../stores/profiles";
 import { toast } from "../../stores/toasts";
 import { AdmModal } from "../ui/AdmModal";
+import "./Sudo.css";
 
 /** Guarda la contraseña como «Contraseña de sudo: Guardar» del servidor. Devuelve si se pudo. */
 async function saveForServer(profileId: string, password: string): Promise<boolean> {

@@ -19,7 +19,7 @@ import {
   resolveCombo,
   withBinding,
   type ShortcutAction,
-} from "../../features/shortcuts/keys";
+} from "../../stores/shortcutKeys";
 import { setShortcutCapture } from "../../features/shortcuts/shortcuts";
 import "./ShortcutsSection.css";
 

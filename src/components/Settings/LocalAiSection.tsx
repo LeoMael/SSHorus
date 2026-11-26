@@ -3,14 +3,14 @@
 // de trabajo y si están instalados.
 import { useEffect, useState } from "react";
 import { Bot, Check, ExternalLink, Eye, FolderOpen, Home } from "lucide-react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openLink } from "../ui/openLink";
 import { localTerm, type AiToolInfo } from "../../api/localterm";
 import type { LocalAiMode, LocalAiSettings } from "../../api/types";
 import { useSettings } from "../../stores/settings";
 import { toast } from "../../stores/toasts";
 import { chooseFolder, launchAssistant, previewContext } from "../../features/localterm/launch";
 import { assistant } from "../../features/localterm/logic";
-import { openSettingsAt } from "./settingsNav";
+import { openSettingsAt } from "../../stores/settingsNav";
 import "../../features/localterm/LocalTerm.css";
 import { SettingGroup, SettingRow as Row, Switch as Toggle } from "../ui/SettingsKit";
 
@@ -41,7 +41,7 @@ function toolHint(t: AiToolInfo): string {
 }
 
 function openOfficialPage(tool: AiToolInfo["tool"]) {
-  openUrl(assistant(tool).url).catch((e) => toast.error("No se pudo abrir el enlace", e));
+  openLink(assistant(tool).url);
 }
 
 export function LocalAiSection() {

@@ -1,8 +1,6 @@
 export { connectToMany, connectToServer, openOrFocusServer } from "./connect";
 export {
   ConnectDialogHost,
-  ProjectEditorHost,
-  ServerEditorHost,
   askOtp,
   askPassphrase,
   askPassword,
@@ -10,3 +8,4 @@ export {
   type SecretAnswer,
 } from "./ConnectDialogs";
 export { describeTestOk, testServerConnection, type TestOutcome, type TestSecrets } from "./serverTest";
+export { cancelReconnect, reconnectTab, requestCloseTab } from "./tabLifecycle";

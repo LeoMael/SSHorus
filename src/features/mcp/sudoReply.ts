@@ -1,21 +1,12 @@
 // Respuesta a las peticiones de sudo del motor (`sudo` y `sudo-reveal`, ver core/elevation.rs → `sudo_answer`)
 // y textos del diálogo de la contraseña. Funciones puras, sin React ni Tauri, para poder probarlas.
-import type { PrivilegeInfo } from "../privileges/detect";
-
-/** Por qué no hace falta la contraseña: el motor ejecuta tal cual, avisa o rechaza («no-sudo»). */
-export type NoPasswordWhy = "root" | "nopasswd" | "no-sudo";
+import type { NoPasswordWhy } from "../privileges";
 
 /** Respuesta al motor. */
 export type SudoReply = { elevate: false; why: NoPasswordWhy } | { elevate: true; password: string } | { canceled: true };
 
 /** Para qué la pide el motor: un comando ya aprobado (la IA no la ve) o `request_sudo_password` (se la da). */
 export type SudoPurpose = "command" | "reveal";
-
-/** Solo cuando `sudoPasswordNeeded(info)` es false: root, sudo sin contraseña o sin sudo instalado. */
-export function noPasswordWhy(info: Pick<PrivilegeInfo, "level" | "hasSudo">): NoPasswordWhy {
-  if (info.level === "root") return "root";
-  return info.hasSudo ? "nopasswd" : "no-sudo";
-}
 
 /** Texto del diálogo de la contraseña (si hay que escribirla). */
 export function sudoAskReason(o: { purpose: SudoPurpose; serverName: string; auto?: boolean; reason?: string }): string {

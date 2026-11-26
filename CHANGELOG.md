@@ -24,6 +24,9 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   mismo menú contextual que el resto de la app (`ui/ContextMenu`). La lista de archivos demasiado largos queda vacía.
 - **Desarrollo:** el motor queda más ordenado por dentro: ningún archivo pasa de 400 líneas y los comandos que llama
   la interfaz están siempre en un `commands.rs` de cada módulo. La app funciona igual.
+- **Desarrollo:** las carpetas de la interfaz ya no dependen unas de otras en círculo ni se saltan sus límites (las dos
+  listas de excepciones quedan vacías), cada función tiene su `index.ts`, la terminal y el escáner están en archivos
+  más pequeños, y la contraseña aleatoria y la detección de la distribución están en un solo sitio. La app funciona igual.
 
 ## [1.0.0-beta.4] - 2026-11-26
 

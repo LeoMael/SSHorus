@@ -9,7 +9,8 @@ import { useProfiles } from "../../stores/profiles";
 import { useGitHub } from "../../features/github/store";
 import { commandLines, deployScript, validateBranch, validateRemotePath, wrapSh } from "../../features/github/shell";
 import { ensureSession, execOutput } from "../../features/github/session";
-import { Card, ErrorBox, Output, SectionHead, ServerSelect } from "./parts";
+import { Card, ErrorBox, Output, SectionHead } from "./parts";
+import { ServerSelect } from "../ui/ServerSelect";
 
 const EMPTY: DeployRecipe = {
   id: "",

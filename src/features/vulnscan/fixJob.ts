@@ -12,7 +12,7 @@ import { fixOutcomes, nothingInstalled, outcomeSummary, upgradeIssues, type Pack
 import { upgradeProgress } from "./fixPlan";
 import { checkRestart, FIX_TIMEOUT_SECS, recheckSystem } from "./fixRun";
 import type { RestartInfo } from "./restart";
-import { useVulnScan } from "./run";
+import { useVulnScan } from "./scanState";
 import { UpdateCancel, UpdateCanceled } from "./updateRun";
 
 export const VULNFIX_JOB = "vulnfix";

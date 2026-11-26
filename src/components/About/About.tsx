@@ -18,7 +18,8 @@ import {
   useUpdater,
 } from "../../features/updater/updater";
 import { startInstall } from "../../features/updater/UpdateNotice";
-import { Markdown, splitChangelog } from "./markdown";
+import { Markdown } from "./markdown";
+import { splitChangelog } from "../../lib/markdown";
 import "./About.css";
 
 const OS_LABEL: Record<string, string> = { linux: "Linux", windows: "Windows", macos: "macOS" };

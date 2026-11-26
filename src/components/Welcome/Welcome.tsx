@@ -6,7 +6,7 @@ import { useUi } from "../../stores/ui";
 import { openOrFocusServer } from "../../features/connect";
 import type { ServerProfile } from "../../api/types";
 import { Logo } from "../ui/Logo";
-import { openManual } from "../Settings/settingsNav";
+import { openManual } from "../../stores/settingsNav";
 import "./Welcome.css";
 
 const RECENT_KEY = "sshorus.recentServers";

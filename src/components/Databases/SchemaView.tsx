@@ -5,7 +5,7 @@ import { formatBytes } from "../../lib/format";
 import { Segmented } from "../ui/Segmented";
 import { tableId } from "../../features/databases/diagram";
 import { filterTables, rowsText, withNeighbors } from "../../features/databases/view";
-import type { DbSchema, DbTable } from "../../features/databases/types";
+import type { DbSchema, DbTable } from "../../features/databases";
 import { SchemaDiagram } from "./SchemaDiagram";
 import { TableDetail } from "./TableDetail";
 

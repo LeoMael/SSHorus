@@ -17,7 +17,7 @@ import { ServiceGroup } from "./ServiceGroup";
 import { ServiceRow } from "./ServiceRow";
 import "./Services.css";
 
-const SudoDialog = lazy(() => import("../Admin/SudoDialog").then((m) => ({ default: m.SudoDialog })));
+const SudoDialog = lazy(() => import("../Sudo/SudoDialog").then((m) => ({ default: m.SudoDialog })));
 
 const NO_STATUS: Record<string, TunnelStatus> = {};
 const NO_DEFS: TunnelDef[] = [];

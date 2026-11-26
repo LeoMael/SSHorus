@@ -18,7 +18,7 @@ import {
   SlidersHorizontal,
   TerminalSquare,
 } from "lucide-react";
-import type { SectionId } from "./settingsNav";
+import type { SectionId } from "../../stores/settingsNav";
 import type { SearchableSection } from "./settingsSearch";
 // El orden de estos imports fija el orden de su CSS en el paquete (el mismo que antes de partir Ajustes).
 import { AppearanceSection } from "./AppearanceSection";

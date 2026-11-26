@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, useSettings } from "../../stores/settings";
 import { getTerminalGpu, setTerminalGpu } from "../Terminal/gpuPref";
 import { buildTermTheme } from "../Terminal/termTheme";
 import { TMUX_MODE_HINTS, TMUX_MODE_LABELS } from "../../features/tmux/logic";
-import { useAppTheme } from "./theme";
+import { useAppTheme } from "../../stores/appTheme";
 import { FontFamilyInput } from "./FontFamilyInput";
 import { useSetting } from "./useSetting";
 

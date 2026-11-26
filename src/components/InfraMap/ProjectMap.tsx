@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Plug, Waypoints, X } from "lucide-react";
 import { connectToMany } from "../../features/connect";
 import { collectServer } from "../../features/infra/collect";
-import type { NavTarget, ServerSnapshot } from "../../features/infra/graph";
+import type { NavTarget, ServerSnapshot } from "../../features/infra";
 import { closeProjectMap, useInfraNav, useProjectMap } from "../../features/infra/store";
 import { useProfiles } from "../../stores/profiles";
 import { useTabs, type SessionTab } from "../../stores/tabs";

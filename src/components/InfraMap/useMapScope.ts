@@ -1,7 +1,7 @@
 // «Lo mío» / «Todo el servidor» en el lienzo: alcance de cada servidor, grafo recortado y frases que
 // explican lo que se ve. La regla está en features/infra/scope.ts.
 import { useMemo } from "react";
-import type { InfraGraph, ServerSnapshot } from "../../features/infra/graph";
+import type { InfraGraph, ServerSnapshot } from "../../features/infra";
 import { mapNotes, mineUsers, scopeGraph, serverScopes, type MapScope } from "../../features/infra/scope";
 import { setMapScope, useMapScopes } from "../../features/infra/scopeMemory";
 
