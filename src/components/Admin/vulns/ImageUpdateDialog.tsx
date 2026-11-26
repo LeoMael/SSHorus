@@ -6,9 +6,8 @@
 // 4. Contenedores creados con `run`: formulario «Nuevo contenedor» relleno, en modo «reemplazar».
 // 5. Vuelve a analizar la imagen y dice si siguen las vulnerabilidades.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, KeyRound, Loader2, Play, RefreshCw, SkipForward, Square } from "lucide-react";
+import { KeyRound, Loader2 } from "lucide-react";
 import { errorMessage } from "../../../api/core";
-import type { ExecResult } from "../../../api/types";
 import type { Report, Target, UserCtx } from "../../../api/vulnscan";
 import { displayCmds, emptyRunForm, failureMessage, validateRunForm, type RunForm } from "../../../features/containers";
 import { renderCmd } from "../../../features/containers/shell";
@@ -41,6 +40,7 @@ import {
   type RescanResult,
   type UpdatePlan,
 } from "../../../features/vulnscan";
+import { outputTail, runAsText } from "../../../features/vulnscan/imageUpdateText";
 import { useJobs } from "../../../stores/jobs";
 import { useSettings } from "../../../stores/settings";
 import { toast } from "../../../stores/toasts";
@@ -49,6 +49,8 @@ import { AdmModal } from "../../ui/AdmModal";
 import { useAdmin } from "../context";
 import { ImageUpdatePlan } from "./ImageUpdatePlan";
 import { ImageUpdateReplace } from "./ImageUpdateReplace";
+import { ImageUpdateFooter } from "./ImageUpdateFooter";
+import { ImageUpdateCommands, ImageUpdateOutcome, ImageUpdateReplaced } from "./ImageUpdateStatus";
 import "../../Containers/Containers.css";
 import "../../Containers/ContainersBars.css";
 import "../../Containers/ContainersTable.css";
@@ -58,13 +60,6 @@ import "../../Containers/ContainersCleanup.css";
 
 type Stage = "read" | "review" | "running" | "replace" | "rescan" | "done";
 type RunGroup = Extract<Group, { kind: "run" }>;
-
-/** Últimas líneas de la salida de un comando. */
-function tail(r: ExecResult | null, lines = 40): string {
-  if (!r) return "";
-  const text = [r.stdout.trim(), r.stderr.trim()].filter(Boolean).join("\n");
-  return text.split("\n").slice(-lines).join("\n");
-}
 
 export function ImageUpdateDialog({ report, target, onClose }: { report: Report; target: Target; onClose: () => void }) {
   const { sessionId, elevation, me, info, askSudo, disabled } = useAdmin();
@@ -235,7 +230,7 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
     try {
       const r = await runAsOwner(sessionId, engine, user, el, replaceScript(engine, current.container.name, current.container.running, form), 900, c);
       if (r.exitCode !== 0 || r.timedOut) {
-        setError(`${failureMessage(r)}\n\n${tail(r, 30)}`.trim());
+        setError(`${failureMessage(r)}\n\n${outputTail(r, 30)}`.trim());
         return;
       }
       setReplaced((x) => [...x, current.container.name]);
@@ -252,12 +247,7 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
   const running = busy || stage === "rescan" || (stage === "read" && !!el && !error);
   const shownCmds = plan ? plan.steps.flatMap((s) => s.cmds) : [];
   const shown = owner.kind === "root" && el ? displayCmds(shownCmds, el) : shownCmds.map((c) => renderCmd(c));
-  const howText =
-    owner.kind === "user"
-      ? `Se ejecutará como «${who}» (SSHorus entra como ese usuario con sudo, igual que al analizar):`
-      : owner.kind === "root"
-        ? "Se ejecutará como root:"
-        : "Se ejecutará con tu usuario:";
+  const howText = runAsText(owner, who);
   const errors = validateRunForm(form);
 
   return (
@@ -291,33 +281,12 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
 
         {plan && (stage === "review" || stage === "running") && <ImageUpdatePlan plan={plan} />}
 
-        {plan && stage === "review" && (
-          <>
-            <div className="ct-review-label">{howText}</div>
-            <pre className="ct-cmd" aria-label="Comandos que se ejecutarán">
-              {shown.join("\n")}
-            </pre>
-            <details className="ct-details">
-              <summary>Script completo enviado al servidor</summary>
-              <pre className="ct-cmd ct-cmd-sm">{full}</pre>
-            </details>
-          </>
-        )}
+        {plan && stage === "review" && <ImageUpdateCommands howText={howText} shown={shown} full={full} />}
 
         {jobRunning && <p className="vs-d-note faint">Puedes cerrar esta ventana: sigue en segundo plano y verás un aviso al terminar.</p>}
         {job && stage !== "replace" && <JobPanel job={job} compact />}
 
-        {replaced.length > 0 && (
-          <ul className="vs-up-steps" aria-live="polite">
-            {replaced.map((n) => (
-              <li key={n} className="vs-ph-ok">
-                <div className="vs-up-step">
-                  <Check size={13} /> <span>Reemplazado: {n}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ImageUpdateReplaced names={replaced} />
 
         {stage === "replace" && current && (
           <ImageUpdateReplace
@@ -335,67 +304,31 @@ export function ImageUpdateDialog({ report, target, onClose }: { report: Report;
           />
         )}
 
-        {stage === "rescan" && (
-          <div className="vs-up-progress">
-            <Loader2 size={14} className="adm-spin" /> {progress}
-          </div>
-        )}
-
-        {stage === "done" && result && (
-          <div className={result.remaining > 0 ? "ct-warn" : "vs-up-ok"} role="status">
-            {rescanMessage(result.remaining)}
-          </div>
-        )}
-
-        {error && (
-          <div className="ct-error" role="alert">
-            <AlertTriangle size={14} />
-            <pre>{error}</pre>
-          </div>
-        )}
-        {needSudo && (
-          <button className="btn btn-sm" onClick={askSudo}>
-            <KeyRound size={13} /> Introducir contraseña de sudo
-          </button>
-        )}
+        <ImageUpdateOutcome
+          rescanning={stage === "rescan"}
+          progress={progress}
+          result={stage === "done" ? result : null}
+          error={error}
+          needSudo={needSudo}
+          onAskSudo={askSudo}
+        />
       </div>
 
-      <div className="modal-footer">
-        {running ? (
-          <button className="btn" onClick={() => void cancel.current.cancel()}>
-            <Square size={13} /> Cancelar
-          </button>
-        ) : stage === "replace" && current ? (
-          <>
-            <button className="btn" onClick={() => openReplace(runIdx + 1)} title="No se toca este contenedor (seguirá con la imagen vieja)">
-              <SkipForward size={13} /> Saltar este
-            </button>
-            <button className="btn btn-primary" onClick={() => void replace()} disabled={touched && Object.keys(errors).length > 0}>
-              <Play size={13} /> {error ? "Reintentar" : "Reemplazar"}
-            </button>
-          </>
-        ) : stage === "review" ? (
-          <>
-            <button className="btn" onClick={onClose}>
-              Cancelar
-            </button>
-            <button className="btn btn-primary" onClick={start} disabled={!el || disabled} autoFocus>
-              <Play size={13} /> Actualizar imagen
-            </button>
-          </>
-        ) : (
-          <>
-            {stage === "done" && (
-              <button className="btn" onClick={() => void rescan()} disabled={!el || disabled} title="Vuelve a analizar solo esta imagen">
-                <RefreshCw size={13} /> Volver a escanear
-              </button>
-            )}
-            <button className="btn btn-primary" onClick={onClose}>
-              {jobRunning ? "Cerrar (sigue en segundo plano)" : "Cerrar"}
-            </button>
-          </>
-        )}
-      </div>
+      <ImageUpdateFooter
+        running={running}
+        stage={stage}
+        replacing={!!current}
+        canRun={!!el && !disabled}
+        hasError={!!error}
+        submitBlocked={touched && Object.keys(errors).length > 0}
+        jobRunning={jobRunning}
+        onCancelRun={() => void cancel.current.cancel()}
+        onSkip={() => openReplace(runIdx + 1)}
+        onReplace={() => void replace()}
+        onStart={start}
+        onRescan={() => void rescan()}
+        onClose={onClose}
+      />
     </AdmModal>
   );
 }

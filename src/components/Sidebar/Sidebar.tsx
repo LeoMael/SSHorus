@@ -15,7 +15,8 @@ import { filterProjects, matchesServer, parseTabStates, serverRowKey, tabStatesK
 import { sidebarMenus } from "./sidebarMenus";
 import { machineKey, machineRowKey } from "../../features/sidebar/machineGroups";
 import { useAccountSudo } from "./useAccountSudo";
-import { useCollapsedMachines, useCollapsedProjects } from "./useCollapsedProjects";
+import { useCollapsedMachines, useCollapsedProjects, useMachineNames } from "./useCollapsedProjects";
+import { matchesMachineName } from "../../features/sidebar/machineNames";
 import { useSidebarTree } from "./useSidebarTree";
 import { ServerItems } from "./MachineGroup";
 import type { RowApi } from "./SidebarRows";
@@ -39,6 +40,7 @@ export function Sidebar() {
   const [query, setQuery] = useState("");
   const { collapsed, toggleProject } = useCollapsedProjects();
   const machines = useCollapsedMachines();
+  const machineNames = useMachineNames();
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
@@ -49,8 +51,15 @@ export function Sidebar() {
   const serverById = useMemo(() => new Map(servers.map((s) => [s.id, s])), [servers]);
 
   const q = query.trim().toLowerCase();
-  const visibleProjects = useMemo(() => filterProjects(projects, serverById, q), [projects, serverById, q]);
-  const visibleServers = useMemo(() => (q ? servers.filter((s) => matchesServer(s, q)) : servers), [servers, q]);
+  const names = machineNames.names;
+  const visibleProjects = useMemo(
+    () => filterProjects(projects, serverById, q, (s, qq) => matchesServer(s, qq) || matchesMachineName(s, names, qq)),
+    [projects, serverById, q, names],
+  );
+  const visibleServers = useMemo(
+    () => (q ? servers.filter((s) => matchesServer(s, q) || matchesMachineName(s, names, q)) : servers),
+    [servers, q, names],
+  );
   const tree = useSidebarTree();
   const sudoOf = useAccountSudo(servers);
 
@@ -66,7 +75,7 @@ export function Sidebar() {
   };
 
   const menus = sidebarMenus({ serverById, tabStates, connecting, revealServer, openImport: () => setImportOpen(true) });
-  const api: RowApi = { tree, menus, connecting, tabStates, serverById, sudoOf, machines };
+  const api: RowApi = { tree, menus, connecting, tabStates, serverById, sudoOf, machines, machineNames };
 
   const isEmpty = loaded && servers.length === 0 && projects.length === 0;
 

@@ -1,15 +1,24 @@
 // Redes: listar, crear, eliminar y limpiar las que no usa ningún contenedor.
 import { useMemo, useState } from "react";
 import { Brush, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import { ago, createNetwork, ownedBy, pruneNetworks, removeNetworks, validateObjName, withOwner, type Container, type NetworkInfo } from "../../features/containers";
+import {
+  ago,
+  createNetwork,
+  membersOf,
+  NETWORK_PRUNE_TEXTS,
+  ownedBy,
+  pruneBlocked,
+  pruneNetworksCmds,
+  removeNetworks,
+  unusedNetworks,
+  validateObjName,
+  withOwner,
+  type NetworkInfo,
+} from "../../features/containers";
 import { toast } from "../../stores/toasts";
 import { promptDialog } from "../ui/dialogs";
 import { PICK_OWNER_HINT, useCt } from "./context";
-
-/** Contenedores conectados a la red (según la lista de `ps`), del mismo dueño. */
-function membersOf(n: NetworkInfo, containers: Container[]): Container[] {
-  return ownedBy(containers, n.owner).filter((c) => c.networks.includes(n.name));
-}
+import { PruneList } from "./PruneList";
 
 export function NetworksTab() {
   const ct = useCt();
@@ -32,7 +41,17 @@ export function NetworksTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nets, search, ct.allOwners, ct.ownerLabel]);
 
-  const unused = nets.filter((n) => !n.builtin && membersOf(n, containers).length === 0);
+  const unused = unusedNetworks(nets, containers);
+  // Sin la lista de contenedores no se sabe cuáles están en uso.
+  const pruneReason = pruneBlocked(
+    {
+      loaded: res.networks.data !== null && res.containers.data !== null,
+      error: res.networks.error ?? res.containers.error,
+      total: nets.filter((n) => !n.builtin).length,
+      candidates: unused.length,
+    },
+    NETWORK_PRUNE_TEXTS,
+  );
 
   const create = async () => {
     const name = await promptDialog({
@@ -71,16 +90,8 @@ export function NetworksTab() {
     ct.review({
       title: "Limpiar redes sin usar",
       message: "Se eliminan las redes creadas por ti o por Compose que no tienen ningún contenedor (ni parado). Las redes integradas no se tocan.",
-      details: () => (
-        <ul className="ct-list ct-list-scroll">
-          {unused.map((n) => (
-            <li key={n.name} className="mono">
-              {n.name}
-            </li>
-          ))}
-        </ul>
-      ),
-      build: () => [pruneNetworks(engine)],
+      details: () => <PruneList items={unused} noun="redes" ct={ct} />,
+      build: () => pruneNetworksCmds(nets, containers, engine),
       danger: true,
       runLabel: "Limpiar",
       success: "Redes sin usar eliminadas",
@@ -104,13 +115,19 @@ export function NetworksTab() {
         <button className="icon-btn" onClick={() => void ct.reload("networks", "containers")} title="Actualizar" aria-label="Actualizar" disabled={res.networks.loading}>
           <RefreshCw size={14} className={res.networks.loading ? "ct-spin" : undefined} />
         </button>
-        <button className="btn btn-sm" onClick={prune} disabled={unused.length === 0 || !ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
+        <button className="btn btn-sm" onClick={prune} disabled={!!pruneReason} aria-describedby={pruneReason ? "ct-net-why" : undefined}>
           <Brush size={13} /> Limpiar sin usar
         </button>
         <button className="btn btn-sm btn-primary" onClick={() => void create()} disabled={!ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
           <Plus size={13} /> Nueva red
         </button>
       </div>
+      {(pruneReason || !ct.newOwner) && (
+        <div className="faint ct-small ct-why" id="ct-net-why">
+          {pruneReason && <>«Limpiar sin usar» está desactivado porque {pruneReason}. </>}
+          {!ct.newOwner && <>Para crear una red, elige arriba con qué usuario.</>}
+        </div>
+      )}
       {res.networks.error && (
         <div className="ct-error ct-error-inline" role="alert">
           <pre>{res.networks.error}</pre>

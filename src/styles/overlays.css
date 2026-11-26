@@ -94,6 +94,10 @@
 .toast-info > svg {
   color: var(--accent);
 }
+.toast-action {
+  align-self: center;
+  flex: none;
+}
 
 /* ───────── Menú contextual ───────── */
 .context-menu {

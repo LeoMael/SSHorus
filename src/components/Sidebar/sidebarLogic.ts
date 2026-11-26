@@ -55,15 +55,17 @@ export function filterProjects(
   projects: readonly Project[],
   serverById: ReadonlyMap<string, ServerProfile>,
   q: string,
+  /** Si un servidor coincide con la búsqueda (por defecto `matchesServer`; la barra añade el nombre de su máquina). */
+  match: (s: ServerProfile, q: string) => boolean = matchesServer,
 ): ProjectEntry[] {
   return projects
     .map((p) => {
       const projServers = projectServers(p, serverById);
       if (!q || p.name.toLowerCase().includes(q)) return { project: p, servers: projServers, bookmarks: p.bookmarks };
-      const ss = projServers.filter((s) => matchesServer(s, q));
+      const ss = projServers.filter((s) => match(s, q));
       const bs = p.bookmarks.filter((b) => {
         const owner = serverById.get(b.serverId);
-        return b.path.toLowerCase().includes(q) || (b.label ?? "").toLowerCase().includes(q) || (!!owner && matchesServer(owner, q));
+        return b.path.toLowerCase().includes(q) || (b.label ?? "").toLowerCase().includes(q) || (!!owner && match(owner, q));
       });
       if (ss.length === 0 && bs.length === 0) return null;
       return { project: p, servers: ss, bookmarks: bs };

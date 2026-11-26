@@ -1,9 +1,10 @@
 // Esquina de abajo a la derecha: indicador de las tareas en segundo plano («2 tareas»), su ventanita con
 // la lista (nombre, servidor, en qué va, tiempo, progreso, «Ver» y «Cancelar») y el aviso al terminar.
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { CheckCircle2, CircleSlash, ListChecks, Square, X, XCircle } from "lucide-react";
+import { ListChecks, Square, X } from "lucide-react";
 import { cancelJob, countText, elapsedText, jobCounts, statusLine, type Job } from "../../features/jobs";
 import { clearJobHistory, dropJobNotice, getJob, openJobCenter, setJobsPopover, useJobs } from "../../stores/jobs";
+import { ToastCard } from "../ui/Toaster";
 import { JobProgressBar, JobStatusIcon, useNow } from "./JobBits";
 import "./Jobs.css";
 
@@ -16,23 +17,16 @@ function Notice({ job }: { job: Job }) {
     const t = window.setTimeout(() => dropJobNotice(job.id), NOTICE_MS[st]);
     return () => window.clearTimeout(t);
   }, [job.id, st]);
-  const Icon = st === "done" ? CheckCircle2 : st === "failed" ? XCircle : CircleSlash;
   return (
-    <div className={`toast jb-notice toast-${st === "done" ? "success" : st === "failed" ? "error" : "info"}`}>
-      <Icon size={18} />
-      <div className="toast-text">
-        <strong>
-          {job.title} {NOTICE_TITLE[st]}
-        </strong>
-        <span>{[job.server, statusLine(job)].filter(Boolean).join(" · ")}</span>
-      </div>
-      <button className="btn btn-sm" onClick={() => openJobCenter({ jobId: job.id })}>
-        Ver
-      </button>
-      <button className="icon-btn" onClick={() => dropJobNotice(job.id)} aria-label="Cerrar aviso">
-        <X size={14} />
-      </button>
-    </div>
+    <ToastCard
+      className="jb-notice"
+      kind={st === "done" ? "success" : st === "failed" ? "error" : "info"}
+      title={`${job.title} ${NOTICE_TITLE[st]}`}
+      message={[job.server, statusLine(job)].filter(Boolean).join(" · ")}
+      action={{ label: "Ver", onClick: () => openJobCenter({ jobId: job.id }) }}
+      onClose={() => dropJobNotice(job.id)}
+      closeLabel="Cerrar aviso"
+    />
   );
 }
 

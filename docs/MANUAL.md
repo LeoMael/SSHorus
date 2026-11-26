@@ -114,7 +114,9 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - La cuenta con **sudo** sale primero y lleva una **S** (también si entras como root). SSHorus lo sabe al
   conectarte y lo recuerda para la próxima vez. Si nunca te conectaste, se fía de la **Contraseña de sudo** del
   servidor (**Guardar** o **La de la conexión**). Sin datos, no hay marca.
-- Clic derecho en la fila del servidor: **Conectar todas las cuentas** y **Ejecutar comando en estas cuentas…**.
+- Clic derecho en la fila del servidor: **Conectar todas las cuentas**, **Ejecutar comando en estas cuentas…** y
+  **Renombrar máquina…** para ponerle un nombre propio (p. ej. «VPS de la tesis») en vez del host. Déjalo vacío para
+  volver al host. El buscador también lo encuentra por ese nombre.
 
 ## Terminal
 
@@ -290,6 +292,8 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - **Limpiar sin usar** (Imágenes) enseña antes qué se borra y cuánto se libera. Por defecto solo borra las **sin
   nombre** (restos de compilaciones y de versiones viejas); con **Incluir también las que tienen nombre** borra todas
   las que no usa ningún contenedor (luego habría que volver a descargarlas). Si el botón está gris, debajo dice por qué.
+  **Volúmenes** y **Redes** tienen el mismo botón. Con **Todos**, las tres limpiezas funcionan: cada usuario limpia lo
+  suyo (la revisión dice cuántos de cada uno).
 - Clic en un puerto de un contenedor → **Abrir túnel a mi PC…** para usarlo en tu navegador.
 - En **Imágenes**, el botón de vulnerabilidades te lleva a Administración → Vulnerabilidades.
 - **Levantar**, **Actualizar** (con la opción de volver a construir las imágenes propias) y **Descargar imagen** van

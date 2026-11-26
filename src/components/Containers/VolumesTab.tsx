@@ -1,11 +1,25 @@
 // Volúmenes: listar, crear, eliminar y limpiar los que no usa ningún contenedor.
 import { useMemo, useState } from "react";
 import { Brush, Copy, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import { ago, createVolume, ownedBy, pruneVolumes, reclaimed, removeVolumes, toggleKey, validateObjName, type VolumeInfo } from "../../features/containers";
+import {
+  ago,
+  createVolume,
+  ownedBy,
+  pruneBlocked,
+  pruneVolumesCmds,
+  reclaimed,
+  removeVolumes,
+  toggleKey,
+  validateObjName,
+  volumePruneCandidates,
+  VOLUME_PRUNE_TEXTS,
+  type VolumeInfo,
+} from "../../features/containers";
 import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import { promptDialog } from "../ui/dialogs";
 import { PICK_OWNER_HINT, useCt } from "./context";
+import { PruneList } from "./PruneList";
 
 /** Clave única (con «Todos», dos usuarios pueden tener un volumen con el mismo nombre). */
 const volKey = (v: VolumeInfo) => `${v.owner ?? ""}/${v.name}`;
@@ -34,6 +48,10 @@ export function VolumesTab() {
   }, [vols, search, onlyUnused, ct.allOwners, ct.ownerLabel]);
   const unused = vols.filter((v) => v.unused);
   const sel = vols.filter((v) => selected.has(volKey(v)));
+  const pruneReason = pruneBlocked(
+    { loaded: res.volumes.data !== null, error: res.volumes.error, total: vols.length, candidates: unused.length },
+    VOLUME_PRUNE_TEXTS,
+  );
 
   const create = async () => {
     const name = await promptDialog({
@@ -95,24 +113,8 @@ export function VolumesTab() {
         engine === "docker"
           ? [{ key: "all", label: "Incluir los volúmenes con nombre (-a)", hint: "Docker 23+: sin esto solo borra los anónimos" }]
           : undefined,
-      details: (o) => {
-        const list = engine === "docker" && !o.all ? unused.filter((v) => v.anonymous) : unused;
-        return (
-          <div>
-            <div className="ct-summary">
-              <strong>{list.length}</strong> volúmenes
-            </div>
-            <ul className="ct-list ct-list-scroll">
-              {list.map((v) => (
-                <li key={v.name} className="mono">
-                  {v.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      },
-      build: (o) => [pruneVolumes(engine, !!o.all)],
+      details: (o) => <PruneList items={volumePruneCandidates(vols, engine, !!o.all)} noun="volúmenes" ct={ct} />,
+      build: (o) => pruneVolumesCmds(vols, engine, !!o.all),
       danger: true,
       confirmWord: "BORRAR",
       runLabel: "Limpiar",
@@ -147,13 +149,19 @@ export function VolumesTab() {
         <button className="icon-btn" onClick={() => void ct.reload("volumes")} title="Actualizar" aria-label="Actualizar" disabled={res.volumes.loading}>
           <RefreshCw size={14} className={res.volumes.loading ? "ct-spin" : undefined} />
         </button>
-        <button className="btn btn-sm" onClick={prune} disabled={unused.length === 0 || !ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
+        <button className="btn btn-sm" onClick={prune} disabled={!!pruneReason} aria-describedby={pruneReason ? "ct-vol-why" : undefined}>
           <Brush size={13} /> Limpiar sin usar
         </button>
         <button className="btn btn-sm btn-primary" onClick={() => void create()} disabled={!ct.newOwner} title={ct.newOwner ? undefined : PICK_OWNER_HINT}>
           <Plus size={13} /> Nuevo volumen
         </button>
       </div>
+      {(pruneReason || !ct.newOwner) && (
+        <div className="faint ct-small ct-why" id="ct-vol-why">
+          {pruneReason && <>«Limpiar sin usar» está desactivado porque {pruneReason}. </>}
+          {!ct.newOwner && <>Para crear un volumen, elige arriba con qué usuario.</>}
+        </div>
+      )}
       {res.volumes.error && (
         <div className="ct-error ct-error-inline" role="alert">
           <pre>{res.volumes.error}</pre>

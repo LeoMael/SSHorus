@@ -2,118 +2,35 @@
 // historial de cambios.
 // Lee como usuario normal; los cambios se ejecutan como root (directo, sudo -n/doas -n o sudo -S con la
 // contraseña por stdin, guardada solo en memoria). Antes de cada cambio se muestra el comando exacto.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, ShieldAlert } from "lucide-react";
-import { errorMessage } from "../../api/core";
-import { toast } from "../../stores/toasts";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTabs } from "../../stores/tabs";
 import {
   buildUserRows,
   detectEnv,
   parsePorts,
   parseWeb,
-  readServer,
-  readShadow,
   PORTS_SCRIPT,
   WEB_SCRIPT,
-  runPlan as execPlan,
   useAdminHistory,
-  MASK,
-  type Plan,
   type PortsResult,
-  type ReadResult,
-  type ShadowEntry,
   type WebResult,
 } from "../../features/admin";
-import {
-  ElevationError,
-  failureText,
-  readElevated,
-  refreshPrivilege,
-  succeeded,
-  sudoRejected,
-  useElevation,
-  usePrivilege,
-  useStoredSudo,
-  useStoredSudoState,
-  type Elevation,
-} from "../../features/privileges";
-import { AdminContext, type AdminContextValue, type PortsFilter, type RunOutcome, type ScanState } from "./context";
-import { AdminBanners, AdminHeader, NEEDS_READ, type SubTab } from "./AdminChrome";
+import { useElevation, usePrivilege, useStoredSudo, useStoredSudoState } from "../../features/privileges";
+import { AdminContext, type AdminContextValue, type PortsFilter } from "./context";
+import { AdminBanners, AdminHeader, type SubTab } from "./AdminChrome";
+import { AdminBody } from "./AdminBody";
 import { SudoDialog } from "./SudoDialog";
-import { UsersTab } from "./users/UsersTab";
-import { GroupsTab } from "./users/GroupsTab";
-import { SessionsTab } from "./users/SessionsTab";
-import { HistoryTab } from "./HistoryTab";
-import { PortsTab } from "./web/PortsTab";
-import { WebTab } from "./web/WebTab";
-import { VulnsTab } from "./vulns/VulnsTab";
-import { AuditTab } from "./audit/AuditTab";
-import { VisibilityTab } from "./visibility/VisibilityTab";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
-import { preloadable } from "../../lib/lazy";
+import { useElevatedScan } from "./useElevatedScan";
+import { useServerRead } from "./useServerRead";
+import { useAdminRunPlan } from "./useAdminRunPlan";
 import "./Admin.css";
 import "./AdminTable.css";
 import "./AdminDialogs.css";
 import "./users/AdminKeys.css";
 import "./AdminHistory.css";
 import "./web/AdminWeb.css";
-
-const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
-
-function elevationNote(el: Elevation): string {
-  switch (el.kind) {
-    case "root":
-      return "# como root";
-    case "nopasswd":
-      return `# como root con ${el.tool} -n`;
-    case "password":
-      return `# como root con sudo -S (contraseña por stdin: ${MASK})`;
-    default:
-      return "# sin elevar";
-  }
-}
-
-const EMPTY_SCAN = { data: null, loading: false, error: null, elevated: false, elevationError: null };
-
-/** Lectura elevada con fallback sin root; conserva el último resultado entre sub-pestañas. */
-function useElevatedScan<T>(
-  sessionId: string,
-  elevation: Elevation | null,
-  script: string,
-  parse: (stdout: string) => T,
-  timeoutSecs: number,
-): [ScanState<T>, () => Promise<void>] {
-  const [state, setState] = useState<ScanState<T>>(EMPTY_SCAN);
-  const gen = useRef(0);
-  const load = useCallback(async () => {
-    const g = ++gen.current;
-    setState((s) => ({ ...s, loading: true, error: null }));
-    try {
-      const r = await readElevated(sessionId, script, elevation, timeoutSecs);
-      if (g !== gen.current) return;
-      if (r.elevationError?.failure === "need-password") refreshPrivilege(sessionId);
-      if (r.elevationError?.failure === "bad-password") sudoRejected(sessionId);
-      setState({
-        data: parse(r.result.stdout),
-        loading: false,
-        error: null,
-        elevated: r.elevated,
-        elevationError: r.elevationError ? r.elevationError.message : null,
-      });
-    } catch (e) {
-      if (g !== gen.current) return;
-      setState((s) => ({ ...s, loading: false, error: errorMessage(e) }));
-    }
-  }, [sessionId, elevation, script, parse, timeoutSecs]);
-  return [state, load];
-}
-
-/** Texto del historial: comandos sin contraseñas (nunca las llevan) + stdin enmascarado. */
-function historyCommand(plan: Plan, el: Elevation): string {
-  return [elevationNote(el), ...plan.steps, ...(plan.secretLabel ? [`# entrada estándar: ${plan.secretLabel}`] : [])].join("\n");
-}
 
 export function AdminPanel({
   sessionId,
@@ -134,7 +51,6 @@ export function AdminPanel({
   const elevation = elev.elevation;
   useStoredSudo(sessionId, profileId, info, active && !disabled);
   const serverName = useTabs((s) => s.tabs.find((t) => t.sessionId === sessionId)?.title ?? "servidor");
-  const addHistory = useAdminHistory((s) => s.add);
   const ensureHistory = useAdminHistory((s) => s.ensure);
 
   const [tab, setTab] = useState<SubTab>("users");
@@ -142,18 +58,13 @@ export function AdminPanel({
   useEffect(() => {
     if (vulnNav?.sessionId === sessionId) setTab("vulns");
   }, [vulnNav, sessionId]);
-  const [read, setRead] = useState<ReadResult | null>(null);
-  const [shadow, setShadow] = useState<Map<string, ShadowEntry> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [shadowError, setShadowError] = useState<string | null>(null);
+  const { read, shadow, loading, error, shadowError, load } = useServerRead(sessionId, elevation);
   const [sudoOpen, setSudoOpen] = useState<null | "ask" | "change">(null);
   const [stale, setStale] = useState(true);
   const storedSudo = useStoredSudoState(sessionId);
   useEffect(() => {
     if (storedSudo === "failed" && active && !disabled) setSudoOpen((o) => o ?? "ask");
   }, [storedSudo, active, disabled]);
-  const gen = useRef(0);
 
   const [ports, loadPorts] = useElevatedScan<PortsResult>(sessionId, elevation, PORTS_SCRIPT, parsePorts, 20);
   const [web, loadWeb] = useElevatedScan<WebResult>(sessionId, elevation, WEB_SCRIPT, parseWeb, 40);
@@ -161,39 +72,6 @@ export function AdminPanel({
   const [portsFilter, setPortsFilter] = useState<PortsFilter>({ query: "", scope: "all", proto: "all" });
 
   useEffect(() => ensureHistory(profileId), [ensureHistory, profileId]);
-
-  const load = useCallback(async () => {
-    const g = ++gen.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await readServer(sessionId);
-      if (g !== gen.current) return;
-      setRead(r);
-      if (elevation) {
-        try {
-          const s = await readShadow(sessionId, elevation);
-          if (g !== gen.current) return;
-          setShadow(s);
-          setShadowError(null);
-        } catch (e) {
-          if (g !== gen.current) return;
-          setShadow(null);
-          setShadowError(errorMessage(e));
-          if (e instanceof ElevationError && e.failure === "need-password") refreshPrivilege(sessionId);
-          if (e instanceof ElevationError && e.failure === "bad-password") sudoRejected(sessionId);
-        }
-      } else {
-        setShadow(null);
-        setShadowError(null);
-      }
-    } catch (e) {
-      if (g !== gen.current) return;
-      setError(errorMessage(e));
-    } finally {
-      if (g === gen.current) setLoading(false);
-    }
-  }, [sessionId, elevation]);
 
   const elevKey = elevation ? elevation.kind : "none";
   const prevElevKey = useRef(elevKey);
@@ -233,36 +111,7 @@ export function AdminPanel({
   const users = useMemo(() => (read ? buildUserRows(read, shadow) : []), [read, shadow]);
   const me = read?.me ?? info?.user ?? null;
 
-  const runPlan = useCallback(
-    async (plan: Plan, opts?: { refresh?: boolean }): Promise<RunOutcome> => {
-      if (disabled) return { ok: false, result: null, error: "Sin conexión con el servidor", needSudo: false };
-      if (!elevation) {
-        return { ok: false, result: null, error: "Necesitas root o sudo para hacer cambios", needSudo: elev.canAskSudo };
-      }
-      const command = historyCommand(plan, elevation);
-      try {
-        const r = await execPlan(sessionId, plan, elevation);
-        const ok = succeeded(r);
-        const text = ok ? r.stdout.trim() || r.stderr.trim() || "Correcto" : failureText(r);
-        addHistory(profileId, { server: serverName, action: plan.action, command, ok, result: text });
-        if (ok) toast.success(plan.action, "Hecho");
-        else toast.error(`No se pudo: ${plan.action}`, text);
-        if (opts?.refresh !== false) void load();
-        return { ok, result: r, error: ok ? null : text, needSudo: false };
-      } catch (e) {
-        const msg = errorMessage(e);
-        addHistory(profileId, { server: serverName, action: plan.action, command, ok: false, result: msg });
-        toast.error(`No se pudo: ${plan.action}`, msg);
-        if (e instanceof ElevationError) {
-          if (e.failure === "need-password") refreshPrivilege(sessionId);
-          if (e.failure === "bad-password") sudoRejected(sessionId);
-          return { ok: false, result: null, error: msg, needSudo: e.failure === "bad-password" || e.failure === "need-password" };
-        }
-        return { ok: false, result: null, error: msg, needSudo: false };
-      }
-    },
-    [disabled, elevation, elev.canAskSudo, sessionId, profileId, serverName, addHistory, load],
-  );
+  const runPlan = useAdminRunPlan({ sessionId, profileId, serverName, disabled, elevation, canAskSudo: elev.canAskSudo, reload: load });
 
   const askSudo = useCallback(() => setSudoOpen("ask"), []);
   const refresh = useCallback(() => void load(), [load]);
@@ -353,45 +202,17 @@ export function AdminPanel({
           onAskSudo={askSudo}
         />
 
-        <div className="adm-body" id={`adm-panel-${sessionId}`} role="tabpanel" aria-labelledby={`adm-tab-${sessionId}-${tab}`}>
-          {tab === "map" ? (
-            <Suspense fallback={<div className="empty-state"><span className="spinner" /></div>}>
-              <ServerMap sessionId={sessionId} profileId={profileId} active={active} disabled={disabled} />
-            </Suspense>
-          ) : tab === "vulns" ? (
-            <VulnsTab />
-          ) : tab === "audit" ? (
-            <AuditTab onOpenVulns={() => setTab("vulns")} onOpenVisibility={() => setTab("visibility")} />
-          ) : tab === "visibility" ? (
-            <VisibilityTab />
-          ) : tab === "ports" ? (
-            <PortsTab />
-          ) : tab === "web" ? (
-            <WebTab />
-          ) : error && !read && NEEDS_READ.includes(tab) ? (
-            <div className="empty-state">
-              <ShieldAlert size={22} />
-              <div>No se pudo leer la información del servidor</div>
-              <div className="faint adm-pre-wrap">{error}</div>
-              <button className="btn btn-sm" onClick={refresh} disabled={disabled}>
-                <RefreshCw size={13} /> Reintentar
-              </button>
-            </div>
-          ) : !read && NEEDS_READ.includes(tab) ? (
-            <div className="empty-state">
-              <span className="spinner" />
-              <div>Leyendo usuarios y grupos…</div>
-            </div>
-          ) : tab === "users" ? (
-            <UsersTab onOpenVisibility={() => setTab("visibility")} />
-          ) : tab === "groups" ? (
-            <GroupsTab />
-          ) : tab === "sessions" ? (
-            <SessionsTab />
-          ) : (
-            <HistoryTab />
-          )}
-        </div>
+        <AdminBody
+          tab={tab}
+          setTab={setTab}
+          sessionId={sessionId}
+          profileId={profileId}
+          active={active}
+          disabled={disabled}
+          hasRead={!!read}
+          error={error}
+          onRetry={refresh}
+        />
         {sudoOpen && (
           <SudoDialog
             sessionId={sessionId}

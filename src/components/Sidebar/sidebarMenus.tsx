@@ -167,10 +167,11 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
   };
 
   /** Servidor con varias cuentas guardadas. */
-  const machine = (accounts: ServerProfile[], open: boolean, toggle: () => void): MenuItem[] => [
+  const machine = (accounts: ServerProfile[], open: boolean, toggle: () => void, rename: () => void): MenuItem[] => [
     open
       ? { label: "Plegar", icon: <ChevronsDownUp size={14} />, onSelect: toggle }
       : { label: "Desplegar", icon: <ChevronsUpDown size={14} />, onSelect: toggle },
+    { label: "Renombrar máquina…", icon: <Pencil size={14} />, onSelect: rename },
     { sep: true },
     { label: "Conectar todas las cuentas", icon: <Plug size={14} />, onSelect: () => void connectToMany(accounts) },
     {

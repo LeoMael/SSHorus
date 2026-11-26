@@ -1,29 +1,16 @@
 // Piezas auxiliares de VulnsTab: filas, columnas, icono de fase y barra de filtros.
 import type { KeyboardEvent } from "react";
 import { Check, ChevronDown, ChevronRight, CircleSlash, Loader2, Search, TriangleAlert, X } from "lucide-react";
-import type { Finding, Report, Severity } from "../../../api/vulnscan";
+import type { Report, Severity } from "../../../api/vulnscan";
 import type { Phase } from "../../../features/vulnscan";
+import type { VulnRow } from "../../../features/vulnscan/findingRows";
 import type { Column } from "../VirtualTable";
 import { originLabel, SEV_LABEL, SEV_ORDER, SevTag, SOURCE_LABEL } from "./vulnUi";
 
 export const KERNEL_KEY = "__kernel__";
 
-export type VulnRow =
-  | { kind: "f"; f: Finding; child: boolean }
-  | { kind: "kernel"; items: Finding[]; worst: Severity; open: boolean };
-
 export function vulnRowKey(r: VulnRow): string {
   return r.kind === "kernel" ? KERNEL_KEY : r.f.key;
-}
-
-export function matchesVuln(f: Finding, q: string): boolean {
-  if (!q) return true;
-  const hay = [f.id, f.package, f.installed, f.fixed ?? "", f.summary ?? "", ...f.aliases, ...f.advisories, ...f.binaries].join(" ").toLowerCase();
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((w) => hay.includes(w));
 }
 
 export function PhaseIcon({ p }: { p: Phase }) {

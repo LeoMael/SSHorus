@@ -2,7 +2,8 @@
 // borra una selección. Funciones puras.
 import { pruneImages, removeImages } from "./commands";
 import { isObj, num, parseLabels, str, strList } from "./parsePrimitives";
-import { ownedBy, perOwner, withOwner } from "./owner";
+import { ownedBy, perOwner } from "./owner";
+import { pruneBlocked, pruneCmdsByOwner, type PruneTexts } from "./prune";
 import type { Cmd } from "./shell";
 import type { Container, Engine, ImageInfo } from "./types";
 
@@ -83,15 +84,22 @@ export function prunePreview(images: ImageInfo[], containers: Container[], mode:
 
 /** Un `image prune` por cada dueño que tiene algo que limpiar (con «Todos», uno por usuario). */
 export function pruneImagesCmds(engine: Engine, p: PrunePreview, mode: PruneMode): Cmd[] {
-  return p.owners.map((g) => withOwner({ ...pruneImages(engine, mode === "all"), mergeStderr: true }, g.owner || undefined));
+  return pruneCmdsByOwner(
+    p.owners.flatMap((g) => g.images),
+    { ...pruneImages(engine, mode === "all"), mergeStderr: true },
+  );
 }
+
+const IMAGE_PRUNE_TEXTS: PruneTexts = {
+  what: "las imágenes",
+  none: "no hay imágenes en el servidor",
+  allUsed: "todas las imágenes las usa algún contenedor (también los parados)",
+};
 
 /** Por qué «Limpiar sin usar» está desactivado (null = se puede). En minúscula, tras «Desactivado porque». */
 export function pruneBlockedReason(r: { loaded: boolean; error: string | null; images: ImageInfo[]; containers: Container[] }): string | null {
-  if (!r.loaded) return r.error ? "no se pudieron leer las imágenes (mira el error de arriba)" : "todavía se están leyendo las imágenes";
-  if (r.images.length === 0) return "no hay imágenes en el servidor";
-  if (pruneCandidates(r.images, r.containers, "all").length === 0) return "todas las imágenes las usa algún contenedor (también los parados)";
-  return null;
+  const candidates = r.loaded ? pruneCandidates(r.images, r.containers, "all").length : 0;
+  return pruneBlocked({ loaded: r.loaded, error: r.error, total: r.images.length, candidates }, IMAGE_PRUNE_TEXTS);
 }
 
 // ───────── Eliminar una selección ─────────

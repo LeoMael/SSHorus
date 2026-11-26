@@ -1,21 +1,27 @@
-// Proyectos y servidores (con varias cuentas) plegados en la barra lateral: se recuerdan entre sesiones
-// en localStorage.
+// Preferencias de la barra lateral que se recuerdan entre sesiones en localStorage: proyectos y servidores
+// (con varias cuentas) plegados, y el nombre propio de cada máquina.
 import { useState } from "react";
+import { parseMachineNames, withMachineName } from "../../features/sidebar/machineNames";
 
 const PROJECTS_KEY = "sshorus.sidebar.collapsedProjects";
 const MACHINES_KEY = "sshorus.sidebar.collapsedMachines";
+const MACHINE_NAMES_KEY = "sshorus.sidebar.machineNames";
 
-function readCollapsed(storageKey: string): Record<string, boolean> {
+function readStored(storageKey: string): unknown {
   try {
     const raw = localStorage.getItem(storageKey);
-    const v: unknown = raw ? JSON.parse(raw) : {};
-    return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
+    return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-function writeCollapsed(storageKey: string, v: Record<string, boolean>) {
+function readCollapsed(storageKey: string): Record<string, boolean> {
+  const v = readStored(storageKey);
+  return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
+}
+
+function writeStored(storageKey: string, v: object) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(v));
   } catch {
@@ -32,7 +38,7 @@ function useCollapsed(storageKey: string) {
       if (force === true && !c[id]) return c;
       const next = { ...c, [id]: force === undefined ? !c[id] : !force };
       if (!next[id]) delete next[id];
-      writeCollapsed(storageKey, next);
+      writeStored(storageKey, next);
       return next;
     });
   };
@@ -51,3 +57,21 @@ export function useCollapsedMachines() {
 }
 
 export type CollapsedMachines = ReturnType<typeof useCollapsedMachines>;
+
+/** Nombre propio de cada máquina (por `machineKey`, el mismo en «Servidores» y en los proyectos). */
+export function useMachineNames() {
+  const [names, setNames] = useState<Record<string, string>>(() => parseMachineNames(readStored(MACHINE_NAMES_KEY)));
+
+  /** Vacío = vuelve al nombre automático (`autoLabel`). */
+  const rename = (key: string, name: string, autoLabel: string) => {
+    setNames((n) => {
+      const next = withMachineName(n, key, name, autoLabel);
+      writeStored(MACHINE_NAMES_KEY, next);
+      return next;
+    });
+  };
+
+  return { names, rename };
+}
+
+export type MachineNamesState = ReturnType<typeof useMachineNames>;

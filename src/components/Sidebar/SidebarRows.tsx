@@ -7,7 +7,7 @@ import { isMac, isModKey } from "../../lib/platform";
 import { connectNew, openOrFocus } from "./sidebarActions";
 import { bookmarkRowKey, serverRowKey, type TabState } from "./sidebarLogic";
 import type { SidebarMenus } from "./sidebarMenus";
-import type { CollapsedMachines } from "./useCollapsedProjects";
+import type { CollapsedMachines, MachineNamesState } from "./useCollapsedProjects";
 import type { SidebarTree } from "./useSidebarTree";
 
 const MOD = isMac ? "⌘" : "Ctrl";
@@ -29,6 +29,7 @@ export interface RowApi {
   /** Marca de sudo de cada servidor (ver useAccountSudo). */
   sudoOf: ReadonlyMap<string, SudoBadge | null>;
   machines: CollapsedMachines;
+  machineNames: MachineNamesState;
 }
 
 const SUDO_TITLE: Record<SudoBadge, string> = {

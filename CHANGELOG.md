@@ -6,7 +6,18 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Añadido
+- **Barra lateral:** clic derecho en un servidor con varias cuentas → **Renombrar máquina…** para ponerle un nombre
+  propio en vez del host. Vacío vuelve al host. Se recuerda y el buscador también lo encuentra.
+- **Avisos con botón:** los avisos de la esquina pueden llevar un botón (como el **Ver** de las tareas en segundo
+  plano, que ahora usa el mismo aviso). No se cierran mientras tienes el ratón o el foco encima.
+
 ### Cambiado
+- **Contenedores con «Todos»:** **Limpiar sin usar** de **Volúmenes** y **Redes** ya no está desactivado: limpia como
+  cada usuario, igual que en Imágenes. Si el botón está gris, debajo dice por qué.
+- **Desarrollo:** 12 archivos de la interfaz de 400–500 líneas (Administración, Contenedores, pestañas, Mis
+  comandos, Monitor, transferencias y ejecutar en varios servidores) se partieron en piezas de un solo tema, con
+  pruebas nuevas de la lógica. Sin cambios a la vista.
 - **Desarrollo:** orden interno de la interfaz, sin cambios a la vista. Los 11 CSS de más de 500 líneas (también el
   tema) se partieron en archivos por tema; `components/Admin` se ordenó en carpetas (`users/`, `web/`, `vulns/`,
   `audit/`, `visibility/`); `AdmModal` trae su propio CSS; y la barra lateral, Administración y Contenedores usan el

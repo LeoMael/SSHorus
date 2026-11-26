@@ -16,7 +16,6 @@ import { PullDialog } from "./PullDialog";
 import { ImageDetailsDialog } from "./ImageDetailsDialog";
 import { ImageRow } from "./ImageRow";
 import { askPruneImages, askRemoveImages } from "./imageActions";
-import "./Images.css";
 
 type SortKey = "name" | "owner" | "size" | "created";
 
@@ -128,7 +127,7 @@ export function ImagesTab() {
         </button>
       </div>
       {(pruneReason || !ct.newOwner) && (
-        <div className="faint ct-small ct-img-why" id="ct-prune-why">
+        <div className="faint ct-small ct-why" id="ct-prune-why">
           {pruneReason && <>«Limpiar sin usar» está desactivado porque {pruneReason}. </>}
           {!ct.newOwner && <>Para descargar una imagen, elige arriba con qué usuario.</>}
         </div>

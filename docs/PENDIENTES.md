@@ -79,8 +79,9 @@ pago) y las pruebas en entornos reales que solo puede hacer el usuario (Windows,
   usuario con sudo (copia `.bak-sshorus-<fecha>` y «Aplicar cambios»).
 - **Barra lateral: cuentas del mismo servidor agrupadas** (mismo host y puerto) bajo un nodo plegable, con la de sudo
   primero y marca «S». El sudo sale de la conexión abierta, de lo último detectado (guardado por servidor) o de la
-  contraseña de sudo configurada. Pendiente: nombre propio para el nodo (hoy muestra el host) y unir alias de
-  `~/.ssh/config` que apuntan al mismo `HostName` (el perfil no guarda esa información).
+  contraseña de sudo configurada. ~~Nombre propio para el nodo~~ **hecho (26/11):** «Renombrar máquina…» (se guarda en
+  `localStorage`, como los plegados). Pendiente: unir alias de `~/.ssh/config` que apuntan al mismo `HostName` (el
+  perfil no guarda esa información).
 - **Tareas en segundo plano para toda la app** (después de la beta.3): ventanita abajo a la derecha («2 tareas»),
   vista grande con salida en vivo, pasos, tiempos, Cancelar y «Copiar salida», historial de la sesión y aviso con
   «Ver». Van como tarea: Compose y Descargar imagen, Vulnerabilidades → Arreglar, Actualizar imagen, Auditoría →
@@ -230,9 +231,10 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   [PIN y bóveda](historial/PENDIENTES-historial.md#77-pin-bóveda-cifrada-y-bloqueo---hecho-v040),
   [otros pendientes detectados](historial/PENDIENTES-historial.md#4-otros-pendientes-detectados) (2FA, agente, arrastre, cancelar).
 
-- **Contenedores con «Todos» (admin viendo los de otros usuarios):** las limpiezas de **Volúmenes** y **Redes** siguen
-  desactivadas con «Todos», igual que estaba «Limpiar imágenes» (ya arreglado): hacer lo mismo (limpiar como cada dueño
-  y explicar el motivo cuando no se puede).
+- ~~**Contenedores con «Todos»:** las limpiezas de **Volúmenes** y **Redes** desactivadas con «Todos»~~ **hecho (26/11):**
+  limpian como cada dueño (`features/containers/prune.ts`, el mismo código que Imágenes) y dicen por qué cuando no se puede.
+- ~~**Avisos con botón en `Toaster`**~~ **hecho (26/11):** `toast.*(…, { action: { label, onClick } })`; el «Ver» de
+  las tareas en segundo plano usa el mismo aviso (`ToastCard`).
 - **CSS de `ui/AdmModal`:** varias pantallas copian reglas de `.adm-modal` (Contenedores, MCP, Bases de datos); moverlas
   a un CSS propio de `components/ui/AdmModal`.
 
@@ -269,12 +271,12 @@ Reglas de calidad en [`dev/REGLAS-AGENTES.md`](dev/REGLAS-AGENTES.md) §5 y crit
 
 Lo de abajo se midió el 24/11/2026 con `wc -l`, sin contar pruebas.
 - **Código entre 400 y 500 líneas (25):**
-  - Interfaz: `Admin/vulns/ImageUpdateDialog.tsx` (494), `Terminal/termController.ts` (491), `Admin/users/KeyUserWizard.tsx` (487),
-    `Containers/ContainersTab.tsx` (477), `Tabs/TabBar.tsx` (475), `Commands/CommandsPanel.tsx` (450),
-    `Admin/vulns/VulnsTab.tsx` (445), `stores/transfers.ts` (439), `About/markdown.tsx` (434),
-    `features/multirun/engine.ts` (426), `Containers/ImagesTab.tsx` (418), `Monitor/MonitorPanel.tsx` (416),
-    `features/vulnscan/run.ts` (404), `features/monitor/sample.ts` (403), `Terminal/TerminalView.tsx` (403),
-    `Admin/AdminPanel.tsx` (407 desde el 26/11: importa las 6 partes de su CSS).
+  - Interfaz: ~~`Admin/vulns/ImageUpdateDialog.tsx`, `Admin/users/KeyUserWizard.tsx`, `Containers/ContainersTab.tsx`,
+    `Tabs/TabBar.tsx`, `Commands/CommandsPanel.tsx`, `Admin/vulns/VulnsTab.tsx`, `stores/transfers.ts`,
+    `features/multirun/engine.ts`, `Containers/ImagesTab.tsx`, `Monitor/MonitorPanel.tsx`, `features/monitor/engine.ts`,
+    `features/monitor/sample.ts`, `Admin/AdminPanel.tsx`~~ **partidos (26/11)**. Quedan (los parte otra tarea):
+    `Terminal/termController.ts` (491), `About/markdown.tsx` (434), `features/vulnscan/run.ts` (404),
+    `Terminal/TerminalView.tsx` (403).
   - Motor: **hecho (26/11)**, ningún archivo Rust de producción pasa de 400 líneas (el mayor es
     `vulnscan/analyze.rs`, 398).
   - Justo en el límite (400): `Terminal/TerminalArea.tsx`.

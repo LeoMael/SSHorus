@@ -1,80 +1,21 @@
 // Motor de muestreo por sesión. Cada sesión tiene un `Sampler` con «demandas» (quién quiere datos y cada
 // cuánto); muestrea al ritmo de la más exigente y nunca lanza dos muestreos a la vez.
-// Los resultados van a un store de zustand que leen el panel y el resumen de conexiones.
-import { create } from "zustand";
+// Los resultados van al store de store.ts, que leen el panel y el resumen de conexiones.
 import { snippets } from "../../api/snippets";
 import { errorMessage } from "../../api/core";
 import { toast } from "../../stores/toasts";
 import { ElevationError, runScript } from "../privileges";
 import type { Elevation } from "../privileges";
 import { useTabs } from "../../stores/tabs";
-import { buildSampleCommand, parseSample, SAMPLE_TIMEOUT_SECS, type CpuTicks, type RawSample, type SampleInfo } from "./sample";
-import { buildContainersCommand, CONTAINERS_TIMEOUT_SECS, parseContainers, type ContainersResult } from "./containers";
-import { deriveMetrics, sustainedCpu, toPoint, type HistoryPoint, type Metrics } from "./derive";
-import { evaluateAlerts, loadAlerts, onAlertsChanged, type ActiveAlert, type AlertConfig } from "./alerts";
-import { CONTAINERS_INTERVAL, HISTORY_MS } from "./prefs";
+import { buildSampleCommand, parseSample, SAMPLE_TIMEOUT_SECS, type RawSample, type SampleInfo } from "./sample";
+import { deriveMetrics, toPoint } from "./derive";
+import { evaluateAlerts, loadAlerts, onAlertsChanged, type AlertConfig } from "./alerts";
 import { ContainerAttribution } from "./attribution";
+import { appendHistory, nextCpuHistory, type CpuMark } from "./history";
+import { ContainersPoller } from "./containersPoller";
+import { emptyMonitor, useMonitorStore } from "./store";
 
-export interface ContainersState {
-  result: ContainersResult | null;
-  error: string | null;
-  loading: boolean;
-  at: number | null;
-}
-
-export interface SessionMonitor {
-  metrics: Metrics | null;
-  history: HistoryPoint[];
-  /** Último error del muestreo (se conservan los datos anteriores). */
-  error: string | null;
-  /** Hay un muestreo en curso. */
-  loading: boolean;
-  /** El servidor no expone /proc (no es Linux). */
-  noProc: boolean;
-  info: SampleInfo | null;
-  /** La última muestra se leyó con sudo (se ven los procesos de todos aunque /proc tenga hidepid). */
-  elevated: boolean;
-  alerts: ActiveAlert[];
-  containers: ContainersState;
-}
-
-const EMPTY_CONTAINERS: ContainersState = { result: null, error: null, loading: false, at: null };
-
-export const emptyMonitor = (): SessionMonitor => ({
-  metrics: null,
-  history: [],
-  error: null,
-  loading: false,
-  noProc: false,
-  info: null,
-  elevated: false,
-  alerts: [],
-  containers: EMPTY_CONTAINERS,
-});
-
-interface MonitorStore {
-  bySession: Record<string, SessionMonitor>;
-  patch: (sessionId: string, p: Partial<SessionMonitor>) => void;
-  drop: (sessionId: string) => void;
-}
-
-export const useMonitorStore = create<MonitorStore>((set) => ({
-  bySession: {},
-  patch: (sessionId, p) =>
-    set((s) => ({ bySession: { ...s.bySession, [sessionId]: { ...(s.bySession[sessionId] ?? emptyMonitor()), ...p } } })),
-  drop: (sessionId) =>
-    set((s) => {
-      if (!(sessionId in s.bySession)) return s;
-      const bySession = { ...s.bySession };
-      delete bySession[sessionId];
-      return { bySession };
-    }),
-}));
-
-/** Datos de una sesión (null si nunca se muestreó). */
-export function useSessionMonitor(sessionId: string): SessionMonitor | null {
-  return useMonitorStore((s) => s.bySession[sessionId] ?? null);
-}
+export { emptyMonitor, useMonitorStore, useSessionMonitor, type ContainersState, type SessionMonitor } from "./store";
 
 /** Cada cuánto se vuelve a pedir lo que casi no cambia (usuarios, nº de CPU, herramientas). */
 const FULL_EVERY_MS = 5 * 60 * 1000;
@@ -85,14 +26,10 @@ export const ELEVATED_MIN_INTERVAL = 5000;
 
 class Sampler {
   private demands = new Map<string, number>();
-  private containerDemands = new Set<string>();
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private cTimer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
-  private cRunning = false;
   private disposed = false;
   private lastStart = 0;
-  private cLastStart = 0;
   private failed = false;
   private count = 0;
 
@@ -106,18 +43,24 @@ class Sampler {
   private uidCache = new Map<number, { uid: number; start: number }>();
   private wantUids: number[] = [];
   private attribution = new ContainerAttribution();
-  private cpuHist: { uptime: number; cpu: CpuTicks }[] = [];
+  private cpuHist: CpuMark[] = [];
   private activeAlerts = new Set<string>();
   private alertCfg: AlertConfig;
   private elevation: Elevation | null = null;
   /** sudo falló con la elevación actual: no se reintenta hasta que cambie. */
   private elevationFailed = false;
+  private containers: ContainersPoller;
 
   constructor(
     readonly sessionId: string,
     public profileId: string,
   ) {
     this.alertCfg = loadAlerts(profileId);
+    this.containers = new ContainersPoller(
+      sessionId,
+      () => this.info,
+      (list) => this.attribution.learnNames(list),
+    );
   }
 
   reloadAlerts() {
@@ -129,7 +72,7 @@ class Sampler {
   }
 
   get hasDemand() {
-    return this.demands.size > 0 || this.containerDemands.size > 0;
+    return this.demands.size > 0 || this.containers.hasDemand;
   }
 
   setDemand(owner: string, intervalMs: number | null) {
@@ -154,9 +97,7 @@ class Sampler {
   }
 
   setContainersDemand(owner: string, on: boolean) {
-    if (on) this.containerDemands.add(owner);
-    else this.containerDemands.delete(owner);
-    this.scheduleContainers();
+    this.containers.setDemand(owner, on);
   }
 
   private interval(): number | null {
@@ -263,20 +204,13 @@ class Sampler {
     this.prev = raw;
     this.count++;
 
-    // Historia de 5 min.
     const cur = useMonitorStore.getState().bySession[this.sessionId] ?? emptyMonitor();
-    const cutoff = raw.at - HISTORY_MS;
-    const history = cur.history.filter((p) => p.t >= cutoff);
-    history.push(toPoint(metrics));
+    const history = appendHistory(cur.history, toPoint(metrics), raw.at);
 
     // CPU sostenida para la alerta (contadores del servidor, últimos 10 min).
-    let sustained: number | null = null;
-    if (raw.uptime !== null && raw.cpu) {
-      const now = { uptime: raw.uptime, cpu: raw.cpu };
-      sustained = sustainedCpu(this.cpuHist, now);
-      this.cpuHist = this.cpuHist.filter((h) => raw.uptime! - h.uptime < 600 && h.uptime < raw.uptime!);
-      this.cpuHist.push(now);
-    }
+    const cpu = nextCpuHistory(this.cpuHist, raw.uptime !== null && raw.cpu ? { uptime: raw.uptime, cpu: raw.cpu } : null);
+    this.cpuHist = cpu.hist;
+    const sustained = cpu.sustained;
     const alerts = evaluateAlerts(this.alertCfg, metrics, sustained, this.activeAlerts);
     const tabTitle = useTabs.getState().tabs.find((t) => t.sessionId === this.sessionId)?.title ?? "Servidor";
     for (const a of alerts) {
@@ -296,60 +230,11 @@ class Sampler {
     });
   }
 
-  // ───────── Contenedores (cada 10 s, solo si alguien lo pide) ─────────
-
-  private scheduleContainers() {
-    if (this.disposed) return;
-    if (this.cTimer) clearTimeout(this.cTimer);
-    this.cTimer = null;
-    if (this.cRunning || !this.containerDemands.size) return;
-    if (this.info && !this.info.docker && !this.info.podman) {
-      // Sin motor de contenedores: se vuelve a mirar cuando llegue otra muestra completa.
-      this.cTimer = setTimeout(() => this.scheduleContainers(), CONTAINERS_INTERVAL);
-      return;
-    }
-    const wait = Math.max(0, this.cLastStart + CONTAINERS_INTERVAL - Date.now());
-    this.cTimer = setTimeout(() => void this.tickContainers(), wait);
-  }
-
-  private async tickContainers() {
-    this.cTimer = null;
-    if (this.disposed || this.cRunning) return;
-    if (!this.info) {
-      // Aún no se sabe si hay docker/podman: esperar a la primera muestra.
-      this.cTimer = setTimeout(() => this.scheduleContainers(), 1000);
-      return;
-    }
-    this.cRunning = true;
-    this.cLastStart = Date.now();
-    const patchC = (p: Partial<ContainersState>) => {
-      const cur = useMonitorStore.getState().bySession[this.sessionId]?.containers ?? EMPTY_CONTAINERS;
-      useMonitorStore.getState().patch(this.sessionId, { containers: { ...cur, ...p } });
-    };
-    patchC({ loading: true });
-    try {
-      const r = await snippets.exec(this.sessionId, buildContainersCommand(), CONTAINERS_TIMEOUT_SECS);
-      if (this.disposed) return;
-      if (r.timedOut) patchC({ loading: false, error: "Las estadísticas de contenedores tardaron demasiado" });
-      else {
-        const result = parseContainers(r.stdout);
-        this.attribution.learnNames(result.containers);
-        patchC({ loading: false, error: null, result, at: Date.now() });
-      }
-    } catch (e) {
-      if (!this.disposed) patchC({ loading: false, error: errorMessage(e) });
-    } finally {
-      this.cRunning = false;
-      this.scheduleContainers();
-    }
-  }
-
   dispose() {
     this.disposed = true;
     if (this.timer) clearTimeout(this.timer);
-    if (this.cTimer) clearTimeout(this.cTimer);
     this.demands.clear();
-    this.containerDemands.clear();
+    this.containers.dispose();
   }
 }
 

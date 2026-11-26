@@ -15,7 +15,7 @@ export const SEV_LABEL: Record<Severity, string> = {
   unknown: "Sin clasificar",
 };
 
-export const SEV_ORDER: Severity[] = ["critical", "high", "medium", "low", "unknown"];
+export { SEV_ORDER } from "../../../features/vulnscan/findingRows";
 
 export const SOURCE_LABEL: Record<SourceId, string> = { osv: "OSV", distro: "Distro", trivy: "Trivy" };
 

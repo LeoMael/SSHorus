@@ -1,118 +1,13 @@
 // Motor de "Ejecutar en varios servidores": cola con concurrencia limitada, conexión en segundo plano,
 // ejecución, cancelación y reintentos. No depende de Tauri: las llamadas reales se inyectan (EngineDeps),
 // así se puede probar con un motor simulado.
-import type { ExecResult } from "../../api/types";
-import type { SudoExecResult, SudoWrapFailure } from "../../api/snippets";
-import { sudoFailureText } from "../sudoRun/failure";
-import { isFinal, type AttentionKind, type PrivilegeHint, type RunSpec, type TargetInput, type TargetState } from "./types";
+import type { EngineDeps } from "./deps";
+import { STOP_WAIT_MS, Slots, delay, requestCancel, type InFlight } from "./inflight";
+import { blankTarget, classifyConnectError, errText, execOutcome, type ExecOutcome } from "./outcome";
+import { isFinal, type RunSpec, type TargetInput, type TargetState } from "./types";
 
-export interface EngineDeps {
-  /** Sesión conectada de una pestaña del usuario para ese servidor (se reutiliza), o null. */
-  tabSession(profileId: string): string | null;
-  /** Conecta sin interacción con las credenciales guardadas. Devuelve el sessionId. Lanza errores con `.kind`. */
-  connect(profileId: string): Promise<string>;
-  /** Conecta resolviendo diálogos (contraseña, huella, 2FA). null = el usuario canceló. */
-  connectInteractive(profileId: string): Promise<string | null>;
-  /** Ejecuta con un identificador (`execId`) para poder cancelarlo con `cancelExec`. */
-  exec(sessionId: string, command: string, timeoutSecs: number, execId: string): Promise<ExecResult>;
-  /** Identificador nuevo y único para `exec`. */
-  newExecId(): string;
-  /** Pide detener en el servidor la ejecución `execId`. false = no estaba (aún no empezó o ya terminó). */
-  cancelExec(execId: string): Promise<boolean>;
-  disconnect(sessionId: string): Promise<void>;
-  /** Nivel de privilegios (solo lectura, informativo). */
-  privilege(sessionId: string, reused: boolean): Promise<PrivilegeHint | null>;
-  /**
-   * Contraseña de sudo para ejecutar en esa sesión (en memoria → guardada → otra pestaña → diálogo en cola).
-   * `{ need: false }`: no hace falta (root, sudo sin contraseña, sin sudo). null: el usuario saltó el
-   * servidor (o se abortó con `signal`).
-   */
-  sudoPassword?(
-    sessionId: string,
-    profileId: string,
-    serverName: string,
-    signal: AbortSignal,
-  ): Promise<{ password: string } | { need: false } | null>;
-  /** Ejecuta con la contraseña de sudo (envoltorio del motor). */
-  execSudo?(sessionId: string, command: string, password: string, timeoutSecs: number, execId: string): Promise<SudoExecResult>;
-  /** sudo rechazó la contraseña: se olvida y, si era la guardada, queda marcada como rechazada. */
-  sudoRejected?(sessionId: string): void;
-}
-
-/** Ejecución en curso de un servidor (para poder detenerla al cancelar). */
-interface InFlight {
-  execId: string;
-  sessionId: string;
-  /** La sesión la abrió la ejecución: se cierra cuando el comando se haya detenido. */
-  owned: boolean;
-  /** Se cumple cuando `exec` termina (bien o mal). */
-  settled: Promise<void>;
-}
-
-/** Espera máxima a que el servidor detenga el comando antes de cerrar la sesión propia igualmente. */
-const STOP_WAIT_MS = 15_000;
-/** Reintentos de `cancelExec` si la ejecución aún no estaba anotada en el motor (llamadas casi a la vez). */
-const CANCEL_TRIES = 4;
-const CANCEL_RETRY_MS = 250;
-
-const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
-
-export interface ConnectFailure {
-  attention: AttentionKind | null;
-  message: string;
-}
-
-function errKind(e: unknown): string | null {
-  if (e && typeof e === "object" && "kind" in e && typeof (e as { kind: unknown }).kind === "string") {
-    return (e as { kind: string }).kind;
-  }
-  return null;
-}
-
-export function errText(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === "string") return e;
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
-  return "Error desconocido";
-}
-
-/** Traduce un error de conexión sin interacción a "requiere atención" o a error definitivo. */
-export function classifyConnectError(e: unknown, auth: TargetInput["auth"]): ConnectFailure {
-  switch (errKind(e)) {
-    case "NeedsPassword":
-      return { attention: "password", message: "Falta la contraseña (no está guardada)" };
-    case "NeedsPassphrase":
-      return { attention: "passphrase", message: "Falta la frase de la llave" };
-    case "NeedsOtp":
-      return { attention: "otp", message: "Pide un código de verificación (2FA)" };
-    case "HostKeyUnknown":
-      return { attention: "hostkey", message: "Servidor desconocido: hay que confirmar su huella" };
-    case "HostKeyChanged":
-      return { attention: "hostkey-changed", message: "¡La huella del servidor cambió! Revísala antes de continuar" };
-    case "AuthFailed":
-      if (auth === "password") return { attention: "auth", message: "La contraseña guardada fue rechazada" };
-      return { attention: null, message: `Autenticación fallida: ${errText(e)}` };
-    default:
-      return { attention: null, message: errText(e) };
-  }
-}
-
-function blank(t: TargetInput): TargetState {
-  return {
-    ...t,
-    status: "queued",
-    detail: null,
-    attention: null,
-    sessionId: null,
-    owned: false,
-    reused: false,
-    connectStartedAt: null,
-    execStartedAt: null,
-    finishedAt: null,
-    result: null,
-    privilege: null,
-  };
-}
+export type { EngineDeps } from "./deps";
+export { classifyConnectError, errText, type ConnectFailure } from "./outcome";
 
 export class RunEngine {
   private list: TargetState[];
@@ -123,8 +18,7 @@ export class RunEngine {
   private readonly inFlight = new Map<string, InFlight>();
   /** Esperas de la contraseña de sudo (profileId → para quitar su diálogo de la cola al cancelar). */
   private readonly sudoWaits = new Map<string, AbortController>();
-  private active = 0;
-  private readonly waiting: (() => void)[] = [];
+  private readonly slots = new Slots(() => this.spec.concurrency);
   private disposed = false;
 
   constructor(
@@ -133,7 +27,7 @@ export class RunEngine {
     private readonly deps: EngineDeps,
     private readonly onChange: (targets: TargetState[]) => void,
   ) {
-    this.list = inputs.map(blank);
+    this.list = inputs.map(blankTarget);
   }
 
   get targets(): TargetState[] {
@@ -244,7 +138,7 @@ export class RunEngine {
    * a los STOP_WAIT_MS.
    */
   private stopExec(profileId: string, ex: InFlight) {
-    void this.requestCancel(ex);
+    void requestCancel(ex, (id) => this.deps.cancelExec(id));
     if (!ex.owned) return;
     // Se quita de la lista ya: un reintento puede abrir otra sesión para el mismo servidor.
     if (this.owned.get(profileId) === ex.sessionId) this.owned.delete(profileId);
@@ -253,36 +147,6 @@ export class RunEngine {
         /* ya estaba cerrada */
       }),
     );
-  }
-
-  /** Pide cancelar; si el motor aún no conocía la ejecución, lo vuelve a intentar unas veces. */
-  private async requestCancel(ex: InFlight) {
-    let done = false;
-    void ex.settled.then(() => {
-      done = true;
-    });
-    for (let i = 0; i < CANCEL_TRIES && !done; i++) {
-      if (await this.deps.cancelExec(ex.execId).catch(() => false)) return;
-      await delay(CANCEL_RETRY_MS);
-    }
-  }
-
-  private acquire(): Promise<void> {
-    if (this.active < Math.max(1, this.spec.concurrency)) {
-      this.active++;
-      return Promise.resolve();
-    }
-    return new Promise((res) =>
-      this.waiting.push(() => {
-        this.active++;
-        res();
-      }),
-    );
-  }
-
-  private release() {
-    this.active--;
-    this.waiting.shift()?.();
   }
 
   /**
@@ -316,7 +180,7 @@ export class RunEngine {
     const prev = this.find(profileId);
     if (!prev) return doneConnecting();
     this.patch(profileId, {
-      ...blank(prev),
+      ...blankTarget(prev),
       // Al resolver, se conserva el motivo hasta que se conecte.
       status: interactive ? "connecting" : "queued",
       attention: interactive ? prev.attention : null,
@@ -324,7 +188,7 @@ export class RunEngine {
       connectStartedAt: interactive ? Date.now() : null,
     });
 
-    if (!interactive) await this.acquire();
+    if (!interactive) await this.slots.acquire();
     try {
       if (stale()) return;
       const t = this.find(profileId);
@@ -379,7 +243,7 @@ export class RunEngine {
         }
         this.patch(profileId, { status: "running", execStartedAt: Date.now(), detail: null });
         const execId = this.deps.newExecId();
-        const pending: Promise<ExecResult & { sudoFailure?: SudoWrapFailure | null }> =
+        const pending: Promise<ExecOutcome> =
           password !== undefined && this.deps.execSudo
             ? this.deps.execSudo(sessionId, this.spec.command, password, this.spec.timeoutSecs, execId)
             : this.deps.exec(sessionId, this.spec.command, this.spec.timeoutSecs, execId);
@@ -393,25 +257,15 @@ export class RunEngine {
           ),
         };
         this.inFlight.set(profileId, ex);
-        let r: ExecResult & { sudoFailure?: SudoWrapFailure | null };
+        let r: ExecOutcome;
         try {
           r = await pending;
         } finally {
           if (this.inFlight.get(profileId) === ex) this.inFlight.delete(profileId);
         }
         if (stale()) return;
-        if (r.sudoFailure) {
-          if (r.sudoFailure === "bad-password") this.deps.sudoRejected?.(sessionId);
-          this.patch(profileId, { status: "error", result: r, detail: sudoFailureText(r.sudoFailure), finishedAt: Date.now() });
-          return;
-        }
-        const status = r.timedOut ? "timeout" : r.exitCode === 0 ? "ok" : "error";
-        const detail = r.timedOut
-          ? `Sin terminar tras ${this.spec.timeoutSecs} s`
-          : r.exitCode === null
-            ? "El comando terminó sin código de salida"
-            : null;
-        this.patch(profileId, { status, result: r, detail, finishedAt: Date.now() });
+        if (r.sudoFailure === "bad-password") this.deps.sudoRejected?.(sessionId);
+        this.patch(profileId, { ...execOutcome(r, this.spec.timeoutSecs), result: r, finishedAt: Date.now() });
       } catch (e) {
         if (stale()) return;
         this.patch(profileId, { status: "error", detail: errText(e), finishedAt: Date.now() });
@@ -420,7 +274,7 @@ export class RunEngine {
       }
     } finally {
       doneConnecting();
-      if (!interactive) this.release();
+      if (!interactive) this.slots.release();
     }
   }
 }

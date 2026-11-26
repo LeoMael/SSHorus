@@ -13,6 +13,7 @@ export * from "./rootStorage";
 export * from "./autostart";
 export * from "./autostartPlan";
 export * from "./images";
+export * from "./prune";
 export * from "./selection";
 export * from "./composeAutostart";
 export * from "./composeAutostartPlan";

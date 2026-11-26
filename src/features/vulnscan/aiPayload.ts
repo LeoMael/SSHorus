@@ -7,6 +7,7 @@
 // (de $HOME o cualquier otra), nombres de contenedores, host del registro de las imágenes, contraseñas
 // ni tokens.
 import type { ChatMessage, Finding, Report, Severity, Target } from "../../api/vulnscan";
+import { SEV_ORDER } from "./findingRows";
 
 export const AI_MAX_FINDINGS = 60;
 
@@ -38,7 +39,6 @@ export const DEFAULT_AI_OPTIONS: AiPayloadOptions = {
   includeUnimportant: false,
 };
 
-const SEV_ORDER: Severity[] = ["critical", "high", "medium", "low", "unknown"];
 const SEV_ES: Record<Severity, string> = {
   critical: "crítica",
   high: "alta",

@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ServerProfile } from "../../api/types";
 import { groupByMachine, machineRowKey, type MachineNode } from "../../features/sidebar/machineGroups";
+import { validateMachineName } from "../../features/sidebar/machineNames";
+import { promptDialog } from "../ui/dialogs";
 import { bestTabState, serverRowKey } from "./sidebarLogic";
 import { ServerRow, type RowApi } from "./SidebarRows";
 import "./MachineGroup.css";
@@ -19,7 +21,8 @@ interface ItemsProps {
 
 export function ServerItems({ api, servers, projectId, q }: ItemsProps) {
   const { sudoOf } = api;
-  const items = useMemo(() => groupByMachine(servers, (s) => sudoOf.get(s.id) ?? null), [servers, sudoOf]);
+  const names = api.machineNames.names;
+  const items = useMemo(() => groupByMachine(servers, (s) => sudoOf.get(s.id) ?? null, names), [servers, sudoOf, names]);
   return items.map((it) =>
     it.kind === "server" ? (
       <ServerRow key={serverRowKey(it.account.server.id, projectId)} api={api} s={it.account.server} projectId={projectId} />
@@ -36,7 +39,7 @@ const STATE_TITLE = {
 } as const;
 
 function MachineGroup({ api, node, projectId, q }: { api: RowApi; node: MachineNode; projectId?: string; q: string }) {
-  const { tree, menus, machines } = api;
+  const { tree, menus, machines, machineNames } = api;
   const key = machineRowKey(node.key, projectId);
   const open = q ? true : !machines.collapsed[key];
   const selected = tree.selected === key;
@@ -45,7 +48,21 @@ function MachineGroup({ api, node, projectId, q }: { api: RowApi; node: MachineN
   const busy = servers.some((s) => api.connecting[s.id]);
   const count = `${servers.length} cuentas`;
   const toggle = (force?: boolean) => machines.toggle(key, force);
-  const menu = () => menus.machine(servers, open, () => toggle());
+  const named = node.label !== node.host;
+  const fullName = named ? `${node.label} (${node.host})` : node.label;
+  const rename = async () => {
+    const v = await promptDialog({
+      title: "Renombrar máquina",
+      message: `Un nombre propio para las ${count} de ${node.host}. Déjalo vacío para volver a «${node.host}».`,
+      label: "Nombre",
+      initial: named ? node.label : "",
+      placeholder: node.host,
+      confirmText: "Guardar",
+      validate: validateMachineName,
+    });
+    if (v !== null) machineNames.rename(node.key, v, node.host);
+  };
+  const menu = () => menus.machine(servers, open, () => toggle(), () => void rename());
   return (
     <div role="group">
       <div
@@ -55,9 +72,9 @@ function MachineGroup({ api, node, projectId, q }: { api: RowApi; node: MachineN
         role="treeitem"
         aria-expanded={open}
         aria-selected={selected}
-        aria-label={`${node.label}, ${count}`}
+        aria-label={`${fullName}, ${count}`}
         className={`sb-row sb-machine${projectId ? " sb-indent" : ""}${selected ? " selected" : ""}`}
-        title={`${node.label} — ${count} guardadas en este servidor\nClic: desplegar o plegar`}
+        title={`${fullName} — ${count} guardadas en este servidor\nClic: desplegar o plegar · Menú: renombrar`}
         onClick={() => {
           tree.setSelected(key);
           toggle();

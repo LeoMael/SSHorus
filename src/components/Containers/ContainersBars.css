@@ -143,3 +143,8 @@
   font-size: 11px;
   flex: none;
 }
+
+/* Por qué un botón de la barra está desactivado (debajo de la barra; Imágenes, Volúmenes y Redes). */
+.ct-why {
+  padding: 0 10px 6px;
+}

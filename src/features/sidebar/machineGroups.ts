@@ -17,8 +17,10 @@ export interface MachineNode {
   kind: "machine";
   /** "host:puerto" en minúsculas (como el panel de VPS). */
   key: string;
-  /** Lo que se ve: el host y, si no es el 22, el puerto. */
+  /** Lo que se ve: el nombre propio que le puso el usuario o, si no tiene, `host`. */
   label: string;
+  /** Nombre automático: el host y, si no es el 22, el puerto. */
+  host: string;
   accounts: Account[];
 }
 
@@ -83,10 +85,12 @@ function machineLabel(s: ServerProfile): string {
 /**
  * Agrupa una lista de servidores por máquina. Una máquina con una sola cuenta queda como fila normal;
  * cada grupo sale donde estaba su primera cuenta (el resto de la lista no cambia de orden).
+ * `names`: nombres propios por `machineKey` (ver machineNames.ts).
  */
 export function groupByMachine(
   servers: readonly ServerProfile[],
   sudoOf: (s: ServerProfile) => SudoBadge | null,
+  names: Readonly<Record<string, string>> = {},
 ): ServerTreeItem[] {
   const byKey = new Map<string, Account[]>();
   const order: string[] = [];
@@ -103,6 +107,7 @@ export function groupByMachine(
   return order.map((key): ServerTreeItem => {
     const accounts = byKey.get(key) ?? [];
     if (accounts.length === 1) return { kind: "server", account: accounts[0] };
-    return { kind: "machine", key, label: machineLabel(accounts[0].server), accounts: [...accounts].sort(compareAccounts) };
+    const host = machineLabel(accounts[0].server);
+    return { kind: "machine", key, label: names[key] ?? host, host, accounts: [...accounts].sort(compareAccounts) };
   });
 }
