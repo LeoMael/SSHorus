@@ -1534,3 +1534,22 @@ Cómo está hecho:
 - Pruebas: `vulnscan.test.ts` (84 comprobaciones), `cargo test --lib vulnscan` (35). A mano en este PC con
   Podman 6.1.3: lectura, formulario relleno y reemplazo (bien y con vuelta al viejo cuando el nuevo falla),
   y `podman compose up -d` con `-p`/`-f` sin duplicar contenedores.
+
+## Estado del 25/11/2026 (movido del resumen el 26/11/2026)
+
+- En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
+  TS, clippy `--all-targets -D warnings`, 434 tests Rust): Compose (conflicto de nombres, tareas largas, editar el
+  compose de otro usuario), tareas en segundo plano para toda la app, Monitor → Por usuario con los UID de
+  contenedores, barra lateral en árbol con la «S», emparejar asistentes (idea 10, puente) y por OAuth (10b), arreglos
+  del `/code-review`, vulnerabilidades (epoch de Rocky, «Aún no en tus repos», resultado real de «Arreglar»), ver bases
+  de datos (idea 9), cortafuegos en el mapa (ver y gestionar reglas sin quedarse fuera), registro de visitas de Caddy y
+  nginx, y Contenedores (limpiar y elegir imágenes, arranque solo de proyectos de compose). No queda ningún agente en
+  marcha.
+- **Pendiente de respuesta del usuario:** qué hacer de 5a, 5b, 4c y 4d; si hacer la batería de pruebas por distro
+  (contenedores de Debian, Ubuntu, Alma, Rocky, Fedora, openSUSE, Alpine); qué vio al fallar el registro de visitas
+  (versión de Caddy, sitio) y qué CVE/paquete sigue saliendo en el escáner, si sigue alguno.
+- **Hecho (25/11, sin subir):** reglas automáticas de calidad en la CI y `npm run check` (ver «Reglas automáticas de
+  calidad»); lo que ya las incumplía está en las listas de excepciones («Deuda técnica»).
+- Después: otro `/code-review` del lote, probar a mano lo de §2, juntar los commits pequeños de
+  documentación, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
+  (preguntar al usuario antes de subir).

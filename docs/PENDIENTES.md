@@ -8,34 +8,39 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 26/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.5** (26/11/2026, en local; la beta.4 también está etiquetada en local y ninguna
-de las dos se ha subido todavía: preguntar al usuario antes del push). Lo que entre en `main` después saldrá en la
-**1.0.0-beta.6**.
+Última versión etiquetada: **1.0.0-beta.5** (26/11/2026, **subida**; la CI la empaqueta en un Release en
+**borrador**, que publica el usuario tras probarlo). La etiqueta `v1.0.0-beta.4` quedó solo en local, a propósito
+(la beta.5 la incluye; no subirla). Lo que entre en `main` después saldrá en la **1.0.0-beta.6**.
 
-**Estado al 26/11/2026 (para retomar):** tandas **1 a 4** del plan hechas y unidas en `main`, revisadas
-(`/code-review` del lote) y etiquetadas como **beta.5**: reglas de calidad en la CI, CSS y Rust partidos,
-`commands.rs` en cada módulo, **0 ciclos, 0 excepciones de límites y 0 archivos de más de 500 líneas**, `index.ts` en
-todas las features, limpiezas de Volúmenes y Redes con «Todos», avisos con botón, «Renombrar máquina…», **«Cerrar
-puerto»** (idea 12) y **pruebas por distro** (idea 13, `npm run test:distros`). Siguiente: **tanda 5** (11
-configuración y seguridad del servidor + 4c auditar proyecto y contenedores de otros usuarios).
-
-**Estado anterior, 25/11/2026:**
-- En `main` local, **sin subir** (saldrá en la **1.0.0-beta.4**), todo comprobado junto (lint 0 avisos, build, 68 suites
-  TS, clippy `--all-targets -D warnings`, 434 tests Rust): Compose (conflicto de nombres, tareas largas, editar el
-  compose de otro usuario), tareas en segundo plano para toda la app, Monitor → Por usuario con los UID de
-  contenedores, barra lateral en árbol con la «S», emparejar asistentes (idea 10, puente) y por OAuth (10b), arreglos
-  del `/code-review`, vulnerabilidades (epoch de Rocky, «Aún no en tus repos», resultado real de «Arreglar»), ver bases
-  de datos (idea 9), cortafuegos en el mapa (ver y gestionar reglas sin quedarse fuera), registro de visitas de Caddy y
-  nginx, y Contenedores (limpiar y elegir imágenes, arranque solo de proyectos de compose). No queda ningún agente en
-  marcha.
-- **Pendiente de respuesta del usuario:** qué hacer de 5a, 5b, 4c y 4d; si hacer la batería de pruebas por distro
-  (contenedores de Debian, Ubuntu, Alma, Rocky, Fedora, openSUSE, Alpine); qué vio al fallar el registro de visitas
-  (versión de Caddy, sitio) y qué CVE/paquete sigue saliendo en el escáner, si sigue alguno.
-- **Hecho (25/11, sin subir):** reglas automáticas de calidad en la CI y `npm run check` (ver «Reglas automáticas de
-  calidad»); lo que ya las incumplía está en las listas de excepciones («Deuda técnica»).
-- Después: otro `/code-review` del lote, probar a mano lo de §2, juntar los commits pequeños de
-  documentación, versión `1.0.0-beta.4` (`bundle.windows.wix.version` → `0.6.0.4`), etiqueta y push
-  (preguntar al usuario antes de subir).
+**Para retomar (estado al 26/11/2026, noche):**
+- **Hecho:** tandas **1 a 4** del plan (tabla de abajo), unidas en `main`, revisadas (`/code-review` del lote) y
+  subidas como **beta.5**: reglas de calidad en la CI, CSS y Rust partidos, `commands.rs` en cada módulo, **0 ciclos,
+  0 excepciones de límites y 0 archivos de más de 500 líneas**, `index.ts` en todas las features, limpiezas de
+  Volúmenes y Redes con «Todos», avisos con botón, «Renombrar máquina…», **«Cerrar puerto»** (idea 12) y **pruebas
+  por distro** (idea 13, `npm run test:distros`, las 7 distros en verde).
+- **Parado a petición del usuario:** la **tanda 5** se empezó con 2 agentes y se detuvo sin dejar nada a medias (no hay
+  worktrees ni ramas `worktree-agent-*`). Retomarla **desde cero** cuando el usuario diga «continúa».
+- **Pasos al volver, en orden:**
+  1. ~~Ver que el Release de la beta.5 se construyó~~ **hecho (26/11):** CI en verde y borrador con AppImage, deb,
+     msi, exe, dmg, `latest.json` y firmas. Falta que el usuario lo **publique** en GitHub (Releases).
+  2. El usuario prueba la beta.5 en su VPS (Rocky): «Cerrar puerto…» (Puertos y mapa), «Limpiar sin usar» de
+     Volúmenes/Redes/Imágenes con «Todos», «Renombrar máquina…» y lo de §2 que siga pendiente.
+  3. **Tanda 5** (2 agentes en worktrees, sin compilar Rust si no hace falta):
+     - **Idea 11, panel «Configuración»** en Administración: secciones SELinux/AppArmor (modo, denegaciones `avc`
+       explicadas, booleans y contextos con «Arreglar» solo si es seguro), SSH (`sshd -t` antes de recargar y sin
+       cortar tu SSH), actualizaciones automáticas, fail2ban, `sysctl` de red, sudo, `hidepid` y enlace al cortafuegos
+       del mapa. Reutilizar la Auditoría (`features/audit/`), `features/admin/sshdConf.ts`,
+       `features/infra/firewall/`, `features/privileges/run.ts`, `features/jobs` y `PlanReview`. Lógica en
+       `features/serverConfig/`, interfaz en `components/Admin/config/`; añadir el área a `npm run test:distros`.
+     - **Idea 4c:** «Auditar proyecto» (todos los servidores de un proyecto, máx. 3 a la vez, resumen comparado, desde
+       el menú del proyecto en la barra lateral) y auditar los contenedores rootless de cada usuario como su dueño
+       (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
+  4. Tandas 6 (4d + 5a), 7 (5b) y 8 (ideas menores) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+     `bundle.windows.wix.version`).
+- **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
+  reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
+- **Suelto:** quedó la imagen `debian:stable-slim` en podman (de la revisión; se quita con
+  `podman rmi debian:stable-slim`).
 
 ### Plan inmediato para cerrar todos los pendientes (25/11/2026)
 
