@@ -6,6 +6,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [1.0.0-beta.4] - 2026-11-26
+
 ### Añadido
 - **Bases de datos (solo lectura)**: pestaña nueva en cada servidor para ver el esquema de **PostgreSQL**,
   **MySQL/MariaDB** y **SQLite**. Encuentra sola las bases del servidor (por sus puertos y sockets) y las que corren
@@ -721,6 +723,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
+[1.0.0-beta.4]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.1

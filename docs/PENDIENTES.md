@@ -6,11 +6,10 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 ## Resumen al día
 
-*Actualizado el 25/11/2026.*
+*Actualizado el 26/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.3** (24/11/2026; Release en **borrador**, lo publica el usuario tras probarlo;
-instalada en el PC del usuario como AppImage en `~/Applications`). Lo que está en `main` después de la beta.3 saldrá en
-la **1.0.0-beta.4**.
+Última versión etiquetada: **1.0.0-beta.4** (26/11/2026; Release en **borrador**, lo publica el usuario tras probarlo).
+Lo que entre en `main` después saldrá en la **1.0.0-beta.5**.
 
 **Estado al 26/11/2026 (para retomar):** tanda 1 del plan hecha (revisión del lote + reglas de calidad en la CI).
 
