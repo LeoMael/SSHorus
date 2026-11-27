@@ -55,6 +55,12 @@ export interface ExportedAlias {
   alias: string;
 }
 
+/** Resultado de llevar la cuenta de Claude Code a un servidor. */
+export interface ClaudeVpsSent {
+  /** El servidor ya tenía una sesión de Claude Code: se guardó para reponerla al quitar la cuenta. */
+  backup: boolean;
+}
+
 export const localTerm = {
   info: () => call<LocalTermInfo>("local_term_info"),
   /** Abre la shell del sistema o, con `launch`, un asistente de IA. `onData` recibe los bytes crudos. */
@@ -76,4 +82,11 @@ export const localTerm = {
   detect: () => call<AiToolInfo[]>("local_ai_detect"),
   /** Alias de ~/.ssh/config exportados por SSHorus que llevan de verdad a cada servidor. */
   sshAliases: () => call<ExportedAlias[]>("local_ai_ssh_aliases"),
+  /**
+   * «Copiar mi sesión»: el motor lee la sesión de Claude Code de este equipo y la deja en el servidor de
+   * `sessionId` (por la entrada estándar de un canal exec). La sesión nunca pasa por la interfaz.
+   */
+  claudeVpsCopySession: (sessionId: string) => call<ClaudeVpsSent>("claude_vps_copy_session", { sessionId }),
+  /** «Llave de acceso»: deja en el servidor la llave de `claude setup-token` (el motor comprueba su forma). */
+  claudeVpsSetToken: (sessionId: string, token: string) => call<ClaudeVpsSent>("claude_vps_set_token", { sessionId, token }),
 };

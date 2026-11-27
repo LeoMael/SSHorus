@@ -30,6 +30,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 18. [PIN y bloqueo](#pin-y-bloqueo)
 19. [Asistentes de IA (MCP)](#asistentes-de-ia-mcp)
 20. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
+    - [Claude Code en un servidor con tu cuenta](#claude-code-en-un-servidor-con-tu-cuenta)
 21. [Ajustes](#ajustes)
 22. [Atajos de teclado](#atajos-de-teclado)
 23. [Tareas en segundo plano](#tareas-en-segundo-plano)
@@ -806,7 +807,28 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - Cerrar la pestaña termina lo que corre en ella y todo lo que lanzó.
 - En **Ajustes → Terminal local e IA** eliges qué contexto recibe (y lo puedes ver), y si usa ssh directo, el MCP o las dos cosas.
 - Para el ssh directo, exporta los servidores a `~/.ssh/config` (barra lateral → **Nuevo → Exportar**). Los servidores con contraseña solo funcionan por el MCP.
-- SSHorus no escribe nada en tu carpeta ni lee la configuración de los asistentes.
+- SSHorus no escribe nada en tu carpeta ni lee la configuración de los asistentes (salvo tu sesión de Claude Code si eliges **Copiar mi sesión**, abajo).
+
+### Claude Code en un servidor con tu cuenta
+
+**Para qué sirve:** usar Claude Code **dentro de un servidor** con la cuenta de tu PC, sin iniciar sesión por el navegador allí.
+
+**Cómo se usa:**
+
+1. En la terminal del servidor, pulsa el botón del **robot** (junto a la llave de sudo).
+2. SSHorus mira si Claude Code está instalado en el servidor. Si falta, te enseña el comando oficial (`curl -fsSL https://claude.ai/install.sh | bash`) y **Instalar en la terminal** lo ejecuta para que lo veas.
+3. Elige cómo llevar tu cuenta:
+   - **Llave de acceso** (recomendada para servidores): oficial y dura un año. Pulsa **Crear la llave en este equipo**: se abre una terminal local con `claude setup-token` y el navegador. Copia la llave (empieza por `sk-ant-oat01-`), vuelve a la pestaña del servidor, pulsa otra vez el robot y pégala.
+   - **Copiar mi sesión**: rápido y sin navegador, pero no oficial y compartida: si un equipo renueva la sesión, el otro puede quedarse fuera (vuelve a copiarla).
+4. Pulsa **Poner la llave en el servidor** (o **Copiar mi sesión al servidor**) y después **Abrir Claude Code en la terminal**.
+5. Para quitarla: robot → **Quitar mi cuenta de este servidor**. Si el servidor ya tenía otra sesión de Claude Code, se repone.
+
+**Notas:**
+
+- La cuenta se pone en el usuario con el que entraste. Quien tenga **root** en el servidor puede usarla.
+- La llave o la sesión viajan por la conexión SSH, nunca en un comando ni en el historial; la sesión copiada la lee y la envía el motor de SSHorus, sin pasar por la pantalla. Los asistentes de IA (MCP) no tienen acceso a esto.
+- Con la llave, SSHorus añade una línea marcada `# SSHorus: cuenta de Claude Code` a `~/.bashrc`, `~/.profile` (o los que tengas) y la guarda en `~/.config/sshorus/claude-token`. Las terminales que ya estaban abiertas la cargan con el comando que escribe **Abrir Claude Code en la terminal**.
+- La llave no sirve para `claude remote-control`: para eso usa **Copiar mi sesión**.
 
 ## Ajustes
 

@@ -1,0 +1,105 @@
+/* Diálogo «Claude Code en este servidor con tu cuenta» (ClaudeVpsDialog). */
+.cvps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--fs);
+}
+.cvps p {
+  margin: 0;
+}
+.cvps-muted {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.cvps-cmd {
+  margin: 4px 0;
+  padding: 6px 8px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.cvps code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  word-break: break-all;
+}
+.cvps-install,
+.cvps-step,
+.cvps-done {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cvps-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cvps-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--mix-green-14);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+.cvps-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cvps-mode {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.cvps-mode.selected {
+  border-color: var(--accent);
+  background: var(--mix-accent-7-surface-2);
+}
+.cvps-mode input {
+  margin-top: 3px;
+}
+.cvps-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cvps-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.cvps-tag {
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.cvps-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--mix-yellow-12-surface);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+.cvps-err {
+  color: var(--red);
+  font-size: var(--fs-sm);
+}

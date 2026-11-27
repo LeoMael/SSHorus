@@ -4,9 +4,11 @@
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, State};
 
+use super::claude_vps::{self, ClaudeVpsSent};
 use super::state::{self, LocalTermState};
 use super::{aliases, open, AiToolInfo, LocalOpen, LocalOpened, LocalTermInfo, LocalTermStore};
 use crate::error::{AppError, AppResult};
+use crate::ssh::SessionStore;
 use crate::storage::ProfileStore;
 
 #[tauri::command]
@@ -62,4 +64,22 @@ pub async fn local_term_close(terms: State<'_, LocalTermStore>, term_id: String)
 #[tauri::command]
 pub async fn local_term_state(terms: State<'_, LocalTermStore>, term_id: String) -> AppResult<LocalTermState> {
     state::current(&terms, &term_id).await
+}
+
+/// «Copiar mi sesión»: el motor lee la sesión de Claude Code de este equipo y la deja en el servidor de
+/// `session_id` (usuario con el que se entró), por la entrada estándar de un canal exec. La sesión nunca
+/// pasa por la interfaz.
+#[tauri::command]
+pub async fn claude_vps_copy_session(sessions: State<'_, SessionStore>, session_id: String) -> AppResult<ClaudeVpsSent> {
+    let session = sessions.get(&session_id).await?;
+    claude_vps::copy_session(&session, &claude_vps::local_creds_path()?).await
+}
+
+/// «Llave de acceso»: deja en el servidor la llave de `claude setup-token` que pegó el usuario (se
+/// comprueba su forma; viaja por la entrada estándar y se borra de memoria al terminar).
+#[tauri::command]
+pub async fn claude_vps_set_token(sessions: State<'_, SessionStore>, session_id: String, token: String) -> AppResult<ClaudeVpsSent> {
+    let token = claude_vps::normalize_token(&zeroize::Zeroizing::new(token))?;
+    let session = sessions.get(&session_id).await?;
+    claude_vps::set_token(&session, &token).await
 }

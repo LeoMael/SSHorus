@@ -27,6 +27,13 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   automáticas** (`dnf-automatic` o `unattended-upgrades`), **fail2ban** (desbloquear direcciones), usuarios con
   sudo, **sysctl** de red y **hidepid**. Cada cambio enseña su comando y va como tarea en segundo plano. Lo que no
   existe dice «no aplica»; sin sudo, qué falta.
+- **Claude Code en un servidor con tu cuenta:** botón del robot en la terminal SSH. Lleva la cuenta de Claude Code
+  del PC al usuario del servidor sin iniciar sesión allí, de dos formas: **Llave de acceso** (oficial, un año, con
+  `claude setup-token` en una terminal local; recomendada) o **Copiar mi sesión** (rápida, no oficial y compartida).
+  Detecta si Claude Code está instalado y ofrece el instalador oficial, avisa de que root puede usar la cuenta, abre
+  `claude` en la terminal y tiene **Quitar mi cuenta de este servidor**. El secreto viaja por la entrada estándar de
+  la conexión SSH (nunca en comandos, historial ni registros) y la sesión copiada la lee el motor, sin pasar por la
+  interfaz.
 
 ### Arreglado
 - **Auditoría → instalar fail2ban:** la cárcel `sshd` vigila los puertos reales de SSH (antes, con SSH en otro

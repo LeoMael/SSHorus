@@ -8,16 +8,19 @@
 //! Lo que SSHorus NUNCA hace aquí: leer o copiar la configuración de los asistentes (`~/.claude`,
 //! `~/.codex`, `~/.gemini`, `~/.config/opencode`…), escribir archivos en la carpeta del usuario,
 //! ni poner el token del MCP en un archivo o en los argumentos (va por variable de entorno al
-//! proceso hijo).
+//! proceso hijo). La única excepción es `claude_vps` («Copiar mi sesión» a un servidor): lee
+//! `~/.claude/.credentials.json` solo en el momento de enviarlo, a petición del usuario.
 //!
 //! Archivos: `tools` (los asistentes, como datos) · `aicli` (dónde están) · `args` (con qué
 //! argumentos se abren) · `launch` (MCP, contexto y comando final) · `env` (entorno del proceso) ·
 //! `pty` (la terminal) · `open` (abrir una terminal y detectar asistentes) · `state` (carpeta actual
-//! de la shell) · `aliases` (alias de `~/.ssh/config`) · `commands` (comandos Tauri).
+//! de la shell) · `aliases` (alias de `~/.ssh/config`) · `claude_vps` (llevar la cuenta de Claude Code a
+//! un servidor) · `commands` (comandos Tauri).
 
 pub mod aicli;
 pub mod aliases;
 pub mod args;
+pub mod claude_vps;
 pub mod commands;
 pub mod env;
 pub mod launch;

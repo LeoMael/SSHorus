@@ -99,6 +99,8 @@ pub fn run() {
             localterm::commands::local_term_state,
             localterm::commands::local_ai_detect,
             localterm::commands::local_ai_ssh_aliases,
+            localterm::commands::claude_vps_copy_session,
+            localterm::commands::claude_vps_set_token,
             // sftp
             sftp::commands::sftp_home,
             sftp::commands::sftp_list_dir,

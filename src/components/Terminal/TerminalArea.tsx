@@ -4,6 +4,7 @@ import { LayersIcon, Plus, RefreshCw, SquareTerminal, Unplug } from "lucide-reac
 import { TerminalView } from "./TerminalView";
 import { TmuxSessionsDialog } from "./TmuxSessionsDialog";
 import { SudoPasswordButton } from "./SudoPasswordButton";
+import { ClaudeVpsButton } from "./ClaudeVpsButton";
 import type { ConnState, TermController, TermStatus, TmuxState } from "./termController";
 import { useTabs } from "../../stores/tabs";
 import { registerTerminalWriter } from "../../stores/terminalBus";
@@ -193,6 +194,12 @@ export const TerminalArea = memo(function TerminalArea({ sessionId, active, disa
         <SudoPasswordButton
           sessionId={sessionId}
           profileId={profileId}
+          serverName={serverName}
+          disabled={blocked || activeKey === null}
+          getController={() => (activeKey === null ? undefined : ctrls.current.get(activeKey))}
+        />
+        <ClaudeVpsButton
+          sessionId={sessionId}
           serverName={serverName}
           disabled={blocked || activeKey === null}
           getController={() => (activeKey === null ? undefined : ctrls.current.get(activeKey))}

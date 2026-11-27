@@ -224,7 +224,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | Carpeta | Qué tiene |
 |---------|-----------|
 | `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `claudeVps`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
@@ -331,7 +331,7 @@ Módulos:
 | `pinch.rs` | Plugin propio: el pellizco del touchpad no agranda la app; se reenvía a la interfaz como evento `pinch-zoom` (lo usa el mapa de infraestructura) |
 | `ssh/` | Conectar y autenticar (`connect/`), huellas (`known_hosts.rs`, `known_hosts_match.rs`, `handler.rs`), reconexión (`reconnect.rs`, `reboot_wait.rs`), abrir y cerrar sesiones (`open.rs`, `lifecycle.rs`, `keyring.rs`), «Probar conexión» (`conn_test.rs`) y comandos (`commands.rs`) |
 | `terminal/` | Shell con PTY sobre un canal SSH (`shell.rs`, `open.rs`) y sesiones persistentes (`tmux.rs`) |
-| `localterm/` | Terminal local (PTY del PC, `pty.rs`, `open.rs`) y lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto |
+| `localterm/` | Terminal local (PTY del PC, `pty.rs`, `open.rs`), lanzamiento de asistentes de IA (Claude Code, Codex, agy, OpenCode) con contexto y llevar la cuenta de Claude Code a un servidor (`claude_vps/`: leer y comprobar la sesión o la llave, `creds.rs`; scripts fijos que la reciben, `scripts.rs`) |
 | `sftp/` | Explorador y editor: canales (`mod.rs`), listar, crear, renombrar y permisos (`ops.rs`), borrar (`remove.rs`) y guardar de forma atómica (`save.rs`) |
 | `transfer/` | Cola y planificador (`engine/`), reserva de canales (`pool.rs`), subida (`copy.rs`) y bajada (`download.rs`) encadenadas, conflictos (`policy.rs`) |
 | `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec/`: arranque y marca de PID, registro, lectura del canal y bucle), lo que pide la interfaz (`run.rs`: con registro, stdin que se borra, en vivo y con sudo) y envoltorio sudo (`sudo.rs`) |
@@ -954,6 +954,24 @@ un servidor con problemas), `userContainers.test.ts` (salida real de Podman), `p
   muestra), ni en la línea de comandos remota, ni en el registro. Límite: un comando aprobado se ejecuta como
   tu usuario y, con sudo, como root; uno escrito a propósito para robarla (leyendo el FIFO mientras corre)
   podría hacerlo, por eso los comandos con sudo piden tu aprobación siempre: revísalos.
+- **Cuenta de Claude Code en un servidor** (botón del robot de la terminal SSH; interfaz en
+  `components/Terminal/ClaudeVps*.tsx`, lógica sin secretos en `features/claudeVps/`, lo que recibe el secreto en
+  `localterm/claude_vps/`). Flujo: la interfaz lee el estado del servidor (usuario, `claude`, qué puso SSHorus)
+  con un script sin secretos; el usuario elige **Llave de acceso** (la de `claude setup-token`, que crea en una
+  terminal local y pega en un campo de contraseña) o **Copiar mi sesión**; el motor la envía y la interfaz escribe
+  en la terminal solo el comando para abrir `claude` (con la llave, `. "$HOME/.config/sshorus/claude-env.sh"`,
+  que la lee del archivo). Cómo viaja: con **Copiar mi sesión** el motor lee `~/.claude/.credentials.json` del PC
+  en ese momento (nunca pasa por la interfaz), se queda solo con `claudeAiOauth` (los tokens de MCP del PC no
+  viajan), y la manda; la llave pegada va de la interfaz al motor, que comprueba su forma. Las dos van en
+  `Zeroizing` (se pisan con ceros) por la **entrada estándar de un canal exec** de la sesión abierta, detrás de un
+  script fijo del motor que la escribe con `cat` en un archivo 0600 (`umask 077`, temporal y `mv`): nunca en la
+  línea de comandos remota, el entorno de ese canal, archivos temporales del PC, registros ni errores (el error
+  solo lleva una línea de stderr que no parezca un secreto). Ni el MCP ni otra IA tienen herramienta para esto.
+  En el servidor: `~/.claude/.credentials.json` (y la marca `~/.config/sshorus/claude-session`; la sesión que
+  hubiera se guarda en `~/.config/sshorus/claude-credentials-antes.json` y se repone al quitar) o
+  `~/.config/sshorus/claude-token` + `claude-env.sh` y una línea marcada en los archivos de inicio de la shell.
+  **Quitar mi cuenta de este servidor** borra exactamente eso. Límite: quien sea root en el servidor, o pueda
+  ejecutar comandos como ese usuario, puede leerla.
 - **Verificación de huella** del servidor con `~/.ssh/known_hosts`, igual que `ssh`.
 - **Antes de cambiar algo como root** se muestra el comando exacto (Plan) y lo peligroso pide confirmación escrita.
 - **Permisos de Tauri (capabilities):** la interfaz solo puede llamar a los comandos definidos; las
