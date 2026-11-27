@@ -62,7 +62,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios — **hecho (27/11)** | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta — **hecho (27/11)** | 2 | beta.6 |
 | **7. Funciones D** | **5b** despliegue asistido por IA (MCP) — **hecho (27/11)** | 1 | beta.6 |
-| **8. Ideas menores** | ProxyJump · comparar archivos · historial por servidor · sincronizar carpeta · más administración (systemd, paquetes, cron) · arrastre con archivos virtuales · pulido del mapa | 2 por tanda | beta.7 |
+| **8. Ideas menores** | **Decidido por el usuario (27/11): solo historial por servidor (7.10) y pulido del mapa** (en marcha, 2 agentes). ProxyJump, comparar archivos, sincronizar carpeta, más administración y arrastre con archivos virtuales: explicados al usuario, pendiente de que diga si quiere alguno; si no, quedan para después de la 1.0.0 | 2 | beta.7 |
 | **Al final** | Pruebas a mano del usuario (§2) → **1.0.0** (quitar `bundle.windows.wix.version`) | — | **1.0.0** |
 
 Fuera de este plan: **6** app móvil (proyecto aparte), **firmar el instalador de Windows** (necesita un certificado de
