@@ -85,6 +85,7 @@ mod tests {
                 .map(|(r, s, secs)| (r.to_string(), Stamp { size: *s, mtime_ms: secs * 1000 + 500 }))
                 .collect(),
             truncated: false,
+            partial: false,
         }
     }
 

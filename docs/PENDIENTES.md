@@ -282,6 +282,18 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   `port` se ignora sin avisar. Claude Code en el VPS: si el script falla tras recibir la llave queda
   `~/.config/sshorus/claude-token.<pid>` (0600) y «Quitar» no lo borra; «Quitar» deja vacíos `.profile`/`.zshrc` si
   los creó SSHorus. Configuración: fail2ban no ofrece desbloquear IPv4 escritas como IPv6 (`::ffff:…`).
+- **Pendiente de la revisión del 27/11 (beta.7) (no bloquea):** sincronizar carpeta: si dentro de la carpeta del
+  servidor hay una subcarpeta que es un enlace simbólico a otro sitio, las subidas (y los borrados, con la casilla)
+  pasan por el enlace y acaban fuera de la carpeta elegida (como al subir a mano; habría que mirar con `lstat` cada
+  carpeta intermedia o no subir por enlaces); dos «Unir» a la vez de la misma carpeta pueden crear dos
+  sincronizaciones (la comprobación de repetidas va antes de un `await`). Historial por servidor: si escribes la
+  contraseña antes de que salga el aviso de sudo (escritura adelantada) y la terminal llega a mostrarla, puede
+  guardarse como un comando (lo normal, escribirla tras el aviso, no se guarda); `mcp_activity_for_server` tapa por
+  forma, no con las contraseñas guardadas del servidor. Tareas: un crontab con finales de línea CRLF nunca se puede
+  cambiar (la comprobación de «cambió desde que se leyó» siempre falla). Arrastre directo (Windows): una lectura
+  que falla puede verse en el panel sin su mensaje de error (el contador puede leer el estado antes que el texto).
+  En Windows, `cargo clippy --all-targets -D warnings` avisa de código sin usar en `mcp/tests.rs` (`FakeSudo`, solo
+  Unix); la CI de Windows no usa `-D warnings`.
 
 #### Reglas automáticas de calidad (aprobadas el 24/11/2026; 1–3 hechas el 25/11, salen en la beta.4)
 Para que el orden no dependa de que cada agente se acuerde, la CI falla si se rompe el criterio de

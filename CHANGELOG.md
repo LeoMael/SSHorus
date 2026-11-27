@@ -31,6 +31,14 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   grandes ya no se copian dos veces). Se ven en Transferencias y se pueden cancelar (no pausar). Si no se puede
   empezar, se usa el arrastre de siempre. Aún sin probar en un Windows real; en macOS y Linux no cambia nada.
 
+### Arreglado
+- **Sincronizar carpeta:** si una carpeta de tu PC no se podía leer un momento (permisos, un disco de red que
+  falla, la propia carpeta unida), sus archivos contaban como borrados y, con **Borrar también en el servidor**, se
+  borraban allí. Ahora lo que no se pudo leer nunca cuenta como borrado. Al borrar un servidor se olvidan también
+  sus sincronizaciones guardadas.
+- **Comparar archivos:** al guardar el lado derecho cuando es un archivo de tu PC, si otro programa lo cambió
+  desde que abriste la comparación, pregunta antes de sobrescribir (como ya hacía con los del servidor).
+
 ## [1.0.0-beta.6] - 2026-11-27
 
 ### Añadido

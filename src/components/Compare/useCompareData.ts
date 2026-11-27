@@ -8,7 +8,7 @@ import { confirmSave } from "../Editor/saveGuard";
 import { detectLanguage } from "../Editor/languages";
 import { monaco } from "../Editor/monacoSetup";
 import type { DiffEditorApi } from "./useDiffEditor";
-import { sideIo } from "./sideIo";
+import { confirmLocalSave, sideIo } from "./sideIo";
 
 export type CompareLoad =
   | { kind: "loading" }
@@ -26,7 +26,8 @@ export function useCompareData(spec: CompareSpec, diff: DiffEditorApi, onDirtyCh
   const [load, setLoad] = useState<CompareLoad>({ kind: "loading" });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const saved = useRef({ version: 0, modified: null as number | null, missing: false });
+  // `text`: lo que hay en el disco a la derecha (para notar cambios ajenos en un archivo local, sin fecha).
+  const saved = useRef({ version: 0, modified: null as number | null, missing: false, text: null as string | null });
   const leftText = useRef<SideText>({ state: "missing" });
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
@@ -68,6 +69,7 @@ export function useCompareData(spec: CompareSpec, diff: DiffEditorApi, onDirtyCh
         version: rm.getAlternativeVersionId(),
         modified: r.state === "ok" ? r.modified : null,
         missing: r.state === "missing",
+        text: r.state === "ok" ? r.content : null,
       };
       markDirty(false);
       setLoad({ kind: "ready", notice: missingMessage(l, r) });
@@ -87,10 +89,12 @@ export function useCompareData(spec: CompareSpec, diff: DiffEditorApi, onDirtyCh
     setSaving(true);
     try {
       const io = sideIo(spec.right);
+      if (spec.right.kind === "local" && !(await confirmLocalSave(spec.right.path, saved.current.text))) return false;
       if (!(await confirmSave(io, saved.current.modified, saved.current.missing))) return false;
       const version = rm.getAlternativeVersionId();
-      const w = await io.write(rm.getValue());
-      saved.current = { version, modified: w.modified, missing: false };
+      const text = rm.getValue();
+      const w = await io.write(text);
+      saved.current = { version, modified: w.modified, missing: false, text };
       markDirty(rm.getAlternativeVersionId() !== version);
       // Ya existe a la derecha: el aviso solo puede quedar por la izquierda.
       setLoad({ kind: "ready", notice: missingMessage(leftText.current, { state: "ok", content: "", modified: null }) });

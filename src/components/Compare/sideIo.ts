@@ -4,6 +4,7 @@ import { localfs } from "../../api/localfs";
 import { isApiError } from "../../api/core";
 import type { CompareSide } from "../../features/compare";
 import { sftpIo, type EditorIo } from "../Editor/editorIo";
+import { confirmDialog } from "../ui/dialogs";
 
 function localIo(path: string): EditorIo {
   return {
@@ -30,4 +31,27 @@ function localIo(path: string): EditorIo {
 
 export function sideIo(side: CompareSide): EditorIo {
   return side.kind === "remote" ? sftpIo(side.sessionId, side.path) : localIo(side.path);
+}
+
+/**
+ * Los archivos locales no traen fecha: antes de guardar se compara lo que hay ahora en el disco con lo
+ * que se leyó (`known`). true si se puede escribir (sin cambios, ya no existe —eso lo pregunta
+ * `confirmSave`— o el usuario acepta sobrescribir).
+ */
+export async function confirmLocalSave(path: string, known: string | null): Promise<boolean> {
+  if (known === null) return true;
+  let now: string;
+  try {
+    now = await localfs.readText(path);
+  } catch (e) {
+    if (isApiError(e, "NotFound")) return true;
+    throw e;
+  }
+  if (now === known) return true;
+  return confirmDialog({
+    title: "El archivo cambió en este equipo",
+    message: "Otro programa cambió el archivo desde que abriste la comparación. ¿Sobrescribir con tu versión?",
+    confirmText: "Sobrescribir",
+    danger: true,
+  });
 }

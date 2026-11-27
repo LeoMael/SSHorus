@@ -32,6 +32,9 @@ pub struct Snapshot {
     /// Ruta relativa con `/` → sello.
     pub files: BTreeMap<String, Stamp>,
     pub truncated: bool,
+    /// Algo no se pudo leer (permisos, disco de red que falla, borrado a mitad): lo que falta no
+    /// cuenta como borrado.
+    pub partial: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -74,12 +77,18 @@ pub fn scan(root: &Path, rules: &IgnoreRules, limit: usize) -> Result<Snapshot, 
     });
     for entry in walker {
         // Lo ilegible (permisos, borrado a mitad) se salta: la próxima vuelta lo verá.
-        let Ok(entry) = entry else { continue };
+        let Ok(entry) = entry else {
+            snap.partial = true;
+            continue;
+        };
         if !entry.file_type().is_file() {
             continue;
         }
         let Some(rel) = rel_of(root, entry.path()) else { continue };
-        let Ok(m) = entry.metadata() else { continue };
+        let Ok(m) = entry.metadata() else {
+            snap.partial = true;
+            continue;
+        };
         if snap.files.len() >= limit {
             snap.truncated = true;
             break;
@@ -110,8 +119,9 @@ pub fn diff(old: &Snapshot, new: &Snapshot) -> Changes {
             c.changed.push(rel.clone());
         }
     }
-    // Si la foto nueva está recortada, lo que falta puede estar fuera del límite: no es un borrado.
-    if !new.truncated {
+    // Si la foto nueva está recortada o incompleta, lo que falta puede estar fuera del límite o
+    // en una carpeta que no se pudo leer: no es un borrado.
+    if !new.truncated && !new.partial {
         for rel in old.files.keys() {
             if !new.files.contains_key(rel) {
                 c.removed.push(rel.clone());
@@ -129,6 +139,7 @@ mod tests {
         Snapshot {
             files: items.iter().map(|(r, s, m)| (r.to_string(), Stamp { size: *s, mtime_ms: *m })).collect(),
             truncated: false,
+            partial: false,
         }
     }
 
@@ -148,6 +159,33 @@ mod tests {
         let mut new = snap(&[("a", 1, 10)]);
         new.truncated = true;
         assert!(diff(&old, &new).removed.is_empty());
+        let mut new = snap(&[("a", 1, 10)]);
+        new.partial = true;
+        assert!(diff(&old, &new).removed.is_empty());
+    }
+
+    /// Una carpeta que no se puede leer (o la propia raíz) no hace creer que sus archivos se borraron.
+    #[cfg(unix)]
+    #[test]
+    fn unreadable_folder_marks_snapshot_partial() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(format!("sshorus-sync-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        std::fs::write(root.join("a.txt"), "x").unwrap();
+        std::fs::write(root.join("sub/b.txt"), "x").unwrap();
+        let rules = rules_for(&root, &[]);
+        let full = scan(&root, &rules, MAX_FILES).unwrap();
+        assert!(!full.partial);
+
+        std::fs::set_permissions(root.join("sub"), std::fs::Permissions::from_mode(0o000)).unwrap();
+        let readable = std::fs::read_dir(root.join("sub")).is_ok(); // como root se lee igual
+        let s = scan(&root, &rules, MAX_FILES).unwrap();
+        std::fs::set_permissions(root.join("sub"), std::fs::Permissions::from_mode(0o755)).unwrap();
+        if !readable {
+            assert!(s.partial);
+            assert!(diff(&full, &s).removed.is_empty());
+        }
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

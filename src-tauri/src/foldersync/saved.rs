@@ -64,6 +64,25 @@ pub fn forget_in(path: &Path, server_id: &str, spec: &SyncSpec) -> AppResult<()>
     fsutil::write_json_atomic(path, &data)
 }
 
+/// Quita todas las de un servidor (al borrarlo).
+pub fn forget_server_in(path: &Path, server_id: &str) -> AppResult<()> {
+    let _g = guard();
+    let mut data: SavedFile = fsutil::read_json_or_default(path);
+    let before = data.items.len();
+    data.items.retain(|s| s.server_id != server_id);
+    if data.items.len() == before {
+        return Ok(());
+    }
+    fsutil::write_json_atomic(path, &data)
+}
+
+/// Al borrar un servidor: olvida sus sincronizaciones guardadas. Errores solo al registro.
+pub fn forget_server(server_id: &str) {
+    if let Err(e) = default_path().and_then(|p| forget_server_in(&p, server_id)) {
+        log::warn!("no se pudieron olvidar las sincronizaciones de {server_id}: {e}");
+    }
+}
+
 pub fn list(server_id: &str) -> AppResult<Vec<SavedSync>> {
     Ok(list_in(&default_path()?, server_id))
 }
@@ -109,6 +128,12 @@ mod tests {
         forget_in(&path, "s1", &changed).unwrap();
         assert!(list_in(&path, "s1").is_empty());
         assert_eq!(list_in(&path, "s2").len(), 1);
+
+        remember_in(&path, "s2", &spec("/pc/otra", "/srv/otra")).unwrap();
+        remember_in(&path, "s1", &spec("/pc/web", "/var/www")).unwrap();
+        forget_server_in(&path, "s2").unwrap();
+        assert!(list_in(&path, "s2").is_empty());
+        assert_eq!(list_in(&path, "s1").len(), 1);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

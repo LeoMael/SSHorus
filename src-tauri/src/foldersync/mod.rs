@@ -19,7 +19,7 @@ mod model;
 mod plan;
 mod remote;
 mod runner;
-mod saved;
+pub mod saved;
 mod snapshot;
 #[cfg(test)]
 mod tests;
