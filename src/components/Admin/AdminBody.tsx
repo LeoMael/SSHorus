@@ -14,6 +14,9 @@ import { VulnsTab } from "./vulns/VulnsTab";
 import { AuditTab } from "./audit/AuditTab";
 import { VisibilityTab } from "./visibility/VisibilityTab";
 import { ConfigTab } from "./config/ConfigTab";
+import { ServicesTab } from "./services/ServicesTab";
+import { PackagesTab } from "./packages/PackagesTab";
+import { TasksTab } from "./tasks/TasksTab";
 
 const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
 
@@ -58,6 +61,12 @@ export function AdminBody({
         <PortsTab />
       ) : tab === "web" ? (
         <WebTab />
+      ) : tab === "services" ? (
+        <ServicesTab />
+      ) : tab === "packages" ? (
+        <PackagesTab onOpenServices={() => setTab("services")} />
+      ) : tab === "tasks" ? (
+        <TasksTab />
       ) : error && waitsRead ? (
         <div className="empty-state">
           <ShieldAlert size={22} />

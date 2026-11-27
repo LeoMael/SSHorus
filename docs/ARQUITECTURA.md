@@ -224,7 +224,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | Carpeta | Qué tiene |
 |---------|-----------|
 | `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Compare` («Comparar archivos», una pestaña más de archivo), `Terminal`, `TransferPanel`, `FolderSync` («Sincronizar carpeta»: diálogo, franja de las activas encima de las transferencias y su entrada del menú del explorador), `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `ServerHistory` («Historial» de un servidor), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `claudeVps`, `commands`, `compare`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `folderSync`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `serverHistory`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `claudeVps`, `commands`, `compare`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `folderSync`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `packages`, `profiles`, `reboot`, `schedule`, `serverConfig`, `serverEditor`, `serverHistory`, `services`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
@@ -460,15 +460,17 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 
 ![Administración](arquitectura/10-administracion.png)
 
-- **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web, Mapa, Vulnerabilidades, Auditoría,
-  **Configuración**, **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
+- **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web, **Servicios**, **Paquetes**,
+  **Tareas**, Mapa, Vulnerabilidades, Auditoría, **Configuración**, **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
   exec de la sección 8.
 - **Carpetas de `components/Admin/`:** en la raíz lo común (`AdminPanel`, `AdminChrome`, `context`, `HistoryTab`,
   `PlanReview`, `PasswordField`, `MiniMarkdown`, `VirtualTable` y el CSS común; el diálogo de sudo, que usan también
   Contenedores, el mapa, el Monitor y los comandos con sudo, está en `components/Sudo/`); `users/` (usuarios,
   grupos, conectados ahora, llaves, nuevo usuario con clave, sudo de la llave, importar usuarios y contenedores de cada
   usuario); `web/` (puertos, sitios web, tráfico y registro de visitas); `vulns/` (escáner, «Arreglar», actualizar
-  imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `config/` (Configuración); `visibility/` («Qué pueden ver»). El menú
+  imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `config/` (Configuración); `visibility/` («Qué pueden ver»);
+  `services/`, `packages/` y `tasks/` (Servicios, Paquetes y Tareas programadas, con su CSS común `AdminOps.css` y
+  `useTabRead.ts`, que lee al abrir, otra vez con sudo y al terminar un cambio suyo). El menú
   contextual de las tablas es `ui/ContextMenu` con `look="plain"`.
 - **Nuevo usuario con clave** (`KeyUserWizard.tsx`, `features/admin/keyUser.ts`): valida la llave (tipo +
   base64 + tipo interno), lee `AllowUsers/AllowGroups` con `sshd -T` (o `sshd_config`), arma el plan
@@ -487,6 +489,31 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   guarda por sesión; `changeJob.ts` aplica cada cambio como tarea (`startJob` + `runElevated`, historial de
   Administración). El cortafuegos se abre en el mapa con su nodo ya elegido. Pruebas:
   `features/serverConfig/serverConfig.test.ts` y el área «Configuración» de `npm run test:distros`.
+- **Servicios, Paquetes y Tareas programadas** (`features/{services,packages,schedule}/`, interfaz en
+  `components/Admin/{services,packages,tasks}/`): lo leído se guarda por sesión con `sessionCache`
+  (`features/admin/sessionCache.ts`) y cada cambio es un `ConfigChange` que abre **el mismo diálogo de
+  Configuración** (`ConfigChangeDialog` con su `kind` y su `area`): comando exacto, confirmación escrita si es
+  peligroso, tarea en segundo plano con `startConfigChange` y entrada en el historial.
+  - **Servicios:** un script lee `systemctl list-units` + `list-unit-files` (o `rc-status --servicelist` +
+    `rc-update show -v` en OpenRC) y los usuarios con `/run/user/<uid>`; los `--user` de otro usuario se leen y
+    cambian como él con `ownerLine` de Contenedores (`runuser -u … -- env HOME=… XDG_RUNTIME_DIR=…`). Las acciones
+    son una tabla (`SERVICE_ACTIONS`); SSH y las piezas del sistema piden confirmación y reiniciar SSH hace antes
+    `sshd -t`. El registro es `journalctl -n 200` (los de usuario, como root por `_UID`) y «en vivo» con `-f` y
+    `timeout 300` (al cerrar el canal no llega la señal a un `journalctl` de root).
+  - **Paquetes:** una tabla por gestor (`MANAGERS`: dnf, yum, apt, zypper, apk) con sus comandos de leer,
+    buscar, ver lo instalado, simular un «quitar» y cambiar; actualizar unos paquetes usa `upgradeCommandFor` del
+    escáner (`vulnscan/fixPlan.ts`), el mismo de «Arreglar». Lo de seguridad sale de `updateinfo --security` (dnf),
+    del repositorio `-security` (apt) o de la cuenta de parches (zypper). Antes de quitar se simula
+    (`parseRemoval`, `removalBlocked`) y lo crítico (`isCriticalPackage`) lleva aviso fuerte.
+  - **Tareas:** un script de solo lectura con cada línea de contenido precedida de `|` (ningún archivo puede
+    fingir una marca `@@`): crontab de cada usuario de la cola de cron, `/etc/crontab`, `/etc/cron.d`, carpetas
+    periódicas y `systemctl show` de los timers. `cronExpr.ts` valida y explica el horario; `crontab.ts` cambia una
+    línea y reescribe el crontab entero (copia en `/var/backups/sshorus-cron`, y se para si el actual ya no es el
+    leído).
+  - Pruebas: `services.test.ts`, `packages.test.ts`, `schedule.test.ts` (salidas reales de varias distros,
+    `sh -n` de los scripts y el crontab escrito de verdad con un `crontab` de mentira) y las áreas «Servicios»,
+    «Paquetes» y «Tareas» de `npm run test:distros` (`scripts/distro-test/areasAdmin.ts`; lo común a las áreas,
+    en `kit.ts`).
 - **Qué pueden ver tus usuarios** (`VisibilityTab.tsx`, `features/admin/userVisibility.ts`, `userVisibilityPlans.ts`
   y categoría `isolation` en `features/audit/checksIsolation.ts`): revisa por cada usuario sin sudo los túneles SSH
   (`sshd -T -C`), servicios en `127.0.0.1`, `/proc` (`hidepid`), carpetas `HOME`, configuración web, `cron`/logs y

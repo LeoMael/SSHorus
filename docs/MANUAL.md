@@ -22,6 +22,9 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 12. [Monitor y alertas](#monitor-y-alertas)
 13. [Túneles](#túneles)
 14. [Administración](#administración)
+    - [Servicios](#servicios)
+    - [Paquetes](#paquetes)
+    - [Tareas programadas](#tareas-programadas)
 15. [Vulnerabilidades](#vulnerabilidades)
     - [Auditar servidor](#auditar-servidor)
     - [Auditar proyecto](#auditar-proyecto)
@@ -453,7 +456,7 @@ instalar nada en tu PC. Solo lee: no cambia ni consulta datos.
 
 ![Pestaña Administración con la lista de usuarios](manual/13-administracion.png)
 
-**Para qué sirve:** gestionar usuarios, grupos, puertos y sitios web del servidor sin escribir comandos.
+**Para qué sirve:** gestionar usuarios, grupos, puertos, sitios web, servicios, paquetes y tareas programadas del servidor sin escribir comandos.
 
 **Cómo se usa:**
 
@@ -561,6 +564,50 @@ que lo abre** (un servicio, un programa o un contenedor).
 - Antes de **Aplicar** ves los **comandos exactos**. Bloquear en el cortafuegos va **a prueba** (firewalld o ufw),
   como en el mapa: si no lo confirmas en 5 minutos, se deshace solo.
 - El puerto de **SSH** (por donde entra SSHorus) **nunca** se cierra desde aquí: te quedarías fuera.
+
+### Servicios
+
+**Para qué sirve:** ver si un servicio (caddy, nginx, podman…) está **activo**, **caído** o **parado** y
+arrancarlo, pararlo o reiniciarlo con un botón.
+
+- **Administración → Servicios**. Arriba eliges **Del sistema** o **De** un usuario (sus servicios `--user`, como
+  los de Podman sin root); para ver los de otro usuario hace falta sudo y que tenga sesión o *linger* (si no, te
+  ofrece activarlo).
+- Filtra por nombre o por estado (**Caídos**, **Activos**, **Parados**). **Al encender** dice si arranca solo.
+- Botones de la fila (o clic derecho): **Arrancar**, **Parar**, **Reiniciar**, **Activar/Desactivar al
+  encender** y **Desbloquear** (si está *masked*). Antes ves el comando exacto; va como tarea en segundo plano.
+- Doble clic o 📜: su **registro** (últimas 200 líneas) y **Seguir en vivo** (hasta 5 minutos).
+- **SSH** se marca: pararlo o desactivarlo pide escribir **CAMBIAR** y avisa de que te quedas fuera; reiniciarlo
+  comprueba antes la configuración (`sshd -t`).
+- Sin systemd ni OpenRC dice **No aplica**. En OpenRC (Alpine) no hay registro por servicio.
+
+### Paquetes
+
+**Para qué sirve:** ver qué hay para actualizar, actualizar, y buscar, instalar o quitar programas (dnf, yum,
+apt, zypper o apk).
+
+- **Administración → Paquetes → Actualizaciones**: la lista, con las de **Seguridad** primero (cuando la distro
+  lo dice). **Comprobar ahora** baja la lista nueva. **Actualizar todo**, **Solo seguridad** o **Actualizar** en
+  una fila. Corre en segundo plano con su salida en vivo y **Cancelar**; si hay un kernel nuevo te avisa de que
+  hará falta reiniciar.
+- **Buscar e instalar**: escribe un nombre y pulsa **Buscar**. Los instalados se marcan y tienen **Quitar…**:
+  antes se simula y te dice qué más se iría con él. Si es algo crítico (SSH, sudo, systemd, el kernel…) avisa
+  fuerte y pide escribir **CAMBIAR**; lo que el gestor protege (p. ej. sudo en dnf) no se ofrece.
+
+### Tareas programadas
+
+**Para qué sirve:** ver lo que el servidor hace solo cada cierto tiempo (cron y timers de systemd) y cambiar las
+tareas de cron sin editar archivos.
+
+- **Administración → Tareas → Cron**: el crontab de cada usuario (con sudo, todos), `/etc/crontab`,
+  `/etc/cron.d` (con **Abrir** en el editor) y las carpetas `cron.daily`… Cada tarea dice cuándo en palabras
+  («Cada día a las 3:00»).
+- **Nueva tarea…**: eliges el usuario, el horario (escrito o con **Atajos…**, que se explica según escribes y
+  avisa si está mal) y el comando. También **Editar**, **Pausar** (la comenta sin borrarla) y **Borrar**.
+- Se reescribe el crontab entero con las demás líneas igual y una copia en `/var/backups/sshorus-cron`. Si
+  alguien lo cambió desde que lo leíste, no se toca: vuelve a leerlo.
+- **Timers de systemd**: cuándo se lanzan, la próxima y la última vez, y **Activar**, **Desactivar** o
+  **Ejecutar ahora**.
 
 ## Vulnerabilidades
 

@@ -9,6 +9,7 @@ export * from "./importKeys";
 export * from "./importBase";
 export * from "./run";
 export * from "./history";
+export * from "./sessionCache";
 export * from "./ports";
 export * from "./web";
 export * from "./sshdConf";

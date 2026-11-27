@@ -41,7 +41,8 @@ function useGuard(check: Check | null): Guard | null {
   return guard;
 }
 
-export function ConfigChangeDialog({ change, onClose }: { change: ConfigChange; onClose: () => void }) {
+/** `kind` y `area`: los de la tarea y el historial (Servicios, Paquetes y Tareas usan este mismo diálogo). */
+export function ConfigChangeDialog({ change, onClose, kind, area }: { change: ConfigChange; onClose: () => void; kind?: string; area?: string }) {
   const { sessionId, profileId, serverName, elevation, disabled, askSudo } = useAdmin();
   const guard = useGuard(change.guardCheck);
   const [typed, setTyped] = useState("");
@@ -59,6 +60,8 @@ export function ConfigChangeDialog({ change, onClose }: { change: ConfigChange; 
         serverName,
         elevation,
         change,
+        kind,
+        area,
         actions: (d) => (d.needSudo ? [{ label: "Introducir contraseña de sudo", run: askSudo }] : []),
       }),
     );

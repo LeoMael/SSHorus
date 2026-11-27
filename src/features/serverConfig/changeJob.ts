@@ -1,6 +1,7 @@
 // Aplicar un cambio del panel «Configuración» como tarea en segundo plano: como root con la elevación de
 // Administración (la contraseña de sudo va por stdin), salida en vivo, «Cancelar» que lo detiene también
-// en el servidor y apuntado en el historial de cambios de Administración.
+// en el servidor y apuntado en el historial de cambios de Administración. Servicios, Paquetes y Tareas
+// programadas lanzan sus cambios igual, cada uno con su `kind` y su `area` (el prefijo del historial).
 import { errorMessage } from "../../api/core";
 import { innerScript, useAdminHistory } from "../admin";
 import { JobCanceled, runElevated, startJob, type Job, type JobAction } from "../jobs";
@@ -23,14 +24,18 @@ export function startConfigChange(o: {
   elevation: Elevation;
   change: ConfigChange;
   actions?: (d: ConfigJobData) => JobAction[];
+  /** Tipo de tarea (por defecto la de «Configuración»): quien la lanza sabe así cuándo volver a leer. */
+  kind?: string;
+  /** Prefijo en el historial («Configuración», «Servicios»…). */
+  area?: string;
 }): string {
   const { change: c } = o;
-  const action = `Configuración: ${c.title}`;
+  const action = `${o.area ?? "Configuración"}: ${c.title}`;
   const log = (ok: boolean, result: string) =>
     useAdminHistory.getState().add(o.profileId, { server: o.serverName, action, command: c.steps.join("\n"), ok, result });
   const data: ConfigJobData = { changeId: c.id, ok: null, needSudo: false };
   return startJob({
-    kind: CONFIG_JOB,
+    kind: o.kind ?? CONFIG_JOB,
     sessionId: o.sessionId,
     server: o.serverName,
     title: c.title,

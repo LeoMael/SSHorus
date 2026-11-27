@@ -15,6 +15,16 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   borra en el servidor salvo con **Borrar también en el servidor** (y nunca más de 50 de golpe). Encima de las
   transferencias se ve cada una con su estado, el último archivo subido, **Pausar** y **Dejar de sincronizar**; con
   un servidor guardado se puede recordar y reactivar al conectar.
+- **Administración → Servicios, Paquetes y Tareas:** tres pestañas nuevas para lo que antes era a base de
+  comandos. **Servicios**: los del sistema (systemd u OpenRC) o los `--user` de cada usuario, con su estado
+  (activo, caído, parado), si arrancan al encender, su registro (también en vivo) y los botones para arrancar,
+  parar, reiniciar o activarlos; SSH se protege (pide confirmación escrita y reiniciarlo comprueba antes
+  `sshd -t`). **Paquetes**: qué hay para actualizar (las de seguridad primero), actualizar todo, solo seguridad o
+  uno, y buscar, instalar o quitar con dnf, yum, apt, zypper o apk; antes de quitar dice qué más se iría y avisa
+  fuerte si es algo crítico. **Tareas**: crontab de cada usuario, `/etc/crontab`, `/etc/cron.d` y timers de
+  systemd, con el horario en palabras («Cada día a las 3:00»); crear, editar, pausar o borrar una línea sin perder
+  las demás, con copia y sin pisar un cambio hecho mientras tanto. Todo enseña antes su comando exacto, va como
+  tarea en segundo plano y queda en el Historial; lo que no existe en el servidor dice «no aplica».
 
 ## [1.0.0-beta.6] - 2026-11-27
 

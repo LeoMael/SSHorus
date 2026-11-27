@@ -18,7 +18,8 @@ export type FixKind = "now" | "reboot" | "nofix" | "norepo" | "image" | "manual"
 
 export type FixGroups = Record<FixKind, Finding[]>;
 
-type Family = ReturnType<typeof distroFamily>;
+export type UpgradeFamily = ReturnType<typeof distroFamily>;
+type Family = UpgradeFamily;
 
 /** Comando de actualización por familia, como root y sin preguntas. `p` = paquetes ya validados. */
 const UPGRADE: Partial<Record<Family, (p: string) => string>> = {
@@ -82,7 +83,12 @@ export function packageChoices(findings: Finding[]): PackageChoice[] {
 
 /** Un solo comando (como root) que actualiza todos esos paquetes. null si no hay nada o no se sabe. */
 export function upgradeCommand(report: Report, binaries: string[]): string | null {
-  const make = UPGRADE[distroFamily(report)];
+  return upgradeCommandFor(distroFamily(report), binaries);
+}
+
+/** Lo mismo con la familia ya sabida (Administración → Paquetes). Los nombres ya vienen validados. */
+export function upgradeCommandFor(family: Family, binaries: string[]): string | null {
+  const make = UPGRADE[family];
   const pkgs = [...new Set(binaries)].sort();
   return make && pkgs.length ? make(pkgs.join(" ")) : null;
 }

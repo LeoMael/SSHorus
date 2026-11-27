@@ -1,0 +1,138 @@
+/* Administración → Servicios, Paquetes y Tareas programadas: registro, secciones y listas (svc-), resultados
+   de búsqueda (pkg-) y tareas y timers (cron-). */
+
+.svc-scope {
+  height: 26px;
+  width: auto;
+  max-width: 220px;
+  font-size: var(--fs-sm);
+}
+.svc-tag-off {
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.svc-row-failed > div:first-child {
+  box-shadow: inset 2px 0 0 var(--red);
+}
+
+/* Registro de un servicio */
+.svc-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.svc-logs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.svc-logs-text {
+  margin: 0;
+  height: min(60vh, 560px);
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+
+/* Secciones con título (Paquetes y Tareas) */
+.svc-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 16px;
+}
+.svc-section {
+  margin-bottom: 14px;
+}
+.svc-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-weight: 600;
+}
+.svc-section-head .faint {
+  font-weight: 400;
+}
+.svc-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.svc-item {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs);
+}
+.svc-item:last-child {
+  border-bottom: none;
+}
+.svc-item:hover {
+  background: var(--surface-2);
+}
+.svc-item > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-item-muted {
+  color: var(--text-muted);
+}
+.svc-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.svc-empty {
+  padding: 10px;
+  color: var(--text-muted);
+}
+.svc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* Paquetes: resultado de una búsqueda */
+.pkg-item {
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr) auto;
+}
+
+/* Tareas programadas */
+.cron-item {
+  grid-template-columns: minmax(170px, 1.2fr) minmax(90px, 0.6fr) minmax(0, 2fr) auto;
+}
+.cron-timer {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) auto;
+}
+.cron-dir {
+  grid-template-columns: minmax(160px, 0.8fr) minmax(0, 2fr);
+}
+.cron-head {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.cron-head:hover {
+  background: var(--surface);
+}
+.cron-tag {
+  margin-left: 6px;
+}
+.cron-bad {
+  color: var(--red);
+}

@@ -2,6 +2,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import {
   Bug,
+  CalendarClock,
   ClipboardCheck,
   Eye,
   Globe,
@@ -10,7 +11,9 @@ import {
   LogOut,
   MonitorDot,
   Network,
+  Package,
   RefreshCw,
+  Server,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
@@ -24,7 +27,21 @@ import type { Elevation, PrivilegeInfo } from "../../features/privileges";
 import { forgetSudoByUser, type ElevationState } from "../../features/privileges";
 import { toast } from "../../stores/toasts";
 
-export type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "config" | "visibility" | "history";
+export type SubTab =
+  | "users"
+  | "groups"
+  | "sessions"
+  | "ports"
+  | "web"
+  | "services"
+  | "packages"
+  | "tasks"
+  | "map"
+  | "vulns"
+  | "audit"
+  | "config"
+  | "visibility"
+  | "history";
 
 export const ADMIN_TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "users", label: "Usuarios", icon: <Users size={14} /> },
@@ -32,6 +49,9 @@ export const ADMIN_TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "sessions", label: "Conectados ahora", icon: <MonitorDot size={14} /> },
   { id: "ports", label: "Puertos", icon: <Network size={14} /> },
   { id: "web", label: "Sitios web", icon: <Globe size={14} /> },
+  { id: "services", label: "Servicios", icon: <Server size={14} /> },
+  { id: "packages", label: "Paquetes", icon: <Package size={14} /> },
+  { id: "tasks", label: "Tareas", icon: <CalendarClock size={14} /> },
   { id: "map", label: "Mapa", icon: <Waypoints size={14} /> },
   { id: "vulns", label: "Vulnerabilidades", icon: <Bug size={14} /> },
   { id: "audit", label: "Auditoría", icon: <ClipboardCheck size={14} /> },
