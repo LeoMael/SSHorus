@@ -39,9 +39,11 @@ quedó solo en local, a propósito. Lo que entre en `main` después saldrá en l
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
   4. ~~Tanda 6~~ **hecha (27/11)**: 4d auditoría programada + 5a Claude Code en el VPS. ~~Tanda 7~~ **hecha (27/11)** (5b: `get_deploy_guide`, `create_app_user`,
      `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). Revisada (`/code-review` del lote
-     `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 en marcha** (ver su fila en la tabla): unidos
-     el mapa y comparar archivos; en marcha historial por servidor, sincronizar carpeta y más Administración; falta
-     lanzar archivos virtuales (el último). Si la sesión se cortó, recuperar las ramas `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+     `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 hecha (27/11)**: mapa, comparar archivos, historial por servidor,
+     sincronizar carpeta, más Administración (servicios, paquetes, tareas) y arrastre directo en Windows (experimental;
+     macOS diseñado, falta dependencia). **En marcha:** `/code-review` del lote `a1675ca..c21321b`; después versión
+     **beta.7** (`wix.version` → `0.6.0.7`; preguntar antes de subir). Si la sesión se cortó, recuperar la rama
+     `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
@@ -63,7 +65,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios — **hecho (27/11)** | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta — **hecho (27/11)** | 2 | beta.6 |
 | **7. Funciones D** | **5b** despliegue asistido por IA (MCP) — **hecho (27/11)** | 1 | beta.6 |
-| **8. Ideas menores** | **Decidido por el usuario (27/11):** historial por servidor (**7.10**) y pulido del mapa (en marcha); además **7.7** comparar archivos, **7.5** sincronizar carpeta, **8.2+** más Administración (servicios systemd, paquetes, cron/timers) y **arrastre con archivos virtuales** (Windows/macOS), en ese orden, 2 agentes a la vez. **ProxyJump (7.2) no**: queda para después de la 1.0.0 | 2 por ronda | beta.7 |
+| **8. Ideas menores** — **hecho (27/11)** | **Decidido por el usuario (27/11):** historial por servidor (**7.10**) y pulido del mapa (en marcha); además **7.7** comparar archivos, **7.5** sincronizar carpeta, **8.2+** más Administración (servicios systemd, paquetes, cron/timers) y **arrastre con archivos virtuales** (Windows/macOS), en ese orden, 2 agentes a la vez. **ProxyJump (7.2) no**: queda para después de la 1.0.0 | 2 por ronda | beta.7 |
 | **Al final** | Pruebas a mano del usuario (§2) → **1.0.0** (quitar `bundle.windows.wix.version`) | — | **1.0.0** |
 
 Fuera de este plan: **6** app móvil (proyecto aparte), **firmar el instalador de Windows** (necesita un certificado de
