@@ -1,27 +1,29 @@
 // Lienzo del mapa de infraestructura: SVG propio (sin dependencias) con disposición por capas, zoom,
-// desplazamiento, ajustar a la pantalla, minimapa, filtros, leyenda, panel de detalles y exportar.
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Download, Map as MapIcon, Network, RefreshCw } from "lucide-react";
+// desplazamiento, ajustar a la pantalla, minimapa, filtros, listas largas plegadas, leyenda, panel de
+// detalles y exportar.
+import { useCallback, useMemo, useRef, useState, type FocusEvent, type ReactNode } from "react";
+import { Network } from "lucide-react";
 import { buildGraph } from "../../features/infra/graph";
 import { filterGraph, graphOwners, LAYERS, type NavTarget, type ServerSnapshot } from "../../features/infra/graphTypes";
+import { foldGraph, MORE_PREFIX, type PlacedNode } from "../../features/infra";
 import { layoutGraph } from "../../features/infra/layout";
-import { ownerLabel, ROUTE_OWNER } from "../../features/infra/owner";
 import { zoomPercent } from "../../features/infra/viewport";
 import { toMermaid } from "../../features/infra/text";
 import { exportMap, type ExportFormat } from "./exportMap";
-import { FOLD_PREFIX, FoldBox, ScopeSwitch } from "./MapScope";
+import { FOLD_PREFIX } from "./MapScope";
 import { MapLegend } from "./MapLegend";
-import { MiniMap, UpdatedAgo, ZoomControls } from "./MapOverlays";
-import { KIND_LABEL, NODE_ICON } from "./nodeMeta";
+import { MapMoreCard, MapNodeCard } from "./MapNodeCard";
+import { MiniMap, ZoomControls } from "./MapOverlays";
+import { MapGroupBox, MapServerBox } from "./MapServerBox";
+import { MapToolbar } from "./MapToolbar";
 import { NodeDetails } from "./NodeDetails";
 import { useMapCanvas } from "./useMapCanvas";
 import { useMapScope } from "./useMapScope";
 import { useMapViewport } from "./useMapViewport";
 import "./InfraMap.css";
+import "./MapCanvas.css";
 
-function clip(s: string, max: number): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
-}
+const NO_KEYS: ReadonlySet<string> = new Set();
 
 export function InfraMapView({
   snapshots,
@@ -48,7 +50,8 @@ export function InfraMapView({
   extraTools?: ReactNode;
 }) {
   const { hideLocal, setHideLocal, hideSystem, setHideSystem, owners, setOwners, selected, setSelected, miniOn, setMiniOn, refitKey } = useMapCanvas(cacheKey);
-  const [exportOpen, setExportOpen] = useState(false);
+  /** Columnas largas desplegadas a mano (por clave de columna). */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(NO_KEYS);
 
   const full = useMemo(() => (snapshots ? buildGraph(snapshots) : null), [snapshots]);
   const scope = useMapScope(snapshots, full);
@@ -57,17 +60,27 @@ export function InfraMapView({
   const ownerFilter = scope.anyMine ? null : owners;
   const allOwners = useMemo(() => (scoped && !scope.anyMine ? graphOwners(scoped) : []), [scoped, scope.anyMine]);
   const graph = useMemo(() => (scoped ? filterGraph(scoped, { hideLocal, hideSystem, owners: ownerFilter }) : null), [scoped, hideLocal, hideSystem, ownerFilter]);
-  const layout = useMemo(() => (graph ? layoutGraph(graph) : null), [graph]);
+  const folded = useMemo(() => (graph ? foldGraph(graph, expanded) : null), [graph, expanded]);
+  const shown = folded?.graph ?? null;
+  const layout = useMemo(() => (shown ? layoutGraph(shown) : null), [shown]);
   const sel = selected ? (graph?.nodes.find((n) => n.id === selected) ?? null) : null;
   const related = useMemo(() => {
-    if (!sel || !graph) return null;
+    if (!sel || !shown) return null;
     const s = new Set([sel.id]);
-    for (const e of graph.edges) {
+    for (const e of shown.edges) {
       if (e.from === sel.id) s.add(e.to);
       if (e.to === sel.id) s.add(e.from);
     }
     return s;
-  }, [sel, graph]);
+  }, [sel, shown]);
+  const hiddenCount = folded ? [...folded.folds.values()].reduce((a, f) => a + f.ids.length, 0) : 0;
+  const expand = useCallback(
+    (id: string) => {
+      const f = folded?.folds.get(id);
+      if (f) setExpanded((cur) => new Set([...cur, f.key]));
+    },
+    [folded],
+  );
 
   // ───────── Zoom y desplazamiento ─────────
   const svgRef = useRef<SVGSVGElement>(null);
@@ -76,12 +89,32 @@ export function InfraMapView({
     content: layout,
     memoryKey: cacheKey,
     refitKey: `${refitKey}|${scope.key}`,
-    onClick: (id) => (id?.startsWith(FOLD_PREFIX) ? scope.showAll(id.slice(FOLD_PREFIX.length)) : setSelected(id)),
+    onClick: (id) => {
+      if (id?.startsWith(FOLD_PREFIX)) scope.showAll(id.slice(FOLD_PREFIX.length));
+      else if (id?.startsWith(MORE_PREFIX)) expand(id);
+      else setSelected(id);
+    },
     onEscape: () => setSelected(null),
   });
+  const selPlaced = sel ? layout?.nodes.get(sel.id) : undefined;
+  const centerSel = selPlaced ? () => center(selPlaced.x + selPlaced.w / 2, selPlaced.y + selPlaced.h / 2) : undefined;
+
+  const activate = useCallback((id: string) => (id.startsWith(MORE_PREFIX) ? expand(id) : setSelected(id)), [expand, setSelected]);
+  const viewRef = useRef({ view, size });
+  viewRef.current = { view, size };
+  const onFocusNode = useCallback(
+    (p: PlacedNode, e: FocusEvent<SVGGElement>) => {
+      // Con el teclado, si el nodo queda fuera de la vista se centra en él.
+      const { view: v, size: s } = viewRef.current;
+      const sx = p.x * v.k + v.x;
+      const sy = p.y * v.k + v.y;
+      const out = sx < 0 || sy < 0 || sx + p.w * v.k > s.w || sy + p.h * v.k > s.h;
+      if (out && e.currentTarget.matches(":focus-visible")) center(p.x + p.w / 2, p.y + p.h / 2);
+    },
+    [center],
+  );
 
   const doExport = (f: ExportFormat) => {
-    setExportOpen(false);
     if (!svgRef.current || !contentRef.current || !layout || !graph) return;
     void exportMap(f, { name, svg: svgRef.current, content: contentRef.current, width: layout.width, height: layout.height, mermaid: () => toMermaid(graph) });
   };
@@ -99,52 +132,31 @@ export function InfraMapView({
 
   return (
     <div className="im-root">
-      <div className="im-toolbar">
-        <div className="im-filters" role="group" aria-label="Filtros">
-          {scope.available && <ScopeSwitch value={scope.current} onChange={scope.setAll} />}
-          <label className="im-check">
-            <input type="checkbox" checked={hideLocal} onChange={(e) => setHideLocal(e.target.checked)} /> Ocultar locales
-          </label>
-          <label className="im-check">
-            <input type="checkbox" checked={hideSystem} onChange={(e) => setHideSystem(e.target.checked)} /> Ocultar sistema
-          </label>
-          {allOwners.length > 1 && (
-            <div className="im-owners" role="group" aria-label="Usuarios">
-              <button className={`im-chip${owners === null ? " on" : ""}`} onClick={() => setOwners(null)}>
-                Todos
-              </button>
-              {allOwners.map((o) => (
-                <button key={o} className={`im-chip${!owners || owners.has(o) ? " on" : ""}`} onClick={() => toggleOwner(o)} aria-pressed={!owners || owners.has(o)}>
-                  {ownerLabel(o, true)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="im-tools">
-          {extraTools}
-          <button className={`icon-btn${miniOn ? " active" : ""}`} onClick={() => setMiniOn((m) => !m)} title="Minimapa" aria-label="Minimapa" aria-pressed={miniOn}>
-            <MapIcon size={14} />
-          </button>
-          <div className="im-export">
-            <button className="btn btn-sm" onClick={() => setExportOpen((o) => !o)} disabled={!layout} aria-haspopup="menu" aria-expanded={exportOpen}>
-              <Download size={13} /> Exportar <ChevronDown size={12} />
-            </button>
-            {exportOpen && (
-              <div className="im-menu" role="menu" onMouseLeave={() => setExportOpen(false)}>
-                <button role="menuitem" onClick={() => doExport("png")}>Imagen PNG…</button>
-                <button role="menuitem" onClick={() => doExport("svg")}>SVG…</button>
-                <button role="menuitem" onClick={() => doExport("mermaid")}>Mermaid…</button>
-                <button role="menuitem" onClick={() => doExport("mermaid-copy")}>Copiar Mermaid</button>
-              </div>
-            )}
-          </div>
-          <UpdatedAgo at={updatedAt} loading={loading} />
-          <button className="btn btn-sm" onClick={onRefresh} disabled={loading}>
-            <RefreshCw size={13} className={loading ? "adm-spin" : undefined} /> Actualizar
-          </button>
-        </div>
-      </div>
+      <MapToolbar
+        scope={scope}
+        hideLocal={hideLocal}
+        setHideLocal={setHideLocal}
+        hideSystem={hideSystem}
+        setHideSystem={setHideSystem}
+        allOwners={allOwners}
+        owners={owners}
+        onAllOwners={() => setOwners(null)}
+        onToggleOwner={toggleOwner}
+        folded={{
+          hidden: hiddenCount,
+          expanded: expanded.size,
+          onExpandAll: () => setExpanded((cur) => new Set([...cur, ...[...(folded?.folds.values() ?? [])].map((f) => f.key)])),
+          onCollapse: () => setExpanded(NO_KEYS),
+        }}
+        miniOn={miniOn}
+        onToggleMini={() => setMiniOn((m) => !m)}
+        canExport={!!layout}
+        onExport={doExport}
+        updatedAt={updatedAt}
+        loading={loading}
+        onRefresh={onRefresh}
+        extraTools={extraTools}
+      />
       {scope.notes.scope.length > 0 && (
         <div className="im-scope-note" role="status">
           {scope.notes.scope.map((n, i) => (
@@ -160,14 +172,8 @@ export function InfraMapView({
         </div>
       )}
       <div className="im-body">
-        <div
-          ref={wrapRef}
-          className="im-canvas"
-          {...canvasProps}
-          tabIndex={0}
-          aria-label="Mapa de infraestructura"
-        >
-          {!layout || !graph ? (
+        <div ref={wrapRef} className="im-canvas" {...canvasProps} tabIndex={0} aria-label="Mapa de infraestructura">
+          {!layout || !shown || !folded ? (
             <div className="empty-state im-empty">
               {loading ? <span className="spinner" /> : <Network size={22} />}
               <div>{loading ? "Leyendo el servidor…" : "Sin datos"}</div>
@@ -175,10 +181,10 @@ export function InfraMapView({
           ) : (
             <svg ref={svgRef} className="im-svg" width={size.w} height={size.h}>
               <defs>
-                <marker id="im-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <marker id="im-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
                   <path d="M0,0 L10,5 L0,10 z" className="im-arrow" />
                 </marker>
-                <marker id="im-arrow-x" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <marker id="im-arrow-x" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
                   <path d="M0,0 L10,5 L0,10 z" className="im-arrow-x" />
                 </marker>
               </defs>
@@ -188,42 +194,16 @@ export function InfraMapView({
                     {LAYERS[c.layer]}
                   </text>
                 ))}
-                {layout.servers.map((s) => {
-                  const srv = graph.servers.find((x) => x.id === s.id)!;
-                  return (
-                    <g key={s.id}>
-                      <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={10} className="im-server" />
-                      <circle cx={s.x + 16} cy={s.y + 17} r={5} className={`im-dot im-h-${srv.health}`} />
-                      <text x={s.x + 28} y={s.y + 22} className="im-server-name">
-                        {srv.name}
-                      </text>
-                      <text x={s.x + s.w - 12} y={s.y + 22} className="im-server-sub" textAnchor="end">
-                        {[srv.os, srv.firewall].filter(Boolean).join(" · ")}
-                      </text>
-                      {s.bands.map((b) => (
-                        <g key={b.owner}>
-                          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={8} className={`im-band${b.owner === ROUTE_OWNER ? " route" : ""}`} />
-                          <text x={b.x + 10} y={b.y + 16} className="im-band-name">
-                            {ownerLabel(b.owner)}
-                          </text>
-                        </g>
-                      ))}
-                      {s.fold && <FoldBox box={s.fold} serverId={s.id} hidden={srv.hidden ?? 0} />}
-                    </g>
-                  );
-                })}
+                {layout.servers.map((s) => (
+                  <MapServerBox key={s.id} box={s} srv={shown.servers.find((x) => x.id === s.id)!} />
+                ))}
                 {layout.groups.map((g, i) => (
-                  <g key={i}>
-                    <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={8} className="im-group" />
-                    <text x={g.x + g.w - 6} y={g.y + 10} className="im-group-name" textAnchor="end">
-                      {g.name}
-                    </text>
-                  </g>
+                  <MapGroupBox key={i} g={g} />
                 ))}
                 {layout.edges.map((e) => {
-                  const dim = related && !(related.has(e.edge.from) && related.has(e.edge.to));
+                  const near = related ? related.has(e.edge.from) && related.has(e.edge.to) : null;
                   return (
-                    <g key={e.edge.id} className={`im-edge im-e-${e.edge.kind}${dim ? " dim" : ""}`}>
+                    <g key={e.edge.id} className={`im-edge im-e-${e.edge.kind}${near === false ? " dim" : near ? " hot" : ""}`}>
                       <path d={e.path} markerEnd={`url(#${e.edge.kind === "cross" ? "im-arrow-x" : "im-arrow"})`} />
                       {e.edge.label && (
                         <text x={e.lx} y={e.ly - 4} textAnchor="end" className="im-edge-label">
@@ -234,52 +214,15 @@ export function InfraMapView({
                   );
                 })}
                 {[...layout.nodes.values()].map((p) => {
-                  const n = p.node;
-                  const Icon = NODE_ICON[n.kind];
-                  const dim = related && !related.has(n.id);
-                  return (
-                    <g
-                      key={n.id}
-                      data-node={n.id}
-                      className={`im-node im-k-${n.kind}${n.owner === ROUTE_OWNER ? " ghost" : ""}${selected === n.id ? " sel" : ""}${dim ? " dim" : ""}`}
-                      transform={`translate(${p.x},${p.y})`}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${KIND_LABEL[n.kind]}: ${n.label}${n.sub ? `, ${n.sub}` : ""}`}
-                      aria-pressed={selected === n.id}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter" && e.key !== " ") return;
-                        e.preventDefault();
-                        setSelected(n.id);
-                      }}
-                      onFocus={(e) => {
-                        // Con el teclado, si el nodo queda fuera de la vista se centra en él.
-                        const sx = p.x * view.k + view.x;
-                        const sy = p.y * view.k + view.y;
-                        const out = sx < 0 || sy < 0 || sx + p.w * view.k > size.w || sy + p.h * view.k > size.h;
-                        if (out && e.currentTarget.matches(":focus-visible")) center(p.x + p.w / 2, p.y + p.h / 2);
-                      }}
-                    >
-                      <title>{`${KIND_LABEL[n.kind]}: ${n.label}${n.sub ? `\n${n.sub}` : ""}`}</title>
-                      <rect width={p.w} height={p.h} rx={7} className="im-card" />
-                      <rect width={4} height={p.h - 12} x={0} y={6} rx={2} className={`im-stripe im-h-${n.health}`} />
-                      <Icon x={10} y={p.h / 2 - 9} width={18} height={18} className="im-icon" />
-                      <text x={36} y={n.sub ? 19 : 27} className="im-label">
-                        {clip(n.label, 21)}
-                      </text>
-                      {n.sub && (
-                        <text x={36} y={34} className="im-sub">
-                          {clip(n.sub, 26)}
-                        </text>
-                      )}
-                    </g>
-                  );
+                  const fold = folded.folds.get(p.node.id);
+                  if (fold) return <MapMoreCard key={p.node.id} p={p} names={p.node.details.map(([k]) => k)} onActivate={activate} />;
+                  return <MapNodeCard key={p.node.id} p={p} selected={selected === p.node.id} dim={!!related && !related.has(p.node.id)} onActivate={activate} onFocusNode={onFocusNode} />;
                 })}
               </g>
             </svg>
           )}
           {layout && miniOn && <MiniMap layout={layout} view={view} size={size} onCenter={center} />}
-          {layout && <ZoomControls percent={zoomPercent(view.k)} onIn={zoomIn} onOut={zoomOut} onFit={fit} />}
+          {layout && <ZoomControls percent={zoomPercent(view.k)} onIn={zoomIn} onOut={zoomOut} onFit={fit} onCenterSelected={centerSel} />}
           <MapLegend />
         </div>
         {sel && (

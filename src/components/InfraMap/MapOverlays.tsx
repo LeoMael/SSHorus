@@ -1,13 +1,26 @@
 // Piezas sueltas del lienzo del mapa: botones de zoom, minimapa y «Actualizado hace…».
 import { useEffect, useState, type PointerEvent as RPointerEvent } from "react";
-import { Maximize, Minus, Plus } from "lucide-react";
+import { LocateFixed, Maximize, Minus, Plus } from "lucide-react";
 import { updatedAgo } from "../../features/infra/freshness";
 import type { layoutGraph } from "../../features/infra";
 import { MAX_ZOOM, MIN_ZOOM, type Viewport } from "../../features/infra/viewport";
 import { isMac } from "../../lib/platform";
 
-/** Botones de zoom en la esquina del lienzo, con el porcentaje (clic en él = ajustar). */
-export function ZoomControls({ percent, onIn, onOut, onFit }: { percent: number; onIn: () => void; onOut: () => void; onFit: () => void }) {
+/** Botones de zoom en la esquina del lienzo, con el porcentaje (clic en él = ajustar) y centrar en lo elegido. */
+export function ZoomControls({
+  percent,
+  onIn,
+  onOut,
+  onFit,
+  onCenterSelected,
+}: {
+  percent: number;
+  onIn: () => void;
+  onOut: () => void;
+  onFit: () => void;
+  /** Solo con un nodo elegido. */
+  onCenterSelected?: () => void;
+}) {
   const mod = isMac ? "⌘" : "Ctrl";
   return (
     <div className="im-zoombar" role="group" aria-label="Zoom del mapa" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
@@ -21,7 +34,10 @@ export function ZoomControls({ percent, onIn, onOut, onFit }: { percent: number;
         <Plus size={14} />
       </button>
       <span className="im-zoombar-sep" aria-hidden="true" />
-      <button className="icon-btn im-zoombar-fit" onClick={onFit} title={`Ajustar a la pantalla (${mod} 0)`} aria-label="Ajustar a la pantalla">
+      <button className="icon-btn" onClick={onCenterSelected} disabled={!onCenterSelected} title="Centrar en el nodo elegido" aria-label="Centrar en el nodo elegido">
+        <LocateFixed size={14} />
+      </button>
+      <button className="icon-btn im-zoombar-fit" onClick={onFit} title={`Encajar todo el mapa en la pantalla (${mod} 0)`} aria-label="Ajustar a la pantalla">
         <Maximize size={14} /> <span>Ajustar</span>
       </button>
     </div>

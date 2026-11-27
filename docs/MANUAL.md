@@ -441,11 +441,18 @@ instalar nada en tu PC. Solo lee: no cambia ni consulta datos.
 - Dentro de cada servidor hay una caja por usuario (**sistema**, el tuyo y los demás). Con **sudo** se ven
   los de **todos los usuarios**: sus contenedores rootless, sus servicios `systemctl --user` y sus
   procesos. Sin sudo solo ves lo tuyo (aparece un aviso).
-- Color de cada nodo: verde bien, amarillo aviso (p. ej. certificado que caduca pronto), rojo caído.
-- Arrastra para moverte, rueda para acercar, **Ajustar** para verlo entero. Filtros: **Ocultar locales**,
+- Color de cada nodo: verde bien, amarillo aviso (p. ej. certificado que caduca pronto), rojo caído y gris
+  parado. Además, si no está bien, lleva un icono en la esquina (⚠ aviso, ⊗ error, ⏸ parado) y, al pasar el
+  ratón, su estado en palabras («Activo», «Parado», «Expuesto»…). Los nombres largos se recortan: pasa el ratón
+  para verlos enteros.
+- Si una columna tiene muchos puertos o contenedores, se ven los primeros (antes los que tienen problemas) y el
+  resto queda en una tarjeta **«+N puertos»**: clic en ella para verlos, o **Mostrar todo** arriba.
+- Arrastra para moverte, rueda para acercar, **Ajustar** para verlo entero y el botón de la mira (junto a
+  **Ajustar**) para centrar el nodo elegido. Filtros: **Ocultar locales**,
   **Ocultar sistema** y los usuarios que quieras ver (o **Todos**).
 - Clic en un nodo (o **Tab** hasta él e **Intro**): sus detalles y un botón para ir a **Puertos**, **Sitios
-  web** o **Contenedores**. **Esc** cierra el panel. La **Leyenda** de abajo a la izquierda se puede plegar.
+  web** o **Contenedores**. **Esc** cierra el panel. La **Leyenda** (abajo a la izquierda) se abre con un clic: tipos de nodo,
+  estados y qué significa cada línea.
 - **Exportar**: imagen PNG, SVG o texto Mermaid (archivo o copiado).
 
 **Mapa → Cortafuegos:**

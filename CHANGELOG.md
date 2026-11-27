@@ -46,6 +46,15 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   la conexión SSH (nunca en comandos, historial ni registros) y la sesión copiada la lee el motor, sin pasar por la
   interfaz.
 
+### Cambiado
+- **Mapa de infraestructura más claro:** el estado de cada nodo se ve también con un icono (aviso, error, parado) y
+  en palabras al pasar el ratón y en el panel («Activo», «Parado», «Expuesto: se puede llegar desde fuera»…); el
+  servidor dice «sin conexión» o «con avisos» junto a su nombre. Los nombres largos se recortan al ancho de la
+  tarjeta (completos al pasar el ratón). Las listas largas (más de 8 puertos o contenedores en una columna) se
+  agrupan en una tarjeta **«+N puertos»** que se despliega con un clic, o todas con **Mostrar todo**. Leyenda
+  plegada en una tarjeta pequeña (tipos, estados y líneas), panel de detalles más ordenado y botón para **centrar en
+  el nodo elegido** junto a **Ajustar**.
+
 ### Arreglado
 - **MCP:** las llaves de Anthropic (`sk-ant-…`, p. ej. la de Claude Code en un servidor) se tapan con `••••` en lo
   que se devuelve a la IA, aunque SSHorus no las conozca.

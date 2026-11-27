@@ -1,6 +1,7 @@
 // Disposición del mapa por capas (izquierda → derecha: Internet, entrada, proxy, sitios, apps, datos).
 // Cada servidor es una caja con una banda por usuario; dentro, cada nodo va en la columna de su capa y
 // el orden de cada columna sigue al de sus vecinos de la izquierda (menos cruces). Funciones puras.
+import { MORE_PREFIX } from "./fold";
 import type { InfraGraph, MapEdge, MapNode } from "./graph";
 
 export const NODE_W = 178;
@@ -111,7 +112,9 @@ export function layoutGraph(g: InfraGraph): Layout {
         const gBest = new Map<string, number>();
         for (const n of col) if (n.group) gBest.set(n.group, Math.min(gBest.get(n.group) ?? Infinity, b.get(n.id)!.v));
         const key = (n: MapNode) => (n.group ? gBest.get(n.group)! : b.get(n.id)!.v);
-        col.sort((p, q) => key(p) - key(q) || (p.group ?? "").localeCompare(q.group ?? "") || b.get(p.id)!.v - b.get(q.id)!.v || b.get(p.id)!.i - b.get(q.id)!.i);
+        // La tarjeta «+N» de una lista plegada, siempre al final de su columna.
+        const more = (n: MapNode) => (n.id.startsWith(MORE_PREFIX) ? 1 : 0);
+        col.sort((p, q) => more(p) - more(q) || key(p) - key(q) || (p.group ?? "").localeCompare(q.group ?? "") || b.get(p.id)!.v - b.get(q.id)!.v || b.get(p.id)!.i - b.get(q.id)!.i);
         // Cada nodo, en la fila más cercana a la de sus vecinos de entrada (líneas rectas, sin cruzar
         // otros nodos), sin salirse de la banda y sin repetir fila.
         let last = -1;
