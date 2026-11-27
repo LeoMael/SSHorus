@@ -37,9 +37,10 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
      - **Idea 4c:** «Auditar proyecto» (todos los servidores de un proyecto, máx. 3 a la vez, resumen comparado, desde
        el menú del proyecto en la barra lateral) y auditar los contenedores rootless de cada usuario como su dueño
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
-  4. ~~Tanda 6~~ **hecha (27/11)**: 4d auditoría programada + 5a Claude Code en el VPS. **Tanda 7 en marcha (27/11)**
-     (5b despliegue asistido por IA, 1 agente; si la sesión se cortó, recuperar su rama `worktree-agent-*` con commit
-     encima de `6831198`). Después: `/code-review` del lote y **beta.6** (preguntar antes de subir); luego tanda 8 → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+  4. ~~Tanda 6~~ **hecha (27/11)**: 4d auditoría programada + 5a Claude Code en el VPS. ~~Tanda 7~~ **hecha (27/11)** (5b: `get_deploy_guide`, `create_app_user`,
+     `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). **En marcha:**
+     `/code-review` del lote `10e7c66..eb4d25e` (1 agente; si la sesión se cortó, recuperar su rama
+     `worktree-agent-*`). Después: versión **beta.6** (`wix.version` → `0.6.0.6`; preguntar antes de subir); luego tanda 8 → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
@@ -60,7 +61,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto — **hecho (26/11)** | 2 | beta.5 |
 | **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios — **hecho (27/11)** | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta — **hecho (27/11)** | 2 | beta.6 |
-| **7. Funciones D** | **5b** despliegue asistido por IA (MCP) | 1 | beta.6 |
+| **7. Funciones D** | **5b** despliegue asistido por IA (MCP) — **hecho (27/11)** | 1 | beta.6 |
 | **8. Ideas menores** | ProxyJump · comparar archivos · historial por servidor · sincronizar carpeta · más administración (systemd, paquetes, cron) · arrastre con archivos virtuales · pulido del mapa | 2 por tanda | beta.7 |
 | **Al final** | Pruebas a mano del usuario (§2) → **1.0.0** (quitar `bundle.windows.wix.version`) | — | **1.0.0** |
 
