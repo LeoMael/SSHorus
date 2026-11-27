@@ -23,6 +23,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 15. [Vulnerabilidades](#vulnerabilidades)
     - [Auditar servidor](#auditar-servidor)
     - [Auditar proyecto](#auditar-proyecto)
+    - [Configuración y seguridad del servidor](#configuración-y-seguridad-del-servidor)
 16. [IA para explicar informes](#ia-para-explicar-informes)
 17. [GitHub](#github)
 18. [PIN y bloqueo](#pin-y-bloqueo)
@@ -585,6 +586,40 @@ pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
 - Usa la pestaña abierta del servidor o conecta aparte con lo guardado (y la cierra al terminar). Si falta la
   contraseña o la huella, ese servidor sale como **No se pudo** y los demás siguen: conéctate una vez y repítelo.
 - Sin sudo guardado (ni sudo sin contraseña) se audita igual y sale marcado **sin sudo**.
+
+## Configuración y seguridad del servidor
+
+**Para qué sirve:** ver en un solo sitio cómo está configurado y protegido el servidor, explicado en simple, y
+cambiarlo donde se puede. La Auditoría lo puntúa; esta pestaña es para verlo y tocarlo.
+
+**Cómo se usa:**
+
+1. Ve a **Administración → Configuración**. Se lee sola al abrirla (solo lee, con poca prioridad). Con
+   **Con sudo…** se ve todo.
+2. Cada sección dice su estado en una frase. Pulsa para abrirla: verás el detalle, los botones de cambio y las
+   mismas comprobaciones de la Auditoría (con su **Arreglar**).
+3. Cada cambio enseña antes el comando exacto. Lo peligroso pide escribir **CAMBIAR**. Se ejecuta como tarea en
+   segundo plano y la pestaña se vuelve a leer al terminar. Queda en **Historial**.
+
+**Secciones:**
+
+- **SELinux** (Rocky, Alma, Fedora): modo ahora y al arrancar, pasar a Enforcing, Permissive solo hasta reiniciar,
+  los permisos (booleans) útiles para nginx, Caddy y contenedores, y las **denegaciones recientes** explicadas
+  («El servidor web (nginx) no pudo conectarse al puerto 8080»). **Arreglar** solo aparece si la solución es
+  segura y concreta (un boolean, marcar un puerto o una carpeta como web); si no, te dice qué hacer y te da el
+  comando para copiar (p. ej. montar el volumen del contenedor con `:Z`).
+- **AppArmor** (Debian, Ubuntu): si está activo, sus perfiles y las denegaciones recientes. Solo lectura.
+- **SSH:** puerto, root, contraseña y claves. Desactivar contraseñas o root comprueba antes que no te quedas
+  fuera (tienes llave, no entras como root) y pasa `sshd -t` antes de recargar; las sesiones abiertas siguen.
+- **Cortafuegos:** estado y **Abrir el cortafuegos en el mapa** (allí están las reglas y los cambios a prueba).
+- **Actualizaciones automáticas:** `dnf-automatic` (solo seguridad o todo) o `unattended-upgrades`; activar,
+  cambiar o desactivar. En openSUSE y Alpine dice «no aplica» y qué hacer.
+- **fail2ban:** cárceles, intentos fallidos y direcciones bloqueadas, con **Desbloquear** (avisa si eres tú).
+- **Usuarios con sudo**, **red del kernel (sysctl)** con los valores recomendados y **hidepid** (que los usuarios
+  no vean los procesos de los demás).
+
+**Notas:** lo que no existe en el servidor sale como **No aplica**; lo que necesita sudo dice qué falta. El
+puerto de SSH no se cambia desde aquí.
 
 ## IA para explicar informes
 

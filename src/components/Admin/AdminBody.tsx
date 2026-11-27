@@ -13,6 +13,7 @@ import { WebTab } from "./web/WebTab";
 import { VulnsTab } from "./vulns/VulnsTab";
 import { AuditTab } from "./audit/AuditTab";
 import { VisibilityTab } from "./visibility/VisibilityTab";
+import { ConfigTab } from "./config/ConfigTab";
 
 const ServerMap = preloadable(() => import("../InfraMap/ServerMap").then((m) => m.ServerMap));
 
@@ -49,6 +50,8 @@ export function AdminBody({
         <VulnsTab />
       ) : tab === "audit" ? (
         <AuditTab onOpenVulns={() => setTab("vulns")} onOpenVisibility={() => setTab("visibility")} />
+      ) : tab === "config" ? (
+        <ConfigTab onOpenMap={() => setTab("map")} onOpenUsers={() => setTab("users")} />
       ) : tab === "visibility" ? (
         <VisibilityTab />
       ) : tab === "ports" ? (

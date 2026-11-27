@@ -13,6 +13,8 @@ import { sudoUsers } from "../../src/features/audit/checksCommon";
 import { AUDIT_SCRIPT } from "../../src/features/audit/script";
 import { statusText } from "../../src/features/infra/firewall/explain";
 import { FIREWALL_SCRIPT, parseFirewallReport } from "../../src/features/infra/firewall/report";
+import { buildConfig } from "../../src/features/serverConfig/build";
+import { CONFIG_SCRIPT } from "../../src/features/serverConfig/script";
 import { deriveMetrics } from "../../src/features/monitor/derive";
 import { buildSampleCommand, parseSample } from "../../src/features/monitor/sample";
 import { DETECT_COMMAND, parsePrivilegeOutput } from "../../src/features/privileges/detect";
@@ -229,6 +231,35 @@ export const AREAS: Area[] = [
         ok: true,
         detail: `${os}: ${checks.length} comprobaciones (${count("ok")} bien, ${count("warn")} aviso, ${count("bad")} mal, ${count("info")} info, ${count("skip")} omitidas)`,
         extra: checks.filter((c) => c.status !== "ok").map((c) => `${c.status} · ${c.title}: ${c.detail}`),
+      };
+    },
+  },
+  {
+    id: "config",
+    label: "Configuración",
+    runs: (e) => [script(CONFIG_SCRIPT, sudo(e), 120), script(CONFIG_SCRIPT, none, 120)],
+    check: ([root, user], e) => {
+      const out = finished(root, "configuración (sudo)");
+      const cfg = buildConfig(out, true, null);
+      const by = Object.fromEntries(cfg.sections.map((s) => [s.id, s]));
+      must(cfg.sections.length === 8, `${cfg.sections.length} secciones`);
+      must((splitSections(out).get("sshdsrc") ?? [])[0] === "T", "sshd -T no respondió como root");
+      must(by.ssh.facts.length > 0 && by.ssh.status !== "skip", `SSH: «${by.ssh.summary}»`);
+      must(by.sudo.facts.some((f) => f.value.split(", ").includes(e.user)), `sudo: ${e.user} no sale en ${JSON.stringify(by.sudo.facts)}`);
+      must(by.sysctl.status !== "skip", "no se leyó /proc/sys");
+      must(!/no se reconoce/.test(by.updates.summary), `actualizaciones: «${by.updates.summary}»`);
+      must(by.hidepid.facts[0].value !== "?", "no se leyó /proc/mounts");
+      const odd = cfg.sections.filter((s) => /undefined|NaN|null/.test(`${s.summary} ${s.facts.map((f) => f.value).join(" ")} ${s.groups.flatMap((g) => g.rows.map((r) => r.detail)).join(" ")}`));
+      must(odd.length === 0, `texto roto: ${odd.map((s) => `${s.id}: ${s.summary}`).join(" | ")}`);
+      const asked = cfg.sections.filter((s) => s.notes.some((n) => /Sin sudo/.test(n)));
+      must(asked.length === 0, `con sudo pide sudo: ${asked.map((s) => s.id).join(", ")}`);
+      const plain = buildConfig(finished(user, "configuración (sin sudo)"), false, null);
+      const pb = Object.fromEntries(plain.sections.map((s) => [s.id, s]));
+      must(pb.ssh.status === "skip" || pb.ssh.notes.some((n) => /sin sudo/i.test(n)), `sin sudo, SSH no dice que falta sudo: «${pb.ssh.summary}»`);
+      return {
+        ok: true,
+        detail: cfg.sections.map((s) => `${s.title}: ${s.status}`).join(" · "),
+        extra: cfg.sections.map((s) => `${s.status} · ${s.title}: ${s.summary}`),
       };
     },
   },

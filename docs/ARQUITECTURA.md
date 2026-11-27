@@ -224,7 +224,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 | Carpeta | Qué tiene |
 |---------|-----------|
 | `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
@@ -449,20 +449,32 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
 ![Administración](arquitectura/10-administracion.png)
 
 - **Sub-pestañas:** Usuarios, Grupos, Conectados ahora, Puertos, Sitios web, Mapa, Vulnerabilidades, Auditoría,
-  **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
+  **Configuración**, **Qué pueden ver** e Historial. Interfaz en `components/Admin/`, lógica en `features/admin/`. Todo pasa por el canal
   exec de la sección 8.
 - **Carpetas de `components/Admin/`:** en la raíz lo común (`AdminPanel`, `AdminChrome`, `context`, `HistoryTab`,
   `PlanReview`, `PasswordField`, `MiniMarkdown`, `VirtualTable` y el CSS común; el diálogo de sudo, que usan también
   Contenedores, el mapa, el Monitor y los comandos con sudo, está en `components/Sudo/`); `users/` (usuarios,
   grupos, conectados ahora, llaves, nuevo usuario con clave, sudo de la llave, importar usuarios y contenedores de cada
   usuario); `web/` (puertos, sitios web, tráfico y registro de visitas); `vulns/` (escáner, «Arreglar», actualizar
-  imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `visibility/` («Qué pueden ver»). El menú
+  imagen y explicación de la IA); `audit/` (auditoría y sus arreglos); `config/` (Configuración); `visibility/` («Qué pueden ver»). El menú
   contextual de las tablas es `ui/ContextMenu` con `look="plain"`.
 - **Nuevo usuario con clave** (`KeyUserWizard.tsx`, `features/admin/keyUser.ts`): valida la llave (tipo +
   base64 + tipo interno), lee `AllowUsers/AllowGroups` con `sshd -T` (o `sshd_config`), arma el plan
   (`useradd` + `usermod -p '*'` + `authorized_keys` 700/600 + linger + bloqueo de túneles SSH cuando «Permitir
   túneles SSH» queda desmarcado, por defecto sin sudo, mediante `65-sshorus-sin-tuneles-<u>.conf` validado con
   `sshd -t` y `sshd -T -C`) y después prueba la conexión con `ssh_test_connection`. `AllowUsers` va en un plan aparte.
+- **Configuración y seguridad del servidor** (`components/Admin/config/`, `features/serverConfig/`): un solo script
+  de lectura (`script.ts`, con `nice`/`ionice`) que **toma tal cual** las secciones de `AUDIT_SCRIPT` que le sirven
+  (`pickSections`: SSH, sudo, cortafuegos, fail2ban, `/proc`; una prueba avisa si la Auditoría las renombra) y añade
+  las suyas: SELinux (`selinux.ts`: sestatus/getenforce, booleans y cambios de modo), denegaciones `avc`
+  (`avc.ts`: ausearch, audit.log o journal; agrupar, explicar y arreglo solo si es seguro: boolean, `semanage port`
+  o `semanage fcontext` + `restorecon` en carpetas fuera del sistema), AppArmor (`apparmor.ts`), actualizaciones
+  automáticas (`autoUpdates.ts`), fail2ban (`fail2ban.ts`), sysctl (`sysctl.ts`, claves y valores de una tabla).
+  `build.ts` arma las secciones con las **comprobaciones y arreglos de la Auditoría** (`sshChecks`, `userChecks`,
+  `loginChecks`, `hardeningChecks`, `parseFirewall`) y la comprobación previa de `fixSafety.ts`; `read.ts` lee y
+  guarda por sesión; `changeJob.ts` aplica cada cambio como tarea (`startJob` + `runElevated`, historial de
+  Administración). El cortafuegos se abre en el mapa con su nodo ya elegido. Pruebas:
+  `features/serverConfig/serverConfig.test.ts` y el área «Configuración» de `npm run test:distros`.
 - **Qué pueden ver tus usuarios** (`VisibilityTab.tsx`, `features/admin/userVisibility.ts`, `userVisibilityPlans.ts`
   y categoría `isolation` en `features/audit/checksIsolation.ts`): revisa por cada usuario sin sudo los túneles SSH
   (`sshd -T -C`), servicios en `127.0.0.1`, `/proc` (`hidepid`), carpetas `HOME`, configuración web, `cron`/logs y

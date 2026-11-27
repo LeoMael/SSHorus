@@ -15,6 +15,13 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   sin root (Podman) de cada usuario, como su dueño: `--privileged`, montajes de `/`, `/etc` o del socket de
   Docker/Podman, puertos en todas las interfaces, imágenes `latest` o viejas, root dentro, sin límite de memoria y
   sin *linger*. Arreglos: *linger* (seguro) y límite de memoria de 1 GB (pide confirmación).
+- **Administración → Configuración:** cómo está configurado y protegido el servidor en un solo sitio, en palabras
+  simples y con su cambio donde se puede: **SELinux** (modo, booleans para la web y los contenedores, y las
+  denegaciones recientes explicadas, con **Arreglar** solo cuando es seguro) o **AppArmor**, **SSH** (con la
+  comprobación previa de la Auditoría para no quedarte fuera), cortafuegos (enlace al del mapa), **actualizaciones
+  automáticas** (`dnf-automatic` o `unattended-upgrades`), **fail2ban** (desbloquear direcciones), usuarios con
+  sudo, **sysctl** de red y **hidepid**. Cada cambio enseña su comando y va como tarea en segundo plano. Lo que no
+  existe dice «no aplica»; sin sudo, qué falta.
 
 ## [1.0.0-beta.5] - 2026-11-26
 

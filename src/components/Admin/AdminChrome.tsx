@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Unplug,
   Users,
   UsersRound,
@@ -23,7 +24,7 @@ import type { Elevation, PrivilegeInfo } from "../../features/privileges";
 import { forgetSudoByUser, type ElevationState } from "../../features/privileges";
 import { toast } from "../../stores/toasts";
 
-export type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "visibility" | "history";
+export type SubTab = "users" | "groups" | "sessions" | "ports" | "web" | "map" | "vulns" | "audit" | "config" | "visibility" | "history";
 
 export const ADMIN_TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "users", label: "Usuarios", icon: <Users size={14} /> },
@@ -34,6 +35,7 @@ export const ADMIN_TABS: { id: SubTab; label: string; icon: ReactNode }[] = [
   { id: "map", label: "Mapa", icon: <Waypoints size={14} /> },
   { id: "vulns", label: "Vulnerabilidades", icon: <Bug size={14} /> },
   { id: "audit", label: "Auditoría", icon: <ClipboardCheck size={14} /> },
+  { id: "config", label: "Configuración", icon: <SlidersHorizontal size={14} /> },
   { id: "visibility", label: "Qué pueden ver", icon: <Eye size={14} /> },
   { id: "history", label: "Historial", icon: <History size={14} /> },
 ];
