@@ -261,9 +261,10 @@ export function systemChecks(ctx: AuditCtx): Check[] {
 }
 
 function fail2banInstall(family: Family): string | null {
-  // `port` con los puertos reales de sshd (si no es el 22, fail2ban bloquearía el puerto equivocado).
+  // `port` con los puertos reales de sshd (si no es el 22, fail2ban bloquearía el puerto equivocado). También
+  // los de `ListenAddress ip:puerto`, que `sshd -T` no cuenta en `port`.
   const jail =
-    "p=$(sshd -T 2>/dev/null | awk '$1==\"port\"{print $2}' | paste -sd, -); " +
+    "p=$(sshd -T 2>/dev/null | awk '$1==\"port\"{print $2} $1==\"listenaddress\"&&match($2,/:[0-9]+$/){print substr($2,RSTART+1)}' | sort -un | paste -sd, -); " +
     "printf '[sshd]\\nenabled = true\\nport = %s\\nbackend = systemd\\n' \"${p:-ssh}\" > /etc/fail2ban/jail.d/sshorus.local";
   switch (family) {
     case "fedora":

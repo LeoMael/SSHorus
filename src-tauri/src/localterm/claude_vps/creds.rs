@@ -102,7 +102,9 @@ fn is_token(t: &str) -> bool {
 /// Quita los espacios y saltos de línea (la terminal parte la llave en varias líneas al copiarla) y
 /// comprueba su forma.
 pub fn normalize_token(pasted: &str) -> AppResult<Zeroizing<String>> {
-    let token = Zeroizing::new(pasted.chars().filter(|c| !c.is_whitespace()).collect::<String>());
+    // Con la capacidad reservada de antemano: al crecer, `String` dejaría copias de la llave sin borrar.
+    let mut token = Zeroizing::new(String::with_capacity(pasted.len()));
+    token.extend(pasted.chars().filter(|c| !c.is_whitespace()));
     if is_token(&token) {
         Ok(token)
     } else {

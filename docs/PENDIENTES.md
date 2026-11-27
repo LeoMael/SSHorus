@@ -268,6 +268,17 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
   seguridad en vez de «no se sabe», y `zypper patch` sale con código 103 cuando se actualiza a sí mismo (se ve
   como fallo; hay que repetirlo). Escáner: `vulnscan_rescan_image` y `vulnscan_recheck` registran el ticket de
   cancelación antes de mirar si existe el informe (inofensivo).
+- **Pendiente de la revisión del 27/11 (beta.6) (no bloquea):** auditoría programada: `busy` solo mira las filas de
+  «Auditar proyecto», no una auditoría manual de Administración → Auditoría (`useAuditRun.running`), y
+  `startProjectAudit` no mira si la tanda programada ya tiene esos servidores: el mismo servidor se puede auditar dos
+  veces a la vez y una tarea pisa la fila de la otra; si se bloquea a mitad, el servidor que ya se estaba auditando
+  sigue (sin la contraseña de sudo guardada puede salir «empeoró» de más); cancelar la tanda a mano la da por hecha
+  hasta la siguiente. Desplegar con la IA: `uploaded_path` comprueba la ruta y el script la usa después (un enlace
+  cambiado entre medias en `/tmp`; ahora se lee como el usuario conectado, riesgo bajo); un `exec_start` o una
+  variable que acabe en «\» une la línea siguiente de la unidad o del archivo de systemd; `container_port` sin
+  `port` se ignora sin avisar. Claude Code en el VPS: si el script falla tras recibir la llave queda
+  `~/.config/sshorus/claude-token.<pid>` (0600) y «Quitar» no lo borra; «Quitar» deja vacíos `.profile`/`.zshrc` si
+  los creó SSHorus. Configuración: fail2ban no ofrece desbloquear IPv4 escritas como IPv6 (`::ffff:…`).
 
 #### Reglas automáticas de calidad (aprobadas el 24/11/2026; 1–3 hechas el 25/11, salen en la beta.4)
 Para que el orden no dependa de que cada agente se acuerde, la CI falla si se rompe el criterio de

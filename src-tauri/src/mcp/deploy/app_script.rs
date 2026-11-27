@@ -1,7 +1,8 @@
 //! Script de `deploy_app`: deja una app en marcha como servicio systemd DEL USUARIO de la app (nunca root):
 //! un contenedor de Podman sin root o un programa. Pasos (como root, y lo de la app como ese usuario):
 //! comprobar systemd, el usuario y Podman → linger y su systemd → copiar los archivos subidos a
-//! `~/apps/<app>` (root lee, el usuario escribe: un enlace en su carpeta no sirve para escribir fuera) →
+//! `~/apps/<app>` (lee el usuario conectado y escribe el de la app: ni un enlace sirve para leer
+//! o escribir fuera) →
 //! imagen (descargar, construir o cargar) → variables en `~/.config/sshorus/<app>.env` (600) → unidad
 //! `~/.config/systemd/user/<app>.service` → activar y reiniciar → estado y, si falla, sus últimos logs.
 //! Volver a llamarlo actualiza la app (misma unidad). `remove_script` la para y quita su unidad.
@@ -71,6 +72,13 @@ fn prelude(user: &str, podman: bool) -> Vec<String> {
     s
 }
 
+/// `rd …`: leer lo subido (copy_from, image_archive) como el usuario conectado (`$SUDO_USER`) y no como
+/// root: así solo se copia lo que ese usuario ya podía leer (no, p. ej., archivos de otros en /tmp ni lo
+/// que apunte un enlace a /root). Si la conexión ya es root, como root.
+const READ_AS_CALLER: &str = "if [ -n \"${SUDO_USER:-}\" ] && [ \"$SUDO_USER\" != root ]; then \
+     if command -v runuser >/dev/null 2>&1; then rd() { runuser -u \"$SUDO_USER\" -- \"$@\"; }; else rd() { sudo -u \"$SUDO_USER\" -- \"$@\"; }; fi; \
+     else rd() { \"$@\"; }; fi";
+
 /// `asu '<inner>'`: ejecutar `inner` como el usuario de la app.
 fn asu(inner: &str) -> String {
     format!("asu {}", shell_quote(inner))
@@ -95,9 +103,10 @@ pub fn deploy_script(spec: &AppSpec) -> String {
     if let Some(src) = &spec.copy_from {
         let untar = asu(&format!("tar -C {app_dir} -xf -"));
         s.extend([
+            READ_AS_CALLER.to_string(),
             format!("src={}", shell_quote(src)),
             format!(
-                "if [ -d \"$src\" ]; then tar -C \"$src\" -cf - . | {untar}; elif [ -f \"$src\" ]; then tar -C \"$(dirname \"$src\")\" -cf - \"$(basename \"$src\")\" | {untar}; else {}; fi",
+                "if [ -d \"$src\" ]; then rd tar -C \"$src\" -cf - . | {untar}; elif [ -f \"$src\" ]; then rd tar -C \"$(dirname \"$src\")\" -cf - \"$(basename \"$src\")\" | {untar}; else {}; fi",
                 fail("No existe la carpeta o el archivo de copy_from en el servidor: súbelo antes con upload")
             ),
         ]);
@@ -107,9 +116,10 @@ pub fn deploy_script(spec: &AppSpec) -> String {
             ImageSource::Pull => s.push(asu(&format!("podman pull {}", shell_quote(image)))),
             ImageSource::Build => s.push(asu(&format!("cd {app_dir} && podman build -t {} .", shell_quote(image)))),
             ImageSource::Archive(f) => s.extend([
+                READ_AS_CALLER.to_string(),
                 format!("f={}", shell_quote(f)),
                 format!("if [ ! -f \"$f\" ]; then {}; fi", fail("No existe el archivo de image_archive en el servidor: súbelo antes con upload")),
-                format!("{} < \"$f\"", asu("podman load")),
+                format!("rd cat \"$f\" | {}", asu("podman load")),
             ]),
         }
     }

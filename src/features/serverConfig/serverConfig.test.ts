@@ -10,7 +10,7 @@ import { AA_DENIED, AA_PROFILES, AUSEARCH, AUTOUPD_DEBIAN_OFF, AUTOUPD_ROCKY, F2
 import { clientIp } from "./read";
 import { CONFIG_SCRIPT, MISSING_AUDIT_SECTIONS, pickSections } from "./script";
 import { modeChanges, parseBooleans, parseSelinux } from "./selinux";
-import { parseSysctl, sysctlChange, sysctlPending } from "./sysctl";
+import { SYSCTL_KEYS, parseSysctl, sysctlChange, sysctlPending } from "./sysctl";
 
 declare const process: { exit(code: number): never };
 
@@ -78,6 +78,12 @@ eq(webDirFor({ ...d!, path: "/srv/a b/x.html", tclass: "file" }), "/srv/a b", "r
 eq(webDirFor({ ...d!, path: "/srv/../etc/x", tclass: "file" }), null, "sin «..»");
 eq(webDirFor({ ...d!, path: "/var/x.html", tclass: "file" }), null, "no etiqueta /var entero");
 eq(webDirFor({ ...d!, path: "/srv/x;rm -rf", tclass: "file" }), null, "caracteres raros: no");
+eq(webDirFor({ ...d!, path: "/home/bob/x.html", tclass: "file" }), null, "no etiqueta la carpeta personal entera (.ssh)");
+eq(webDirFor({ ...d!, path: "/srv/x/.ssh/a", tclass: "file" }), null, "nada con .ssh");
+const bindSample = groups.find((g) => g.sample.src === 8443)!;
+const sshBind = { ...bindSample, sample: { ...bindSample.sample, src: 22, ttype: "ssh_port_t" } };
+eq(avcRow(sshBind, bools).change, null, "un puerto de otro servicio (22 de sshd) no se cambia a web");
+ok(!bind.change?.steps.some((s) => s.includes("semanage port -m")), "nunca «semanage port -m»");
 
 // ───────── AppArmor ─────────
 const aa = parseAppArmor(AA_PROFILES);
@@ -115,7 +121,9 @@ const sv = parseSysctl(SYSCTL_ROCKY);
 const pend = sysctlPending(sv).map((k) => k.key);
 ok(!pend.includes("net.ipv4.ip_forward") && !pend.includes("net.ipv4.conf.all.rp_filter"), "ip_forward y rp_filter=1 no se tocan");
 eq(pend.length, 7, "pendientes");
-const sc = sysctlChange(sysctlPending(sv));
+const sc = sysctlChange(sysctlPending(sv), sv);
+const goodKey = SYSCTL_KEYS.find((k) => k.good !== null && sv.has(k.key) && !pend.includes(k.key));
+ok(!goodKey || sc!.steps[0].includes(`'${goodKey.key} = ${sv.get(goodKey.key)}'`), "el archivo conserva las que ya están bien");
 ok(sc?.steps[0].includes("> /etc/sysctl.d/90-sshorus-red.conf") && sc.steps[1] === "sysctl -p /etc/sysctl.d/90-sshorus-red.conf", "archivo propio y aplicar");
 
 // ───────── Todo junto ─────────

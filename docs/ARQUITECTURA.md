@@ -841,8 +841,8 @@ sudo. `check` valida todo lo que manda (nombres, imagen, dominio, puertos, varia
 va citado en el script. `create_app_user` (`user_script.rs`) crea un usuario sin contraseña ni sudo, con linger,
 subuid/subgid y `~/apps`. `deploy_app` (`app_script.rs`) ejecuta como root lo mínimo (comprobar systemd, el usuario
 y Podman, linger y esperar a su systemd) y lo demás como el usuario de la app con `runuser` y su
-`XDG_RUNTIME_DIR`: copiar lo subido (root lee con `tar`, el usuario escribe, así un enlace en su carpeta no sirve
-para escribir fuera), descargar, construir o cargar la imagen, el archivo de variables (600) y la unidad
+`XDG_RUNTIME_DIR`: copiar lo subido (lee con `tar` el usuario conectado, `$SUDO_USER`, y escribe el de la app: así un
+enlace no sirve para leer ni escribir fuera), descargar, construir o cargar la imagen, el archivo de variables (600) y la unidad
 `~/.config/systemd/user/<app>.service` (contenedor con `podman run --sdnotify=conmon --replace`, `-p 127.0.0.1:…` y
 volúmenes `:Z`, o un programa con `WorkingDirectory=%h/apps/<app>`); al final, el estado y, si falla, los logs
 (`journalctl _UID`). El sudo es el mismo de `run_command` (`exec_sudo_raw` de `core/elevation.rs`). `check_dns`

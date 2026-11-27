@@ -96,6 +96,15 @@ export function keyServers(key: string, projects: ProjectRef[]): string[] {
   return k.kind === "server" ? [k.id] : (projects.find((p) => p.id === k.id)?.serverIds ?? []);
 }
 
+/**
+ * Programaciones con algún servidor que no se llegó a auditar (cancelado). Si la tanda se cortó porque SSHorus
+ * se bloqueó, siguen vencidas: se hacen al desbloquear en vez de esperar al día o la semana siguiente.
+ */
+export function canceledKeys(keys: string[], outcomes: ServerOutcome[], projects: ProjectRef[]): string[] {
+  const canceled = new Set(outcomes.filter((o) => o.error === CANCELED).map((o) => o.profileId));
+  return keys.filter((k) => keyServers(k, projects).some((id) => canceled.has(id)));
+}
+
 /** Quita lo de servidores y proyectos que ya no existen. Devuelve el mismo objeto si no cambia nada. */
 export function pruneSchedules(s: Schedules, serverIds: string[], projectIds: string[]): Schedules {
   const ok = { server: new Set(serverIds), project: new Set(projectIds) };

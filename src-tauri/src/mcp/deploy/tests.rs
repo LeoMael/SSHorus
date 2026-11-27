@@ -169,7 +169,9 @@ fn deploy_script_runs_as_the_app_user_and_reports_the_state() {
     assert!(s.starts_with("set -e\n"));
     assert!(s.contains("runuser -u \"$u\"") && s.contains("loginctl enable-linger"));
     assert!(s.contains("podman pull docker.io/library/nginx:1.27"));
-    assert!(s.contains("tar -C \"$src\" -cf - ."));
+    assert!(s.contains("rd tar -C \"$src\" -cf - ."));
+    // Lo subido se lee como el usuario conectado, no como root.
+    assert!(s.contains("runuser -u \"$SUDO_USER\" -- \"$@\""));
     assert!(s.contains("systemctl --user restart blog.service") && s.contains("@@state="));
     assert!(!s.contains("rm -r"), "sin borrados recursivos");
     let build = app_script::deploy_script(&spec(container(ImageSource::Build)));
@@ -177,7 +179,7 @@ fn deploy_script_runs_as_the_app_user_and_reports_the_state() {
     let archive = app_script::deploy_script(&spec(container(ImageSource::Archive(
         "/tmp/blog.tar".into(),
     ))));
-    assert!(archive.contains("f=/tmp/blog.tar") && archive.contains("asu 'podman load' < \"$f\""));
+    assert!(archive.contains("f=/tmp/blog.tar") && archive.contains("rd cat \"$f\" | asu 'podman load'"));
     assert_eq!(
         app_script::parse_state("x\n@@state=active\n").as_deref(),
         Some("active")

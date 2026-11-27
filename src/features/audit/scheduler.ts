@@ -11,6 +11,8 @@ import { rowBusy } from "./projectAudit";
 import { useProjectAudit } from "./projectStore";
 import {
   CANCELED,
+  LOCKED_NOTE,
+  canceledKeys,
   chooseEvery,
   keyServers,
   markRun,
@@ -104,12 +106,15 @@ async function tick(): Promise<void> {
 
 function finish(keys: string[], outcomes: ServerOutcome[], at: number): void {
   const projects = useProfiles.getState().projects;
+  // Cortada por el bloqueo: lo que no se auditó sigue vencido y se hace al desbloquear.
+  const cut = useLock.getState().status?.locked ? canceledKeys(keys, outcomes, projects) : [];
+  const done = keys.filter((k) => !cut.includes(k));
   const notes: Record<string, string> = {};
-  for (const k of keys) {
+  for (const k of done) {
     const ids = keyServers(k, projects);
     notes[k] = outcomeNote(outcomes.filter((o) => ids.includes(o.profileId)));
   }
-  updateSchedules((s) => markRun(s, keys, at, notes));
+  updateSchedules((s) => markSkipped(markRun(s, done, at, notes), cut, LOCKED_NOTE));
   notify(outcomes);
 }
 

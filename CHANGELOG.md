@@ -48,7 +48,20 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 - **MCP:** las llaves de Anthropic (`sk-ant-…`, p. ej. la de Claude Code en un servidor) se tapan con `••••` en lo
   que se devuelve a la IA, aunque SSHorus no las conozca.
 - **Auditoría → instalar fail2ban:** la cárcel `sshd` vigila los puertos reales de SSH (antes, con SSH en otro
-  puerto que no fuera el 22, fail2ban miraba el puerto equivocado).
+  puerto que no fuera el 22, fail2ban miraba el puerto equivocado). Ahora cuenta también los de
+  `ListenAddress ip:puerto`.
+- **Configuración → SELinux, «Arreglar»:** ya no cambia a puerto web uno que es de otro servicio (p. ej. el 22 de
+  SSH, que dejaría de arrancar): solo marca puertos libres. Ya no etiqueta como web una carpeta personal entera ni
+  algo con `.ssh` (se podía dejar de entrar con llave) ni cosas de `/tmp`. Dejar SELinux en Permissive al arrancar
+  pide confirmar.
+- **Configuración → sysctl:** aplicar los recomendados ya no borra del archivo los que se aplicaron otra vez (al
+  reiniciar volvían a su valor de antes).
+- **Auditoría programada:** si SSHorus se bloquea a mitad, no se abren más servidores y lo que faltó se hace al
+  desbloquear (antes se daba por hecho hasta el día o la semana siguiente).
+- **Desplegar con la IA (`deploy_app`):** lo subido (`copy_from`, `image_archive`) se lee como el usuario conectado
+  y no como root, así no se puede copiar a la app nada que ese usuario no pudiera leer (p. ej. archivos de otros en
+  `/tmp`).
+- **Claude Code en el VPS:** la llave pegada no deja copias sin borrar en memoria al quitarle los espacios.
 
 ## [1.0.0-beta.5] - 2026-11-26
 

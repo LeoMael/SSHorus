@@ -140,7 +140,10 @@ export function explainAvc(g: AvcGroup): string {
 // ───────── Qué lo arregla ─────────
 
 /** Etiquetas «sin dueño» que se pueden cambiar a contenido web sin quitarle la protección a nada. */
-const UNLABELED = new Set(["default_t", "var_t", "unlabeled_t", "file_t", "tmp_t", "user_tmp_t", "usr_t"]);
+// Sin tmp_t ni user_tmp_t: una regla permanente para algo de /tmp no tiene sentido.
+const UNLABELED = new Set(["default_t", "var_t", "unlabeled_t", "file_t", "usr_t"]);
+/** Puertos sin servicio asignado en la política: marcarlos como web no le quita el puerto a nadie. */
+const FREE_PORTS = new Set(["unreserved_port_t", "port_t", "hi_reserved_port_t", "reserved_port_t"]);
 const DB_PORTS = new Set(["postgresql_port_t", "mysqld_port_t", "mssql_port_t", "oracle_port_t", "mongod_port_t"]);
 const SYSTEM_DIRS = ["/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64", "/boot", "/proc", "/sys", "/dev", "/run", "/root"];
 const BARE_DIRS = new Set(["/", "/home", "/var", "/opt", "/srv", "/tmp", "/var/lib", "/var/log", "/mnt", "/media", "/data"]);
@@ -151,6 +154,9 @@ export function webDirFor(d: AvcDenial): string | null {
   if (!p || !/^\/[A-Za-z0-9._@%+=:,/ -]*$/.test(p) || p.split("/").includes("..")) return null;
   const dir = (d.tclass === "dir" ? p : p.slice(0, p.lastIndexOf("/"))).replace(/\/+$/, "") || "/";
   if (BARE_DIRS.has(dir) || SYSTEM_DIRS.some((s) => dir === s || dir.startsWith(`${s}/`))) return null;
+  // La carpeta personal entera o algo con «.ssh»: la regla le quitaría a authorized_keys su etiqueta y sshd
+  // dejaría de leerla (no se podría entrar con llave).
+  if (/^\/home\/[^/]+$/.test(dir) || dir.split("/").includes(".ssh")) return null;
   return dir;
 }
 
@@ -178,7 +184,8 @@ function labelWebPort(p: number): ConfigChange {
     label: "Arreglar",
     title: `SELinux: dejar que la web escuche en el puerto ${p}`,
     explain: `Añade el puerto ${p}/tcp a los puertos web (http_port_t).`,
-    steps: [SEMANAGE, `semanage port -a -t http_port_t -p tcp ${p} 2>/dev/null || semanage port -m -t http_port_t -p tcp ${p}`],
+    // Solo «-a» (puerto sin tipo): «-m» le quitaría el puerto a otro servicio (p. ej. el 22 a sshd).
+    steps: [SEMANAGE, `semanage port -a -t http_port_t -p tcp ${p}`],
     timeoutSecs: 600,
   });
 }
@@ -197,7 +204,7 @@ export function avcRow(g: AvcGroup, bools: Map<string, boolean>): ConfigRow {
     return DB_PORTS.has(d.ttype)
       ? bool("httpd_can_network_connect_db", "Activa httpd_can_network_connect_db: la web podrá conectarse a bases de datos.")
       : bool("httpd_can_network_connect", "Activa httpd_can_network_connect: la web podrá hacer de proxy hacia otros puertos.");
-  if (web && sock && d.perms.includes("name_bind") && d.src !== null)
+  if (web && d.tclass === "tcp_socket" && d.perms.includes("name_bind") && d.src !== null && FREE_PORTS.has(d.ttype))
     return row({ ...base, advice: `Marca el puerto ${d.src} como puerto web.`, change: labelWebPort(d.src) });
   if (web && (d.tclass === "file" || d.tclass === "dir" || d.tclass === "lnk_file")) {
     if (!isRead(d.perms))

@@ -3,6 +3,7 @@
 import {
   EVERY_MS,
   LOCKED_NOTE,
+  canceledKeys,
   chooseEvery,
   dueNow,
   isDue,
@@ -126,6 +127,8 @@ eq(outcomeNote([out("a", null, diff(true)), out("b", null, diff(false)), out("c"
 eq(outcomeNote([out("a", "x", null), out("b", "y", null)]), "0 de 2 auditados · 2 no se pudieron", "proyecto sin ninguno");
 eq(outcomeNote([]), "No había servidores que auditar", "proyecto vacío");
 eq(worsenedChanges([out("a", null, diff(true)), out("b", null, diff(false)), out("c", "x", null)]).map((c) => c.name), ["a"], "solo los que empeoraron");
+eq(canceledKeys(["server:a", "server:b", "project:p1"], [out("a", "Cancelado", null), out("b", null, diff(false))], projects), ["server:a", "project:p1"], "cortada: siguen vencidas las que tenían algún servidor sin auditar");
+eq(canceledKeys(["server:b"], [out("b", "x", null)], projects), [], "un error no es una cancelación");
 
 console.log(`${passed} pruebas bien, ${failed} mal`);
 if (failed) process.exit(1);

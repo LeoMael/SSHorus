@@ -67,9 +67,18 @@ export function sysctlPending(vals: Map<string, string>): SysctlKey[] {
   return SYSCTL_KEYS.filter((k) => k.good !== null && vals.has(k.key) && !k.good.includes(vals.get(k.key) ?? ""));
 }
 
-export function sysctlChange(pending: SysctlKey[]): ConfigChange | null {
+/**
+ * El archivo se reescribe entero: lleva todas las claves recomendadas (las que ya están bien, con su valor),
+ * para no perder al reiniciar las que se aplicaron en una vez anterior.
+ */
+export function sysctlChange(pending: SysctlKey[], vals: Map<string, string>): ConfigChange | null {
   if (!pending.length) return null;
-  const lines = ["# Añadido por SSHorus (Administración → Configuración): red más segura", ...pending.map((k) => `${k.key} = ${k.good![0]}`)];
+  const all = SYSCTL_KEYS.filter((k) => k.good !== null && vals.has(k.key));
+  const value = (k: SysctlKey) => {
+    const v = vals.get(k.key) ?? "";
+    return k.good!.includes(v) ? v : k.good![0];
+  };
+  const lines = ["# Añadido por SSHorus (Administración → Configuración): red más segura", ...all.map((k) => `${k.key} = ${value(k)}`)];
   return change({
     id: "sysctl.apply",
     label: `Aplicar los ${pending.length} recomendados`,

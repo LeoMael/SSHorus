@@ -114,7 +114,7 @@ function sysctlSection(ls: (k: string) => string[]): ConfigSection {
   const vals = parseSysctl(ls("sysctl"));
   if (!vals.size) return section({ id: "sysctl", title: "Red del kernel (sysctl)", status: "skip", summary: "No se pudo leer /proc/sys" });
   const pending = sysctlPending(vals);
-  const ch = sysctlChange(pending);
+  const ch = sysctlChange(pending, vals);
   return section({
     id: "sysctl",
     title: "Red del kernel (sysctl)",

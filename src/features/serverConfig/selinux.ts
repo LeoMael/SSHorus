@@ -143,6 +143,8 @@ export function modeChanges(st: SelinuxState, recentDenials: number): ConfigChan
         title: "SELinux: guardar el modo actual",
         explain: `Al arrancar se pone en ${st.configMode}; así quedará en ${st.mode} también tras reiniciar.`,
         steps: [SET_CONFIG(st.mode)],
+        // Dejar Permissive al arrancar baja la protección para siempre: pide confirmar.
+        danger: st.mode === "permissive",
       }),
     );
   }

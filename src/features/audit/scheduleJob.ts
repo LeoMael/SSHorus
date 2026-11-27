@@ -7,6 +7,7 @@ import { ssh } from "../../api/ssh";
 import { dropJobNotice, updateJob } from "../../stores/jobs";
 import type { JobStep } from "../../stores/jobsState";
 import { startJob } from "../jobs";
+import { useLock } from "../lock/lockStore";
 import { auditDiff } from "./auditDiff";
 import { PROJECT_AUDIT_CONCURRENCY, runPool } from "./projectAudit";
 import { auditServer, type ProjectAuditTarget } from "./projectAuditJob";
@@ -56,7 +57,8 @@ export function startScheduledAudit(targets: ProjectAuditTarget[], onDone: (outc
           mark(i, ok ? "done" : "error");
           ctx.progress({ done: ++done, total: targets.length });
         },
-        () => ctx.canceled,
+        // Si SSHorus se bloquea a mitad, no se abren más servidores (sin lo guardado se auditarían peor).
+        () => ctx.canceled || !!useLock.getState().status?.locked,
         (t) => {
           patchAuditRow(t.profileId, { status: "canceled", step: null });
           outcomes.push({ profileId: t.profileId, name: t.name, error: CANCELED, diff: null });
