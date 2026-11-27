@@ -18,8 +18,11 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
   0 excepciones de límites y 0 archivos de más de 500 líneas**, `index.ts` en todas las features, limpiezas de
   Volúmenes y Redes con «Todos», avisos con botón, «Renombrar máquina…», **«Cerrar puerto»** (idea 12) y **pruebas
   por distro** (idea 13, `npm run test:distros`, las 7 distros en verde).
-- **Parado a petición del usuario:** la **tanda 5** se empezó con 2 agentes y se detuvo sin dejar nada a medias (no hay
-  worktrees ni ramas `worktree-agent-*`). Retomarla **desde cero** cuando el usuario diga «continúa».
+- **En marcha (26/11, noche):** la **tanda 5** (ideas 11 y 4c) con 2 agentes en worktrees (`.claude/worktrees/`).
+  Si la sesión se cortó antes de unirlos: `git worktree list` y `git branch --list 'worktree-agent-*'`; la rama que
+  tenga commit propio encima de `77f9e21` se une con `git cherry-pick <commit>` (conflictos de CHANGELOG/PENDIENTES:
+  quedarse con los dos lados) y luego se comprueba todo (lint, tsc, `npm run check`, build); la que no tenga commit se
+  borra (`git worktree remove --force` + `git branch -D`) y esa idea se rehace con el diseño del paso 3.
 - **Pasos al volver, en orden:**
   1. ~~Ver que el Release de la beta.5 se construyó~~ **hecho (26/11):** CI en verde y borrador con AppImage, deb,
      msi, exe, dmg, `latest.json` y firmas. Falta que el usuario lo **publique** en GitHub (Releases).
