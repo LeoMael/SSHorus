@@ -7,6 +7,15 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Añadido
+- **Desplegar con la IA (MCP):** pídele a Claude Code «despliega este proyecto en mi servidor» y sigue una receta
+  de SSHorus (`get_deploy_guide`): qué preguntarte, qué comprobar, cada paso con su herramienta, cómo comprobarlo y
+  cómo deshacerlo. Herramientas nuevas para no improvisar comandos con sudo: `create_app_user` (usuario aparte sin
+  sudo, con *linger* y listo para Podman sin root), `deploy_app` (la app como servicio de ese usuario, nunca como
+  root: contenedor Podman o programa, solo en 127.0.0.1, con sus variables en un archivo privado; también actualiza
+  y quita), `check_dns` (si el dominio apunta al servidor y, si no, el registro exacto que crear) y `deploy_status`
+  (servicio, puerto, respuesta HTTP/HTTPS y certificado). Los cambios muestran el resumen y el script y se preguntan
+  siempre; en «Solo lo marcado» usan las casillas de usuarios, contenedores o servicios. Ver el manual, «Desplegar
+  con la IA».
 - **Auditoría programada:** en Administración → Auditoría y en **Auditar proyecto**, **Repetir cada día** o
   **cada semana**. Solo funciona con SSHorus abierto: si estaba cerrado, al abrirlo se hace una vez lo atrasado.
   Compara con la auditoría anterior y, si algo empeora (nota más baja, una comprobación que pasa a aviso o mal, un

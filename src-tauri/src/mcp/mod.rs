@@ -10,6 +10,7 @@
 //!   `rules`: aplicar permisos a uno o varios servidores.
 //! - `approval` y `ui`: diálogos y peticiones a la interfaz. `backend`: el motor de la app.
 //! - `commands`: comandos Tauri expuestos a la interfaz.
+//! - `deploy`: desplegar un proyecto con la IA (receta, scripts de usuario y app, DNS y estado).
 //! - `server_audit`: resumen de las auditorías del servidor (`get_audit_report`, `run_audit`).
 //! - `vuln`: resumen de los informes del escáner de vulnerabilidades para el asistente.
 //! - `pty_run`, `prompt` y `redact`: `run_with_password` (escribir la contraseña en el terminal de un
@@ -29,6 +30,7 @@ pub mod caller;
 pub mod commands;
 pub mod config;
 pub mod core;
+pub mod deploy;
 pub mod diff;
 pub mod gate;
 pub mod grants;

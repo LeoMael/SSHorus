@@ -14,8 +14,8 @@ use serde_json::Value;
 use super::backend::Backend;
 use super::caller::Caller;
 use super::core::{
-    AuditReportParams, CatalogListParams, CatalogRunParams, ConnectParams, DbSchemaParams, DownloadParams, ListDirParams,
-    McpCore, NoParams, PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams,
+    AuditReportParams, CatalogListParams, CatalogRunParams, CheckDnsParams, ConnectParams, CreateAppUserParams, DbSchemaParams,
+    DeployAppParams, DeployStatusParams, DownloadParams, ListDirParams, McpCore, NoParams, PasswordRunParams, PathParams, ReadFileParams, RebootServerParams, RunCommandParams, ServerParams,
     SudoPasswordParams, TransferStatusParams, UploadParams, VulnReportParams, VulnScanParams, WriteFileParams,
 };
 
@@ -36,6 +36,8 @@ los cambios van con run_catalog_command (comandos cuyo «permission» está perm
 las carpetas permitidas; run_command solo si freeCommands es true. No intentes lo que no está permitido. \
 Los usuarios de protectedUsers no se pueden tocar. \
 Para revisar la seguridad en general, mira get_audit_report (o run_audit). \
+Para desplegar un proyecto (app, web, contenedor, servicio, dominio), llama primero a get_deploy_guide y sigue \
+su receta: create_app_user, deploy_app, check_dns y deploy_status evitan improvisar comandos con sudo. \
 Para vulnerabilidades, mira primero get_vuln_report (último informe guardado) y usa scan_vulnerabilities \
 solo si no hay informe o es viejo: tarda minutos y pide permiso.";
 
@@ -98,6 +100,11 @@ pub fn tools() -> Vec<Tool> {
         tool::<SudoPasswordParams>("request_sudo_password", "Pide al usuario la contraseña de sudo de un servidor y te la devuelve EN TEXTO (queda en la conversación). Úsala solo si de verdad hace falta verla, p. ej. un programa que la pide por su cuenta y no se puede lanzar con sudo delante. Para comandos con sudo NO la necesitas: usa run_command con «sudo …» y SSHorus la pone sin que la veas. Siempre muestra un diálogo en SSHorus con tu motivo (reason) y el usuario puede negarse; solo en servidores con acceso Completo. Si te la da, no la repitas, no la guardes en archivos ni la pongas en la línea de comandos.", false),
         tool::<ServerParams>("run_audit", "Audita ahora el servidor sin sudo y sin instalar nada (SSH, usuarios, puertos y cortafuegos, actualizaciones, certificados, contenedores, servicios caídos, intentos de entrada, disco, memoria, permisos). Solo lee; pide permiso la primera vez. Devuelve el mismo resumen que get_audit_report y lo guarda. Lo que necesita sudo sale como «sin comprobar».", true),
         tool::<PasswordRunParams>("run_with_password", "Ejecuta un programa que pide una contraseña por su cuenta y no se puede lanzar con sudo delante (passwd, su - otro, mysql -p, ssh-keygen -p, docker login, git por HTTPS…). Siempre muestra un diálogo en SSHorus con el comando y tu motivo (reason): el usuario elige la contraseña guardada del servidor o escribe otra, o se niega. SSHorus ejecuta el programa en un terminal, escribe la contraseña cuando la pregunta dice password/contraseña/passphrase/clave (o prompt_hint) y te devuelve solo la salida, con la contraseña tapada (••••): nunca la ves. Si el programa vuelve a pedir la misma, se detiene (contraseña incorrecta). No pongas la contraseña en el comando. Para comandos con sudo usa run_command.", false),
+        tool::<NoParams>("get_deploy_guide", "Receta para desplegar un proyecto en un servidor paso a paso (qué preguntar al usuario, comprobaciones previas, usuario aparte, subir el código, contenedor Podman sin root o servicio systemd, Caddy/nginx con HTTPS, DNS y cómo comprobar y deshacer cada paso). Léela antes de desplegar.", true),
+        tool::<CheckDnsParams>("check_dns", "Comprueba desde el servidor a qué IP apunta un dominio (A y AAAA) y si es este servidor. Si no apunta, dice el registro exacto que el usuario debe crear. Solo lee.", true),
+        tool::<DeployStatusParams>("deploy_status", "Comprueba un despliegue sin sudo y sin cambiar nada: si el puerto escucha y la app responde en local, si el dominio responde por HTTP y HTTPS con certificado válido (y cuándo caduca), si un servicio del sistema está activo y si el usuario de la app tiene linger, su systemd y procesos en marcha.", true),
+        tool::<CreateAppUserParams>("create_app_user", "Crea un usuario para una app: sin contraseña y sin sudo, con linger (sus servicios siguen sin sesión abierta), subuid/subgid para Podman sin root y la carpeta ~/apps; opcional una llave pública SSH. Falla si ya existe. Usa sudo (SSHorus pone la contraseña) y siempre pide permiso; con «Solo lo marcado» necesita «Usuarios: crear».", false),
+        tool::<DeployAppParams>("deploy_app", "Despliega (o actualiza, o quita con remove=true) una app como servicio systemd del usuario de la app, nunca como root: un contenedor Podman sin root (imagen publicada, build en el servidor o image_archive subido) o un programa (exec_start). Copia lo subido (copy_from) a ~/apps/<name>, guarda las variables (env) en un archivo 600, escucha solo en 127.0.0.1:<port> salvo public=true, activa el arranque automático y devuelve el estado (y los logs si falla). Usa sudo y siempre pide permiso; con «Solo lo marcado» necesita «Contenedores» o «Servicios».", false),
         tool::<RebootServerParams>("reboot_server", "Reinicia el servidor de forma segura: avisa antes a SSHorus para que todas las sesiones abiertas a ese servidor esperen a que arranque (wait_secs, por defecto 300 s) y reconecten automáticamente, y envía el reinicio con sudo. Prefiere esta herramienta en lugar de ejecutar `reboot` con run_command. Siempre pide permiso.", false),
     ]
 }

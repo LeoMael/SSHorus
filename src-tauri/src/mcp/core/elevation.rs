@@ -100,6 +100,26 @@ impl<B: Backend> McpCore<B> {
         max: usize,
         cancel: &CancellationToken,
     ) -> Res<String> {
+        let r = self.exec_sudo_raw(rec, t, session_id, command, password, timeout, cancel).await?;
+        rec.entry.message = Some(format!("{} (con sudo)", exec_summary(&r)));
+        let mut out = format_exec(&r, max);
+        self.redact_known(t, session_id, &mut out, &[]).await;
+        Ok(out)
+    }
+
+    /// Ejecuta `command` (con `sudo …`) dándole a sudo la contraseña por el envoltorio de `sudo.rs`. Devuelve
+    /// la salida ya sin la contraseña; si sudo la rechaza, avisa a la interfaz para que la olvide.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn exec_sudo_raw(
+        &self,
+        rec: &mut Rec,
+        t: &Target,
+        session_id: &str,
+        command: &str,
+        password: &str,
+        timeout: u32,
+        cancel: &CancellationToken,
+    ) -> Res<ExecResult> {
         let wrapped = sudo::wrap(command, password).map_err(Fail::Error)?;
         let result = self.exec_raw(rec, session_id, &wrapped.command, Some(&wrapped.stdin), timeout, cancel).await;
         drop(wrapped); // borra el script y la contraseña del stdin
@@ -116,10 +136,7 @@ impl<B: Backend> McpCore<B> {
             }
             return Err(Fail::Error(sudo::failure_message(f, &t.server.name)));
         }
-        rec.entry.message = Some(format!("{} (con sudo)", exec_summary(&r)));
-        let mut out = format_exec(&r, max);
-        self.redact_known(t, session_id, &mut out, &[]).await;
-        Ok(out)
+        Ok(r)
     }
 
     /// Pide a la interfaz la contraseña de sudo de la conexión (en memoria → guardada → otra pestaña →

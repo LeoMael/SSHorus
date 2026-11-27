@@ -339,7 +339,7 @@ Módulos:
 | `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
 | `github/` | Token y cuenta (`token.rs`, `account.rs`, `device.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), recetas (`config.rs`), copia cifrada en un gist (`sync.rs`, `crypto.rs`), compartir comandos (`share.rs`, `collections.rs`) y comandos (`commands.rs`) |
 | `storage/` | Perfiles y ajustes (`mod.rs`), comandos (`commands/`), llavero (`secrets/`: API, `system_keyring.rs`, `vault_move.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
-| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
+| `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), desplegar con la IA (`deploy/`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (scripts por fase `scripts/`, qué toca tras cada fase `plan.rs`, análisis y guardado `run.rs`, `analyze.rs`, `analyze_merge.rs`, `analyze_sources.rs`, `analyze_report.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`, tipos `model/`), historial de auditorías (`audit/`) e IA opcional (`ai/`: `http.rs`, `token.rs`, `chat.rs`) |
 | `localfs/`, `diagnostics/` | Archivos locales (exportar/importar) y diagnóstico del sistema |
 | `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
@@ -723,7 +723,7 @@ Apagado por defecto (Ajustes → Asistentes de IA (MCP)). Detalle, herramientas 
    continuar»; token `Bearer` distinto → 401 con `WWW-Authenticate: Bearer resource_metadata=…` (de ahí arranca
    OAuth). El token general se lee de la bóveda o el llavero (`mcp-token`) y se olvida al bloquear; los de los
    asistentes (`tvc_` del puente, `tvo_` de OAuth) se comprueban fuera del hilo async (huella Argon2id).
-3. **SDK** (`mcp/server.rs`, crate `rmcp` 3.9): sin sesiones y con respuestas JSON; anuncia 24 herramientas
+3. **SDK** (`mcp/server.rs`, crate `rmcp` 3.9): sin sesiones y con respuestas JSON; anuncia 31 herramientas
    con su esquema y pasa cada llamada a `McpCore`.
 4. **Reglas** (`mcp/core.rs` + `mcp/policy.rs`): el servidor tiene que tener acceso (Sin acceso / Solo lectura /
    Completo, en `mcp.json`); las lecturas pasan; los cambios abren el diálogo `mcp://approval` en la ventana
@@ -828,9 +828,26 @@ después de que lo apruebes (se pregunta siempre, salvo con «Aceptar automátic
 | `run_command`, `run_catalog_command` (los 📊 pasan solos; con sudo, SSHorus pone la contraseña), `write_file`, `upload` | Pregunta; en Solo lectura, rechazado |
 | `run_with_password` (`mcp/core/password_run.rs` + `mcp/pty_run.rs`: programa en un PTY sin eco; SSHorus escribe la contraseña elegida en tu diálogo cuando lo pide y la tapa en la salida; nunca automático) | Pregunta siempre (diálogo propio); en Solo lectura, rechazado |
 | `request_sudo_password` (apagado por defecto: sin el ajuste ni se anuncia; si está encendido, entrega la contraseña de sudo tras un diálogo propio), `reboot_server` (`mcp/core/reboot.rs`: avisa a `ssh/reboot_wait.rs` y reinicia con sudo) | Pregunta siempre (sin «Permitir siempre» en `reboot_server`); en Solo lectura, rechazado |
+| `get_deploy_guide` (la receta de despliegue), `check_dns`, `deploy_status` (`mcp/core/deploy.rs`) | Lectura (pasa sola, también en Solo lectura) |
+| `create_app_user`, `deploy_app` (`mcp/core/deploy_change.rs`: script como root con sudo; en «Solo lo marcado», «Usuarios: crear» o «Contenedores»/«Servicios») | Pregunta siempre (usa sudo); en Solo lectura, rechazado |
 
 Lo peligroso pregunta siempre, sin «Permitir siempre». Detalle y límites de cada una en
 [el historial de pendientes](historial/PENDIENTES-historial.md#herramientas).
+
+**Desplegar con la IA** (`mcp/deploy/`, lógica pura; `mcp/core/deploy.rs` y `deploy_change.rs`)
+
+La IA lee la receta (`deploy/guide.rs`) y la sigue con herramientas de alto nivel en vez de improvisar comandos con
+sudo. `check` valida todo lo que manda (nombres, imagen, dominio, puertos, variables, volúmenes, rutas) y cada valor
+va citado en el script. `create_app_user` (`user_script.rs`) crea un usuario sin contraseña ni sudo, con linger,
+subuid/subgid y `~/apps`. `deploy_app` (`app_script.rs`) ejecuta como root lo mínimo (comprobar systemd, el usuario
+y Podman, linger y esperar a su systemd) y lo demás como el usuario de la app con `runuser` y su
+`XDG_RUNTIME_DIR`: copiar lo subido (root lee con `tar`, el usuario escribe, así un enlace en su carpeta no sirve
+para escribir fuera), descargar, construir o cargar la imagen, el archivo de variables (600) y la unidad
+`~/.config/systemd/user/<app>.service` (contenedor con `podman run --sdnotify=conmon --replace`, `-p 127.0.0.1:…` y
+volúmenes `:Z`, o un programa con `WorkingDirectory=%h/apps/<app>`); al final, el estado y, si falla, los logs
+(`journalctl _UID`). El sudo es el mismo de `run_command` (`exec_sudo_raw` de `core/elevation.rs`). `check_dns`
+(`dns.rs`) y `deploy_status` (`status.rs`) solo leen, sin sudo, y devuelven un texto con ✓/⚠/✗ y qué hacer. Los
+sitios web reutilizan las filas de la Biblioteca (`features/admin/webSites.ts`) por `run_catalog_command`.
 
 ## 16b. Escáner de vulnerabilidades (v0.5.0 · diagrama 17)
 

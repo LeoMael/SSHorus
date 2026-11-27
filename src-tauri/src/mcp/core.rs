@@ -22,7 +22,8 @@
 //! Partes (`core/`): `params` (parámetros de las herramientas), `auto` (Aceptar automáticamente),
 //! `access` (servidor, permisos y aprobación), `listing` (herramientas sin servidor), `catalog`
 //! (Biblioteca), `commands`, `files`, `scans` (escaneos, vulnerabilidades y auditoría), `db_schema`
-//! (esquema de las bases de datos) y `output` (formato de las respuestas).
+//! (esquema de las bases de datos), `deploy` y `deploy_change` (desplegar con la IA) y `output` (formato de
+//! las respuestas).
 
 mod access;
 mod ask;
@@ -30,6 +31,9 @@ mod auto;
 mod catalog;
 mod commands;
 mod db_schema;
+mod deploy;
+mod deploy_change;
+mod deploy_spec;
 mod elevation;
 mod files;
 mod listing;
@@ -45,6 +49,7 @@ mod sudo_reveal;
 pub use auto::{AutoDuration, AutoState};
 pub use catalog::CatalogEntry;
 pub use db_schema::DbSchemaParams;
+pub use deploy::{CheckDnsParams, CreateAppUserParams, DeployAppParams, DeployStatusParams};
 #[cfg(test)]
 pub use elevation::SUDO_CANCELED_MSG;
 #[cfg(test)]
@@ -271,6 +276,11 @@ impl<B: Backend> McpCore<B> {
             "request_sudo_password" => self.request_sudo_password(parse(args)?, rec).await,
             "run_with_password" => self.run_with_password(parse(args)?, rec, cancel).await,
             "reboot_server" => self.reboot_server(parse(args)?, rec, cancel).await,
+            "get_deploy_guide" => self.deploy_guide(rec),
+            "check_dns" => self.check_dns(parse(args)?, rec, cancel).await,
+            "deploy_status" => self.deploy_status(parse(args)?, rec, cancel).await,
+            "create_app_user" => self.create_app_user(parse(args)?, rec, cancel).await,
+            "deploy_app" => self.deploy_app(parse(args)?, rec, cancel).await,
             other => Err(Fail::Error(format!("Herramienta desconocida: {other}"))),
         }
     }

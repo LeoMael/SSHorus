@@ -722,3 +722,6 @@ mod sudo_run_flow;
 
 #[path = "tests_auto.rs"]
 mod auto_flow;
+
+#[path = "tests_deploy.rs"]
+mod deploy_flow;

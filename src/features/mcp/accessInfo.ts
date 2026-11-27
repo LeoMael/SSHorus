@@ -11,12 +11,16 @@ export const ACCESS: { v: McpAccess; label: string; title: string }[] = [
 ];
 
 export const TASKS: { v: McpTask; label: string; hint: string }[] = [
-  { v: "users-create", label: "Usuarios: crear", hint: "Crear usuarios (con contraseña o solo con llave SSH)." },
+  {
+    v: "users-create",
+    label: "Usuarios: crear",
+    hint: "Crear usuarios (con contraseña o solo con llave SSH) y el usuario aparte de una app al desplegar.",
+  },
   { v: "users-edit", label: "Usuarios: editar", hint: "Grupos, shell, bloquear y desbloquear, dar sudo." },
   { v: "users-delete", label: "Usuarios: borrar", hint: "Borrar usuarios (nunca root ni el usuario conectado)." },
   { v: "web", label: "Sitios web", hint: "Caddy y nginx: ver, crear, editar, borrar y recargar." },
-  { v: "containers", label: "Contenedores", hint: "Podman y Docker." },
-  { v: "services", label: "Servicios", hint: "systemd: iniciar, detener, reiniciar, activar." },
+  { v: "containers", label: "Contenedores", hint: "Podman y Docker; también desplegar una app en un contenedor sin root." },
+  { v: "services", label: "Servicios", hint: "systemd: iniciar, detener, reiniciar, activar; también desplegar un programa como servicio." },
   { v: "packages", label: "Paquetes", hint: "Instalar, actualizar y desinstalar." },
   { v: "firewall", label: "Cortafuegos", hint: "Abrir puertos (firewalld o ufw)." },
   { v: "files", label: "Archivos", hint: "Guardar y subir archivos, solo dentro de las carpetas que elijas." },

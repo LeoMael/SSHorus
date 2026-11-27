@@ -132,8 +132,9 @@ impl Grants {
             "howTo": if self.free_commands {
                 "Comandos libres permitidos: run_command y cualquier comando (siempre con permiso del usuario)."
             } else {
-                "Solo lo marcado: cambios con run_catalog_command (comandos cuyo «permission» está en tasks) y \
-                 write_file/upload dentro de folders. run_command no está permitido."
+                "Solo lo marcado: cambios con run_catalog_command (comandos cuyo «permission» está en tasks), \
+                 write_file/upload dentro de folders, create_app_user (users-create) y deploy_app (containers o \
+                 services). run_command no está permitido."
             },
         })
     }

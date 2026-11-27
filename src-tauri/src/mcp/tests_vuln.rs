@@ -157,7 +157,7 @@ fn vuln_tools_are_announced_as_reads() {
     let reboot = tools.iter().find(|t| t.name == "reboot_server").expect("falta reboot_server");
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.read_only_hint), Some(false));
     assert_eq!(reboot.annotations.as_ref().and_then(|a| a.destructive_hint), Some(true));
-    assert_eq!(tools.len(), 26);
+    assert_eq!(tools.len(), 31);
 }
 
 // ───────────────────────── Auditoría del servidor ─────────────────────────

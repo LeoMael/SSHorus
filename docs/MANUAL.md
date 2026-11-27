@@ -29,6 +29,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 17. [GitHub](#github)
 18. [PIN y bloqueo](#pin-y-bloqueo)
 19. [Asistentes de IA (MCP)](#asistentes-de-ia-mcp)
+    - [Desplegar con la IA](#desplegar-con-la-ia)
 20. [Terminal local y asistentes de IA](#terminal-local-y-asistentes-de-ia)
     - [Claude Code en un servidor con tu cuenta](#claude-code-en-un-servidor-con-tu-cuenta)
 21. [Ajustes](#ajustes)
@@ -785,6 +786,46 @@ claude mcp add --env SSHORUS_MCP_TOKEN=<token> --transport stdio sshorus -- /rut
 - Duración: **15 min**, **1 hora**, **hasta cerrar SSHorus** o **siempre**.
 - Mientras esté activo verás **Automático** en la barra de pestañas: al pulsarlo se abre una ventana con el detalle por servidor para apagar uno concreto o **Apagar todo** (con confirmación).
 - Nunca funciona con SSHorus bloqueado ni en servidores de solo lectura. Cada acción queda en **Actividad del asistente** marcada como «automático», y las peligrosas muestran un aviso.
+
+### Desplegar con la IA
+
+**Para qué sirve:** que Claude Code (u otra IA conectada por MCP) ponga en marcha un proyecto tuyo en un servidor:
+un usuario aparte para la app, el código, un contenedor o un servicio, la web con HTTPS y la comprobación final.
+
+**Qué pedirle:** abre Claude Code en la carpeta del proyecto (con el MCP de SSHorus conectado) y dile, por ejemplo:
+
+> Despliega este proyecto en el servidor «vps-1» con el dominio blog.ejemplo.com, usando la receta de SSHorus.
+
+La IA lee primero la receta (`get_deploy_guide`) y te hace unas preguntas: en qué servidor, con dominio o solo con
+IP, en qué puerto escucha la app, qué variables necesita, contenedor o programa. Luego va paso a paso:
+
+1. **Mira** el servidor (sistema, memoria, disco, Podman, Caddy o nginx, puertos libres). Esto solo lee: no pregunta.
+2. **Comprueba el dominio** (`check_dns`). Si aún no apunta a tu servidor, te dice el registro exacto que tienes que
+   crear en tu proveedor de DNS (por ejemplo «registro A blog.ejemplo.com → 203.0.113.7»). Mientras, se puede
+   desplegar solo con IP:puerto.
+3. **Crea un usuario para la app** (`create_app_user`): sin contraseña y **sin sudo**, con sus servicios siempre en
+   marcha (*linger*) y preparado para Podman sin root.
+4. **Sube el código** (`upload`). Si puede, lo compila antes en tu PC para no cargar el servidor.
+5. **Arranca la app** (`deploy_app`) como servicio de ese usuario, nunca como root: un contenedor de Podman o un
+   programa. Escucha solo dentro del servidor (127.0.0.1) y arranca solo al reiniciar. Si falla, la IA ve los
+   últimos logs.
+6. **Publica la web** con un sitio de Caddy (HTTPS automático) o nginx, de la Biblioteca.
+7. **Comprueba** todo (`deploy_status`): el servicio, el puerto, la respuesta de la web y el certificado.
+
+**Qué hace SSHorus:** cada cambio te muestra un diálogo con un resumen y el script completo que se va a ejecutar
+(los que usan sudo se preguntan siempre, salvo **Aceptar automáticamente → Todo**). Pone la contraseña de sudo sin
+que la IA la vea, rechaza root, el usuario con el que estás conectado y los usuarios protegidos, y anota todo en
+**Actividad del asistente**. Para deshacer, la IA tiene el paso inverso de cada uno (`deploy_app` con
+`remove`, borrar el sitio, borrar el usuario).
+
+**Permisos:** con **Completo** basta. Con **Solo lo marcado**, usa la plantilla **Despliegue** y añade
+**Archivos** (con la carpeta donde se sube el código, p. ej. `/home/tu-usuario/sshorus-deploy`) y **Cortafuegos**
+si hay que abrir puertos. Crear el usuario necesita **Usuarios: crear**; arrancar la app, **Contenedores** o
+**Servicios**.
+
+**Límites:** hace falta un servidor con systemd (Alpine sin systemd no sirve para `deploy_app`). En Debian y Ubuntu,
+para Podman sin root instala antes `dbus-user-session` y `uidmap`. nginx no saca el certificado solo (la IA usa
+`certbot` si está). Desde el celular las aprobaciones siguen saliendo en el PC.
 
 ## Terminal local y asistentes de IA
 
