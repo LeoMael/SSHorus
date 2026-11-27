@@ -33,6 +33,31 @@ pub fn redact_all(text: &mut String, secrets: &[&str], cut_tail: bool) {
     }
 }
 
+/// Prefijos de llaves de Anthropic (las de Claude Code en el VPS, `CLAUDE_CODE_OAUTH_TOKEN`, y las de la API).
+const TOKEN_PREFIXES: &[&str] = &["sk-ant-"];
+
+/// Tapa las llaves con forma conocida aunque SSHorus no las conozca (p. ej. el archivo de la llave de
+/// Claude Code en el servidor o `~/.claude/.credentials.json`): el prefijo y lo que le sigue de letras,
+/// números, `-` y `_`.
+pub fn redact_token_patterns(text: &mut String) {
+    for prefix in TOKEN_PREFIXES {
+        if !text.contains(prefix) {
+            continue;
+        }
+        let mut out = String::with_capacity(text.len());
+        let mut rest = text.as_str();
+        while let Some(i) = rest.find(prefix) {
+            out.push_str(&rest[..i]);
+            let after = &rest[i + prefix.len()..];
+            let n = after.find(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_')).unwrap_or(after.len());
+            out.push_str(MASK);
+            rest = &after[n..];
+        }
+        out.push_str(rest);
+        *text = out;
+    }
+}
+
 /// Bytes del final de `text` que son el principio de `secret` (al menos 1, menos que el secreto entero).
 fn partial_tail(text: &str, secret: &str) -> Option<usize> {
     (1..secret.len())
@@ -44,6 +69,16 @@ fn partial_tail(text: &str, secret: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tapa_llaves_de_anthropic() {
+        let mut t = "export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-Ab_9-xY\n{\"accessToken\":\"sk-ant-ort01-zz\"} fin".to_string();
+        redact_token_patterns(&mut t);
+        assert_eq!(t, "export CLAUDE_CODE_OAUTH_TOKEN=••••\n{\"accessToken\":\"••••\"} fin");
+        let mut sin = "nada que tapar: sk-ant".to_string();
+        redact_token_patterns(&mut sin);
+        assert_eq!(sin, "nada que tapar: sk-ant");
+    }
 
     #[test]
     fn tapa_todas_las_apariciones() {

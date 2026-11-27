@@ -4,7 +4,7 @@
 use zeroize::Zeroizing;
 
 use super::super::backend::{Backend, SavedPassword};
-use super::super::redact::{redact_all, MIN_KNOWN_LEN};
+use super::super::redact::{redact_all, redact_token_patterns, MIN_KNOWN_LEN};
 use super::{McpCore, Target};
 
 impl<B: Backend> McpCore<B> {
@@ -20,5 +20,6 @@ impl<B: Backend> McpCore<B> {
         }
         let all: Vec<&str> = extra.iter().chain(known.iter()).map(|s| s.as_str()).collect();
         redact_all(text, &all, false);
+        redact_token_patterns(text);
     }
 }

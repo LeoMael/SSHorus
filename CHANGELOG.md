@@ -36,6 +36,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   interfaz.
 
 ### Arreglado
+- **MCP:** las llaves de Anthropic (`sk-ant-…`, p. ej. la de Claude Code en un servidor) se tapan con `••••` en lo
+  que se devuelve a la IA, aunque SSHorus no las conozca.
 - **Auditoría → instalar fail2ban:** la cárcel `sshd` vigila los puertos reales de SSH (antes, con SSH en otro
   puerto que no fuera el 22, fail2ban miraba el puerto equivocado).
 
