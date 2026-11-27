@@ -37,7 +37,9 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
      - **Idea 4c:** «Auditar proyecto» (todos los servidores de un proyecto, máx. 3 a la vez, resumen comparado, desde
        el menú del proyecto en la barra lateral) y auditar los contenedores rootless de cada usuario como su dueño
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
-  4. **Siguiente: tanda 6** (4d auditoría programada + 5a Claude Code en el VPS), luego 7 (5b) y 8 (ideas menores) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+  4. **Tanda 6 en marcha (27/11)** con 2 agentes en worktrees (4d auditoría programada + 5a Claude Code en el VPS);
+     si la sesión se cortó, recuperar como se explica arriba (ramas `worktree-agent-*` con commit encima de
+     `5d3e2a2`). Luego 7 (5b) y 8 (ideas menores) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
