@@ -8,9 +8,10 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 26/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.6** (27/11/2026; tandas 5–7 revisadas; subir solo si el usuario lo aprueba;
-la CI la empaqueta en un Release en **borrador**). La beta.5 está subida (borrador). La etiqueta `v1.0.0-beta.4`
-quedó solo en local, a propósito. Lo que entre en `main` después saldrá en la **1.0.0-beta.7**.
+Última versión etiquetada: **1.0.0-beta.7** (27/11/2026; tanda 8 revisada; subir solo si el usuario lo aprueba; la CI
+la empaqueta en un Release en **borrador**). beta.5 y beta.6 subidas (borradores; la beta.6 instalada en el PC del
+usuario en `~/Applications`). La etiqueta `v1.0.0-beta.4` quedó solo en local, a propósito. Lo siguiente es la
+**1.0.0**.
 
 **Para retomar (estado al 26/11/2026, noche):**
 - **Hecho:** tandas **1 a 4** del plan (tabla de abajo), unidas en `main`, revisadas (`/code-review` del lote) y
@@ -41,9 +42,9 @@ quedó solo en local, a propósito. Lo que entre en `main` después saldrá en l
      `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). Revisada (`/code-review` del lote
      `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 hecha (27/11)**: mapa, comparar archivos, historial por servidor,
      sincronizar carpeta, más Administración (servicios, paquetes, tareas) y arrastre directo en Windows (experimental;
-     macOS diseñado, falta dependencia). **En marcha:** `/code-review` del lote `a1675ca..c21321b`; después versión
-     **beta.7** (`wix.version` → `0.6.0.7`; preguntar antes de subir). Si la sesión se cortó, recuperar la rama
-     `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+     macOS diseñado, falta dependencia). Revisada (`/code-review` del lote `a1675ca..c21321b`, 3 arreglos) y
+     etiquetada **beta.7**. **Siguiente:** pruebas a mano del usuario de todo lo «falta probar a mano» → arreglos →
+     **1.0.0** (quitar `bundle.windows.wix.version`) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.

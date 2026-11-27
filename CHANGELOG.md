@@ -6,6 +6,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [1.0.0-beta.7] - 2026-11-27
+
 ### Añadido
 - **Sincronizar carpeta:** en Archivos, clic derecho en una carpeta → **Sincronizar con una carpeta de mi PC…**.
   Las dos carpetas quedan unidas y cada archivo que guardas en tu PC se sube solo al servidor (solo en ese
@@ -876,6 +878,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
+[1.0.0-beta.7]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.7
 [1.0.0-beta.6]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.6
 [1.0.0-beta.5]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.4
