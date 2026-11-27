@@ -32,7 +32,7 @@ use std::sync::{Arc, OnceLock};
 use futures::future::BoxFuture;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 
-pub use engine::{Engine, TransferEnv};
+pub use engine::{Engine, TransferEnv, UploadItem, CLOSED_MSG};
 pub use policy::{Conflict, ConflictQuestion};
 
 /// Payload: `ConflictQuestion`. El destino existe y la política es "preguntar".

@@ -14,12 +14,14 @@
 //! Partes (`engine/`): `state` (tipos de la cola), `batch` (lotes y altas), `control`
 //! (pausar / reanudar / cancelar / reintentar), `conflicts` (preguntas), `walk_upload` y
 //! `walk_download` (recorridos), `scheduler` (turnos y fin de cada trabajo), `execute`
-//! (reintentos), `attempt` (un intento), `links` (destinos y enlaces) y `emitter` (progreso).
+//! (reintentos), `attempt` (un intento), `links` (destinos y enlaces), `emitter` (progreso) y
+//! `direct` (lista de archivos con destino fijo, para «Sincronizar carpeta»).
 
 mod attempt;
 mod batch;
 mod conflicts;
 mod control;
+mod direct;
 mod emitter;
 mod execute;
 mod links;
@@ -42,6 +44,7 @@ use super::pool::{Lease, Pools};
 use crate::error::AppResult;
 use crate::ssh::SshSession;
 use crate::types::{TransferJob, TransferStatus};
+pub use direct::UploadItem;
 use state::{Kind, State};
 
 pub const CLOSED_MSG: &str = "La conexión se cerró";

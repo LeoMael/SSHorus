@@ -24,6 +24,7 @@ import {
   StatusBadge,
 } from "./TransferHelpers";
 import { JobList } from "./TransferJobs";
+import { SyncStrip } from "../FolderSync/SyncStrip";
 import "./TransferPanel.css";
 import "./TransferBatch.css";
 import "./TransferJobs.css";
@@ -50,10 +51,13 @@ export function TransferPanel() {
   };
 
   return (
-    <section className={`tp-root${expanded ? " tp-expanded" : ""}`} aria-label="Transferencias">
-      {expanded ? <ExpandedView list={list} onCollapse={() => toggle(false)} /> : <CollapsedBar list={list} onExpand={() => toggle(true)} />}
-      <ConflictDialog />
-    </section>
+    <>
+      <SyncStrip />
+      <section className={`tp-root${expanded ? " tp-expanded" : ""}`} aria-label="Transferencias">
+        {expanded ? <ExpandedView list={list} onCollapse={() => toggle(false)} /> : <CollapsedBar list={list} onExpand={() => toggle(true)} />}
+        <ConflictDialog />
+      </section>
+    </>
   );
 }
 

@@ -1,0 +1,147 @@
+/* Sincronizar carpeta: franja de las activas (encima de las transferencias) y diálogo. Prefijo: fs- */
+
+.fs-strip {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 120px;
+  overflow-y: auto;
+  background: var(--bg-sunken);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs);
+}
+.fs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  min-width: 0;
+}
+.fs-row + .fs-row {
+  border-top: 1px solid var(--border);
+}
+.fs-ico {
+  flex: none;
+  color: var(--green);
+}
+.fs-uploading .fs-ico {
+  color: var(--orange);
+}
+.fs-paused .fs-ico,
+.fs-waiting .fs-ico {
+  color: var(--text-faint);
+}
+.fs-error .fs-ico,
+.fs-error .fs-status {
+  color: var(--red);
+}
+.fs-spin {
+  animation: spin 1.2s linear infinite;
+}
+.fs-name,
+.fs-last,
+.fs-status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fs-name {
+  flex: 0 1 auto;
+  max-width: 45%;
+}
+.fs-status {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+.fs-warn-ico {
+  flex: none;
+  display: inline-flex;
+  color: var(--yellow);
+}
+.fs-last {
+  flex: 1 1 0;
+  text-align: right;
+  font-size: var(--fs-sm);
+}
+.fs-row .icon-btn {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+/* ───────── Diálogo ───────── */
+.fs-intro {
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+.fs-pick {
+  display: flex;
+  gap: 8px;
+}
+.fs-pick .input {
+  flex: 1;
+  min-width: 0;
+}
+.fs-ignore {
+  resize: vertical;
+  min-height: 60px;
+}
+.fs-hint {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.fs-check {
+  margin-bottom: 8px;
+}
+.fs-error {
+  margin: 4px 0 8px;
+}
+.fs-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.fs-lines {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.fs-warn {
+  margin: 0 0 8px;
+  color: var(--yellow);
+}
+.fs-list {
+  margin-bottom: 8px;
+}
+.fs-list summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.fs-list ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.fs-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: var(--fs-sm);
+}
+.fs-rel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

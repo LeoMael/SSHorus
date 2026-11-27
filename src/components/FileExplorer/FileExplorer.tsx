@@ -15,6 +15,7 @@ import { useTabConnection } from "./connection";
 import { handleExplorerKey } from "./explorerKeys";
 import { explorerMenuItems } from "./explorerMenu";
 import { compareMenuItems } from "../Compare/compareMenu";
+import { syncMenuItems } from "../FolderSync/syncMenu";
 import { ExplorerActions, ExplorerToolbar } from "./ExplorerToolbar";
 import { ExplorerStatus, explorerPlaceholder, ReconnectingPill } from "./ExplorerStatus";
 import { useDirectory } from "./useDirectory";
@@ -260,6 +261,7 @@ export const FileExplorer = memo(function FileExplorer({
             refresh,
             setPermsFor,
             compareItems: compareMenuItems({ sessionId, list: selectedEntries, siblings: entries.map((e) => e.name) }),
+            syncItems: syncMenuItems({ sessionId, list: menu.onEntry ? selectedEntries : [], cwd }),
           })}
           onClose={closeMenu}
         />

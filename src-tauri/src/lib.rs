@@ -6,6 +6,7 @@ mod audit;
 mod diagnostics;
 mod dragout;
 mod error;
+mod foldersync;
 mod github;
 mod localfs;
 mod localkeys;
@@ -49,6 +50,7 @@ pub fn run() {
         .manage(localterm::LocalTermStore::default())
         .manage(sftp::SftpStore::default())
         .manage(transfer::TransferManager::default())
+        .manage(foldersync::FolderSyncManager::default())
         .manage(snippets::ExecRegistry::default())
         .manage(storage::lock::LockState::default())
         // Al cerrar la principal se cierra la app entera (si no, seguirían vivas las ventanas de editor aparte).
@@ -125,6 +127,14 @@ pub fn run() {
             transfer::commands::transfer_conflicts,
             transfer::commands::transfer_resolve_conflict,
             transfer::commands::transfer_batch_finished,
+            // sincronizar carpeta (PC → servidor)
+            foldersync::commands::folder_sync_preview,
+            foldersync::commands::folder_sync_start,
+            foldersync::commands::folder_sync_list,
+            foldersync::commands::folder_sync_pause,
+            foldersync::commands::folder_sync_remove,
+            foldersync::commands::folder_sync_saved,
+            foldersync::commands::folder_sync_forget,
             // arrastrar al escritorio / gestor de archivos
             dragout::commands::drag_out_dir,
             dragout::commands::drag_out_start,

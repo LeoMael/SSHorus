@@ -6,6 +6,16 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Añadido
+- **Sincronizar carpeta:** en Archivos, clic derecho en una carpeta → **Sincronizar con una carpeta de mi PC…**.
+  Las dos carpetas quedan unidas y cada archivo que guardas en tu PC se sube solo al servidor (solo en ese
+  sentido). Antes de empezar compara y enseña cuántos archivos faltan o son más nuevos en tu PC y cuáles son más
+  nuevos en el servidor, que no se pisan sin marcarlo. Ignora `.git`, `node_modules`, los temporales de los
+  editores y lo que pongas en el diálogo o en `.sshorusignore`; agrupa los guardados seguidos; borrar en el PC no
+  borra en el servidor salvo con **Borrar también en el servidor** (y nunca más de 50 de golpe). Encima de las
+  transferencias se ve cada una con su estado, el último archivo subido, **Pausar** y **Dejar de sincronizar**; con
+  un servidor guardado se puede recordar y reactivar al conectar.
+
 ## [1.0.0-beta.6] - 2026-11-27
 
 ### Añadido

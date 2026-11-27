@@ -12,6 +12,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 4. [Terminal](#terminal)
 5. [Explorador de archivos](#explorador-de-archivos)
 6. [Transferencias](#transferencias)
+    - [Sincronizar carpeta](#sincronizar-carpeta)
 7. [Editor](#editor)
     - [Comparar archivos](#comparar-archivos)
 8. [Comandos](#comandos)
@@ -195,6 +196,39 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - Si se corta la red, la transferencia sigue desde donde quedó al volver la conexión.
 - Si el archivo ya existe, se hace lo que digas en **Ajustes → Transferencias → Si el archivo ya existe**.
 - Con **Preguntar**, verás **Sobrescribir**, **Omitir**, **Mantener ambos** o **Solo si es más nuevo**, y la casilla **Aplicar a todos los conflictos de esta transferencia**.
+
+### Sincronizar carpeta
+
+**Para qué sirve:** eliges una carpeta de tu PC y otra del servidor y quedan unidas: cada vez que guardas un
+archivo en tu PC, se sube solo al servidor. Ideal para una web: editas en tu PC y el servidor ya lo tiene.
+
+**Cómo se usa:**
+
+1. En **Archivos**, clic derecho en una carpeta (o en el vacío de la carpeta abierta) → **Sincronizar con una
+   carpeta de mi PC…**.
+2. Pulsa **Elegir…** y escoge la carpeta de tu PC.
+3. Si quieres, escribe en **No subir** lo que no debe subirse (uno por línea, como en `.gitignore`: `*.log`,
+   `dist/`, `/config.local.php`).
+4. Pulsa **Comparar**. Verás cuántos archivos faltan o son más nuevos en tu PC (y cuánto ocupan), cuántos ya
+   están iguales y cuáles son **más nuevos en el servidor**: esos no se tocan, salvo que marques **Subir también
+   estos**.
+5. Pulsa **Unir y subir** (o **Unir sin subir nada** si solo quieres lo que guardes a partir de ahora).
+
+Encima de la barra de transferencias verás cada carpeta unida con su estado (**Al día**, **Subiendo 3**,
+**Error: …**) y el último archivo subido, con **Pausar** y **Dejar de sincronizar**. Las subidas también salen en
+la lista de transferencias.
+
+**Notas:**
+
+- Va en un solo sentido: de tu PC al servidor. Lo que cambie en el servidor no baja a tu PC.
+- Nunca se suben `.git`, `node_modules` ni los temporales de los editores (`*.swp`, `*~`, `.#*`). Puedes añadir
+  más en un archivo `.sshorusignore` dentro de la carpeta de tu PC.
+- Borrar en tu PC **no** borra en el servidor, salvo que marques **Borrar también en el servidor** (pide
+  confirmación). Aun así, si borras más de 50 archivos de golpe, no se borran allí y te avisa.
+- Funciona mientras la conexión esté abierta. Si se corta, los cambios esperan y se suben al volver.
+- Con un servidor guardado, marca **Recordarla en este servidor**: al conectar otra vez te ofrecerá
+  **Reactivar** (con la misma comparación antes de subir nada).
+- Se vigilan hasta 20 000 archivos; si la carpeta es más grande, te avisa para que ignores carpetas.
 
 ## Editor
 

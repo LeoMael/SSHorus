@@ -30,9 +30,11 @@ interface MenuCtx {
   setPermsFor: (list: FileEntry[]) => void;
   /** «Comparar con…» / «Comparar los dos» (components/Compare). */
   compareItems: MenuItem[];
+  /** «Sincronizar con una carpeta de mi PC…» (components/FolderSync). */
+  syncItems: MenuItem[];
 }
 
-export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, actions: a, refresh, setPermsFor, compareItems }: MenuCtx): MenuItem[] {
+export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, actions: a, refresh, setPermsFor, compareItems, syncItems }: MenuCtx): MenuItem[] {
   if (!onEntry || !selectedEntries.length) {
     return [
       { label: "Nueva carpeta", icon: <FolderPlus size={15} />, onSelect: () => a.createItem("dir") },
@@ -40,6 +42,7 @@ export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, act
       { sep: true },
       { label: "Subir archivos…", icon: <Upload size={15} />, onSelect: () => a.pickAndUpload(false) },
       { label: "Subir carpeta…", icon: <FolderUp size={15} />, onSelect: () => a.pickAndUpload(true) },
+      ...syncItems,
       { sep: true },
       { label: "Copiar ruta", icon: <ClipboardCopy size={15} />, disabled: !cwd, onSelect: () => cwd && a.copyPaths([cwd]) },
       { label: "Refrescar", icon: <RefreshCw size={15} />, hint: "F5", onSelect: () => refresh() },
@@ -68,6 +71,7 @@ export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, act
     { label: "Permisos…", icon: <KeyRound size={15} />, onSelect: () => setPermsFor(list) },
     { label: list.length > 1 ? "Copiar rutas" : "Copiar ruta", icon: <ClipboardCopy size={15} />, onSelect: () => a.copyPaths(list.map((e) => e.path)) },
     ...(single && singleDir ? [addToProjectItem(serverId, single.path)] : []),
+    ...syncItems,
     { sep: true },
     { label: "Eliminar", icon: <Trash2 size={15} />, hint: "Supr", danger: true, onSelect: () => a.remove(list) },
   ];
