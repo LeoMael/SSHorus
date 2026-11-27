@@ -7,6 +7,9 @@
 //    Si el botón sigue apretado se arrastra en ese momento; si no, queda "listo" y el siguiente
 //    arrastre de lo mismo es inmediato (mientras no cambie en el servidor).
 //
+// Arrastre directo (experimental, Windows; ver `directDrag.ts`): sin descargar antes; el Explorador
+// lee por SFTP al soltar. Si no se puede empezar, se sigue con el camino de arriba.
+//
 // Arrastre propio vs. externo: mientras dura el arrastre nativo, la ventana de SSHorus también
 // recibe los eventos de "soltar archivos" (con las rutas de la caché). El explorador los ignora
 // con `ownDragActive()` / `isOwnDragPaths()` para no volver a subirlos al servidor.
@@ -123,9 +126,18 @@ export async function prepareDragOut(
 
 /** Arrastre nativo (hay que llamarlo con el botón apretado). `true` si se soltó en algún sitio. */
 export async function startDragOut(paths: string[]): Promise<boolean> {
+  return whileNative(() => dragOut.start(paths));
+}
+
+/** Arrastre directo (archivos virtuales leídos por SFTP al soltar). Falla si no se puede empezar. */
+export async function startDirectDragOut(sessionId: string, entries: FileEntry[]): Promise<boolean> {
+  return whileNative(() => dragOut.direct(sessionId, entries.map((e) => e.path)));
+}
+
+async function whileNative(run: () => Promise<boolean>): Promise<boolean> {
   nativeActive = true;
   try {
-    return await dragOut.start(paths);
+    return await run();
   } finally {
     nativeActive = false;
   }

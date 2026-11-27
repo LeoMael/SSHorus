@@ -60,7 +60,7 @@ export const NAV: { group: string; items: SectionInfo[] }[] = [
     group: "Conexiones",
     items: [
       { id: "connection", label: "Conexión", icon: <Plug size={15} />, view: ConnectionSection, desc: "Detección de cortes y reconexión automática.", keys: "keepalive señal de vida reconectar intentos desconexión" },
-      { id: "transfers", label: "Transferencias", icon: <ArrowLeftRight size={15} />, view: TransfersSection, desc: "Subidas y descargas de archivos.", keys: "simultáneas sobrescribir omitir existe conflicto" },
+      { id: "transfers", label: "Transferencias", icon: <ArrowLeftRight size={15} />, view: TransfersSection, desc: "Subidas y descargas de archivos.", keys: "simultáneas sobrescribir omitir existe conflicto arrastre directo explorador experimental" },
       { id: "servers", label: "Servidores", icon: <Server size={15} />, view: ServersSection, desc: "Integración con la configuración de ssh del equipo.", keys: "ssh config exportar sincronizar alias" },
       { id: "sshKeys", label: "Llaves SSH", icon: <KeyRound size={15} />, view: SshKeysSection, desc: "Las llaves de este equipo: créalas y ponlas en un servidor o en GitHub.", keys: "llave clave ssh privada pública ed25519 rsa github authorized_keys crear generar" },
       { id: "security", label: "Seguridad", icon: <ShieldCheck size={15} />, view: SecuritySection, desc: "PIN o contraseña de la bóveda y bloqueo.", keys: "pin bloqueo bóveda contraseña inactividad" },

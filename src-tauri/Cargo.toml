@@ -82,7 +82,9 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 aws-lc-sys = { version = "0.47", features = ["prebuilt-nasm"] }
 # Arrastrar archivos al Explorador (módulo `dragout`): la misma versión que ya trae Tauri.
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }
+# Las de DataExchange, Memory, FileSystem, Gdi y StructuredStorage son del arrastre directo (archivos virtuales);
+# las activa también Tauri, pero se declaran aquí para no depender de eso.
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Ole", "Win32_Storage_FileSystem", "Win32_Graphics_Gdi", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }
 
 # Arrastrar archivos al escritorio / gestor de archivos (módulo `dragout`): GTK3, ya en el árbol por Tauri.
 [target.'cfg(target_os = "linux")'.dependencies]

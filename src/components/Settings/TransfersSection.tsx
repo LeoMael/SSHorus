@@ -1,6 +1,7 @@
-// Ajustes → Transferencias: cuántas a la vez y qué hacer si el archivo ya existe.
+// Ajustes → Transferencias: cuántas a la vez, qué hacer si el archivo ya existe y el arrastre directo.
 import type { Settings } from "../../api/types";
-import { Segmented, SettingGroup, SettingRow as Row } from "../ui/SettingsKit";
+import { directDragAvailable, setDirectDrag, useDirectDrag } from "../../features/fileExplorer/directDrag";
+import { Segmented, SettingGroup, SettingRow as Row, Switch as Toggle } from "../ui/SettingsKit";
 import { useSetting } from "./useSetting";
 
 const CONFLICT_HINTS: Record<Settings["transferConflict"], string> = {
@@ -13,6 +14,7 @@ const CONFLICT_HINTS: Record<Settings["transferConflict"], string> = {
 export function TransfersSection() {
   const [conc, setConc] = useSetting("transferConcurrency");
   const [conflict, setConflict] = useSetting("transferConflict");
+  const direct = useDirectDrag((s) => s.on);
   return (
     <>
       <SettingGroup>
@@ -44,6 +46,16 @@ export function TransfersSection() {
           />
         </Row>
       </SettingGroup>
+      {directDragAvailable && (
+        <SettingGroup title="Arrastrar al Explorador">
+          <Row
+            label="Arrastre directo (experimental)"
+            hint="Al arrastrar archivos del servidor al Explorador, se copian directamente donde los sueltes, sin descargarlos antes a una carpeta temporal (los grandes no se copian dos veces). Se ven en Transferencias y se pueden cancelar, pero no pausar. Si no funciona, se usa el arrastre de siempre."
+          >
+            <Toggle checked={direct} onChange={setDirectDrag} label="Arrastre directo (experimental)" />
+          </Row>
+        </SettingGroup>
+      )}
     </>
   );
 }

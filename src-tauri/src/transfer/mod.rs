@@ -21,7 +21,7 @@ pub mod commands;
 mod copy;
 mod download;
 mod engine;
-mod paths;
+pub(crate) mod paths;
 mod policy;
 mod pool;
 #[cfg(test)]

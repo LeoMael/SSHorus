@@ -347,7 +347,7 @@ Módulos:
 | `foldersync/` | «Sincronizar carpeta» (PC → servidor): qué no se sube (`filter.rs`: fijos, `.sshorusignore` y el diálogo), foto de la carpeta del PC con `walkdir` y diferencias (`snapshot.rs`), agrupar ráfagas de guardados (`debounce.rs`), comparación inicial y seguridad de los borrados (`plan.rs`), leer y borrar en el servidor por el canal del explorador (`remote.rs`), el vigilante de cada una (`runner.rs`: sondeo de ~1 s en `spawn_blocking`, sube con `Engine::upload_files`), las activas sin Tauri (`hub.rs`), las guardadas por servidor en `folder_syncs.json` (`saved.rs`) y comandos (`commands.rs`). Evento `folder-sync://list` con la lista entera; terminan con `session://closed` |
 | `snippets/` | «Mis comandos», ejecución aparte por canal exec con cancelación (`exec/`: arranque y marca de PID, registro, lectura del canal y bucle), lo que pide la interfaz (`run.rs`: con registro, stdin que se borra, en vivo y con sudo) y envoltorio sudo (`sudo.rs`) |
 | `tunnels/` | Túneles local, remoto y SOCKS (`manager.rs`, `forward.rs`, `watcher.rs`, `socks.rs`, `remote.rs`, `store.rs`) |
-| `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS) |
+| `dragout/` | Arrastre nativo al escritorio (Linux, Windows, macOS); `direct/`: arrastre directo con archivos virtuales (Windows, experimental) |
 | `github/` | Token y cuenta (`token.rs`, `account.rs`, `device.rs`), API REST (`api.rs`, `api_gists.rs`, `http.rs`), recetas (`config.rs`), copia cifrada en un gist (`sync.rs`, `crypto.rs`), compartir comandos (`share.rs`, `collections.rs`) y comandos (`commands.rs`) |
 | `storage/` | Perfiles y ajustes (`mod.rs`), comandos (`commands/`), llavero (`secrets/`: API, `system_keyring.rs`, `vault_move.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), desplegar con la IA (`deploy/`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
@@ -605,6 +605,19 @@ y ver resultado"), la detección de privilegios y GitHub (clonar y desplegar).
   inmediato. Más de 1 GB pregunta antes. Al abrir la app se borra lo de más de un día.
 - Por qué así: Wayland no admite "archivos prometidos", y las promesas de Windows y macOS
   descargarían por fuera del motor, sin cola ni reanudación.
+- **Arrastre directo (experimental, solo Windows, apagado por defecto)**: con el ajuste encendido
+  (`features/fileExplorer/directDrag.ts`, en `localStorage`), la interfaz llama antes a `drag_out_direct`
+  (`dragout/direct/`). El motor recorre por SFTP lo elegido (`list.rs`: carpetas antes que su contenido,
+  nombres adaptados a Windows, sin enlaces a carpetas, tope de 10 000 elementos y rutas de menos de 260
+  caracteres) y ofrece archivos virtuales: `CFSTR_FILEDESCRIPTORW` (lista) y `CFSTR_FILECONTENTS` con un
+  `IStream` por archivo (`win/`, objetos COM hechos a mano sobre las tablas del crate `windows`, sin la
+  macro `implement`, que pediría `windows-core` como dependencia). El Explorador lee al soltar; cada
+  `Read` pasa a tokio por trozos de 1 MiB con cancelación y 120 s de tiempo límite (`reader.rs`), en un
+  canal SFTP propio. Cada archivo aparece en el panel de Transferencias al empezar a leerse (`jobs.rs`,
+  los mismos eventos que el motor; `transfer_cancel` y `transfer_clear_finished` también los tocan),
+  sin pausa ni reanudación. Si algo falla antes de empezar, la interfaz sigue con el camino de arriba.
+  macOS (`NSFilePromiseProvider`) está diseñado en `docs/PENDIENTES.md` pero falta la dependencia
+  (`objc2`/`objc2-app-kit`); Linux no tiene equivalente.
 
 ---
 

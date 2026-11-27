@@ -138,6 +138,7 @@ pub fn run() {
             // arrastrar al escritorio / gestor de archivos
             dragout::commands::drag_out_dir,
             dragout::commands::drag_out_start,
+            dragout::commands::drag_out_direct,
             // storage
             storage::commands::profiles_load,
             storage::commands::profiles_save_server,

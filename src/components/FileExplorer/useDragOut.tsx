@@ -7,8 +7,17 @@ import { formatBytes } from "../../lib/format";
 import { toast } from "../../stores/toasts";
 import { confirmDialog } from "../ui/dialogs";
 import { sessionOnline } from "./connection";
-import { BIG_DRAG_BYTES, DragOutCanceled, forgetPrepared, prepareDragOut, readyPaths, startDragOut } from "./dragOut";
+import {
+  BIG_DRAG_BYTES,
+  DragOutCanceled,
+  forgetPrepared,
+  prepareDragOut,
+  readyPaths,
+  startDirectDragOut,
+  startDragOut,
+} from "./dragOut";
 import { filesBytes, itemsLabel } from "../../features/fileExplorer/explorerLogic";
+import { directDragOn } from "../../features/fileExplorer/directDrag";
 import { useEvent } from "./useEvent";
 
 /** Píxeles que hay que mover el ratón con el botón apretado para empezar a arrastrar al sistema. */
@@ -54,6 +63,18 @@ export function useDragOut({ sessionId, rows, selectedRef, selectOnly, focusRoot
     }
   });
 
+  /** Arrastre directo. `false` si no se pudo empezar (se sigue con el camino de siempre). */
+  const tryDirect = useEvent(async (items: FileEntry[]): Promise<boolean> => {
+    try {
+      await startDirectDragOut(sessionId, items);
+      heldRef.current = false;
+      return true;
+    } catch (err) {
+      console.warn("Arrastre directo no disponible; se descarga primero", err);
+      return false;
+    }
+  });
+
   /** Empieza a arrastrar `items` fuera de la app: inmediato si ya están descargados; si no, los
    *  descarga a la caché (con progreso) y arrastra al terminar si el botón sigue apretado. */
   const beginDragOut = useEvent(async (items: FileEntry[], retry: boolean = true): Promise<void> => {
@@ -65,6 +86,7 @@ export function useDragOut({ sessionId, rows, selectedRef, selectOnly, focusRoot
       await runDragOut(ready, list, retry);
       return;
     }
+    if (directDragOn() && (await tryDirect(list))) return;
     if (dragPrep) {
       toast.info("Ya se está preparando otro arrastre", "Espera a que termine o cancélalo abajo.");
       return;

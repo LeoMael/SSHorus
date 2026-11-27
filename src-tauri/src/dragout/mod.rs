@@ -24,8 +24,13 @@
 //! - Windows: `win.rs` pide al Shell el objeto de datos de las rutas (`CF_HDROP` y los formatos
 //!   del Explorador) y usa `SHDoDragDrop` (origen e imagen de arrastre de Windows).
 //! - macOS: crate `drag` (CrabNebula), que en macOS sí está bien: arrastra `NSURL` de archivo.
+//!
+//! Arrastre directo (`direct/`, experimental y apagado por defecto): en Windows se ofrecen
+//! archivos virtuales que el Explorador lee por SFTP al soltar (sin copia en la caché). Si no
+//! se puede empezar, la interfaz usa este camino de siempre.
 
 pub mod commands;
+pub mod direct;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]

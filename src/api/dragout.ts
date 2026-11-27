@@ -16,4 +16,8 @@ export const dragOut = {
    *  `true` si se soltó en algún sitio, `false` si se canceló. Error `NotFound` si lo
    *  preparado ya no está en la caché. */
   start: (paths: string[]) => call<boolean>("drag_out_start", { paths }),
+  /** Arrastre directo (experimental, solo Windows): archivos virtuales que el sistema lee por SFTP
+   *  al soltar, sin descargar antes a la caché. Con el botón apretado; resuelve como `start`.
+   *  Falla si no se puede empezar (hay que usar el camino de siempre). */
+  direct: (sessionId: string, paths: string[]) => call<boolean>("drag_out_direct", { sessionId, paths }),
 };

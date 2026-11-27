@@ -72,6 +72,7 @@ pub async fn transfer_resume(app: AppHandle, transfers: State<'_, TransferManage
 #[tauri::command]
 pub async fn transfer_cancel(app: AppHandle, transfers: State<'_, TransferManager>, ids: Vec<String>) -> AppResult<()> {
     transfers.engine(&app).cancel(&ids);
+    crate::dragout::direct::cancel(&ids);
     Ok(())
 }
 
@@ -86,6 +87,7 @@ pub async fn transfer_retry(app: AppHandle, transfers: State<'_, TransferManager
 #[tauri::command]
 pub async fn transfer_clear_finished(app: AppHandle, transfers: State<'_, TransferManager>) -> AppResult<()> {
     transfers.engine(&app).clear_finished();
+    crate::dragout::direct::clear_finished();
     Ok(())
 }
 

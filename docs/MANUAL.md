@@ -179,6 +179,10 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - También tienes **Nueva carpeta**, **Nuevo archivo**, **Renombrar**, **Copiar ruta** y **Eliminar**.
 - El botón del ojo muestra u oculta los archivos ocultos (los que empiezan por punto).
 - Al arrastrar al escritorio, SSHorus primero lo baja a una carpeta temporal. Lo verás en Transferencias.
+- En Windows puedes probar **Ajustes → Transferencias → Arrastre directo (experimental)**: el archivo se copia
+  directamente donde lo sueltas, sin pasar por la carpeta temporal (los archivos grandes no se copian dos veces).
+  Funciona al soltar en el Explorador o en el escritorio; otros programas pueden no aceptarlo. La copia se ve en
+  Transferencias y se puede cancelar, pero no pausar. Si no se puede usar, SSHorus hace el arrastre de siempre.
 
 ## Transferencias
 
@@ -1003,7 +1007,7 @@ para Podman sin root instala antes `dbus-user-session` y `uidmap`. nginx no saca
 - **Apariencia → Detalles**: **Color de acento** (o «Del tema») y **Tamaño de la letra de la interfaz**. La terminal y el editor tienen su propio tamaño.
 - **Terminal**: tamaño y tipo de letra, y **Terminales persistentes (tmux)**.
 - **Conexión**: **Reconectar automáticamente** e **Intentos**.
-- **Transferencias**: **Transferencias simultáneas** y **Si el archivo ya existe**.
+- **Transferencias**: **Transferencias simultáneas**, **Si el archivo ya existe** y, en Windows, **Arrastre directo (experimental)** (apagado al principio; ver [Archivos](#archivos)).
 - **Explorador**: **Mostrar archivos ocultos** y **Confirmar antes de borrar**.
 - **Atajos de teclado**: cambia cualquier atajo de la app (ver [Atajos de teclado](#atajos-de-teclado)).
 - **Avanzado → Diagnóstico**: **Copiar informe**, útil para reportar un problema.

@@ -25,6 +25,11 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   systemd, con el horario en palabras («Cada día a las 3:00»); crear, editar, pausar o borrar una línea sin perder
   las demás, con copia y sin pisar un cambio hecho mientras tanto. Todo enseña antes su comando exacto, va como
   tarea en segundo plano y queda en el Historial; lo que no existe en el servidor dice «no aplica».
+- **Arrastre directo (experimental, Windows):** en Ajustes → Transferencias, **Arrastre directo (experimental)**,
+  apagado al principio. Al arrastrar archivos o carpetas del servidor al Explorador, se copian directamente donde los
+  sueltas: el Explorador los lee del servidor al soltar, sin descargarlos antes a la carpeta temporal (los archivos
+  grandes ya no se copian dos veces). Se ven en Transferencias y se pueden cancelar (no pausar). Si no se puede
+  empezar, se usa el arrastre de siempre. Aún sin probar en un Windows real; en macOS y Linux no cambia nada.
 
 ## [1.0.0-beta.6] - 2026-11-27
 
