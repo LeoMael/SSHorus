@@ -39,8 +39,9 @@ quedó solo en local, a propósito. Lo que entre en `main` después saldrá en l
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
   4. ~~Tanda 6~~ **hecha (27/11)**: 4d auditoría programada + 5a Claude Code en el VPS. ~~Tanda 7~~ **hecha (27/11)** (5b: `get_deploy_guide`, `create_app_user`,
      `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). Revisada (`/code-review` del lote
-     `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 en marcha** (ver su fila en la tabla); si la
-     sesión se cortó, recuperar las ramas `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+     `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 en marcha** (ver su fila en la tabla): unidos
+     el mapa y comparar archivos; en marcha historial por servidor, sincronizar carpeta y más Administración; falta
+     lanzar archivos virtuales (el último). Si la sesión se cortó, recuperar las ramas `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
