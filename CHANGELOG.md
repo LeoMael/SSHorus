@@ -7,6 +7,11 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Añadido
+- **Auditoría programada:** en Administración → Auditoría y en **Auditar proyecto**, **Repetir cada día** o
+  **cada semana**. Solo funciona con SSHorus abierto: si estaba cerrado, al abrirlo se hace una vez lo atrasado.
+  Compara con la auditoría anterior y, si algo empeora (nota más baja, una comprobación que pasa a aviso o mal, un
+  problema nuevo), avisa con **Ver** para ver qué cambió; si no cambia nada, solo queda en el historial. Con SSHorus
+  bloqueado se salta y se hace al desbloquear; lo que no conecta con lo guardado se dice en un aviso.
 - **Auditar proyecto:** clic derecho en un proyecto → **Auditar proyecto…** (o en su **Panel del proyecto**). Audita
   todos sus servidores, 3 a la vez y en segundo plano, y los compara: nota de cada uno, la media, el peor y los
   problemas que más se repiten. Cada servidor se despliega para ver sus problemas o se abre en Administración →

@@ -243,3 +243,31 @@
   display: flex;
   gap: 6px;
 }
+
+/* «Repetir auditoría» (auditoría programada). */
+.au-sched {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+.au-sched-select {
+  height: 26px;
+  width: auto;
+  font-size: var(--fs-sm);
+}
+.au-sched-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.au-sched-hint svg {
+  flex: none;
+  margin-top: 2px;
+}
+.au-root > .au-sched-hint {
+  flex: none;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}

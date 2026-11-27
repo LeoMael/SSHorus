@@ -44,7 +44,8 @@ async function elevationFor(sessionId: string, profileId: string, reused: boolea
   return computeElevation(info, getSudoPassword(sessionId)).elevation;
 }
 
-async function auditServer(ctx: JobCtx, t: ProjectAuditTarget, owned: Set<string>): Promise<void> {
+/** Audita un servidor (paso de la tarea): su estado queda en `useProjectAudit.rows`. También lo usa la auditoría programada. */
+export async function auditServer(ctx: JobCtx, t: ProjectAuditTarget, owned: Set<string>): Promise<void> {
   const set = (p: Partial<ServerAuditRow>) => patchAuditRow(t.profileId, p);
   const profile = useProfiles.getState().getServer(t.profileId);
   if (!profile) return set({ status: "error", step: null, error: "El servidor ya no existe" });

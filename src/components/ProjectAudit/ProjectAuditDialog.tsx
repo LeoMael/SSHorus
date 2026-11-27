@@ -15,6 +15,7 @@ import {
 import { cancelJob } from "../../features/jobs";
 import { openJobCenter } from "../../stores/jobs";
 import { AdmModal } from "../ui/AdmModal";
+import { AuditScheduleHint, AuditScheduleSelect } from "../Admin/audit/AuditSchedule";
 import { GradeBadge, ProjectAuditRow } from "./ProjectAuditRow";
 import { useProjectAuditData } from "./useProjectAuditData";
 import "../Admin/audit/Audit.css";
@@ -27,6 +28,8 @@ export function ProjectAuditDialog({ projectId }: { projectId: string }) {
   const sum = useMemo(() => projectSummary(items), [items]);
   const common = useMemo(() => commonProblems(items), [items]);
   const name = project?.name ?? "Proyecto";
+  // La más antigua de las últimas de cada servidor (si a alguno le falta, la primera repetición toca ya).
+  const oldest = useMemo(() => (items.some((i) => !i.report) ? null : (items.map((i) => i.report?.createdAt ?? "").sort()[0] ?? null)), [items]);
 
   const start = (targets: ProjectAuditTarget[]) => {
     if (targets.length) startProjectAudit({ projectId, projectName: name, targets });
@@ -56,6 +59,7 @@ export function ProjectAuditDialog({ projectId }: { projectId: string }) {
             </div>
           </div>
           <span className="pa-spacer" />
+          <AuditScheduleSelect kind="project" id={projectId} lastAudit={oldest} />
           {running ? (
             <>
               <button className="btn btn-sm" onClick={() => openJobCenter({ jobId })} title="Ver la tarea en segundo plano">
@@ -75,6 +79,7 @@ export function ProjectAuditDialog({ projectId }: { projectId: string }) {
           Usa la pestaña abierta o conecta aparte con lo guardado. Sin contraseña guardada se salta el servidor; sin sudo
           se audita igual y queda marcado. Puedes cerrar esta ventana: sigue en segundo plano.
         </div>
+        <AuditScheduleHint kind="project" id={projectId} />
 
         <div className="section-label">Servidores</div>
         <div className="pa-list">

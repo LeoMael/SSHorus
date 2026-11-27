@@ -920,9 +920,17 @@ instalar nada, y da una nota.
    `projectStore.ts`; la interfaz en `components/ProjectAudit/` (montada en `App`), y «Abrir en Administración»
    pide la sub-pestaña con `nav.ts` (`useAuditNav`).
 
+9. **Auditoría programada** (solo con la app abierta): `schedule.ts` (puro: cuándo toca, puesta al día de una sola
+   vez, qué servidores entran, bloqueo y la nota de cómo fue), `scheduleStore.ts` (en `localStorage`,
+   `sshorus.audit.schedule.v1`, y la comparación abierta), `scheduler.ts` (`initAuditSchedule` desde `App`: una vuelta
+   cada 5 minutos y otra al desbloquear o al programar algo) y `scheduleJob.ts` (cargado con `import()`: una tarea con
+   `auditServer` de «Auditar proyecto», 3 a la vez, sin el aviso «terminó»). `auditDiff.ts` compara con el informe
+   anterior usando `compare`; si empeora, un aviso con «Ver» abre `components/ProjectAudit/AuditChangesDialog.tsx`
+   (montado por `ProjectAuditHost`). El selector y su explicación, en `components/Admin/audit/AuditSchedule.tsx`.
+
 Pruebas: `src/features/audit/audit.test.ts` (salidas reales de Rocky, Debian y Alpine en contenedores, y
-un servidor con problemas), `userContainers.test.ts` (salida real de Podman), `projectAudit.test.ts` y
-`src-tauri/src/audit/tests.rs`.
+un servidor con problemas), `userContainers.test.ts` (salida real de Podman), `projectAudit.test.ts`, `schedule.test.ts`,
+`auditDiff.test.ts` y `src-tauri/src/audit/tests.rs`.
 
 ---
 

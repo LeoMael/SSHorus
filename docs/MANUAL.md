@@ -23,6 +23,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 15. [Vulnerabilidades](#vulnerabilidades)
     - [Auditar servidor](#auditar-servidor)
     - [Auditar proyecto](#auditar-proyecto)
+    - [Auditoría programada](#auditoría-programada)
     - [Configuración y seguridad del servidor](#configuración-y-seguridad-del-servidor)
 16. [IA para explicar informes](#ia-para-explicar-informes)
 17. [GitHub](#github)
@@ -586,6 +587,29 @@ pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
 - Usa la pestaña abierta del servidor o conecta aparte con lo guardado (y la cierra al terminar). Si falta la
   contraseña o la huella, ese servidor sale como **No se pudo** y los demás siguen: conéctate una vez y repítelo.
 - Sin sudo guardado (ni sudo sin contraseña) se audita igual y sale marcado **sin sudo**.
+
+## Auditoría programada
+
+**Para qué sirve:** repetir la auditoría sola y enterarte si algo empeora.
+
+**Cómo se usa:**
+
+1. En **Administración → Auditoría** (un servidor) o en **Auditar proyecto** (todos los del proyecto), elige
+   **Repetir cada día** o **Repetir cada semana** en el selector con el calendario.
+2. Debajo verás cuándo toca la próxima y cómo fue la última («Sin cambios», «Empeoró: …», «No se pudo: …»).
+3. Si algo empeora (la nota baja, una comprobación pasa de bien a aviso o mal, o sale un problema nuevo) aparece un
+   aviso con **Ver**: enseña qué empeoró, qué es nuevo y qué mejoró, con **Abrir en Administración** para
+   arreglarlo. Si no cambia nada no avisa: la auditoría queda en el historial.
+
+**Notas:**
+
+- **Solo funciona con SSHorus abierto.** Si estaba cerrado, al abrirlo hace lo atrasado **una vez** (no una por
+  cada día perdido). Mira cada 5 minutos, así que la hora se corre un poco.
+- Audita como **Auditar proyecto**: sin preguntar nada, con la contraseña guardada (o la llave) y el sudo guardado;
+  como mucho 3 servidores a la vez. Lo que no conecta así se dice en un aviso y se vuelve a intentar la próxima
+  vez que toque.
+- Con SSHorus **bloqueado** (PIN) no se audita: se apunta y se hace al desbloquear.
+- La programación se guarda en este equipo (no viaja con la copia en GitHub).
 
 ## Configuración y seguridad del servidor
 

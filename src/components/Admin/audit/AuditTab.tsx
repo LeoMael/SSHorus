@@ -11,6 +11,8 @@ import {
   compare,
   auditFixData,
   AUDITFIX_JOB,
+  PROJECTAUDIT_JOB,
+  SCHEDULED_AUDIT_JOB,
   fixLevel,
   problemsByImportance,
   runAudit,
@@ -27,6 +29,7 @@ import { AuditAiDialog } from "./AuditAiDialog";
 import { AuditFixAllDialog } from "./AuditFixAllDialog";
 import { AuditFixDialog } from "./AuditFixDialog";
 import { AuditReportView } from "./AuditReportView";
+import { AuditScheduleHint, AuditScheduleSelect } from "./AuditSchedule";
 import { useAdmin } from "../context";
 import "./Audit.css";
 import "./AuditFix.css";
@@ -119,6 +122,15 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
     },
   );
 
+  // Una auditoría en segundo plano («Auditar proyecto» o la programada) pudo añadir un informe de este servidor.
+  useJobFinished(
+    (j) => j.kind === PROJECTAUDIT_JOB || j.kind === SCHEDULED_AUDIT_JOB,
+    () => {
+      if (!report || latest) void show();
+      else void audit.historyList(profileId).then(setMetas).catch(() => undefined);
+    },
+  );
+
   const exportAs = async (format: "md" | "html") => {
     if (!report) return;
     let path: string | null;
@@ -182,6 +194,7 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
             ))}
           </select>
         )}
+        <AuditScheduleSelect kind="server" id={profileId} lastAudit={metas[0]?.createdAt ?? null} />
         <span className="au-spacer" />
         {report && (
           <>
@@ -207,6 +220,8 @@ export function AuditTab({ onOpenVulns, onOpenVisibility }: { onOpenVulns: () =>
           <span className="adm-banner-text">{error}</span>
         </div>
       )}
+
+      <AuditScheduleHint kind="server" id={profileId} />
 
       <div className="au-scroll">
         {loading ? (

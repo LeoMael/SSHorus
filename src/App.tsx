@@ -25,6 +25,7 @@ import { initTransfersStore } from "./stores/transfers";
 import { initPrivileges } from "./features/privileges";
 import { PinDialogHost } from "./features/lock/PinDialog";
 import { initMcp } from "./features/mcp/store";
+import { initAuditSchedule } from "./features/audit/scheduler";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { PairDialogHost } from "./components/McpPairing/PairDialog";
 import { SudoAskHost } from "./components/Sudo/SudoAskHost";
@@ -80,6 +81,7 @@ function initApp() {
   initMcp(); // asistentes de IA: permisos, actividad y peticiones del motor
   initLocalTabs(); // pestañas de terminal local («Este equipo»)
   initTabFallback(); // al cerrar la última pestaña de un tipo, mostrar otra
+  initAuditSchedule(); // auditoría programada (solo con la app abierta)
 
   // Recordar servidores usados (para la pantalla de bienvenida).
   useTabs.subscribe((s, prev) => {

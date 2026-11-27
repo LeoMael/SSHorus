@@ -152,3 +152,51 @@
 .pa-common-row.au-warn .pa-common-count {
   color: var(--orange);
 }
+
+/* «Ver» de la auditoría programada: qué cambió en cada servidor. */
+.pa-chg {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  gap: 2px;
+}
+.pa-chg-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.pa-chg-label {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pa-chg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+.pa-chg-row.au-bad {
+  border-left-color: var(--red);
+}
+.pa-chg-row.au-warn {
+  border-left-color: var(--orange);
+}
+.pa-chg-row.au-ok {
+  border-left-color: var(--green);
+}
+.pa-chg-status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
