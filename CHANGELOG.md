@@ -6,6 +6,8 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [1.0.0-beta.6] - 2026-11-27
+
 ### Añadido
 - **Desplegar con la IA (MCP):** pídele a Claude Code «despliega este proyecto en mi servidor» y sigue una receta
   de SSHorus (`get_deploy_guide`): qué preguntarte, qué comprobar, cada paso con su herramienta, cómo comprobarlo y
@@ -818,6 +820,7 @@ Primera versión pública de TerView, cliente SSH/SFTP de escritorio.
 - Instalador `.rpm` para Linux.
 - Documentación con diagramas en `docs/`.
 
+[1.0.0-beta.6]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.6
 [1.0.0-beta.5]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/LeoMael/SSHorus/releases/tag/v1.0.0-beta.3

@@ -8,9 +8,9 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
 
 *Actualizado el 26/11/2026.*
 
-Última versión etiquetada: **1.0.0-beta.5** (26/11/2026, **subida**; la CI la empaqueta en un Release en
-**borrador**, que publica el usuario tras probarlo). La etiqueta `v1.0.0-beta.4` quedó solo en local, a propósito
-(la beta.5 la incluye; no subirla). Lo que entre en `main` después saldrá en la **1.0.0-beta.6**.
+Última versión etiquetada: **1.0.0-beta.6** (27/11/2026; tandas 5–7 revisadas; subir solo si el usuario lo aprueba;
+la CI la empaqueta en un Release en **borrador**). La beta.5 está subida (borrador). La etiqueta `v1.0.0-beta.4`
+quedó solo en local, a propósito. Lo que entre en `main` después saldrá en la **1.0.0-beta.7**.
 
 **Para retomar (estado al 26/11/2026, noche):**
 - **Hecho:** tandas **1 a 4** del plan (tabla de abajo), unidas en `main`, revisadas (`/code-review` del lote) y
@@ -38,9 +38,9 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
        el menú del proyecto en la barra lateral) y auditar los contenedores rootless de cada usuario como su dueño
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
   4. ~~Tanda 6~~ **hecha (27/11)**: 4d auditoría programada + 5a Claude Code en el VPS. ~~Tanda 7~~ **hecha (27/11)** (5b: `get_deploy_guide`, `create_app_user`,
-     `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). **En marcha:**
-     `/code-review` del lote `10e7c66..eb4d25e` (1 agente; si la sesión se cortó, recuperar su rama
-     `worktree-agent-*`). Después: versión **beta.6** (`wix.version` → `0.6.0.6`; preguntar antes de subir); luego tanda 8 → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+     `deploy_app`, `check_dns`, `deploy_status`; falta probar a mano en un servidor con systemd). Revisada (`/code-review` del lote
+     `10e7c66..eb4d25e`, 8 arreglos) y etiquetada **beta.6**. **Tanda 8 en marcha** (ver su fila en la tabla); si la
+     sesión se cortó, recuperar las ramas `worktree-agent-*` con commit → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
