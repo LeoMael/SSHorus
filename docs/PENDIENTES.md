@@ -257,6 +257,11 @@ Detalle de estas rondas: [historial, «Ronda de pruebas del 18–23/11» y «Ron
 - **CSS de `ui/AdmModal`:** varias pantallas copian reglas de `.adm-modal` (Contenedores, MCP, Bases de datos); moverlas
   a un CSS propio de `components/ui/AdmModal`.
 
+- **Terminal lenta (anotado por el usuario el 27/11/2026, sin investigar):** la terminal SSH **sigue con retraso**, y
+  el retraso es **por acción** (cada tecla o comando tarda en verse), no por tiempo; **lo peor es con Termux** (servidor
+  SSH en el celular). Ya se puso `TCP_NODELAY` antes; mirar el camino tecla → canal SSH → eco → xterm (agrupación de
+  escrituras, eventos Tauri por cada byte, `requestAnimationFrame`, tamaño de ventana del canal) y medir con el panel
+  de diagnóstico contra Termux y contra el VPS.
 - **Pendiente de la revisión del 26/11 (no bloquea):** cortafuegos: la vuelta atrás programada puede morir con
   `KillUserProcesses=yes` (usar `systemd-run`), la protección anti-bloqueo da por buena la zona si no la sabe y mira
   las reglas vivas, no las `--permanent`; sitios web: dos tareas sobre el mismo archivo pueden pisarse (`flock`);
