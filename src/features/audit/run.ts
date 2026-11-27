@@ -10,6 +10,7 @@ import { runChecks, type AuditInput } from "./checks";
 import { mergeRecheck, recheckCategories, recheckOutcome, type RecheckOutcome } from "./recheck";
 import { AUDIT_SCRIPT } from "./script";
 import { scoreChecks } from "./score";
+import { readUserContainers, type UserContainersRead } from "./userContainers";
 
 interface AuditRunState {
   /** Paso en curso por sesión (no está = no se audita). */
@@ -48,6 +49,8 @@ interface CollectOptions {
   elevation: Elevation | null;
   ports: boolean;
   web: boolean;
+  /** Contenedores sin root de cada usuario (con sudo). */
+  users: boolean;
   step: (text: string) => void;
 }
 
@@ -72,6 +75,13 @@ async function collect(o: CollectOptions): Promise<AuditInput> {
       .then((r) => parseWeb(r.result.stdout))
       .catch(() => null);
   }
+  let userCtrs: UserContainersRead | null | undefined;
+  if (o.users) {
+    if (el) {
+      o.step("Revisando contenedores de los usuarios…");
+      userCtrs = await readUserContainers(o.sessionId, el);
+    } else userCtrs = null;
+  }
   const last = await vulnscan.latest(o.profileId).catch(() => null);
   return {
     stdout: main.result.stdout,
@@ -80,6 +90,7 @@ async function collect(o: CollectOptions): Promise<AuditInput> {
     web,
     vuln: last ? { createdAt: last.createdAt, summary: last.summary } : null,
     now: Date.now(),
+    userCtrs,
   };
 }
 
@@ -94,7 +105,7 @@ export async function runAudit(o: AuditOptions): Promise<AuditReport> {
   const started = Date.now();
   const step = stepper(o);
   try {
-    const input = await collect({ ...o, ports: true, web: true, step });
+    const input = await collect({ ...o, ports: true, web: true, users: true, step });
     const { checks, os } = runChecks(input);
     const s = scoreChecks(checks);
     const now = input.now;
@@ -132,7 +143,7 @@ export async function recheckAudit(o: AuditOptions & { report: AuditReport; fixe
   const step = stepper(o);
   try {
     const cats = recheckCategories(o.fixed);
-    const input = await collect({ ...o, ports: cats.includes("net") || cats.includes("isolation"), web: cats.includes("web"), step: (t) => step(`Comprobando de nuevo: ${t[0].toLowerCase()}${t.slice(1)}`) });
+    const input = await collect({ ...o, ports: cats.includes("net") || cats.includes("isolation"), web: cats.includes("web"), users: cats.includes("containers"), step: (t) => step(`Comprobando de nuevo: ${t[0].toLowerCase()}${t.slice(1)}`) });
     const fresh = runChecks(input).checks;
     const merged = mergeRecheck(o.report, fresh, cats);
     step("Guardando…");

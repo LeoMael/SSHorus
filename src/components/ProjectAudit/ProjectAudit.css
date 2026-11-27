@@ -1,0 +1,154 @@
+/* «Auditar proyecto»: resumen, lista de servidores y problemas que más se repiten (prefijo pa-). */
+.pa-modal {
+  max-height: min(720px, 90vh);
+}
+.pa-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+}
+.pa-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pa-top .pa-grade {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+.pa-top-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pa-top-score {
+  font-size: 17px;
+  font-weight: 600;
+}
+.pa-top-score .faint {
+  font-size: var(--fs);
+  font-weight: 400;
+}
+.pa-spacer {
+  flex: 1;
+}
+.pa-hint {
+  font-size: var(--fs-sm);
+}
+.pa-list,
+.pa-common {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.pa-row + .pa-row,
+.pa-common-row + .pa-common-row {
+  border-top: 1px solid var(--border);
+}
+.pa-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 2px 6px;
+}
+.pa-grade {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+.pa-name {
+  flex: 0 1 200px;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pa-score {
+  width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pa-counts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pa-bad {
+  color: var(--red);
+}
+.pa-warn {
+  color: var(--orange);
+}
+.pa-nosudo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-faint);
+}
+.pa-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 220px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pa-state-error {
+  color: var(--red);
+}
+.pa-spinner {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+.pa-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px 6px 38px;
+  font-size: var(--fs-sm);
+  color: var(--red);
+}
+.pa-problems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 8px 38px;
+  font-size: var(--fs-sm);
+}
+.pa-problem,
+.pa-common-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pa-common-row {
+  min-height: 28px;
+  padding: 2px 8px;
+}
+.pa-common-count {
+  width: 34px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.pa-common-row.au-bad .pa-common-count {
+  color: var(--red);
+}
+.pa-common-row.au-warn .pa-common-count {
+  color: var(--orange);
+}

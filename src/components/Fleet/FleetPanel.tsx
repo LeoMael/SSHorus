@@ -1,7 +1,8 @@
 // Panel de VPS (contenido de su pestaña): una tarjeta por VPS (mismo host y puerto), agrupadas por
 // proyecto o por IP. Las lecturas y las conexiones las lleva features/fleet/runtime.
 import { memo, useEffect, useMemo } from "react";
-import { LayoutDashboard } from "lucide-react";
+import { ClipboardCheck, LayoutDashboard } from "lucide-react";
+import { openProjectAudit } from "../../features/audit/projectStore";
 import { groupVps, sections, type FleetGroupBy } from "../../features/fleet/group";
 import { emptyLive } from "../../features/fleet/health";
 import { ensureFleet, useFleetLive } from "../../features/fleet/runtime";
@@ -41,6 +42,11 @@ export const FleetPanel = memo(function FleetPanel({ tab }: { tab: FleetTab }) {
         {project && (
           <button className="btn btn-sm" onClick={() => openFleet(null)}>
             Ver todos los VPS
+          </button>
+        )}
+        {project && project.serverIds.length > 0 && (
+          <button className="btn btn-sm" onClick={() => openProjectAudit(project.id)} title="Audita todos sus servidores y compara las notas">
+            <ClipboardCheck size={13} /> Auditar proyecto…
           </button>
         )}
         <div className="fl-seg" role="radiogroup" aria-label="Agrupar">

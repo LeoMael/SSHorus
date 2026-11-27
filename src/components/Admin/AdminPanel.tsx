@@ -22,6 +22,7 @@ import { AdminBody } from "./AdminBody";
 import { SudoDialog } from "../Sudo/SudoDialog";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useInfraNav } from "../../features/infra/store";
+import { auditNavDone, useAuditNav } from "../../features/audit/nav";
 import { useElevatedScan } from "./useElevatedScan";
 import { useServerRead } from "./useServerRead";
 import { useAdminRunPlan } from "./useAdminRunPlan";
@@ -58,6 +59,12 @@ export function AdminPanel({
   useEffect(() => {
     if (vulnNav?.sessionId === sessionId) setTab("vulns");
   }, [vulnNav, sessionId]);
+  const auditNav = useAuditNav((s) => s.request);
+  useEffect(() => {
+    if (auditNav?.sessionId !== sessionId) return;
+    setTab("audit");
+    auditNavDone(auditNav.seq);
+  }, [auditNav, sessionId]);
   const { read, shadow, loading, error, shadowError, load } = useServerRead(sessionId, elevation);
   const [sudoOpen, setSudoOpen] = useState<null | "ask" | "change">(null);
   const [stale, setStale] = useState(true);

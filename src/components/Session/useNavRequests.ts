@@ -1,6 +1,7 @@
 // Pedidos de otras partes de la app para mostrar algo en esta pestaña de servidor.
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useInfraNav } from "../../features/infra/store";
+import { useAuditNav } from "../../features/audit/nav";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useExplorerNav } from "../../features/fileExplorer/nav";
 import { useJobNav } from "../../features/jobs/nav";
@@ -30,6 +31,12 @@ export function useNavRequests({ sessionId, showFixed, showFile, setFiles }: Nav
       useInfraNav.getState().done(infraNav.seq);
     } else showFixed("admin");
   }, [infraNav, sessionId, showFixed]);
+
+  // «Abrir en Administración» desde «Auditar proyecto»: Administración (que abre Auditoría).
+  const auditNav = useAuditNav((s) => s.request);
+  useEffect(() => {
+    if (auditNav?.sessionId === sessionId) showFixed("admin");
+  }, [auditNav, sessionId, showFixed]);
 
   // «Abrir carpeta del proyecto» (Contenedores → Compose): ir a Archivos; el explorador va a la carpeta.
   const explorerNav = useExplorerNav((s) => s.request);

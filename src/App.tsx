@@ -10,6 +10,7 @@ import { ConnectDialogHost } from "./features/connect/ConnectDialogs";
 import { EditorsHost, ProjectEditorHost, ServerEditorHost } from "./features/serverEditor/EditorsHost";
 import { PaletteHost, PaletteView } from "./components/Commands/PaletteHost";
 import { MultiRunHost } from "./components/MultiRun/MultiRunHost";
+import { ProjectAuditHost } from "./components/ProjectAudit/ProjectAuditHost";
 import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";
 import { FleetHost } from "./components/Fleet/FleetHost";
 import { GitHubHost } from "./components/GitHub";
@@ -309,6 +310,7 @@ export default function App() {
       <SettingsHost />
       <PaletteHost />
       <MultiRunHost />
+      <ProjectAuditHost />
       <ProjectMapHost />
       <GitHubHost />
       <PinDialogHost />

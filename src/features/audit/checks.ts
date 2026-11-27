@@ -10,6 +10,7 @@ import { hardeningChecks } from "./checksHardening";
 import { isolationChecks } from "./checksIsolation";
 import { netChecks, sshChecks, userChecks } from "./checksSshNet";
 import { containerChecks, loginChecks, systemChecks, updateChecks, webChecks } from "./checksSystem";
+import { userContainerChecks } from "./checksUserContainers";
 
 export { familyOf, parsePasswdLines, sudoUsers, type AuditCtx, type AuditInput } from "./checksCommon";
 export { parseFirewall, parseSshd, sshdFixCommand, type FirewallState, type SshdConfig } from "./checksSshNet";
@@ -45,6 +46,7 @@ export function runChecks(input: AuditInput): { checks: Check[]; os: string } {
     ...updateChecks(ctx, input.vuln, input.now),
     ...webChecks(input.web, input.now),
     ...containerChecks(ctx),
+    ...(input.userCtrs !== undefined ? userContainerChecks(input.userCtrs, input.now) : []),
     ...systemChecks(ctx),
     ...loginChecks(ctx),
     ...hardeningChecks(ctx),

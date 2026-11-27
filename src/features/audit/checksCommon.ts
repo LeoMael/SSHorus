@@ -2,6 +2,7 @@
 import type { Check, CheckStatus, Fix } from "../../api/audit";
 import type { Summary } from "../../api/vulnscan";
 import type { PortsResult, WebResult } from "../admin";
+import type { UserContainersRead } from "./userContainers";
 
 export interface AuditInput {
   /** Salida de AUDIT_SCRIPT. */
@@ -13,6 +14,8 @@ export interface AuditInput {
   /** Último informe del escáner (null = nunca se analizó). */
   vuln: { createdAt: string; summary: Summary } | null;
   now: number;
+  /** Contenedores sin root de los usuarios: null = no se pudieron leer (sin sudo); sin el campo = no se miran. */
+  userCtrs?: UserContainersRead | null;
 }
 
 export type Family = "rhel" | "fedora" | "debian" | "alpine" | "suse" | "other";

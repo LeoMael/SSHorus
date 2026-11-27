@@ -22,6 +22,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 14. [Administración](#administración)
 15. [Vulnerabilidades](#vulnerabilidades)
     - [Auditar servidor](#auditar-servidor)
+    - [Auditar proyecto](#auditar-proyecto)
 16. [IA para explicar informes](#ia-para-explicar-informes)
 17. [GitHub](#github)
 18. [PIN y bloqueo](#pin-y-bloqueo)
@@ -559,6 +560,31 @@ pueden ver** (o pulsa **Ver detalle por usuario** en ese apartado).
 - Sin sudo se revisa lo que se puede; lo demás sale **sin comprobar**. Pulsa **Con sudo…** para verlo todo.
 - No lanza el escáner de vulnerabilidades: usa el último análisis (o pulsa **Analizar**).
 - SSHorus nunca arregla nada solo. Con un problema grave, la nota general no pasa de C (75).
+- **Contenedores de los usuarios:** con sudo también revisa los contenedores sin root (Podman) de cada usuario,
+  entrando como su dueño: `--privileged`, montajes peligrosos (`/`, `/etc`, el socket de Docker o Podman…), puertos
+  en todas las interfaces, imágenes `latest` o de hace más de 180 días, root dentro, sin límite de memoria y
+  usuarios sin *linger* (sus contenedores se paran al cerrar la sesión). Se arreglan solos el *linger*
+  (`loginctl enable-linger`, seguro) y el límite de memoria (1 GB con `podman update`, pide **ARREGLAR**); lo demás
+  se explica, porque hay que volver a crear el contenedor.
+
+## Auditar proyecto
+
+**Para qué sirve:** auditar todos los servidores de un proyecto a la vez y compararlos.
+
+**Cómo se usa:**
+
+1. En la barra lateral, clic derecho en el proyecto → **Auditar proyecto…** (o el botón del **Panel del proyecto**).
+2. Verás la nota del último informe de cada servidor, la media y **lo que más se repite**. Pulsa
+   **Auditar los N servidores**: se auditan 3 a la vez, en segundo plano (puedes cerrar la ventana; la tarea sigue
+   en la esquina, con **Cancelar**).
+3. Pulsa la flecha de un servidor para ver sus problemas, el botón de recargar para auditar solo ese, y el de abrir
+   para ir a su **Administración → Auditoría** (con **Arreglar** y la IA).
+
+**Notas:**
+
+- Usa la pestaña abierta del servidor o conecta aparte con lo guardado (y la cierra al terminar). Si falta la
+  contraseña o la huella, ese servidor sale como **No se pudo** y los demás siguen: conéctate una vez y repítelo.
+- Sin sudo guardado (ni sudo sin contraseña) se audita igual y sale marcado **sin sudo**.
 
 ## IA para explicar informes
 

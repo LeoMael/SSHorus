@@ -6,6 +6,16 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Añadido
+- **Auditar proyecto:** clic derecho en un proyecto → **Auditar proyecto…** (o en su **Panel del proyecto**). Audita
+  todos sus servidores, 3 a la vez y en segundo plano, y los compara: nota de cada uno, la media, el peor y los
+  problemas que más se repiten. Cada servidor se despliega para ver sus problemas o se abre en Administración →
+  Auditoría. Los que no conectan sin preguntar se marcan y no paran al resto; sin sudo se audita igual y se marca.
+- **Auditoría de los contenedores de los usuarios:** con sudo, **Auditar servidor** revisa también los contenedores
+  sin root (Podman) de cada usuario, como su dueño: `--privileged`, montajes de `/`, `/etc` o del socket de
+  Docker/Podman, puertos en todas las interfaces, imágenes `latest` o viejas, root dentro, sin límite de memoria y
+  sin *linger*. Arreglos: *linger* (seguro) y límite de memoria de 1 GB (pide confirmación).
+
 ## [1.0.0-beta.5] - 2026-11-26
 
 ### Añadido

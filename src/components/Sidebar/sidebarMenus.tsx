@@ -3,6 +3,7 @@ import {
   Bookmark as BookmarkIcon,
   Bot,
   ChevronsDownUp,
+  ClipboardCheck,
   ChevronsUpDown,
   Copy,
   CopyPlus,
@@ -23,6 +24,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import type { Bookmark, Project, ServerProfile } from "../../api/types";
+import { openProjectAudit } from "../../features/audit/projectStore";
 import { connectToMany } from "../../features/connect/connect";
 import { openFleet } from "../../features/fleet/tabs";
 import { openProjectMap } from "../../features/infra/store";
@@ -161,6 +163,7 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
       },
       { label: "Mapa", icon: <Waypoints size={14} />, disabled: none, onSelect: () => openProjectMap(p.id) },
       { label: "Panel del proyecto", icon: <LayoutDashboard size={14} />, disabled: none, onSelect: () => openFleet(p.id) },
+      { label: "Auditar proyecto…", icon: <ClipboardCheck size={14} />, disabled: none, onSelect: () => openProjectAudit(p.id) },
       { sep: true },
       { label: "Eliminar", icon: <Trash2 size={14} />, danger: true, onSelect: () => void deleteProject(p) },
     ];

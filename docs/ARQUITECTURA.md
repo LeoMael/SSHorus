@@ -223,7 +223,7 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
 | `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `commands`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
@@ -897,8 +897,20 @@ instalar nada, y da una nota.
 6. **MCP:** `get_audit_report` (lectura, sin conexión) y `run_audit` (pide permiso; la interfaz audita sin
    sudo por `ui_request("audit")` y lo guarda). Resumen en `mcp/server_audit.rs`.
 
+7. **Contenedores de los usuarios** (con sudo): `userContainers.ts` lee la lista de usuarios con Podman propio
+   (`loadStoreUsers`) y, con `readOwners` de Contenedores, un `podman inspect` como cada dueño (su HOME y su
+   XDG_RUNTIME_DIR, o `/tmp/sshorus-run-<uid>`); `checksUserContainers.ts` da las comprobaciones `ctr.users.*` y
+   escribe los arreglos como el dueño (`ownerLine`: `runuser -u U -- …` o `su`). Sin sudo, `ctr.users` queda en `skip`.
+8. **«Auditar proyecto»** (`projectAuditJob.ts`): una tarea con un paso por servidor, como mucho 3 a la vez
+   (`runPool` de `projectAudit.ts`, que también calcula la media y lo que más se repite). Usa la pestaña abierta o
+   conecta sin diálogos (`ssh.connect`) y cierra esa conexión al acabar; sudo sin preguntar (pestaña, sin
+   contraseña o guardada) y si no, sin sudo. Cada servidor guarda su informe como «Auditar servidor». El estado va en
+   `projectStore.ts`; la interfaz en `components/ProjectAudit/` (montada en `App`), y «Abrir en Administración»
+   pide la sub-pestaña con `nav.ts` (`useAuditNav`).
+
 Pruebas: `src/features/audit/audit.test.ts` (salidas reales de Rocky, Debian y Alpine en contenedores, y
-un servidor con problemas) y `src-tauri/src/audit/tests.rs`.
+un servidor con problemas), `userContainers.test.ts` (salida real de Podman), `projectAudit.test.ts` y
+`src-tauri/src/audit/tests.rs`.
 
 ---
 
