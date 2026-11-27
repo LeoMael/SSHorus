@@ -23,6 +23,7 @@ import { useNavRequests } from "./useNavRequests";
 import { useSessionLayout } from "./useSessionLayout";
 import { useTabDrag } from "./useTabDrag";
 import { useWorkArea } from "./useWorkArea";
+import { isCompareKey } from "../../features/compare";
 import { EditorPanes, SidePanes, useMountedViews } from "./WorkPanes";
 import { FileTabs, FixedTabs, TabDragGhost } from "./WorkTabs";
 import "./SessionView.css";
@@ -113,7 +114,7 @@ export const SessionView = memo(function SessionView({ tab, active }: SessionVie
     <button
       className="icon-btn sv-bar-btn"
       onClick={() => current && void detachFile(current)}
-      disabled={!current || !connected}
+      disabled={!current || !connected || isCompareKey(current)}
       title="Abrir en ventana aparte (o arrastra la pestaña fuera de la ventana)"
       aria-label="Abrir en ventana aparte"
     >

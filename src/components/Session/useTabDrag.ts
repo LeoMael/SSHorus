@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { WindowAt } from "../Editor/editorWindows";
 import { moveItem } from "./workArea";
+import { isCompareKey } from "../../features/compare";
 
 /** Distancia (px) por debajo/encima de la barra a partir de la cual la pestaña «se despega» (como en Chrome). */
 const DETACH_MARGIN = 60;
@@ -152,7 +153,8 @@ export function useTabDrag({ files, setFiles, showFile, connected, detachFile }:
     const r = d.bar.getBoundingClientRect();
     const outside =
       e.clientX < 0 || e.clientY < 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight;
-    d.out = connected && (outside || e.clientY > r.bottom + DETACH_MARGIN || e.clientY < r.top - DETACH_MARGIN);
+    // Una comparación no se abre en otra ventana: solo se reordena.
+    d.out = connected && !isCompareKey(d.path) && (outside || e.clientY > r.bottom + DETACH_MARGIN || e.clientY < r.top - DETACH_MARGIN);
     setGhostPath(d.out ? d.path : null);
     if (d.out) {
       placeDragged();

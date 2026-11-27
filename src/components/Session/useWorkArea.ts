@@ -10,6 +10,7 @@ import { confirmDialog } from "../ui/dialogs";
 import type { FixedTab } from "./fixedViews";
 import { useEditorDirty } from "../../stores/sessionState";
 import { currentFile, neighborAfterClose, workMode } from "./workArea";
+import { isCompareKey } from "../../features/compare";
 
 const EMPTY: string[] = [];
 
@@ -106,6 +107,7 @@ export function useWorkArea(sessionId: string, connected: boolean) {
   /** Manda el archivo a una ventana aparte. Si tiene cambios sin guardar, primero hay que guardarlos. */
   const detachFile = useCallback(
     async (path: string, at?: WindowAt) => {
+      if (isCompareKey(path)) return; // las comparaciones se quedan en esta ventana
       if (!connected) {
         toast.error("No se puede abrir en otra ventana", "No hay conexión con el servidor.");
         return;

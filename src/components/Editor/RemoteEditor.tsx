@@ -12,6 +12,7 @@ import { applyMonacoTheme, monaco } from "./monacoSetup";
 import { detectLanguage, languageLabel, LANGUAGE_CHOICES } from "./languages";
 import "./RemoteEditor.css";
 import { sftpIo, type EditorIo } from "./editorIo";
+import { confirmSave } from "./saveGuard";
 import { matchesShortcut, useShortcutText, withShortcut } from "../../features/shortcuts/shortcuts";
 
 export interface RemoteEditorProps {
@@ -126,30 +127,7 @@ export function RemoteEditor({ sessionId, path, active, onDirtyChange, offline =
     savingRef.current = true;
     setSaving(true);
     try {
-      const st = await ioRef.current.remoteState();
-      if (st.exists) {
-        if (remoteModified.current !== null && st.modified !== null && st.modified !== remoteModified.current) {
-          const ok = await confirmDialog({
-            title: "El archivo cambió en el servidor",
-            message: (
-              <>
-                El archivo cambió en el servidor ({formatDate(st.modified)}) desde que lo abriste. ¿Sobrescribir con tu
-                versión?
-              </>
-            ),
-            confirmText: "Sobrescribir",
-            danger: true,
-          });
-          if (!ok) return false;
-        }
-      } else {
-        const ok = await confirmDialog({
-          title: "El archivo ya no existe",
-          message: "Alguien lo borró o movió en el servidor. ¿Crearlo de nuevo con tu versión?",
-          confirmText: "Crear y guardar",
-        });
-        if (!ok) return false;
-      }
+      if (!(await confirmSave(ioRef.current, remoteModified.current))) return false;
       const versionAtSave = model.getAlternativeVersionId();
       const entry = await ioRef.current.write(model.getValue());
       savedVersion.current = versionAtSave;

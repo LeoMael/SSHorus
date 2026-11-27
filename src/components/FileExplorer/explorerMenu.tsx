@@ -28,9 +28,11 @@ interface MenuCtx {
   actions: FileActions;
   refresh: () => void;
   setPermsFor: (list: FileEntry[]) => void;
+  /** «Comparar con…» / «Comparar los dos» (components/Compare). */
+  compareItems: MenuItem[];
 }
 
-export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, actions: a, refresh, setPermsFor }: MenuCtx): MenuItem[] {
+export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, actions: a, refresh, setPermsFor, compareItems }: MenuCtx): MenuItem[] {
   if (!onEntry || !selectedEntries.length) {
     return [
       { label: "Nueva carpeta", icon: <FolderPlus size={15} />, onSelect: () => a.createItem("dir") },
@@ -60,6 +62,7 @@ export function explorerMenuItems({ onEntry, selectedEntries, cwd, serverId, act
       icon: <FolderDown size={15} />,
       onSelect: () => a.download(list, true),
     },
+    ...(compareItems.length ? [{ sep: true } as const, ...compareItems] : []),
     { sep: true },
     { label: "Renombrar", icon: <Pencil size={15} />, hint: "F2", disabled: !single, onSelect: () => single && a.rename(single) },
     { label: "Permisos…", icon: <KeyRound size={15} />, onSelect: () => setPermsFor(list) },

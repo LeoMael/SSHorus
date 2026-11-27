@@ -1,8 +1,9 @@
 // Pestañas del área de trabajo: vistas fijas, archivos abiertos (arrastrables) y el fantasma al despegar.
 import type { MouseEvent, RefObject } from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink, FileCode2, X } from "lucide-react";
+import { ExternalLink, FileCode2, GitCompare, X } from "lucide-react";
 import { basename } from "../../lib/paths";
+import { compareTitle, isCompareKey, sideLabel, useCompare } from "../../features/compare";
 import { FIXED, type FixedTab } from "./fixedViews";
 import type { TabDragApi } from "./useTabDrag";
 
@@ -45,6 +46,7 @@ interface FileTabsProps {
 }
 
 export function FileTabs({ stable, attached, isOn, dirtySet, drag, showFile, closeFile, openMenu }: FileTabsProps) {
+  const specs = useCompare((s) => s.specs);
   const onMiddle = (e: MouseEvent, path: string) => {
     if (e.button === 1) {
       e.preventDefault();
@@ -54,6 +56,8 @@ export function FileTabs({ stable, attached, isOn, dirtySet, drag, showFile, clo
   return stable.map((p) => {
     const on = isOn(p);
     const isDirty = dirtySet.has(p);
+    // Una comparación: «a ↔ b» y, al pasar el ratón, los dos lados.
+    const spec = isCompareKey(p) ? specs[p] : undefined;
     const cls = ["sv-tab", "sv-tab-file", on && "active", drag.dragPath === p && "dragging", drag.ghostPath === p && "detaching"]
       .filter(Boolean)
       .join(" ");
@@ -66,7 +70,7 @@ export function FileTabs({ stable, attached, isOn, dirtySet, drag, showFile, clo
         tabIndex={0}
         className={cls}
         style={{ order: attached.indexOf(p) + 1 }}
-        title={`${p}\nArrastra fuera de la ventana para abrirlo aparte`}
+        title={spec ? `${sideLabel(spec.left)}\n↔ ${sideLabel(spec.right)}` : `${p}\nArrastra fuera de la ventana para abrirlo aparte`}
         onClick={() => showFile(p)}
         onPointerDown={(e) => drag.onPointerDown(e, p)}
         onPointerMove={drag.onPointerMove}
@@ -89,8 +93,8 @@ export function FileTabs({ stable, attached, isOn, dirtySet, drag, showFile, clo
           }
         }}
       >
-        <FileCode2 size={14} className="sv-tab-icon" />
-        <span className="sv-tab-title">{basename(p)}</span>
+        {spec ? <GitCompare size={14} className="sv-tab-icon" /> : <FileCode2 size={14} className="sv-tab-icon" />}
+        <span className="sv-tab-title">{spec ? compareTitle(spec) : basename(p)}</span>
         <button
           className={isDirty ? "sv-tab-close dirty" : "sv-tab-close"}
           title={isDirty ? "Sin guardar — cerrar" : "Cerrar"}

@@ -5,6 +5,7 @@ import { useAuditNav } from "../../features/audit/nav";
 import { useVulnNav } from "../../features/vulnscan/nav";
 import { useExplorerNav } from "../../features/fileExplorer/nav";
 import { useJobNav } from "../../features/jobs/nav";
+import { useCompare } from "../../features/compare";
 import { useDetachedEditors } from "../Editor/editorWindows";
 import type { FixedTab } from "./fixedViews";
 
@@ -49,6 +50,17 @@ export function useNavRequests({ sessionId, showFixed, showFile, setFiles }: Nav
   useEffect(() => {
     if (jobNav?.sessionId === sessionId) showFixed(jobNav.pane);
   }, [jobNav, sessionId, showFixed]);
+
+  // «Comparar con…» desde el explorador: la comparación se abre como una pestaña más de archivo.
+  const compareReq = useCompare((s) => s.request);
+  const compareSeen = useRef(0);
+  useEffect(() => {
+    if (!compareReq || compareReq.seq === compareSeen.current) return;
+    compareSeen.current = compareReq.seq;
+    if (compareReq.sessionId !== sessionId) return;
+    setFiles((f) => (f.includes(compareReq.key) ? f : [...f, compareReq.key]));
+    showFile(compareReq.key);
+  }, [compareReq, sessionId, setFiles, showFile]);
 
   // Un archivo vuelve de su ventana con «Volver a la pestaña principal»: mostrarlo.
   const reveal = useDetachedEditors((s) => s.reveal);

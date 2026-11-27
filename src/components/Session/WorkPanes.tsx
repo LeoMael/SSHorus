@@ -5,8 +5,11 @@ import { preloadable } from "../../lib/lazy";
 import type { RemoteEditorHandle } from "../Editor/RemoteEditor";
 import { FileExplorer } from "../FileExplorer/FileExplorer";
 import type { FixedTab } from "./fixedViews";
+import { isCompareKey } from "../../features/compare";
 
 const RemoteEditor = lazy(() => import("../Editor/RemoteEditor"));
+/** Comparar archivos (editor de diferencias): una pestaña más, con su clave propia. */
+const CompareView = lazy(() => import("../Compare/CompareView"));
 /** Biblioteca de comandos (catálogo grande): se carga la primera vez que se abre la pestaña «Comandos». */
 export const CommandsPanel = preloadable(() => import("../Commands/CommandsPanel").then((m) => m.CommandsPanel));
 /** Administración del servidor: se carga la primera vez que se abre su pestaña. */
@@ -113,17 +116,21 @@ export function EditorPanes({ sessionId, stable, current, visible, connected, ed
       {stable.map((p) => (
         <div key={p} className={current === p ? "sv-pane" : "sv-pane sv-hidden"}>
           <Suspense fallback={spinner("Cargando editor…")}>
-            <RemoteEditor
-              ref={(h: RemoteEditorHandle | null) => {
-                if (h) editors.current.set(p, h);
-                else editors.current.delete(p);
-              }}
-              sessionId={sessionId}
-              path={p}
-              active={visible && current === p}
-              offline={!connected}
-              onDirtyChange={(d) => onDirtyChange(p, d)}
-            />
+            {isCompareKey(p) ? (
+              <CompareView compareKey={p} active={visible && current === p} onDirtyChange={(d) => onDirtyChange(p, d)} />
+            ) : (
+              <RemoteEditor
+                ref={(h: RemoteEditorHandle | null) => {
+                  if (h) editors.current.set(p, h);
+                  else editors.current.delete(p);
+                }}
+                sessionId={sessionId}
+                path={p}
+                active={visible && current === p}
+                offline={!connected}
+                onDirtyChange={(d) => onDirtyChange(p, d)}
+              />
+            )}
           </Suspense>
         </div>
       ))}

@@ -9,6 +9,13 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
 ## [1.0.0-beta.6] - 2026-11-27
 
 ### Añadido
+- **Comparar archivos:** en Archivos, clic derecho en un archivo → **Comparar con…** un archivo de tu PC, el
+  mismo archivo en otro servidor conectado (con la misma ruta, que puedes cambiar), otro archivo de este servidor o
+  una copia de seguridad que ya esté en la carpeta (como las de **Editar compose**); o selecciona dos y **Comparar
+  los dos**. Se abre en una pestaña: lado a lado o en línea, lo añadido en verde y lo quitado en rojo, ir a la
+  diferencia siguiente (`F7`), ignorar espacios, el nombre «servidor:ruta» de cada lado e intercambiarlos. La
+  derecha se edita y se guarda con `Ctrl+S`, con los mismos avisos que el editor. Los archivos binarios o de más de
+  5 MB no se comparan, y si uno no existe se ve vacío con un aviso.
 - **Desplegar con la IA (MCP):** pídele a Claude Code «despliega este proyecto en mi servidor» y sigue una receta
   de SSHorus (`get_deploy_guide`): qué preguntarte, qué comprobar, cada paso con su herramienta, cómo comprobarlo y
   cómo deshacerlo. Herramientas nuevas para no improvisar comandos con sudo: `create_app_user` (usuario aparte sin

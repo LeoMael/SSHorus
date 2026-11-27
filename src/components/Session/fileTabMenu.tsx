@@ -4,6 +4,7 @@ import { clipboard } from "../../lib/clipboard";
 import { toast } from "../../stores/toasts";
 import type { MenuItem } from "../ui/ContextMenu";
 import type { FixedTab } from "./fixedViews";
+import { isCompareKey } from "../../features/compare";
 
 interface FileTabMenuCtx {
   path: string;
@@ -29,7 +30,7 @@ export function fileTabMenuItems({ path, connected, split, side, splitHint, deta
     {
       label: "Abrir en ventana aparte",
       icon: <ExternalLink size={14} />,
-      disabled: !connected,
+      disabled: !connected || isCompareKey(path),
       onSelect: () => detachFile(path),
     },
     { sep: true },
@@ -42,6 +43,14 @@ export function fileTabMenuItems({ path, connected, split, side, splitHint, deta
           onSelect: () => splitWith(v.id, path),
         }))),
     { sep: true },
+    // Una comparación no tiene una ruta propia que copiar.
+    ...(isCompareKey(path) ? [] : copyPathItems(path)),
+    { label: "Cerrar", icon: <X size={14} />, onSelect: () => closeFile(path) },
+  ];
+}
+
+function copyPathItems(path: string): MenuItem[] {
+  return [
     {
       label: "Copiar ruta",
       icon: <Copy size={14} />,
@@ -53,6 +62,5 @@ export function fileTabMenuItems({ path, connected, split, side, splitHint, deta
       },
     },
     { sep: true },
-    { label: "Cerrar", icon: <X size={14} />, onSelect: () => closeFile(path) },
   ];
 }

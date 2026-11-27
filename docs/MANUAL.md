@@ -13,6 +13,7 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 5. [Explorador de archivos](#explorador-de-archivos)
 6. [Transferencias](#transferencias)
 7. [Editor](#editor)
+    - [Comparar archivos](#comparar-archivos)
 8. [Comandos](#comandos)
 9. [Ejecutar en varios servidores](#ejecutar-en-varios-servidores)
 10. [Contenedores](#contenedores)
@@ -214,6 +215,29 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 - Clic central en una pestaña la cierra; `Ctrl+W` cierra el archivo que estás viendo.
 - `Alt+Shift+AvPág` / `Alt+Shift+RePág` pasan al archivo abierto siguiente o anterior.
 - En **Ajustes → Editor → Al abrir un archivo** eliges **Pestaña**, **Dividido** o **En ventana aparte**.
+
+### Comparar archivos
+
+**Para qué sirve:** ver qué cambia entre dos archivos, lado a lado: lo añadido en verde y lo quitado en rojo.
+
+**Cómo se usa:**
+
+1. En **Archivos**, clic derecho en un archivo → **Comparar con…** y elige con qué:
+   - **Un archivo de mi PC…**
+   - **El mismo archivo en «otro servidor»…** (el otro servidor tiene que estar conectado en otra pestaña;
+     la ruta es la misma, pero puedes cambiarla).
+   - **Otro archivo de este servidor…** (escribe su ruta).
+   - Una **copia de seguridad** que ya esté en la carpeta (por ejemplo, la que hace **Editar compose**).
+2. O selecciona dos archivos → clic derecho → **Comparar los dos**.
+3. Se abre en una pestaña nueva. La izquierda es solo para mirar; la derecha (el archivo del servidor) se puede
+   editar y guardar con `Ctrl+S`, con los mismos avisos que el editor.
+
+**Notas:**
+
+- Abajo: **Lado a lado** o **En línea**, **Ignorar espacios** y las flechas para ir a la diferencia anterior o
+  siguiente (también `F7` y `Mayús+F7`).
+- El botón de las dos flechas, arriba, **intercambia los lados** (así puedes editar el otro).
+- Los archivos binarios o de más de 5 MB no se comparan: sale un aviso. Si un archivo no existe, se ve vacío.
 
 ## Comandos
 

@@ -14,6 +14,7 @@ import { PermissionsDialog } from "./PermissionsDialog";
 import { useTabConnection } from "./connection";
 import { handleExplorerKey } from "./explorerKeys";
 import { explorerMenuItems } from "./explorerMenu";
+import { compareMenuItems } from "../Compare/compareMenu";
 import { ExplorerActions, ExplorerToolbar } from "./ExplorerToolbar";
 import { ExplorerStatus, explorerPlaceholder, ReconnectingPill } from "./ExplorerStatus";
 import { useDirectory } from "./useDirectory";
@@ -250,7 +251,16 @@ export const FileExplorer = memo(function FileExplorer({
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          items={explorerMenuItems({ onEntry: menu.onEntry, selectedEntries, cwd, serverId, actions, refresh, setPermsFor })}
+          items={explorerMenuItems({
+            onEntry: menu.onEntry,
+            selectedEntries,
+            cwd,
+            serverId,
+            actions,
+            refresh,
+            setPermsFor,
+            compareItems: compareMenuItems({ sessionId, list: selectedEntries, siblings: entries.map((e) => e.name) }),
+          })}
           onClose={closeMenu}
         />
       )}
