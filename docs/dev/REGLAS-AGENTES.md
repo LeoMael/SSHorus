@@ -48,6 +48,8 @@ CARGO_BUILD_JOBS=3 CARGO_INCREMENTAL=0 npm run test:distros -- debian alpine    
     enlaces a `node_modules`. Comprueba con `pgrep -af 'cargo|rustc|vite'` que no queda nada tuyo.
   - Si el disco baja de ~10 GB libres, avisa en tu informe en vez de seguir compilando.
 - **No** ejecutes `npm run tauri dev`, `tauri build`, `cargo build --release` ni abras ventanas.
+- **Sin capturas de pantalla** ni navegadores sin cabeza (Chrome/Chromium/Playwright) para ver la interfaz (pedido del
+  usuario, 27/11/2026): comprueba con pruebas, `tsc` y build.
 - **Servidor SSH de pruebas**: `127.0.0.1:2222`, usuario `test`, contraseña `test123` (contenedor podman
   `terview-sshd`, OpenSSH 10.3, home `/config`, con `AllowTcpForwarding yes` para los túneles; cómo prepararlo
   en el README, «Pruebas»). Usa SOLO este servidor. Trabaja dentro de `/config/tmp-<algo>`
