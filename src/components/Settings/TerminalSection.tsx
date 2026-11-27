@@ -8,6 +8,7 @@ import { TMUX_MODE_HINTS, TMUX_MODE_LABELS } from "../../features/tmux/logic";
 import { useAppTheme } from "../../stores/appTheme";
 import { FontFamilyInput } from "./FontFamilyInput";
 import { useSetting } from "./useSetting";
+import { setTerminalLogAll, useTerminalLogPrefs } from "../../features/serverHistory/prefs";
 
 /** Colores de la terminal con la apariencia actual (para la vista previa). */
 function useTermColors() {
@@ -24,6 +25,7 @@ export function TerminalSection() {
   // Se guarda en este equipo (localStorage), no en los ajustes del motor.
   const [gpu, setGpu] = useState(getTerminalGpu);
   const tc = useTermColors();
+  const termLog = useTerminalLogPrefs();
   return (
     <>
       <SettingGroup title="Letra">
@@ -61,6 +63,14 @@ export function TerminalSection() {
               title: `${TMUX_MODE_HINTS[v]} Cada servidor puede cambiarlo en su ficha.`,
             }))}
           />
+        </Row>
+      </SettingGroup>
+      <SettingGroup title="Historial por servidor">
+        <Row
+          label="Guardar los comandos que escribo en la terminal"
+          hint="En todos los servidores (o solo en algunos, desde «Historial…» del servidor). Se guarda en este equipo; nunca lo escrito tras un aviso de contraseña, y las contraseñas guardadas y las llaves se tapan. Puede contener datos sensibles."
+        >
+          <Toggle checked={termLog.all} onChange={setTerminalLogAll} label="Guardar los comandos que escribo en la terminal" />
         </Row>
       </SettingGroup>
     </>

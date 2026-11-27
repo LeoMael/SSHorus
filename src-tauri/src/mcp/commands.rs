@@ -4,6 +4,7 @@ use serde_json::Value;
 use tauri::{AppHandle, State};
 
 use crate::error::{AppError, AppResult};
+use crate::server_history::redact::redact_text;
 use crate::storage::vault::Vault;
 
 use super::approval::{ApprovalRequest, Decision};
@@ -199,6 +200,24 @@ pub async fn mcp_ui_reply(
 #[tauri::command]
 pub async fn mcp_activity(state: State<'_, McpState>) -> AppResult<Vec<AuditEntry>> {
     Ok(state.core.audit.list())
+}
+
+/// Lo que hizo el asistente en un servidor, del registro en disco (lo más nuevo primero), con los
+/// secretos tapados. Para el «Historial por servidor» de la interfaz; no es una herramienta del MCP.
+#[tauri::command]
+pub async fn mcp_activity_for_server(state: State<'_, McpState>, server_id: String) -> AppResult<Vec<AuditEntry>> {
+    const LIMIT: usize = 1000;
+    let core = state.core.clone();
+    tokio::task::spawn_blocking(move || {
+        let mut list = core.audit.for_server(&server_id, LIMIT);
+        for e in &mut list {
+            e.detail = redact_text(&e.detail, &[]);
+            e.message = e.message.as_deref().map(|m| redact_text(m, &[]));
+        }
+        list
+    })
+    .await
+    .map_err(|e| AppError::Io(format!("tarea interrumpida: {e}")))
 }
 
 /// Vacía la lista del panel (el archivo de registro se conserva).

@@ -226,6 +226,8 @@ export const mcp = {
   uiReply: (id: string, ok: boolean, value: unknown, error: string | null) =>
     call<boolean>("mcp_ui_reply", { id, ok, value: value ?? null, error }),
   activity: () => call<AuditEntry[]>("mcp_activity"),
+  /** Lo que hizo el asistente en un servidor, del registro en disco (para el «Historial por servidor»). */
+  activityForServer: (serverId: string) => call<AuditEntry[]>("mcp_activity_for_server", { serverId }),
   autoList: () => call<McpAutoState[]>("mcp_auto_list"),
   setAuto: (serverId: string, level: McpAutoLevel, duration: McpAutoDuration) =>
     call<McpAutoState[]>("mcp_set_auto", { serverId, level, duration }),

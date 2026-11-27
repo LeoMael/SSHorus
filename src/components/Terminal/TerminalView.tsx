@@ -5,6 +5,7 @@ import { TermController, type TermBackend, type ConnState, type TermStatus, type
 import { cleanCopiedText } from "./termText";
 import { TermMenu, type MenuState } from "./TermMenu";
 import { TermSearchBar } from "./TermSearchBar";
+import { TermRecorder, sessionTarget } from "./termRecorder";
 
 interface TerminalViewProps {
   sessionId: string;
@@ -90,7 +91,10 @@ export function TerminalView({
     ctrlRef.current = ctrl;
     setCtrlState(ctrl);
     onControllerRef.current?.(ctrl);
+    // Solo las de un servidor, y solo guarda si el usuario lo activó (Ajustes → Terminal).
+    const recorder = backend ? null : new TermRecorder(ctrl.term, () => sessionTarget(sessionId));
     return () => {
+      recorder?.dispose();
       onControllerRef.current?.(null);
       setCtrlState(null);
       ctrl.dispose();

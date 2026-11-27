@@ -13,6 +13,7 @@ mod localterm;
 mod mcp;
 mod pinch;
 mod platform;
+mod server_history;
 mod sftp;
 mod snippets;
 mod ssh;
@@ -236,6 +237,7 @@ pub fn run() {
             mcp::commands::mcp_ui_reply,
             mcp::commands::mcp_activity,
             mcp::commands::mcp_activity_clear,
+            mcp::commands::mcp_activity_for_server,
             mcp::pairing::commands::mcp_pair_pending,
             mcp::pairing::commands::mcp_pair_reply,
             mcp::pairing::commands::mcp_paired_clients,
@@ -264,6 +266,9 @@ pub fn run() {
             audit::commands::audit_latest,
             audit::commands::audit_history_delete,
             audit::commands::audit_set_ai,
+            server_history::commands::server_history_append,
+            server_history::commands::server_history_list,
+            server_history::commands::server_history_clear,
             // asistente de IA opcional (solo explica informes)
             ai::commands::ai_status,
             ai::commands::ai_set_token,

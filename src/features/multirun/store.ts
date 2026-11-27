@@ -8,6 +8,7 @@ import { useTabs } from "../../stores/tabs";
 import { detectPrivilege, forgetSudo, getPrivilege, sudoPasswordForCommand, sudoRejectedNotified, type PrivilegeInfo } from "../privileges";
 import { connectInBackground } from "./connect";
 import { RunEngine, type EngineDeps } from "./engine";
+import { recordFinished } from "./history";
 import type { RunSpec, TargetInput, TargetState } from "./types";
 
 export interface MultiRunPreset {
@@ -222,7 +223,10 @@ export function showResults(): void {
 export function startMultiRun(spec: RunSpec, targets: TargetInput[]): void {
   engine?.dispose();
   const id = ++runSeq;
+  let last: TargetState[] = [];
   const e = new RunEngine(spec, targets, deps, (list) => {
+    recordFinished(spec, last, list);
+    last = list;
     const run = useMultiRun.getState().run;
     if (run?.id === id) useMultiRun.setState({ run: { ...run, targets: list } });
   });

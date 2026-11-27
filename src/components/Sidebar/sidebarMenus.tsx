@@ -10,6 +10,7 @@ import {
   Download,
   Folder,
   FolderPlus,
+  History,
   Laptop,
   LayoutDashboard,
   Layers,
@@ -31,6 +32,7 @@ import { openProjectMap } from "../../features/infra/store";
 import { launchAssistant, openLocalTerminal } from "../../features/localterm/launch";
 import { ASSISTANTS } from "../../features/localterm/logic";
 import { openMultiRun } from "../../features/multirun/store";
+import { openServerHistory } from "../../features/serverHistory/store";
 import { serversNotInProject } from "../../features/profiles/projectServers";
 import { SSH_CONFIG_LABEL } from "../../lib/platform";
 import { useProfiles } from "../../stores/profiles";
@@ -116,6 +118,7 @@ export function sidebarMenus({ serverById, tabStates, connecting, revealServer, 
         icon: <SquareTerminal size={14} />,
         onSelect: () => openMultiRun({ profileIds: [s.id] }),
       },
+      { label: "Historial…", icon: <History size={14} />, onSelect: () => openServerHistory(s.id) },
       { sep: true },
       { label: "Editar…", icon: <Pencil size={14} />, onSelect: () => openServerEditor(s) },
       { label: "Duplicar", icon: <Copy size={14} />, onSelect: () => void st.duplicateServer(s.id) },

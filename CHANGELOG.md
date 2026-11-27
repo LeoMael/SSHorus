@@ -16,6 +16,13 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   diferencia siguiente (`F7`), ignorar espacios, el nombre «servidor:ruta» de cada lado e intercambiarlos. La
   derecha se edita y se guarda con `Ctrl+S`, con los mismos avisos que el editor. Los archivos binarios o de más de
   5 MB no se comparan, y si uno no existe se ve vacío con un aviso.
+- **Historial por servidor:** clic derecho en un servidor → **Historial…** (o **Historial completo** en
+  Administración → Historial). Todo lo hecho en ese servidor desde SSHorus en una lista: cambios de Administración, lo
+  que hizo el asistente de IA (y quién lo aprobó), comandos de la Biblioteca, «Ejecutar en varios servidores», tareas
+  en segundo plano, auditorías y análisis del escáner. Con buscador, filtros por origen y «solo lo que falló», el
+  detalle al abrir cada fila y exportar a texto o JSON. **Opcional y apagado:** guardar los comandos que escribes en
+  la terminal (Ajustes → Terminal, para todos o por servidor), nunca lo escrito tras un aviso de contraseña. Se guarda
+  solo en este equipo, con las contraseñas y llaves tapadas; el asistente de IA no puede leerlo.
 - **Desplegar con la IA (MCP):** pídele a Claude Code «despliega este proyecto en mi servidor» y sigue una receta
   de SSHorus (`get_deploy_guide`): qué preguntarte, qué comprobar, cada paso con su herramienta, cómo comprobarlo y
   cómo deshacerlo. Herramientas nuevas para no improvisar comandos con sudo: `create_app_user` (usuario aparte sin

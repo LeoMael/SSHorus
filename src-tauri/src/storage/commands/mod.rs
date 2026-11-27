@@ -78,6 +78,7 @@ pub async fn profiles_delete_server(app: AppHandle, store: State<'_, ProfileStor
     }
     crate::vulnscan::store::forget_server(&id_for_history);
     crate::audit::store::forget_server(&id_for_history);
+    crate::server_history::store::forget_server(&id_for_history);
     Ok(())
 }
 

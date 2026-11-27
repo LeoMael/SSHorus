@@ -11,6 +11,7 @@ import { EditorsHost, ProjectEditorHost, ServerEditorHost } from "./features/ser
 import { PaletteHost, PaletteView } from "./components/Commands/PaletteHost";
 import { MultiRunHost } from "./components/MultiRun/MultiRunHost";
 import { ProjectAuditHost } from "./components/ProjectAudit/ProjectAuditHost";
+import { ServerHistoryHost } from "./components/ServerHistory/ServerHistoryHost";
 import { ProjectMapHost } from "./components/InfraMap/ProjectMapHost";
 import { FleetHost } from "./components/Fleet/FleetHost";
 import { GitHubHost } from "./components/GitHub";
@@ -26,6 +27,7 @@ import { initPrivileges } from "./features/privileges";
 import { PinDialogHost } from "./features/lock/PinDialog";
 import { initMcp } from "./features/mcp/store";
 import { initAuditSchedule } from "./features/audit/scheduler";
+import { initServerHistory } from "./features/serverHistory/record";
 import { ApprovalDialogHost } from "./features/mcp/ApprovalDialog";
 import { PairDialogHost } from "./components/McpPairing/PairDialog";
 import { SudoAskHost } from "./components/Sudo/SudoAskHost";
@@ -82,6 +84,7 @@ function initApp() {
   initLocalTabs(); // pestañas de terminal local («Este equipo»)
   initTabFallback(); // al cerrar la última pestaña de un tipo, mostrar otra
   initAuditSchedule(); // auditoría programada (solo con la app abierta)
+  initServerHistory(); // historial por servidor: las tareas en segundo plano al terminar
 
   // Recordar servidores usados (para la pantalla de bienvenida).
   useTabs.subscribe((s, prev) => {
@@ -313,6 +316,7 @@ export default function App() {
       <PaletteHost />
       <MultiRunHost />
       <ProjectAuditHost />
+      <ServerHistoryHost />
       <ProjectMapHost />
       <GitHubHost />
       <PinDialogHost />

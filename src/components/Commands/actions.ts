@@ -7,6 +7,7 @@ import { confirmDialog } from "../ui/dialogs";
 import { hasTerminal, sendToTerminal } from "../../stores/terminalBus";
 import { toast } from "../../stores/toasts";
 import type { CommandItem } from "../../features/commands";
+import { libraryEvent, recordForSession } from "../../features/serverHistory";
 
 export const CAPTURE_TIMEOUT_SECS = 30;
 
@@ -49,6 +50,7 @@ export async function toTerminal(sessionId: string, item: CommandItem, command: 
     toast.info("Abre una terminal primero");
     return false;
   }
+  if (execute) recordForSession(sessionId, (name) => libraryEvent(item.name, command, { kind: "terminal" }, name));
   return true;
 }
 

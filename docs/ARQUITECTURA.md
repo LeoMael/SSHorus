@@ -223,8 +223,8 @@ Ventaja: te autenticas una vez, y navegar, subir archivos, medir el servidor y u
 
 | Carpeta | Qué tiene |
 |---------|-----------|
-| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Compare` («Comparar archivos», una pestaña más de archivo), `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
-| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `claudeVps`, `commands`, `compare`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
+| `components/` | La interfaz React de cada dominio (`Sidebar`, `Tabs`, `Session`, `FileExplorer`, `Editor`, `Compare` («Comparar archivos», una pestaña más de archivo), `Terminal`, `TransferPanel`, `Commands`, `MultiRun`, `Containers`, `Databases`, `Monitor`, `Admin`, `Sudo` (el diálogo de la contraseña de sudo, que usan muchos dominios), `Tunnels`, `GitHub`, `Fleet`, `InfraMap`, `PortClose` («Cerrar puerto», que abren Puertos y el mapa), `Jobs`, `McpActivity`, `McpPairing`, `ProjectAudit` («Auditar proyecto»), `ServerHistory` («Historial» de un servidor), `Settings`, `Diagnostics`, `Welcome`, `About`) y controles genéricos en `components/ui/` (`Modal`, `dialogs`, `AdmModal`, `PopupMenu`, `ContextMenu` —el único menú contextual de la app, con submenús, separadores y aspecto «icons» o «plain»—, `Segmented`, `ColorPicker`, `SettingsKit`, `ServerSelect`, `openLink`…) |
+| `features/` | Organizado 100 % en subcarpetas por dominio (sin archivos sueltos en raíz): lógica pura, scripts remotos, parseadores, flujos interactivos y subdiálogos propios (`admin`, `audit`, `claudeVps`, `commands`, `compare`, `connect`, `containers`, `databases`, `fileExplorer`, `fleet`, `github`, `infra`, `jobs`, `localterm`, `lock`, `mcp`, `monitor`, `multirun`, `portClose`, `privileges`, `profiles`, `reboot`, `serverConfig`, `serverEditor`, `serverHistory`, `shortcuts`, `sidebar`, `sshkeys`, `sudoRun`, `tabbar`, `terminal`, `tmux`, `tunnels`, `updater`, `vulnscan`, `whatsNew`), cada una con su `index.ts` (ver abajo) |
 | `stores/` | Estado global con zustand: `profiles`, `settings`, `tabs`, `transfers`, `terminalBus`, `toasts`, `ui`, `jobs` (tareas en segundo plano, con lo puro en `jobsState`), `sessionState` (archivos sin guardar y carpeta de cada sesión), `settingsNav` (abrir Ajustes en una sección), `appTheme` (apariencia efectiva) y `shortcutKeys` (acciones y combinaciones de los atajos, puras) |
 | `api/` | La única puerta al motor (ningún componente ni feature llama a `invoke()` directamente): un archivo por módulo (`ssh.ts`, `sftp.ts`, `snippets.ts`, `audit.ts`, `vulnscan.ts`…), `core.ts` (llamada y errores) y `types.ts` (espejo exacto de `types.rs`) |
 | `windows/` | La ventana de editor aparte (sus eventos con la principal, en `components/Editor/editorWindowBus.ts`) |
@@ -288,6 +288,16 @@ Una sola regla para decidir dónde poner un archivo nuevo de la interfaz:
   prueba (`startFirewallChange`), lo demás con `startJob` + `runElevated` y `ownerWrap`. Nunca ofrece cerrar el
   puerto de SSH. La interfaz (`components/PortClose/`) la abren Administración → Puertos y el nodo de un puerto del
   mapa.
+- **Historial por servidor** (`features/serverHistory/`): la línea de tiempo no copia datos, **lee cada registro en su
+  sitio** y los junta (`timeline.ts`): Administración (`features/admin/history.ts`, `localStorage`), el registro del
+  asistente (`mcp-audit.jsonl`, comando `mcp_activity_for_server`), auditorías y escáner (sus historiales del motor) y
+  lo que no se guardaba en ningún sitio, que va al módulo del motor `server_history/` (un `<id>.jsonl` por servidor
+  con rotación): la Biblioteca (`components/Commands/useRun.ts` y `actions.ts`), «Ejecutar en varios servidores»
+  (`features/multirun/history.ts`), las tareas terminadas (`onJobFinished`, salvo las que ya escriben en
+  Administración o dejan un informe) y, si el usuario lo activa (`prefs.ts`), lo escrito en la terminal
+  (`components/Terminal/termRecorder.ts`: lee la línea de la pantalla desde donde acababa el aviso de la shell cuando
+  se empezó a escribir, al pasar la shell de línea; `terminalLine.ts` descarta los avisos de contraseña). El motor
+  tapa secretos antes de escribir (`server_history/redact.rs`). Interfaz en `components/ServerHistory/`.
 - En el motor, un módulo de varios archivos es una carpeta con su `mod.rs` (p. ej. `localkeys/{mod.rs,pubkeys.rs}`).
 
 **Estas reglas se comprueban solas.** `npm run check` las pasa en local (ESLint, ciclos, líneas y pruebas) y la CI
@@ -341,6 +351,7 @@ Módulos:
 | `storage/` | Perfiles y ajustes (`mod.rs`), comandos (`commands/`), llavero (`secrets/`: API, `system_keyring.rs`, `vault_move.rs`), credenciales de bases de datos (`db_secret.rs`), bóveda con PIN (`vault.rs`, `cipher.rs`, `lock.rs`), `~/.ssh/config` (`ssh_config/`) |
 | `mcp/` | Servidor MCP local (`mod.rs`, `commands.rs`, `http.rs`, `gate.rs`, `server.rs`, `core/`, `caller.rs`, `policy.rs`, `grants.rs`, `protect.rs`, `rules.rs`, `audit.rs`), desplegar con la IA (`deploy/`), emparejar asistentes con «Aceptar / Rechazar» y permisos por asistente (`pairing/`), lo mismo por HTTP directo con la autorización estándar de MCP (`oauth/`), puente `sshorus-mcp` y su `pair` (`bridge/`, compartido con el binario) y su copia en ruta fija (`install.rs`) |
 | `vulnscan/`, `audit/`, `ai/` | Escáner de vulnerabilidades (scripts por fase `scripts/`, qué toca tras cada fase `plan.rs`, análisis y guardado `run.rs`, `analyze.rs`, `analyze_merge.rs`, `analyze_sources.rs`, `analyze_report.rs`, `osv.rs`, `osv_model.rs`, `parse/`, `cache.rs`, tipos `model/`), historial de auditorías (`audit/`) e IA opcional (`ai/`: `http.rs`, `token.rs`, `chat.rs`) |
+| `server_history/` | Historial por servidor: lo que la app hace y no guarda otro registro (Biblioteca, varios servidores, tareas, terminal opcional), `<config>/sshorus/history/<id>.jsonl` con rotación (`store.rs`), tapado de contraseñas y llaves antes de guardar (`redact.rs`) y comandos (`commands.rs`). Sin herramienta MCP |
 | `localfs/`, `diagnostics/` | Archivos locales (exportar/importar) y diagnóstico del sistema |
 | `localkeys/`, `sshkeys/` | Llaves SSH de `~/.ssh` del PC: `localkeys/` **genera** llaves ed25519 nuevas (`mod.rs`) y tiene la única lectura de las públicas (`pubkeys.rs`: solo `*.pub` válidas, para el asistente «Nuevo usuario con clave» y para GitHub); `sshkeys/` detecta las privadas (tipo, parte pública y qué `Host` de `~/.ssh/config` las usan). La privada nunca sale del equipo |
 
@@ -963,6 +974,10 @@ un servidor con problemas), `userContainers.test.ts` (salida real de Podman), `p
 - **Contraseña de sudo** en memoria, por conexión (y, si lo eliges, guardada como un secreto más
   del servidor, `<id>:sudo`); viaja siempre por stdin, nunca en la línea
   de comandos ni en el historial. El motor borra el búfer al terminar.
+- **Historial por servidor:** solo en este equipo (no va a la copia en Gist). Lo escrito en la terminal se guarda
+  solo si el usuario lo activa y nunca tras un aviso de contraseña, frase o código; antes de escribir, el motor tapa
+  las contraseñas guardadas del servidor (las largas), las llaves con forma conocida y lo que sigue a `password=`,
+  `--password`, `mysql -p`, `Bearer`, `usuario:clave@`… Ninguna herramienta del MCP lo lee.
 - **Asistentes de IA (MCP)** apagados por defecto; solo `127.0.0.1` con token; permiso por servidor; los cambios
   piden tu aprobación y lo peligroso siempre; con SSHorus bloqueado no hacen nada; nunca reciben contraseñas.
   Un comando con sudo que apruebas se eleva con la contraseña de sudo de la conexión (la de la interfaz, o el

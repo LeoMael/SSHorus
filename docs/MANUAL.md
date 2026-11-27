@@ -36,7 +36,8 @@ Este manual también está dentro de SSHorus: pulsa el botón **?** de la barra 
 21. [Ajustes](#ajustes)
 22. [Atajos de teclado](#atajos-de-teclado)
 23. [Tareas en segundo plano](#tareas-en-segundo-plano)
-24. [Solución de problemas](#solución-de-problemas)
+24. [Historial por servidor](#historial-por-servidor)
+25. [Solución de problemas](#solución-de-problemas)
 
 ---
 
@@ -1036,6 +1037,39 @@ sigue aunque cierres el diálogo que lo lanzó o te vayas a otra pestaña.
 Van en segundo plano: Compose (Levantar, Actualizar, Aplicar cambios), Descargar imagen, Vulnerabilidades → Arreglar,
 Actualizar imagen, Auditoría → Arreglar y Arreglar todo lo seguro, y Reiniciar ahora. Las transferencias y
 «Ejecutar en varios servidores» tienen su propio panel.
+
+## Historial por servidor
+
+**Para qué sirve:** ver en un solo sitio qué se ha hecho en un servidor desde SSHorus, quién lo hizo y cómo salió.
+
+**Cómo se usa:**
+
+1. Clic derecho en el servidor (barra lateral) → **Historial…**, o en **Administración → Historial** el botón
+   **Historial completo**.
+2. Sale una lista, lo más nuevo arriba: cambios de Administración, lo que hizo el asistente de IA (y con qué
+   permiso), comandos de la Biblioteca, «Ejecutar en varios servidores», tareas en segundo plano terminadas,
+   auditorías y análisis del escáner.
+3. Busca por texto, filtra por origen o marca **Solo lo que falló**. Haz clic en una fila para ver el comando completo
+   y el resultado. En las auditorías, **Abrir en Administración** lleva al informe.
+4. **Texto** o **JSON** exporta lo que se ve (con el filtro aplicado) a un archivo.
+
+**Comandos escritos en la terminal (opcional, apagado):**
+
+- Actívalo para todos en **Ajustes → Terminal → Historial por servidor**, o solo para uno con la casilla de abajo de su
+  historial.
+- Se guarda la línea que se ve en la pantalla al pulsar Enter (cuentan el tabulador y las flechas). **Nunca** lo que
+  escribes tras un aviso de contraseña, frase de llave o código, ni dentro de vim, less o top.
+- Un pegado de varias líneas guarda solo la primera. No se sabe si el comando salió bien.
+
+**Notas:**
+
+- Todo se guarda **solo en este equipo** (no va a la copia en GitHub). Antes de guardar se tapan con `••••` las
+  contraseñas guardadas del servidor, las llaves (`sk-ant-…`, `ghp_…`) y lo que va tras `password=`, `--password`,
+  `mysql -p`, `Bearer`… Aun así, **puede contener datos sensibles**: no lo compartas sin mirarlo.
+- El asistente de IA **no** puede leer este historial.
+- **Borrar comandos y tareas** borra lo de la terminal, la Biblioteca, varios servidores y tareas. Administración, el
+  asistente y las auditorías se borran desde su sitio. Al borrar el servidor se borra todo.
+- Las tareas en segundo plano se apuntan si su pestaña sigue abierta al terminar.
 
 ## Solución de problemas
 

@@ -50,7 +50,7 @@ export const NAV: { group: string; items: SectionInfo[] }[] = [
     group: "General",
     items: [
       { id: "appearance", label: "Apariencia", icon: <Palette size={15} />, view: AppearanceSection, desc: "Tema de colores, acento y tamaño de la letra de la interfaz.", keys: "tema claro oscuro sistema color acento letra fuente tamaño medianoche arena fiordo alto contraste" },
-      { id: "terminal", label: "Terminal", icon: <TerminalSquare size={15} />, view: TerminalSection, desc: "Letra, aceleración gráfica y sesiones persistentes.", keys: "letra fuente tamaño gpu webgl tmux persistentes" },
+      { id: "terminal", label: "Terminal", icon: <TerminalSquare size={15} />, view: TerminalSection, desc: "Letra, aceleración gráfica, sesiones persistentes e historial de comandos.", keys: "letra fuente tamaño gpu webgl tmux persistentes historial comandos registrar auditoría" },
       { id: "editor", label: "Editor", icon: <FileCode2 size={15} />, view: EditorSection, desc: "Cómo se abren los archivos y con qué letra.", keys: "letra fuente tamaño dividido ventana pestaña máximo mb" },
       { id: "explorer", label: "Explorador", icon: <FolderTree size={15} />, view: ExplorerSection, desc: "Lista de archivos del servidor.", keys: "ocultos borrar confirmar" },
       { id: "shortcuts", label: "Atajos de teclado", icon: <Keyboard size={15} />, view: ShortcutsSection, desc: "Haz clic en un atajo para cambiarlo.", keys: "teclas teclado combinación ctrl paleta pestaña copiar pegar buscar" },

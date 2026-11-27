@@ -176,6 +176,24 @@ impl AuditLog {
         }
     }
 
+    /// Acciones terminadas de un servidor (lo más nuevo primero, como mucho `limit`), para el «Historial
+    /// por servidor». Del archivo y del rotado; sin archivo, de la memoria. Solo lo pide la interfaz.
+    pub fn for_server(&self, server_id: &str, limit: usize) -> Vec<AuditEntry> {
+        let mine = |e: &AuditEntry| e.status != AuditStatus::Running && e.server_id.as_deref() == Some(server_id);
+        let mut out: Vec<AuditEntry> = match &self.path {
+            Some(p) => {
+                let _g = self.file_lock.lock().unwrap_or_else(|p| p.into_inner());
+                let mut v = read_matching(&p.with_file_name(OLD_FILE_NAME), &mine);
+                v.extend(read_matching(p, &mine));
+                v
+            }
+            None => self.recent.lock().unwrap_or_else(|p| p.into_inner()).iter().filter(|e| mine(e)).cloned().collect(),
+        };
+        out.reverse();
+        out.truncate(limit);
+        out
+    }
+
     /// Vacía la lista en memoria (el archivo se conserva).
     pub fn clear_recent(&self) {
         self.recent.lock().unwrap_or_else(|p| p.into_inner()).retain(|e| e.status == AuditStatus::Running);
@@ -217,6 +235,17 @@ pub fn rotate_if_big(path: &Path) -> std::io::Result<()> {
         }
         _ => Ok(()),
     }
+}
+
+/// Entradas válidas del archivo que cumplen `keep`, en el orden del archivo.
+fn read_matching(path: &Path, keep: &dyn Fn(&AuditEntry) -> bool) -> Vec<AuditEntry> {
+    let Ok(f) = fs::File::open(path) else { return Vec::new() };
+    BufReader::new(f)
+        .lines()
+        .map_while(Result::ok)
+        .filter_map(|l| serde_json::from_str::<AuditEntry>(&l).ok())
+        .filter(|e| keep(e))
+        .collect()
 }
 
 /// Últimas `KEEP` entradas válidas del archivo.

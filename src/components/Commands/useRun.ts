@@ -7,6 +7,7 @@ import { execWithSudo, sudoFailureText } from "../../features/sudoRun";
 import type { ExecResult } from "../../api/types";
 import type { RunState } from "./parts";
 import type { CommandItem } from "../../features/commands";
+import { libraryEvent, recordForSession, type LibraryOutcome } from "../../features/serverHistory";
 
 /** Con la contraseña de sudo de SSHorus (no la de la terminal). Un texto si sudo no llegó a ejecutarlo. */
 async function runSudo(sessionId: string, item: CommandItem, command: string, execId: string): Promise<ExecResult | string> {
@@ -42,10 +43,13 @@ export function useRun(sessionId: string | null) {
       setState({ running: true, command, result: null, error: null, startedAt: Date.now() });
       try {
         const result = item.sudo ? await runSudo(sessionId, item, command, id) : await captureExec(sessionId, command, id);
+        const outcome: LibraryOutcome = typeof result === "string" ? { kind: "error", message: result } : { kind: "result", result };
+        recordForSession(sessionId, (name) => libraryEvent(item.name, command, outcome, name));
         if (!mounted.current || my !== token.current) return;
         if (typeof result === "string") setState({ running: false, command, result: null, error: result, startedAt: 0 });
         else setState({ running: false, command, result, error: null, startedAt: 0 });
       } catch (e) {
+        recordForSession(sessionId, (name) => libraryEvent(item.name, command, { kind: "error", message: errorMessage(e) }, name));
         if (!mounted.current || my !== token.current) return;
         setState({ running: false, command, result: null, error: errorMessage(e), startedAt: 0 });
       } finally {

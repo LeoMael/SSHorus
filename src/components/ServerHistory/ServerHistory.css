@@ -1,0 +1,241 @@
+/* «Historial» de un servidor: barra de filtros, línea de tiempo y pie con el registro de la terminal. */
+.sh-modal {
+  height: min(720px, 90vh);
+}
+.sh-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  min-height: 0;
+}
+
+/* Filtros */
+.sh-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sh-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sh-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 320px;
+  max-width: 50%;
+}
+.sh-search > svg {
+  position: absolute;
+  left: 8px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.sh-search .input {
+  width: 100%;
+  padding-left: 26px;
+  padding-right: 24px;
+}
+.sh-search-clear {
+  position: absolute;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+}
+.sh-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sh-spacer {
+  flex: 1;
+}
+.sh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sh-chip {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.sh-chip:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.sh-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text);
+}
+.sh-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.sh-chip:focus-visible,
+.sh-head:focus-visible,
+.sh-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.sh-problem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--yellow);
+}
+
+/* Lista */
+.sh-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.sh-empty {
+  flex: 1;
+}
+.sh-row {
+  border-bottom: 1px solid var(--border);
+}
+.sh-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.sh-head:hover {
+  background: var(--surface-2);
+}
+.sh-head > svg {
+  flex: none;
+}
+.sh-ok {
+  color: var(--green);
+}
+.sh-bad {
+  color: var(--red);
+}
+.sh-date {
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.sh-src {
+  flex: none;
+  width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.sh-src-ai {
+  color: var(--purple);
+}
+.sh-src-terminal {
+  color: var(--accent);
+}
+.sh-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sh-row.err .sh-title {
+  color: var(--red);
+}
+.sh-who {
+  flex: none;
+  max-width: 24%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.sh-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 10px 10px 52px;
+}
+.sh-meta {
+  font-size: var(--fs-sm);
+}
+.sh-pre {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-terminal);
+  color: var(--text-terminal);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+  user-select: text;
+}
+.sh-result {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.sh-result.err {
+  color: var(--red);
+}
+.sh-actions {
+  display: flex;
+  gap: 6px;
+}
+.sh-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+}
+
+/* Pie */
+.sh-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sh-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.sh-link:hover {
+  text-decoration: underline;
+}
+.sh-note {
+  font-size: var(--fs-sm);
+}

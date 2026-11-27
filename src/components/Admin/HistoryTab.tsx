@@ -1,7 +1,8 @@
 // Sub-pestaña «Historial»: cambios hechos desde la app en este servidor (sin contraseñas).
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronRight, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, History, Trash2, XCircle } from "lucide-react";
 import { HISTORY_LIMIT, useAdminHistory, useHistoryOf } from "../../features/admin";
+import { openServerHistory } from "../../features/serverHistory/store";
 import { confirmDialog } from "../ui/dialogs";
 import { useAdmin } from "./context";
 
@@ -32,6 +33,9 @@ export function HistoryTab() {
           contraseñas.
         </span>
         <div className="adm-spacer" />
+        <button className="btn btn-sm" onClick={() => openServerHistory(profileId)} title="Todo lo hecho en este servidor: también el asistente de IA, la Biblioteca, las tareas y las auditorías">
+          <History size={13} /> Historial completo
+        </button>
         <button
           className="btn btn-sm"
           disabled={!list.length}
