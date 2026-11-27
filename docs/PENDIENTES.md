@@ -18,17 +18,16 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
   0 excepciones de límites y 0 archivos de más de 500 líneas**, `index.ts` en todas las features, limpiezas de
   Volúmenes y Redes con «Todos», avisos con botón, «Renombrar máquina…», **«Cerrar puerto»** (idea 12) y **pruebas
   por distro** (idea 13, `npm run test:distros`, las 7 distros en verde).
-- **En marcha (26/11, noche):** la **tanda 5** (ideas 11 y 4c) con 2 agentes en worktrees (`.claude/worktrees/`).
-  Si la sesión se cortó antes de unirlos: `git worktree list` y `git branch --list 'worktree-agent-*'`; la rama que
-  tenga commit propio encima de `77f9e21` se une con `git cherry-pick <commit>` (conflictos de CHANGELOG/PENDIENTES:
-  quedarse con los dos lados) y luego se comprueba todo (lint, tsc, `npm run check`, build); la que no tenga commit se
-  borra (`git worktree remove --force` + `git branch -D`) y esa idea se rehace con el diseño del paso 3.
+- **Tanda 5 hecha (27/11), en `main` sin subir:** idea **11** (Administración → **Configuración**: SELinux/AppArmor,
+  SSH, actualizaciones automáticas, fail2ban, sysctl, sudo, hidepid; 7 distros en verde) e idea **4c** («Auditar
+  proyecto» y auditoría de los contenedores sin root de cada usuario). Falta probar las dos a mano. Arreglado además:
+  el arreglo de fail2ban de la Auditoría pone en la cárcel `sshd` los puertos reales de SSH.
 - **Pasos al volver, en orden:**
   1. ~~Ver que el Release de la beta.5 se construyó~~ **hecho (26/11):** CI en verde y borrador con AppImage, deb,
      msi, exe, dmg, `latest.json` y firmas. Falta que el usuario lo **publique** en GitHub (Releases).
   2. El usuario prueba la beta.5 en su VPS (Rocky): «Cerrar puerto…» (Puertos y mapa), «Limpiar sin usar» de
      Volúmenes/Redes/Imágenes con «Todos», «Renombrar máquina…» y lo de §2 que siga pendiente.
-  3. **Tanda 5** (2 agentes en worktrees, sin compilar Rust si no hace falta):
+  3. ~~**Tanda 5**~~ **hecha (27/11)** (diseño que se siguió):
      - **Idea 11, panel «Configuración»** en Administración: secciones SELinux/AppArmor (modo, denegaciones `avc`
        explicadas, booleans y contextos con «Arreglar» solo si es seguro), SSH (`sshd -t` antes de recargar y sin
        cortar tu SSH), actualizaciones automáticas, fail2ban, `sysctl` de red, sudo, `hidepid` y enlace al cortafuegos
@@ -38,7 +37,7 @@ quedó sin verificar) está en el **[historial](historial/PENDIENTES-historial.m
      - **Idea 4c:** «Auditar proyecto» (todos los servidores de un proyecto, máx. 3 a la vez, resumen comparado, desde
        el menú del proyecto en la barra lateral) y auditar los contenedores rootless de cada usuario como su dueño
        (`--privileged`, puertos en 0.0.0.0, `latest`, root dentro, montajes peligrosos, sin límite de memoria).
-  4. Tandas 6 (4d + 5a), 7 (5b) y 8 (ideas menores) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
+  4. **Siguiente: tanda 6** (4d auditoría programada + 5a Claude Code en el VPS), luego 7 (5b) y 8 (ideas menores) → beta.6 y beta.7; al final pruebas a mano y **1.0.0** (quitar
      `bundle.windows.wix.version`).
 - **Siempre:** preguntar al usuario antes de cada push o versión; `/code-review` del lote antes de cada versión;
   reglas de recursos de `dev/REGLAS-AGENTES.md` §2.
@@ -57,7 +56,7 @@ todo unido en `main` y comprobado (lint, build, `npm test`, clippy, `cargo test`
 | **2. Deuda técnica (motor)** | Partir los archivos Rust de 400–500 líneas · un criterio fijo para los comandos Tauri (`commands.rs` en cada módulo) — **hecho (26/11)** | 1 (Rust) | beta.5 |
 | **3. Deuda técnica (resto)** | Archivos TS de 400–500 líneas · `index.ts` en todas las features · ciclos y límites entre carpetas (`scripts/deps-allowlist.json` y `EXCEPCIONES_LIMITES` de `eslint.config.js`) · limpiezas de Volúmenes y Redes con «Todos» · avisos con botón en `Toaster` (BASE) · renombrar el grupo de máquina en la barra lateral · la lista de excepciones de líneas queda en **cero** — **hecho (26/11)** | 2 | beta.5 |
 | **4. Funciones A** | **13** pruebas por distro (primero: valida todo lo demás) · **12** «Cerrar puerto» que haga lo correcto — **hecho (26/11)** | 2 | beta.5 |
-| **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios | 2 | beta.6 |
+| **5. Funciones B** | **11** configuración y seguridad del servidor · **4c** auditar proyecto y contenedores de otros usuarios — **hecho (27/11)** | 2 | beta.6 |
 | **6. Funciones C** | **4d** auditoría programada · **5a** Claude Code en el VPS con tu cuenta | 2 | beta.6 |
 | **7. Funciones D** | **5b** despliegue asistido por IA (MCP) | 1 | beta.6 |
 | **8. Ideas menores** | ProxyJump · comparar archivos · historial por servidor · sincronizar carpeta · más administración (systemd, paquetes, cron) · arrastre con archivos virtuales · pulido del mapa | 2 por tanda | beta.7 |

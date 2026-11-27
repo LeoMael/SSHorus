@@ -23,6 +23,10 @@ siguen [Versionado Semántico](https://semver.org/lang/es/).
   sudo, **sysctl** de red y **hidepid**. Cada cambio enseña su comando y va como tarea en segundo plano. Lo que no
   existe dice «no aplica»; sin sudo, qué falta.
 
+### Arreglado
+- **Auditoría → instalar fail2ban:** la cárcel `sshd` vigila los puertos reales de SSH (antes, con SSH en otro
+  puerto que no fuera el 22, fail2ban miraba el puerto equivocado).
+
 ## [1.0.0-beta.5] - 2026-11-26
 
 ### Añadido

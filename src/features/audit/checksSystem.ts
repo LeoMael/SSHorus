@@ -261,7 +261,10 @@ export function systemChecks(ctx: AuditCtx): Check[] {
 }
 
 function fail2banInstall(family: Family): string | null {
-  const jail = "printf '[sshd]\\nenabled = true\\nbackend = systemd\\n' > /etc/fail2ban/jail.d/sshorus.local";
+  // `port` con los puertos reales de sshd (si no es el 22, fail2ban bloquearía el puerto equivocado).
+  const jail =
+    "p=$(sshd -T 2>/dev/null | awk '$1==\"port\"{print $2}' | paste -sd, -); " +
+    "printf '[sshd]\\nenabled = true\\nport = %s\\nbackend = systemd\\n' \"${p:-ssh}\" > /etc/fail2ban/jail.d/sshorus.local";
   switch (family) {
     case "fedora":
       return ["dnf -y install fail2ban", jail, "systemctl enable --now fail2ban"].join("\n");
